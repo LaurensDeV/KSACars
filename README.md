@@ -68,7 +68,7 @@ The car changes gear on its own. The engine is heard while you are driving it.
 The same panel switches the headlights between off, dipped and main beam. The tail lights come on
 with them and brighten when you brake.
 
-A car also flies, on four rockets under the floor, worked with the keys you fly a rocket with:
+The Eldorado also flies, on four rockets under its floor, worked with the keys you fly a rocket with:
 
 | Control | Default key | |
 | --- | --- | --- |
@@ -78,7 +78,6 @@ A car also flies, on four rockets under the floor, worked with the keys you fly 
 | yaw | A / D | in the air, bank left or right |
 | roll | Q / E | in the air, turn left or right |
 
-The **Car** panel has the same throttle as a slider, with **Light** and **Hover** buttons.
 
 A car that ends up on its roof or its side cannot drive off. The **Car** panel, on screen while you
 are in one, has an **Unflip** button that sets it back on its wheels where it lies.

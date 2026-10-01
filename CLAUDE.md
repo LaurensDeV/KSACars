@@ -188,7 +188,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/FlamesHook.cs` | the fifth patch — **a flying car's flames submitted where KSA submits a craft's own plumes**, a postfix on `Vehicle.AddVolumetricExhaustInstances`; KSA empties its plume list just before, so a plume from any StarMap hook is never drawn |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the rockets' throttle and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
@@ -215,7 +215,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 274 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 273 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -250,7 +250,8 @@ car's, that share overshot, the car rocked on its wheels at 13 deg/s, and the ro
 the drive needed. `KSACarsGameData.xml` gives the Eldorado a `SolidCuboidMass`, and
 `BuggyDriveTests.AYawKickDiesAwayRatherThanRockingTheDriveAway` fails against the sphere.
 
-**A car can fly, on thrust the mod applies itself.** `Sim/Lift.cs` adds to the same velocity and spin
+**The Eldorado can fly, on thrust the mod applies itself.** A car flies if its profile has
+`RocketNozzles`; the buggy has none. `Sim/Lift.cs` adds to the same velocity and spin
 the springs write: up to two weights of thrust along the car's own up, so half throttle hovers. With no
 wheel on the ground the pitch keys lean the nose, the yaw keys bank it left and right and the roll keys
 turn it; on the ground only the thrust is given, because the springs hold the attitude there.
@@ -259,13 +260,14 @@ turn it; on the ground only the thrust is given, because the springs hold the at
 light and cut them, through the craft's `_manualControlInputs.EngineOn`. The throttle keys move the
 mod's own throttle, read off `_engineFlags`, because KSA clamps its own to the least any engine allows
 and with no engine that is 1. `KsaWorld` reads both by reflection and checks their types; if KSA renames
-either, the panel still works the rockets and the keys do not.
+either, the rockets cannot be lit: nothing but the keys and the bridge's `lift` works them.
 
 **The flames are KSA's own plumes with no engine behind them.** A real engine cannot be kept for its
 flame: no propellant is no plume, and any flame is thrust. `Buggies.Flames` builds a
 `VolumetricExhaustInstance` per nozzle from a Core exhaust template and hands it to KSA's renderer each
 frame, drawn from the gas `Lift.Flame` gives for the throttle; `BuggyProfile.RocketNozzles` is where
-they leave the floor. `docs/KSA-MODDING-NOTES.md` has the mechanism. There are no nozzles on the models.
+they leave the floor: the lips of four ports, one mesh in `Meshes/KSACars_EldoRocket.glb` with its own
+small texture set, drawn four times as subparts. `docs/KSA-MODDING-NOTES.md` has the mechanism.
 
 **A car on its roof is stuck, so the panel can right it.** The springs only push through the wheels,
 and KSA rails a car lying still. `Buggies.Right` queues it and the next physics window writes the pose
@@ -319,7 +321,7 @@ A car is **data plus art**: nothing in the drive, the sound or the hands names a
    saved part with its definition positionally and by Id, and a save that no longer matches closes
    the game. `docs/KSA-MODDING-NOTES.md` has the loop.
 3. **Give it a `BuggyProfile`** in `Sim/BuggyProfile.cs` and add it to `All`: the hubs, the steering
-   wheel's pivot and axis, the driver's eye, the head and tail lamps, the rocket nozzles, and the tuning. Add tests in `BuggyDriveTests` that it
+   wheel's pivot and axis, the driver's eye, the head and tail lamps, the rocket nozzles if it flies, and the tuning. Add tests in `BuggyDriveTests` that it
    settles, pulls away and shrugs off a yaw kick, and one in `SteeringGripTests` that the driver
    reaches the rim; `HeadlightsTests` covers every car in `All`.
 4. **Give it an engine**: four sounds named `<SoundPrefix>Start`, `Idle`, `Load` and `Stop` in
