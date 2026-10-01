@@ -192,8 +192,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
 | `Sim/Vec.cs` | vector helpers |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
-| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the eight patches, and once a frame finds the cars, poses their wheels and plays their engines |
-| `Ksa/PhysicsHook.cs` | **one of the eight places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the nine patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the nine places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
 | `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
 | `Ksa/SeatedCrewHook.cs` | the second patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
 | `Ksa/LightsHook.cs` | the third patch — **the headlamps submitted where KSA submits a craft's own lights**, a postfix on `PartTree.UpdateRenderData`; KSA clears its light list after the GUI pass, so a light from any StarMap hook is never drawn |
@@ -202,9 +202,11 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/CrashHook.cs` | the sixth patch — **a car spared from breaking up**, a prefix on `Universe.DestroyVehicleFromEvent` that turns away every structural failure of a car, whatever the cause |
 | `Ksa/BoostHook.cs` | the seventh patch, on two methods — **the sprint key heard by a car**: a postfix on `Vehicle.OnKey` queues it as `OnKey` queues the engine keys, and one on `Vehicle.ProcessInput` records it where KSA applies the queue. A vehicle's `OnKey` does not know the key at all; only a kitten's does. The same postfix switches the downward thrusters on the RCS key. A prefix on `OnKey` also takes Shift off every other key while a car boosts, since KSA matches a vehicle's keys with their modifiers exactly |
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
+| `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
@@ -233,7 +235,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 338 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 345 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -293,8 +295,8 @@ flush, each its own subpart drawn in the body's material from a patch of the bon
 so the six straight edges leave a hexagon growing from the centre and no blade has to slide under the
 skin round the hole, which is thin and curved. A group's rockets fire once its irises are open, a tenth
 of a second after they are asked for; they shut once its flames have died, and `Buggies.Pose` moves them in the world's time, so slow motion slows them and a pause holds them.
-**The holes are cut into the exported `.glb`, not modelled in the `.blend`**, so an export from Blender
-loses them until they are cut again.
+The holes are in the body mesh in the `.blend` as they are in the `.glb`, and the cup and the blade are
+objects there too, with the blades laid shut over the front-left bonnet hole as `View_IrisBlade_*`.
 
 **A car does not break up when it comes down hard.** KSA destroys a craft past a g-load set by its
 size, and a car dropped a few metres onto its bump stops exceeds it. `Ksa/CrashHook.cs` vetoes that for
@@ -321,6 +323,21 @@ springs carry it. `Ksa/BoostHook.cs` hears the key.
 **With the lift rockets lit as well, the car hovers.** While both sets fire, `Sim/Hover.cs` replaces both
 pushes with one that cancels gravity and brakes the climb rate, so the car holds its height wherever it
 is; the lift throttle does nothing then, and the keys still lean it across the ground.
+
+**Under time warp the springs are left out and the rockets carry on.** A physics step is the frame times
+the warp, and past a tenth of a second the springs would overshoot, so the car rests on its colliders.
+The thrust is a plain push, and the hold that keeps the car level and the hover's braking are written as
+the share of the way a step of that length covers, so neither can overshoot however long the step. KSA
+takes the push at the start of its step and lets gravity act through it, so the hover brakes the step's
+average climb, half a step of gravity under the sampled one; braking the sampled climb leaves the car
+rising at half a step of gravity, 5 m/s at 50x. The downward thrusters alone do nothing under warp.
+
+**Above the atmosphere KSA rails a craft with no engine firing, and a railed car cannot be pushed.** It
+decides in two places in `PhysicsBubble`, and beyond the body's physics radius by a route of its own, so
+`Ksa/RailsHook.cs` answers the one question both ask per craft, `KittenWantsWake`, with yes for a car
+whose rockets are burning. A car already coasting on its orbit when they light is rebuilt from that
+orbit with `PhysicsStates.UpdateFromAnalytic`, as KSA rebuilds a craft it is about to split. With the
+rockets cut the car is KSA's to rail again, and coasts as any craft does.
 
 **The Eldorado carries a scoop, in three sizes, chosen from the panel.** A car's profile lists its
 `Scoops`, and one or none is on. Each blade is its own subpart, both in one `.glb` and one atlas; off, a
@@ -375,10 +392,10 @@ back dipped. It draws almost nothing, because nothing on a car charges the batte
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
 
-**Eight patches; seven are on public methods and pinned.** Each of those has a `PinTheSignature` that is
+**Nine patches; seven are on public methods and pinned.** Each of those has a `PinTheSignature` that is
 never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
-tracks it and a KSA change to it is a build error. `LensColourHook` patches a private method, which
-cannot be pinned: it checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
+tracks it and a KSA change to it is a build error. `LensColourHook` and `RailsHook` each patch a private method, which
+cannot be pinned: each checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
 nothing extra.
 
 ## Adding a car

@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-148 types and 338 members across 6 assemblies.
+150 types and 345 members across 6 assemblies.
 
 ## BepuUtilities
 
@@ -150,14 +150,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.ImGuiApi.ImGuiViewportPtr GetMainViewport()`
 - `Brutal.Numerics.float2 GetMousePos()`
 - `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
+- `bool Begin(Brutal.ImGuiApi.ImString, ref bool, Brutal.ImGuiApi.ImGuiWindowFlags)`
 - `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `bool Checkbox(Brutal.ImGuiApi.ImString, ref bool)`
 - `bool IsItemActive()`
 - `bool IsItemDeactivatedAfterEdit()`
 - `bool IsMouseClicked(Brutal.ImGuiApi.ImGuiMouseButton, bool)`
 - `bool IsMouseDown(Brutal.ImGuiApi.ImGuiMouseButton)`
+- `bool MenuItem(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, ref bool, bool)`
 - `bool RadioButton(Brutal.ImGuiApi.ImString, bool)`
 - `bool SliderFloat(Brutal.ImGuiApi.ImString, ref float, float, float, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
+- `bool SmallButton(Brutal.ImGuiApi.ImString)`
 - `void End()`
 - `void SameLine(float, float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
@@ -581,12 +584,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double GetAtmosphericDensityAtAltitude(double)`
 - `double GetAtmosphericPressure(KSA.Camera)`
 
+### KSA.PhysicsBubble
+
+*referenced as a type only*
+
 ### KSA.PhysicsStates
 
 - `ref KSA.BubbleOrigin Origin`
 - `ref KSA.KinematicStates Kinematic`
 - `void GetStatesCcf(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void GetStatesCci(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
+- `void UpdateFromAnalytic(KSA.Orbit, ref KSA.StateVectors, Brutal.Numerics.doubleQuat, Brutal.Numerics.double3, KSA.Situation)`
 
 ### KSA.PlanetRenderer
 
@@ -671,6 +679,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.SituationEx
 
+- `bool HasAnyContact(KSA.Situation)`
 - `bool HasTerrainContact(KSA.Situation)`
 - `bool IsOnRails(KSA.Situation)`
 
@@ -728,6 +737,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 GetSurfaceVelocityCci()`
 - `Brutal.Numerics.double3 PosAsmbToBody(Brutal.Numerics.double3)`
+- `Brutal.Numerics.double3 get_BodyRates()`
 - `Brutal.Numerics.double3 get_CenterOfMassAsmb()`
 - `Brutal.Numerics.double4x4 GetMatrixAsmb2Ego(KSA.Camera)`
 - `Brutal.Numerics.doubleQuat get_Body2Cce()`
@@ -777,6 +787,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `System.ReadOnlySpan`1<KSA.VehicleSave> AsSpan()`
 - `void Refresh()`
+
+### KSA.VehicleUpdateState
+
+- `KSA.Vehicle ReadOnlyVehicle`
 
 ### KSA.ViewportEx
 
