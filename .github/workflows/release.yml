@@ -1,0 +1,172 @@
+name: Release
+
+# Versioning is automatic: semantic-release reads the Conventional Commits since the last tag,
+# works out whether that is a patch, minor or major, and cuts the release. Nobody edits a
+# version number by hand.
+#
+# The first job decides the version and creates the release as a draft, the second builds the
+# archive, attaches it and publishes the release, and spacedock.yml then uploads what is attached.
+# All hosted. Building needs KSA's assemblies, which are not redistributable and so live in the
+# private repository LaurensDeV/ksa-game-assemblies, checked out here with a read-only deploy key
+# (the KSA_ASSEMBLIES_KEY secret).
+#
+# Without that secret the version, tag, changelog and notes are still cut, and the release stays a
+# draft with nothing public. ./tools/publish-release.sh attaches the archive from a machine that
+# has KSA and publishes it; spacedock.yml, run by hand, does the rest.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+
+jobs:
+  version:
+    name: Version and changelog
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # semantic-release needs the whole history to find the last release and everything
+          # since it. A shallow clone silently produces a first release every time.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: semantic-release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/exec@6
+            @semantic-release/git@10
+            conventional-changelog-conventionalcommits@8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          if [[ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]]; then
+            echo "released ${{ steps.semantic.outputs.new_release_version }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "no release: nothing since the last tag warrants one" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  artifact:
+    name: Build and attach the mod
+    needs: version
+    if: ${{ needs.version.outputs.published == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.publish.outcome }}
+    env:
+      HAVE_KEY: ${{ secrets.KSA_ASSEMBLIES_KEY != '' }}
+      KSA_DLL_DIR: ${{ github.workspace }}/.ksa-assemblies/current/dll
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The tag semantic-release just pushed, so the archive matches the release exactly
+          # rather than whatever main has drifted to since.
+          ref: v${{ needs.version.outputs.version }}
+
+      - name: Check out the KSA assemblies
+        if: env.HAVE_KEY == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: LaurensDeV/ksa-game-assemblies
+          path: .ksa-assemblies
+          ssh-key: ${{ secrets.KSA_ASSEMBLIES_KEY }}
+          persist-credentials: false
+
+      - name: Cannot build without the assemblies
+        if: env.HAVE_KEY != 'true'
+        run: |
+          echo "::warning::KSA_ASSEMBLIES_KEY is not set; the release has no binary attached."
+          echo "Run ./tools/publish-release.sh from a machine with KSA to add one."
+
+      - name: Assemblies match the lock
+        if: env.HAVE_KEY == 'true'
+        run: ./tools/check-assemblies.sh .ksa-assemblies/current/dll
+
+      - uses: actions/setup-dotnet@v4
+        if: env.HAVE_KEY == 'true'
+        with:
+          dotnet-version: "10.0.x"
+
+      # A release that fails its own checks is not a release. Through test.sh for its Release
+      # configuration: a bare `dotnet test` builds Debug, and the flight simulations run unoptimised
+      # took the step to 12-17 minutes against CI's 3 for the same tests.
+      - name: Test
+        if: env.HAVE_KEY == 'true'
+        run: ./tools/test.sh
+
+      - name: Validate parts
+        if: env.HAVE_KEY == 'true'
+        run: ./tools/validate-parts.py --offline
+
+      - name: Check the meshes
+        if: env.HAVE_KEY == 'true'
+        shell: bash
+        run: |
+          shopt -s nullglob
+          atlases=(src/KSACars/Meshes/*.glb)
+          (( ${#atlases[@]} )) || { echo "no meshes yet"; exit 0; }
+          ./tools/model/checkmesh.py "${atlases[@]}" --near-max 0
+
+      - name: Package
+        if: env.HAVE_KEY == 'true'
+        run: ./tools/package.sh --version "${{ needs.version.outputs.version }}"
+
+      # semantic-release leaves the release a draft, and it is published only once the archive is
+      # on it: the content index Borea installs from polls GitHub releases, and a release it finds
+      # with no archive is reported as broken. gh rather than action-gh-release, because gh finds
+      # a draft by its tag and action-gh-release@v2 does not.
+      - name: Attach the archive and publish the release
+        id: publish
+        if: env.HAVE_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.version.outputs.version }}
+          ARCHIVE: dist/KSACars-${{ needs.version.outputs.version }}.zip
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "$ARCHIVE" --clobber
+
+          gh release view "$TAG" --json body -q .body > release-notes.md
+          cat >> release-notes.md <<'EOF'
+
+          ---
+
+          Drop the `KSACars` folder into your KSA user directory's `mods/`, register it in
+          `manifest.toml`, and launch through StarMap. See the README for the full guide.
+
+          Works on Windows and Linux — the mod is a portable .NET assembly.
+
+          Release build: no debug symbols, log starts at INFO. Tick **Verbose log** in the
+          panel if you are reporting a bug.
+          EOF
+
+          gh release edit "$TAG" --notes-file release-notes.md --draft=false
+
+  # SpaceDock is where most people will actually get this, so the release is not finished until it
+  # is there.
+  spacedock:
+    needs: [version, artifact]
+    if: ${{ needs.artifact.outputs.published == 'success' }}
+    uses: ./.github/workflows/spacedock.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit

@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  What the cars look like: each car's atlas, its material, its subparts and the part.
+
+  This file lives at the mod root rather than in a subfolder on purpose. <MeshAtlas Path> and the
+  texture paths are relative, and it is not documented whether they resolve against the mod root or
+  against this file's own directory. With the XML at the root both readings give the same answer.
+
+  Part space: +X is up from the ground, +Y forward, +Z the car's left.
+-->
+<Assets>
+
+  <!--
+    The beach buggy's atlas and its one material. Authored in Blender over MCP; the number plate is
+    lettered into the diffuse, on an island given fourteen times its share of texels so it reads.
+  -->
+  <MeshAtlas Path="Meshes/KSACars_Buggy.glb" />
+
+  <PbrMaterial Id="KSACars_Buggy_Material">
+    <Diffuse Path="Textures/KSACars_Buggy_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_Buggy_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_Buggy_PBR.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <!--
+    Each moving body is exported recentred on its own pivot: a wheel on its hub, an arm on its
+    chassis bushing, a coil-over on its top mount, the steering wheel on its boss. One front and
+    one rear wheel mesh serve both sides, since a wheel is symmetric about its own mid-plane.
+  -->
+  <SubPart Id="KSACars_BuggyBody_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyBody_Model">
+      <Mesh Id="KSACars_Subpart_BuggyBody" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyBody_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyWheelFront_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyWheelFront_Model">
+      <Mesh Id="KSACars_Subpart_BuggyWheelFront" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyWheelFront_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyWheelRear_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyWheelRear_Model">
+      <Mesh Id="KSACars_Subpart_BuggyWheelRear" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyWheelRear_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyArmFL_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyArmFL_Model">
+      <Mesh Id="KSACars_Subpart_BuggyArmFL" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyArmFL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyArmFR_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyArmFR_Model">
+      <Mesh Id="KSACars_Subpart_BuggyArmFR" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyArmFR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyArmRL_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyArmRL_Model">
+      <Mesh Id="KSACars_Subpart_BuggyArmRL" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyArmRL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyArmRR_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyArmRR_Model">
+      <Mesh Id="KSACars_Subpart_BuggyArmRR" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyArmRR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyCoilFL_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyCoilFL_Model">
+      <Mesh Id="KSACars_Subpart_BuggyCoilFL" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyCoilFL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyCoilFR_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyCoilFR_Model">
+      <Mesh Id="KSACars_Subpart_BuggyCoilFR" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyCoilFR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyCoilRL_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyCoilRL_Model">
+      <Mesh Id="KSACars_Subpart_BuggyCoilRL" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyCoilRL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyCoilRR_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggyCoilRR_Model">
+      <Mesh Id="KSACars_Subpart_BuggyCoilRR" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggyCoilRR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_BuggySteering_SubPart">
+    <PartModel Id="KSACars_Subpart_BuggySteering_Model">
+      <Mesh Id="KSACars_Subpart_BuggySteering" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_BuggySteering_VM" />
+    </MeshView>
+  </SubPart>
+
+  <!-- The windscreen, drawn in KSA's glass pass: blended over what is behind it, never cut out. -->
+  <SubPart Id="KSACars_BuggyGlass_SubPart">
+    <PartModelGlass Id="KSACars_Subpart_BuggyGlass_Model">
+      <Mesh Id="KSACars_Subpart_BuggyGlass" />
+      <Material Id="KSACars_Buggy_Material" />
+    </PartModelGlass>
+  </SubPart>
+
+  <!-- Where a kitten climbs in and out, one beside each seat. Nothing is drawn: a door is a place. -->
+  <SubPart Id="KSACars_BuggyDoorL_SubPart">
+    <EditorTag Value="Hidden" />
+  </SubPart>
+  <SubPart Id="KSACars_BuggyDoorR_SubPart">
+    <EditorTag Value="Hidden" />
+  </SubPart>
+
+  <!--
+    Beach buggy. The wheels, arms, coil-overs and steering wheel are separate bodies because the mod
+    moves them: Ksa/Buggies.cs poses each from the springs and the steering every frame.
+
+    +X is up from the ground, +Y forward, +Z the left side.
+  -->
+  <Part Id="KSACars_Prefab_Buggy">
+
+    <SubPart Id="KSACars_Buggy_Body" InstanceOf="KSACars_BuggyBody_SubPart" />
+
+    <SubPart Id="KSACars_Buggy_WheelFL" InstanceOf="KSACars_BuggyWheelFront_SubPart">
+      <Transform>
+        <Position X="0.34000" Y="1.15000" Z="0.84000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_WheelFR" InstanceOf="KSACars_BuggyWheelFront_SubPart">
+      <Transform>
+        <Position X="0.34000" Y="1.15000" Z="-0.84000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_WheelRL" InstanceOf="KSACars_BuggyWheelRear_SubPart">
+      <Transform>
+        <Position X="0.40000" Y="-0.95000" Z="0.88000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_WheelRR" InstanceOf="KSACars_BuggyWheelRear_SubPart">
+      <Transform>
+        <Position X="0.40000" Y="-0.95000" Z="-0.88000" />
+      </Transform>
+    </SubPart>
+
+    <SubPart Id="KSACars_Buggy_ArmFL" InstanceOf="KSACars_BuggyArmFL_SubPart">
+      <Transform>
+        <Position X="0.40000" Y="1.55000" Z="0.62000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_ArmFR" InstanceOf="KSACars_BuggyArmFR_SubPart">
+      <Transform>
+        <Position X="0.40000" Y="1.55000" Z="-0.62000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_ArmRL" InstanceOf="KSACars_BuggyArmRL_SubPart">
+      <Transform>
+        <Position X="0.44000" Y="-0.45000" Z="0.62000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_ArmRR" InstanceOf="KSACars_BuggyArmRR_SubPart">
+      <Transform>
+        <Position X="0.44000" Y="-0.45000" Z="-0.62000" />
+      </Transform>
+    </SubPart>
+
+    <SubPart Id="KSACars_Buggy_CoilFL" InstanceOf="KSACars_BuggyCoilFL_SubPart">
+      <Transform>
+        <Position X="0.78000" Y="1.29000" Z="0.64000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_CoilFR" InstanceOf="KSACars_BuggyCoilFR_SubPart">
+      <Transform>
+        <Position X="0.78000" Y="1.29000" Z="-0.64000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_CoilRL" InstanceOf="KSACars_BuggyCoilRL_SubPart">
+      <Transform>
+        <Position X="0.86000" Y="-0.75000" Z="0.66000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Buggy_CoilRR" InstanceOf="KSACars_BuggyCoilRR_SubPart">
+      <Transform>
+        <Position X="0.86000" Y="-0.75000" Z="-0.66000" />
+      </Transform>
+    </SubPart>
+
+    <SubPart Id="KSACars_Buggy_Steering" InstanceOf="KSACars_BuggySteering_SubPart">
+      <Transform>
+        <Position X="0.76000" Y="0.31000" Z="-0.28000" />
+      </Transform>
+    </SubPart>
+
+    <SubPart Id="KSACars_Buggy_Glass" InstanceOf="KSACars_BuggyGlass_SubPart" />
+
+    <!-- Outboard of each seat, at the tub's side: a kitten boards within a metre of its door. -->
+    <SubPart Id="KSACars_BuggyDoorL" InstanceOf="KSACars_BuggyDoorL_SubPart">
+      <Transform>
+        <Position X="0.55000" Y="0.18000" Z="0.75000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_BuggyDoorR" InstanceOf="KSACars_BuggyDoorR_SubPart">
+      <Transform>
+        <Position X="0.55000" Y="0.18000" Z="-0.75000" />
+      </Transform>
+    </SubPart>
+
+    <!-- Underside attach node, at the ground plane and facing down. -->
+    <Connector Id="_bgConnectorAft">
+      <Transform>
+        <Position X="0.00000" />
+        <Rotation Z="3.14159" />
+        <Scale X="2.00000" Y="2.00000" Z="2.00000" />
+      </Transform>
+    </Connector>
+
+  </Part>
+
+  <!--
+    The Cadillac Eldorado's atlas and its one material. Authored in Blender over MCP; both plates are
+    lettered into the diffuse.
+  -->
+  <MeshAtlas Path="Meshes/KSACars_Eldorado.glb" />
+
+  <PbrMaterial Id="KSACars_Eldorado_Material">
+    <Diffuse Path="Textures/KSACars_Eldorado_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_Eldorado_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_Eldorado_PBR.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <!-- One wheel mesh for all four corners: a whitewall on a cover is the same from either side. -->
+  <SubPart Id="KSACars_EldoBody_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoBody_Model">
+      <Mesh Id="KSACars_Subpart_EldoBody" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoBody_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_EldoWheel_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoWheel_Model">
+      <Mesh Id="KSACars_Subpart_EldoWheel" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoWheel_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_EldoSteering_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoSteering_Model">
+      <Mesh Id="KSACars_Subpart_EldoSteering" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoSteering_VM" />
+    </MeshView>
+  </SubPart>
+
+  <!-- The windscreen, drawn in KSA's glass pass. -->
+  <SubPart Id="KSACars_EldoGlass_SubPart">
+    <PartModelGlass Id="KSACars_Subpart_EldoGlass_Model">
+      <Mesh Id="KSACars_Subpart_EldoGlass" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModelGlass>
+  </SubPart>
+
+  <SubPart Id="KSACars_EldoDoorL_SubPart">
+    <EditorTag Value="Hidden" />
+  </SubPart>
+  <SubPart Id="KSACars_EldoDoorR_SubPart">
+    <EditorTag Value="Hidden" />
+  </SubPart>
+
+  <!--
+    A 1976 Cadillac Eldorado convertible, top down. The wheels and the steering wheel are separate
+    bodies because Ksa/Buggies.cs moves them, off the Eldorado's BuggyProfile.
+
+    +X is up from the ground, +Y forward, +Z the left side.
+  -->
+  <Part Id="KSACars_Prefab_Eldorado">
+
+    <SubPart Id="KSACars_Eldo_Body" InstanceOf="KSACars_EldoBody_SubPart" />
+    <SubPart Id="KSACars_Eldo_WheelFL" InstanceOf="KSACars_EldoWheel_SubPart">
+      <Transform>
+        <Position X="0.36000" Y="1.60400" Z="0.80900" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_WheelFR" InstanceOf="KSACars_EldoWheel_SubPart">
+      <Transform>
+        <Position X="0.36000" Y="1.60400" Z="-0.80900" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_WheelRL" InstanceOf="KSACars_EldoWheel_SubPart">
+      <Transform>
+        <Position X="0.36000" Y="-1.60400" Z="0.80750" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_WheelRR" InstanceOf="KSACars_EldoWheel_SubPart">
+      <Transform>
+        <Position X="0.36000" Y="-1.60400" Z="-0.80750" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_Steering" InstanceOf="KSACars_EldoSteering_SubPart">
+      <Transform>
+        <Position X="0.88000" Y="0.30200" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_Glass" InstanceOf="KSACars_EldoGlass_SubPart" />
+
+    <!-- Beside the front seats, outboard of the doors: a kitten boards within a metre of its door. -->
+    <SubPart Id="KSACars_Eldo_DoorL" InstanceOf="KSACars_EldoDoorL_SubPart">
+      <Transform>
+        <Position X="0.70000" Y="0.10000" Z="1.12000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_DoorR" InstanceOf="KSACars_EldoDoorR_SubPart">
+      <Transform>
+        <Position X="0.70000" Y="0.10000" Z="-1.12000" />
+      </Transform>
+    </SubPart>
+
+    <Connector Id="_elConnectorAft">
+      <Transform>
+        <Position X="0.00000" />
+        <Rotation Z="3.14159" />
+        <Scale X="2.00000" Y="2.00000" Z="2.00000" />
+      </Transform>
+    </Connector>
+
+  </Part>
+
+</Assets>

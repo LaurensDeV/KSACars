@@ -1,0 +1,574 @@
+using System.Globalization;
+using System.IO;
+using System.Text.Json;
+using Brutal.Numerics;
+using KSA;
+
+namespace KSACars;
+
+/// <summary>
+/// Commands from outside the game, read from <c>Logs/bridge/KSACars/in</c> and answered in <c>out</c>: what
+/// lets an agent in a terminal load a save, park a car, drive it, step the world and photograph it in a
+/// game that stays running. <c>tools/ksa-mcp/server.py</c> is the other end. Only a developer's install
+/// starts it.
+///
+/// <para><b>Files, not a socket</b>: a folder needs no port and works across the WSL boundary as it
+/// is.</para>
+///
+/// <para>One command at a time, oldest first. A command that takes frames -- a step, a capture --
+/// holds the queue until it answers, so a sequence of them is a script that runs in order.</para>
+/// </summary>
+internal sealed class Bridge
+{
+    // A few times a second is quick enough for a person and costs one directory listing.
+    private const double PollSeconds = 0.1;
+    private double _sincePoll;
+
+    private Func<double, double, Reply?>? _running;
+    private BridgeCommand? _current;
+
+    // A folder of its own: every mod built from the same tooling has a bridge, and two reading one
+    // folder each answer whichever command they reach first.
+    private static string Root => Path.Combine(Log.Folder, "bridge", "KSACars");
+    private static string Inbox => Path.Combine(Root, "in");
+    private static string Outbox => Path.Combine(Root, "out");
+
+    private readonly record struct Reply(bool Ok, string Error, Dictionary<string, object?> Data);
+
+    private static Reply Done(Dictionary<string, object?>? data = null) => new(true, string.Empty, data ?? []);
+    private static Reply Failed(string why) => new(false, why, []);
+
+    /// <summary>
+    /// One frame: advances the command running, or takes the next. Called from the one hook KSA always
+    /// calls, so it runs in the menu and with the UI hidden. Nothing here may throw.
+    /// </summary>
+    public void Update(double dtPlayer, double dtSim)
+    {
+        try
+        {
+            if (_running is not null && _current is not null)
+            {
+                if (_running(dtPlayer, dtSim) is { } reply) Answer(_current, reply);
+                return;
+            }
+
+            _sincePoll += dtPlayer;
+            if (_sincePoll < PollSeconds) return;
+            _sincePoll = 0.0;
+
+            if (!Directory.Exists(Inbox)) return;
+
+            string? next = Directory.GetFiles(Inbox, "*.json").Order(StringComparer.Ordinal).FirstOrDefault();
+            if (next is null) return;
+
+            string text = File.ReadAllText(next);
+            File.Delete(next);
+
+            if (!BridgeCommand.TryParse(text, out BridgeCommand? command, out string trouble))
+            {
+                Log.Warn($"bridge: refused {Path.GetFileName(next)} -- {trouble}");
+                return;
+            }
+
+            Start(command!);
+        }
+        catch (Exception e)
+        {
+            if (_current is { } command) Answer(command, Failed($"threw: {e.Message}"));
+            else Log.Warn($"bridge: {e.Message}");
+        }
+    }
+
+    private void Start(BridgeCommand command)
+    {
+        _current = command;
+        Log.Info($"bridge: {command.Name} ({command.Id})");
+
+        Reply? now = command.Name switch
+        {
+            "status" => Status(),
+            "pause" => KsaWorld.SetPaused(true) ? Done() : Failed("the world would not pause"),
+            "resume" => KsaWorld.SetPaused(false) ? Done() : Failed("the world would not resume"),
+            "speed" => KsaWorld.SetSimulationSpeed(command.Number("x", 1.0)) ? Done() : Failed("speed refused"),
+            "site" => Site(command),
+            "step" => BeginStep(command),
+            "capture" => BeginCapture(command),
+            "load" => BeginLoad(command),
+            "spawn" => Spawn(command),
+            "drive" => Drive(command),
+            "ground" => Ground(command),
+            "save" => SaveGame(command),
+            _ => Failed($"no command '{command.Name}'"),
+        };
+
+        if (now is { } reply) Answer(command, reply);
+    }
+
+    private void Answer(BridgeCommand command, Reply reply)
+    {
+        _running = null;
+        _current = null;
+
+        Directory.CreateDirectory(Outbox);
+
+        Dictionary<string, object?> body = new()
+        {
+            ["id"] = command.Id,
+            ["cmd"] = command.Name,
+            ["ok"] = reply.Ok,
+            ["error"] = reply.Ok ? null : reply.Error,
+            ["data"] = reply.Data,
+        };
+
+        // Written aside and moved, so the other end never reads half a reply.
+        string final = Path.Combine(Outbox, command.Id + ".json");
+        string partial = final + ".part";
+        File.WriteAllText(partial, JsonSerializer.Serialize(body, JsonOptions));
+        File.Move(partial, final, overwrite: true);
+
+        if (!reply.Ok) Log.Warn($"bridge: {command.Name} ({command.Id}) failed -- {reply.Error}");
+    }
+
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    // ---- commands that answer at once -------------------------------------------------------
+
+    private static Reply Status() => Done(new()
+    {
+        ["build"] = Build.Version,
+        ["in_flight"] = KsaWorld.InFlightScene,
+        ["craft"] = KsaWorld.ControlledVehicle is { } craft ? KsaWorld.DisplayName(craft) : null,
+        ["paused"] = KsaWorld.IsPaused,
+        ["speed"] = KsaWorld.SimulationSpeed,
+        ["others"] = OthersFromFlown(),
+    });
+
+    // Every craft within 200 km of the one being flown: how far, which way, and what it is doing.
+    private static List<object?> OthersFromFlown()
+    {
+        List<object?> seen = [];
+        if (KsaWorld.ControlledVehicle is not { } flown) return seen;
+
+        double3 here = KsaWorld.PositionEcl(flown);
+        double3 up = KsaWorld.LocalUp(flown);
+        foreach (Vehicle v in KsaWorld.Vehicles)
+        {
+            if (ReferenceEquals(v, flown) || !KsaWorld.IsAlive(v)) continue;
+
+            double3 to = KsaWorld.PositionEcl(v) - here;
+            double range = Vec.Len(to);
+            if (range > 200_000.0) continue;
+
+            seen.Add(new Dictionary<string, object?>
+            {
+                ["name"] = KsaWorld.DisplayName(v),
+                ["range_m"] = Math.Round(range),
+                ["elevation_deg"] = Math.Round(double.RadiansToDegrees(Math.Asin(Math.Clamp(Vec.Dot(to, up) / range, -1.0, 1.0))), 1),
+                ["situation"] = v.Situation.ToString(),
+            });
+        }
+
+        seen.Add(new Dictionary<string, object?>
+        {
+            ["name"] = "(flown) " + KsaWorld.DisplayName(flown),
+            ["speed_ms"] = Math.Round(Vec.Len(KsaWorld.VelocityEcl(flown) - KsaWorld.GroundVelocityAt(flown, here)), 1),
+            ["situation"] = flown.Situation.ToString(),
+        });
+
+        return seen;
+    }
+
+    // A craft from a vehicle library parked on the ground at lat/lon: craft is the library save's name.
+    private static Reply Spawn(BridgeCommand command)
+    {
+        if (KsaWorld.ControlledVehicle is not { } flown) return Failed("no craft is being flown");
+        if (KsaWorld.ParentBody(flown) is not { } body) return Failed("no body under the craft");
+
+        string stock = command.String("craft");
+        if (stock.Length == 0) return Failed("spawn needs a craft");
+        string name = command.String("name");
+        if (name.Length == 0) name = stock;
+
+        return CraftSpawner.SpawnParked(flown, stock, name, body, command.Number("lat", 0.0), command.Number("lon", 0.0)) is { }
+            ? Done(new() { ["name"] = name })
+            : Failed($"could not park a {stock}");
+    }
+
+    // A buggy's throttle (-1..1) and steer (-1 right..1 left) held for so many simulated seconds, and
+    // what it is doing now. focus=true hands the player's controls and view to it first.
+    private static Reply Drive(BridgeCommand command)
+    {
+        if (CraftNamed(command.String("craft")) is not { } craft) return Failed("no such craft");
+        if (command.Flag("focus", false)) KsaWorld.GoTo(craft);
+        if (command.Has("cam_elevation_deg") || command.Has("cam_distance"))
+        {
+            // The orbit camera on whatever is being flown, lifted out of the grass to see a car's crew. The
+            // stored view, not the controller, whose angles are sprung back towards it every frame; and a
+            // car's orbit elevation runs downward, so it is negated to read as degrees above the car.
+            if (Program.GetMainCamera()?.Following?.OrbitView is { } view)
+            {
+                double deg = Math.PI / 180.0;
+                KsaWorld.TryWriteMainOrbit(command.Number("cam_azimuth_deg", view.Azimuth / deg) * deg,
+                                           -command.Number("cam_elevation_deg", -view.Elevation / deg) * deg);
+                if (command.Has("cam_distance")) view.DistancePower = command.Number("cam_distance", view.DistancePower);
+            }
+        }
+        if (command.Has("log_every_s")) Buggies.LogEverySeconds = Math.Max(command.Number("log_every_s", 1.0), 0.02);
+        if (command.String("seat_kittens") is { Length: > 0 } wanted)
+        {
+            // Named kittens into the seats in order, for a test that needs a particular one aboard.
+            string[] names = wanted.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            int i = 0;
+            foreach (IVASeat seat in craft.Parts.Modules.Get<IVASeat>())
+            {
+                if (i >= names.Length) break;
+                KittenRosterEntryData? k = Universe.KittenRoster.Kittens.FirstOrDefault(x => x.Name == names[i]);
+                if (k is not null) Vehicle.SetSeatCrew(seat, k.NameHash, craft.Id, hasLaunched: true);
+                i++;
+            }
+        }
+        if (command.Flag("crew", false))
+        {
+            // What the launch window's Fill Seats button does, for a craft set down without one.
+            List<IVASeat> seats = [.. craft.Parts.Modules.Get<IVASeat>()];
+            CrewAssignmentWindow.FillSeats(seats, craft.Parts, craft.Id, hasLaunched: true);
+        }
+
+        if (command.Has("seconds"))
+        {
+            DriveInput input = new(Math.Clamp(command.Number("throttle", 0.0), -1.0, 1.0),
+                                   Math.Clamp(command.Number("steer", 0.0), -1.0, 1.0));
+            if (!Buggies.Hold(craft, input, command.Number("seconds", 0.0))) return Failed("that craft is not a buggy");
+        }
+
+        // What the crew portrait's EVA button does: the driver of a buggy, the first kitten aboard anything else.
+        if (command.Flag("eva", false))
+        {
+            string who = command.String("kitten");
+            IVASeat? seat = who.Length > 0 ? null : Buggies.DriverSeatOf(craft);
+            if (who.Length > 0)
+            {
+                foreach (IVASeat s in craft.Parts.Modules.Get<IVASeat>())
+                {
+                    if (Universe.KittenRoster.Find(s.AssignedKittenHash) is { } k && k.Name == who) { seat = s; break; }
+                }
+            }
+            else if (seat is null)
+            {
+                foreach (IVASeat s in craft.Parts.Modules.Get<IVASeat>())
+                {
+                    if (s.AssignedKittenHash != KeyHash.Zero) { seat = s; break; }
+                }
+            }
+            if (seat is null || !EVADoor.PerformEvaForSeat(craft, seat)) return Failed("nobody aboard to get out");
+        }
+
+        if (Buggies.Report(craft) is { } report) return Done(report);
+        return command.Flag("eva", false) || command.Flag("crew", false) ? Done(new() { ["seats"] = craft.SeatCount })
+                                                                          : Failed("that craft is not a buggy");
+    }
+
+    // The ground's height against sea level at lat/lon, negative where it is seabed -- or along a line
+    // to to_lat/to_lon in steps -- so a place can be surveyed without setting a craft down on it.
+    private static Reply Ground(BridgeCommand command)
+    {
+        if (KsaWorld.ControlledVehicle is not { } flown || KsaWorld.ParentBody(flown) is not { } body)
+        {
+            return Failed("no body under the craft");
+        }
+        KsaWorld.TrySeaLevel(body, out double sea);
+
+        double lat = command.Number("lat", 0.0), lon = command.Number("lon", 0.0);
+        double toLat = command.Number("to_lat", lat), toLon = command.Number("to_lon", lon);
+        int steps = Math.Clamp((int)command.Number("steps", 0.0), 0, 200);
+
+        List<object?> line = [];
+        for (int i = 0; i <= steps; i++)
+        {
+            double t = steps == 0 ? 0.0 : (double)i / steps;
+            double la = lat + ((toLat - lat) * t), lo = lon + ((toLon - lon) * t);
+            double3 dir = body.GetDirCcfFromLatLon(la, lo);
+            double height = body.GetTerrainHeightFromDirCcf(dir, accurate: true);
+            line.Add(new Dictionary<string, object?>
+            {
+                ["lat"] = Math.Round(la, 5), ["lon"] = Math.Round(lo, 5), ["ground_m"] = Math.Round(height - sea, 1),
+            });
+        }
+
+        return Done(new() { ["sea_level_m"] = Math.Round(sea, 1), ["points"] = line });
+    }
+
+    // The game written to a save of this name, as KSA's own save console command writes it.
+    private static Reply SaveGame(BridgeCommand command)
+    {
+        string name = command.String("name");
+        if (name.Length == 0) return Failed("a save needs a name");
+        GameSaves.MakeUncompressedSave(name);
+        return Done(new() { ["name"] = name });
+    }
+
+    // A craft by the name it shows, falling back to the one being flown.
+    private static Vehicle? CraftNamed(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return KsaWorld.ControlledVehicle;
+
+        foreach (Vehicle v in KsaWorld.Vehicles)
+        {
+            if (KsaWorld.IsAlive(v) && KsaWorld.DisplayName(v) == name) return v;
+        }
+
+        return null;
+    }
+
+    private Reply? Site(BridgeCommand command)
+    {
+        if (CraftNamed(command.String("craft")) is not { } craft) return Failed("no such craft");
+        if (KsaWorld.ParentBody(craft) is not { } here) return Failed("no body under the craft");
+
+        string body = command.String("body");
+        if (body.Length == 0) body = here.Id;
+
+        if (!KsaWorld.TryPlaceOnSurface(craft, body, command.Number("lat", 0.0), command.Number("lon", 0.0)))
+        {
+            return Failed($"could not place the craft on {body}");
+        }
+
+        // Answered a moment later: the move lands on a later frame, and the sun read on this one is
+        // the sun where the craft was.
+        double waited = 0.0;
+        _running = (dtPlayer, _) =>
+        {
+            waited += dtPlayer;
+            if (waited < 1.0) return null;
+
+            return KsaWorld.ParentBody(craft) is { } now
+                       ? Done(new() { ["body"] = now.Id,
+                                      ["sun_elevation_deg"] = Math.Round(
+                                          KsaWorld.SunElevationDeg(now, KsaWorld.PositionEcl(craft)), 2) })
+                       : Done();
+        };
+
+        return null;
+    }
+
+    // ---- commands that take frames ----------------------------------------------------------
+
+    // Runs the world for so many simulated seconds and stops it again, so what is photographed next
+    // is at an age that was asked for rather than one that happened.
+    private Reply? BeginStep(BridgeCommand command)
+    {
+        double seconds = command.Number("seconds", 1.0);
+        if (!(seconds > 0.0)) return Failed("seconds must be positive");
+
+        double advanced = 0.0;
+        double waited = 0.0;
+        KsaWorld.SetPaused(false);
+
+        _running = (dtPlayer, dtSim) =>
+        {
+            waited += dtPlayer;
+            advanced += Math.Max(dtSim, 0.0);
+
+            if (advanced >= seconds)
+            {
+                KsaWorld.SetPaused(true);
+                return Done(new() { ["advanced_s"] = Math.Round(advanced, 3) });
+            }
+
+            return waited > (seconds * 20.0) + 30.0 ? Failed($"only {advanced:F2} s passed") : null;
+        };
+
+        return null;
+    }
+
+    private Reply? BeginLoad(BridgeCommand command)
+    {
+        string save = command.String("save");
+        if (save.Length == 0) return Failed("load needs a save");
+
+        try
+        {
+            GameSaves.LoadSaveGame(save);
+        }
+        catch (Exception e)
+        {
+            return Failed($"could not load '{save}': {e.Message}");
+        }
+
+        double waited = 0.0;
+
+        _running = (dtPlayer, _) =>
+        {
+            waited += dtPlayer;
+
+            // A beat past the craft appearing, for the world to settle round it.
+            if (waited > 3.0 && KsaWorld.InFlight)
+            {
+                return Done(new() { ["craft"] = KsaWorld.DisplayName(KsaWorld.ControlledVehicle!) });
+            }
+
+            return waited > 60.0 ? Failed("no craft after 60 s") : null;
+        };
+
+        return null;
+    }
+
+    // Photographs through KSA's own capture, which names files to the second: so each one is moved
+    // aside and renamed before the next is asked for, and two can never be one file. Every picture
+    // gets a manifest beside it -- the time, the camera and where the craft is on screen -- so nothing
+    // has to be matched up by its time afterwards.
+    private Reply? BeginCapture(BridgeCommand command)
+    {
+        string label = command.String("label");
+        if (label.Length == 0) label = "shot";
+        label = string.Concat(label.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '_'));
+
+        int frames = Math.Clamp((int)command.Number("frames", 1.0), 1, 120);
+        double everySim = Math.Max(command.Number("every_s", 0.0), 0.0);
+        int everyFrames = Math.Max((int)command.Number("every_frames", 1.0), 1);
+
+        string folder = Path.Combine(Outbox, command.Id);
+        Directory.CreateDirectory(folder);
+
+        string shots = Path.Combine(KSA.Constants.DocumentsFolderPath, "exports", "screenshots");
+
+        List<Dictionary<string, object?>> taken = [];
+        int index = 0;
+        bool waiting = false;
+        DateTime askedAt = default;
+        Dictionary<string, object?>? manifest = null;
+        double sinceSim = 0.0;
+        int sinceFrames = 0;
+        double waited = 0.0;
+        int warming = 0;
+
+        // Paused with a spacing asked for, the world is run that far and stopped again before each
+        // picture, so the ages are exactly the ones asked for however long a command takes to arrive.
+        bool stepping = KsaWorld.IsPaused && everySim > 0.0;
+        int settle = 0;
+
+        _running = (dtPlayer, dtSim) =>
+        {
+            if (!waiting)
+            {
+                sinceSim += Math.Max(dtSim, 0.0);
+                sinceFrames++;
+
+                if (stepping && index > 0)
+                {
+                    if (sinceSim < everySim)
+                    {
+                        if (KsaWorld.IsPaused) KsaWorld.SetPaused(false);
+                        return null;
+                    }
+
+                    if (!KsaWorld.IsPaused)
+                    {
+                        KsaWorld.SetPaused(true);
+                        settle = 0;
+                    }
+
+                    // A frame or two for the paused world to be the one drawn.
+                    if (++settle < 3) return null;
+                }
+
+                bool due = index == 0 || stepping
+                           || (everySim > 0.0 ? sinceSim >= everySim : sinceFrames >= everyFrames);
+                if (!due) return null;
+
+                askedAt = DateTime.UtcNow.AddSeconds(-0.5);
+
+                // KSA's own warm-up hides the UI for these frames before the picture, so nothing blended
+                // over frames still carries a window; the manifest is written on the frame the picture
+                // is actually taken, so it describes that instant.
+                if (!KsaWorld.TryRequestScreenshot(flags: $"warm={WarmFrames}"))
+                {
+                    return Failed("KSA would not take a screenshot");
+                }
+
+                manifest = null;
+                warming = WarmFrames;
+                waiting = true;
+                waited = 0.0;
+                return null;
+            }
+
+            if (manifest is null && --warming <= 0) manifest = Manifest(label, index);
+
+            waited += dtPlayer;
+            if (waited > 10.0) return Failed($"screenshot {index} never arrived");
+
+            string? file = Directory.Exists(shots)
+                               ? new DirectoryInfo(shots).GetFiles("ksa_*.png")
+                                                         .Where(f => f.LastWriteTimeUtc >= askedAt && f.Length > 0)
+                                                         .OrderByDescending(f => f.LastWriteTimeUtc)
+                                                         .FirstOrDefault()?.FullName
+                               : null;
+            if (file is null) return null;
+
+            string name = $"{index:D2}-{label}";
+            string target = Path.Combine(folder, name + ".png");
+
+            try
+            {
+                File.Move(file, target, overwrite: true);
+            }
+            catch (IOException)
+            {
+                // Still being written; the next frame will find it finished.
+                return null;
+            }
+
+            manifest ??= Manifest(label, index);
+            manifest["file"] = target;
+            File.WriteAllText(Path.Combine(folder, name + ".json"), JsonSerializer.Serialize(manifest, JsonOptions));
+            taken.Add(manifest);
+
+            index++;
+            waiting = false;
+            sinceSim = 0.0;
+            sinceFrames = 0;
+
+            return index >= frames ? Done(new() { ["folder"] = folder, ["frames"] = taken }) : null;
+        };
+
+        return null;
+    }
+
+    // How many frames the UI is hidden for before a capture.
+    private const int WarmFrames = 24;
+
+    // What a picture was of, recorded on the frame it was taken.
+    private static Dictionary<string, object?> Manifest(string label, int index)
+    {
+        Dictionary<string, object?> m = new()
+        {
+            ["label"] = label,
+            ["index"] = index,
+            ["wall"] = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
+            ["paused"] = KsaWorld.IsPaused,
+            ["speed"] = KsaWorld.SimulationSpeed,
+            ["fov_deg"] = Math.Round(KsaWorld.MainViewFovDeg(), 2),
+        };
+
+        if (KsaWorld.ControlledVehicle is { } craft)
+        {
+            m["craft"] = KsaWorld.DisplayName(craft);
+            m["craft_screen"] = Screen(KsaWorld.PositionEcl(craft));
+        }
+
+        return m;
+    }
+
+    // Where a point falls in the picture, as fractions from the top left, or null when it is behind
+    // the camera. The same matrix the frame was drawn with, so a crop taken off it is exact.
+    private static double[]? Screen(double3 pointEcl)
+    {
+        if (Program.GetMainCamera() is not { } camera) return null;
+
+        double4 clip = camera.EgoToClipDouble(pointEcl - camera.PositionEcl);
+        if (!(clip.W > 1e-6)) return null;
+
+        return [Math.Round((clip.X / clip.W * 0.5) + 0.5, 4), Math.Round((clip.Y / clip.W * 0.5) + 0.5, 4)];
+    }
+}

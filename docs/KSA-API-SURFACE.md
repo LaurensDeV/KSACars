@@ -1,0 +1,503 @@
+# KSA API surface
+
+Every external type and member `KSACars.dll` binds to, read out of its
+metadata tables by `tools/api-surface.sh`. **Generated - do not edit.**
+
+This is the checklist for a KSA update: anything here that changed shape in the new
+build is a breaking change for this mod, and anything not here cannot be. See the
+`upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
+
+90 types and 197 members across 4 assemblies.
+
+## BepuUtilities
+
+### BepuUtilities.Symmetric3x3
+
+- `BepuUtilities.Symmetric3x3 Invert(BepuUtilities.Symmetric3x3)`
+- `float XX`
+- `float YX`
+- `float YY`
+- `float ZX`
+- `float ZY`
+- `float ZZ`
+
+## Brutal.Core.Numerics
+
+### Brutal.Numerics.Pack
+
+*referenced as a type only*
+
+### Brutal.Numerics.Pack+Float
+
+*referenced as a type only*
+
+### Brutal.Numerics.Unpack
+
+*referenced as a type only*
+
+### Brutal.Numerics.Unpack+Float
+
+*referenced as a type only*
+
+### Brutal.Numerics.byte4
+
+- `void .ctor(byte, byte, byte, byte)`
+
+### Brutal.Numerics.double3
+
+- `Brutal.Numerics.double3 Cross(Brutal.Numerics.double3, Brutal.Numerics.double3)`
+- `Brutal.Numerics.double3 Unpack(ref Brutal.Numerics.float3, Float)`
+- `Brutal.Numerics.double3 op_Addition(Brutal.Numerics.double3, Brutal.Numerics.double3)`
+- `Brutal.Numerics.double3 op_Division(Brutal.Numerics.double3, double)`
+- `Brutal.Numerics.double3 op_Multiply(Brutal.Numerics.double3, double)`
+- `Brutal.Numerics.double3 op_Subtraction(Brutal.Numerics.double3, Brutal.Numerics.double3)`
+- `Brutal.Numerics.double3 op_UnaryNegation(Brutal.Numerics.double3)`
+- `bool Equals(Brutal.Numerics.double3)`
+- `double Dot(Brutal.Numerics.double3, Brutal.Numerics.double3)`
+- `double Length()`
+- `double LengthSquared()`
+- `double X`
+- `double Y`
+- `double Z`
+- `void .ctor(double, double, double)`
+
+### Brutal.Numerics.double4
+
+- `double W`
+- `double X`
+- `double Y`
+
+### Brutal.Numerics.double4x4
+
+*referenced as a type only*
+
+### Brutal.Numerics.doubleQuat
+
+- `Brutal.Numerics.double3 op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.double3)`
+- `Brutal.Numerics.doubleQuat CreateFromAxisAngle(Brutal.Numerics.double3, double)`
+- `Brutal.Numerics.doubleQuat get_Identity()`
+- `Brutal.Numerics.doubleQuat op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.doubleQuat)`
+- `double W`
+- `double X`
+- `double Y`
+- `double Z`
+
+### Brutal.Numerics.float3
+
+- `Brutal.Numerics.float3 Pack(ref Brutal.Numerics.double3, Float)`
+- `Brutal.Numerics.float3 op_UnaryNegation(Brutal.Numerics.float3)`
+
+### Brutal.Numerics.float4x4
+
+- `Brutal.Numerics.float3 get_Translation()`
+- `Brutal.Numerics.float4x4 CreateFromQuaternion(Brutal.Numerics.floatQuat)`
+- `Brutal.Numerics.float4x4 CreateTranslation(Brutal.Numerics.float3)`
+- `Brutal.Numerics.float4x4 op_Multiply(Brutal.Numerics.float4x4, Brutal.Numerics.float4x4)`
+
+### Brutal.Numerics.floatQuat
+
+- `void .ctor(float, float, float, float)`
+
+## KSA
+
+### KSA.AnimatedRenderable
+
+- `System.Collections.Generic.List`1<KSA.IAnimProcessor> AnimProcessors`
+
+### KSA.Astronomical
+
+- `Brutal.Numerics.double3 GetPositionEcl()`
+- `Brutal.Numerics.double3 GetVelocityEcl()`
+- `KSA.AtmosphereReference GetAtmosphereReference()`
+- `KSA.OrbitView OrbitView`
+- `KSA.Rendering.Water.Data.OceanReference GetOceanReference()`
+- `double get_MeanRadius()`
+- `string get_Id()`
+- `void UpdatePerFrameData()`
+
+### KSA.AstronomicalData
+
+- `string get_Id()`
+
+### KSA.AtmosphereReference
+
+- `KSA.PhysicalAtmosphereReference Physical`
+
+### KSA.BubbleOrigin
+
+*referenced as a type only*
+
+### KSA.Camera
+
+- `Brutal.Numerics.double3 GetPositionEgo(KSA.IPosition)`
+- `Brutal.Numerics.double3 GetVelocityEgo(KSA.IVelocity)`
+- `Brutal.Numerics.double4 EgoToClipDouble(Brutal.Numerics.double3)`
+- `KSA.IFollowable get_Following()`
+- `float GetFieldOfView()`
+- `void SetFollow(KSA.IFollowable, bool, bool, bool)`
+
+### KSA.Celestial
+
+- `Brutal.Numerics.double3 GetDirCcfFromLatLon(double, double)`
+- `Brutal.Numerics.doubleQuat GetCcf2Cce()`
+- `double GetTerrainHeightFromDirCce(Brutal.Numerics.double3, bool)`
+- `double GetTerrainHeightFromDirCcf(Brutal.Numerics.double3, bool)`
+
+### KSA.CelestialSystem
+
+- `KSA.Astronomical GetIndex(int)`
+- `KSA.LookupCollection`1<KSA.Astronomical> get_All()`
+- `int get_Count()`
+
+### KSA.CharacterAvatar
+
+- `CharacterCore Core`
+
+### KSA.CharacterAvatar+CharacterCore
+
+- `KSA.AnimatedRenderable CharacterModel`
+
+### KSA.Constants
+
+- `string get_DocumentsFolderPath()`
+
+### KSA.ConstraintSim
+
+- `KSA.ShapesUnlock UnlockShapesBlocking()`
+
+### KSA.CrewAssignmentWindow
+
+- `void FillSeats(System.Collections.Generic.List`1<KSA.IVASeat>, KSA.PartTree, string, bool)`
+
+### KSA.DefaultVehicleSaves
+
+- `KSA.VehicleSave FindSave(string)`
+
+### KSA.DensityReference
+
+- `double op_Implicit(KSA.DensityReference)`
+
+### KSA.DistanceReference
+
+- `double InMeters()`
+- `double op_Implicit(KSA.DistanceReference)`
+
+### KSA.Double3Ex
+
+- `Brutal.Numerics.double3 Transform(Brutal.Numerics.double3, Brutal.Numerics.doubleQuat)`
+
+### KSA.EVADoor
+
+- `bool PerformEvaForSeat(KSA.Vehicle, KSA.IVASeat)`
+
+### KSA.GameAudio
+
+- `KSA.Camera GetAudioCamera()`
+
+### KSA.GameSave
+
+- `string get_Id()`
+
+### KSA.GameSaves
+
+- `void LoadSaveGame(string)`
+- `void MakeUncompressedSave(string)`
+
+### KSA.IAnimProcessor
+
+*referenced as a type only*
+
+### KSA.IChannel
+
+- `bool IsPlaying()`
+- `void SetSpatialAudio(KSA.SpatialAudio)`
+- `void Stop(bool)`
+- `void set_PitchMultiplier(float)`
+- `void set_VolumeMultiplier(float)`
+
+### KSA.IFollowable
+
+- `KSA.OrbitView get_OrbitView()`
+
+### KSA.IGameViewport
+
+- `KSA.OrbitController get_OrbitController()`
+
+### KSA.IOrbiter
+
+*referenced as a type only*
+
+### KSA.IParentBody
+
+- `Brutal.Numerics.double3 GetAngularVelocityCce()`
+- `Brutal.Numerics.doubleQuat GetCce2Cci()`
+- `System.Collections.Generic.List`1<KSA.IOrbiter> get_Children()`
+- `double get_Mu()`
+
+### KSA.IPosition
+
+- `Brutal.Numerics.double3 GetPositionEcl()`
+
+### KSA.IVASeat
+
+- `Brutal.Numerics.double3 PositionAsmb`
+- `KSA.KeyHash AssignedKittenHash`
+- `KSA.KittenRenderable get_Renderable()`
+- `void UpdateSeatedRenderable(KSA.IViewport, int, double, ref Brutal.Numerics.double4x4)`
+
+### KSA.IVelocity
+
+- `Brutal.Numerics.double3 GetVelocityEcl()`
+
+### KSA.IViewport
+
+- `KSA.Camera GetCamera()`
+
+### KSA.KinematicStates
+
+- `Brutal.Numerics.double3 AngularVelocityPhys`
+- `Brutal.Numerics.double3 VelocityPhys`
+- `Brutal.Numerics.doubleQuat Body2Phys`
+
+### KSA.KittenRenderable
+
+*referenced as a type only*
+
+### KSA.KittenRosterData
+
+- `KSA.KittenRosterEntryData Find(KSA.KeyHash)`
+- `System.Collections.Generic.List`1<KSA.KittenRosterEntryData> Kittens`
+
+### KSA.KittenRosterEntryData
+
+- `KSA.KeyHash NameHash`
+- `string Name`
+
+### KSA.LookupCollection`1
+
+*referenced as a type only*
+
+### KSA.MassProperties
+
+- `BepuUtilities.Symmetric3x3 Inertia`
+
+### KSA.Mod
+
+- `string get_Id()`
+
+### KSA.ModLibrary
+
+- `!!0 Get<1>(string)`
+
+### KSA.ModuleList
+
+- `System.Span`1<!!0> Get<1>()`
+
+### KSA.Orbit
+
+- `KSA.Orbit CreateFromStateCci(KSA.IParentBody, KSA.UniverseTime, Brutal.Numerics.double3, Brutal.Numerics.double3, Brutal.Numerics.byte4)`
+- `ref KSA.StateVectors get_StateVectors()`
+
+### KSA.OrbitController
+
+- `double DistancePower`
+
+### KSA.OrbitView
+
+- `double Azimuth`
+- `double DistancePower`
+- `double Elevation`
+
+### KSA.Part
+
+- `Brutal.Numerics.double3 get_PositionVehicleAsmb()`
+- `Brutal.Numerics.doubleQuat get_Asmb2VehicleAsmb()`
+- `System.ReadOnlySpan`1<KSA.Part> get_SubParts()`
+- `string get_Id()`
+- `void ResetCachedPosMatrixValues()`
+- `void set_Asmb2ParentAsmb(Brutal.Numerics.doubleQuat)`
+- `void set_PositionParentAsmb(Brutal.Numerics.double3)`
+- `void set_Scale(Brutal.Numerics.double3)`
+
+### KSA.PartTree
+
+- `KSA.ModuleList Modules`
+- `KSA.Part get_Root()`
+- `System.ReadOnlySpan`1<KSA.Part> get_Parts()`
+- `void RecomputeAllDerivedData()`
+
+### KSA.PhysicalAtmosphereReference
+
+- `KSA.DensityReference SeaLevelDensity`
+- `KSA.DistanceReference ScaleHeight`
+- `KSA.DistanceReference get_Height()`
+- `double GetAtmosphericDensityAtAltitude(double)`
+- `double GetAtmosphericPressure(KSA.Camera)`
+
+### KSA.PhysicsStates
+
+- `ref KSA.BubbleOrigin Origin`
+- `ref KSA.KinematicStates Kinematic`
+- `void GetStatesCcf(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
+- `void GetStatesCci(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
+
+### KSA.Program
+
+- `KSA.Camera GetMainCamera()`
+- `KSA.IGameViewport get_MainViewport()`
+- `KSA.Program get_Instance()`
+- `KSA.Vehicle get_ControlledVehicle()`
+- `KSA.VehicleEditor Editor`
+- `System.ReadOnlySpan`1<KSA.Vehicle> get_VehiclesInFrame()`
+- `double GetPlayerDeltaTime()`
+- `void set_ControlledVehicle(KSA.Vehicle)`
+
+### KSA.QuaternionEx
+
+- `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
+
+### KSA.Rendering.Water.Data.OceanReference
+
+- `KSA.DensityReference Density`
+- `KSA.DistanceReference Level`
+
+### KSA.ScreenshotCapture
+
+- `void Request(int, string)`
+
+### KSA.ShapesUnlock
+
+*referenced as a type only*
+
+### KSA.SimSpeed
+
+- `void .ctor(double)`
+
+### KSA.SimStep
+
+- `double get_DeltaTime()`
+
+### KSA.Situation
+
+*referenced as a type only*
+
+### KSA.SituationEx
+
+- `bool HasTerrainContact(KSA.Situation)`
+- `bool IsOnRails(KSA.Situation)`
+
+### KSA.SoundBehavior
+
+- `void Play(KSA.SpatialAudio, float, ref KSA.IChannel, bool)`
+
+### KSA.SpatialAudio
+
+- `void .ctor(Brutal.Numerics.double3, Brutal.Numerics.double3, double)`
+
+### KSA.StateVectors
+
+- `Brutal.Numerics.double3 PositionCci`
+- `Brutal.Numerics.double3 VelocityCci`
+
+### KSA.StellarBody
+
+*referenced as a type only*
+
+### KSA.ThrusterMapFlags
+
+*referenced as a type only*
+
+### KSA.Transform3D
+
+- `Brutal.Numerics.double3 get_PositionEcl()`
+
+### KSA.Universe
+
+- `KSA.CelestialSystem get_CurrentSystem()`
+- `KSA.KittenRosterData get_KittenRoster()`
+- `KSA.SimStep GetLastSimStep()`
+- `KSA.UniverseTime GetElapsedTime()`
+- `bool IsPaused()`
+- `double get_SimulationSpeed()`
+- `void SetSimulationSpeed(KSA.SimSpeed)`
+
+### KSA.UniverseTime
+
+*referenced as a type only*
+
+### KSA.Vehicle
+
+- `Brutal.Numerics.double3 get_CenterOfMassAsmb()`
+- `Brutal.Numerics.double4x4 GetMatrixAsmb2Ego(KSA.Camera)`
+- `Brutal.Numerics.doubleQuat get_Body2Cce()`
+- `KSA.IParentBody get_Parent()`
+- `KSA.Orbit get_Orbit()`
+- `KSA.PartTree get_Parts()`
+- `KSA.PhysicsStates GetPhysicsStatesMutable()`
+- `KSA.Situation get_Situation()`
+- `KSA.ThrusterMapFlags GetThrusterFlags()`
+- `KSA.Vehicle CreateVehicle(KSA.CelestialSystem, Brutal.Numerics.doubleQuat, Brutal.Numerics.double3, KSA.IParentBody, string, KSA.Part, KSA.Orbit)`
+- `System.ReadOnlySpan`1<KSA.IVASeat> get_Crew()`
+- `bool SetSeatCrew(KSA.IVASeat, KSA.KeyHash, string, bool)`
+- `bool get_HasPhysicsBubble()`
+- `bool get_IsDisposed()`
+- `float get_TotalMass()`
+- `int get_SeatCount()`
+- `ref KSA.MassProperties get_TotalMassPropsBody()`
+- `void PrepareWorker(KSA.SimStep)`
+- `void TakeOffRails()`
+- `void TeleportToLocation(KSA.Celestial, double, double)`
+- `void UpdateAfterPartTreeModification()`
+- `void UpdateSeatedCrewRenderData(KSA.IViewport, int)`
+
+### KSA.VehicleEditor
+
+*referenced as a type only*
+
+### KSA.VehicleSave
+
+- `KSA.PartTree Load(KSA.IViewport)`
+- `KSA.VehicleSaveData get_VehicleSaveData()`
+
+### KSA.VehicleSaveData
+
+*referenced as a type only*
+
+### KSA.VehicleSaves
+
+- `System.ReadOnlySpan`1<KSA.VehicleSave> AsSpan()`
+- `void Refresh()`
+
+### KSA.ViewportEx
+
+- `bool Is(KSA.IViewport, KSA.ViewportType)`
+
+### KSA.ViewportType
+
+*referenced as a type only*
+
+## StarMap.API
+
+### StarMap.API.StarMapAfterGuiAttribute
+
+- `void .ctor()`
+
+### StarMap.API.StarMapAfterOnFrameAttribute
+
+- `void .ctor()`
+
+### StarMap.API.StarMapAllModsLoadedAttribute
+
+- `void .ctor()`
+
+### StarMap.API.StarMapImmediateLoadAttribute
+
+- `void .ctor()`
+
+### StarMap.API.StarMapModAttribute
+
+- `void .ctor()`
+
+### StarMap.API.StarMapUnloadAttribute
+
+- `void .ctor()`

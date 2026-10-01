@@ -1,0 +1,18 @@
+# KSA reads this as a content mod, StarMap reads it as a code mod. One folder does both.
+
+name = "KSACars"
+
+# Part definitions. These sit at the mod root, next to Meshes/ and Textures/, mirroring the
+# layout of Content/Core - the relative paths inside them then resolve the same way whether the
+# loader reads them against the mod root or against the XML file's own directory.
+# Listed one by one, not globbed: a file left out of this list is simply never loaded, and
+# nothing reports it. An asset it declares then resolves to null at the point something asks
+# for it, which for a part is a crash inside KSA rather than a missing model.
+assets = [
+    "KSACarsAssets.xml",
+    "KSACarsGameData.xml",
+    "KSACarsSounds.xml",
+]
+
+[StarMap]
+EntryAssembly = "KSACars"

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The cars' engines. Modelled on Core's Sounds.xml, which is the only documentation this format has.
+
+  Each .wav is cut from a recording by a script, so it can be re-cut, with where it came from in
+  tools/audio/README.md. Mono on purpose: the engine spatialises the source, and a stereo file
+  arrives already mixed.
+-->
+<Assets>
+    <!--
+      The beach buggy's engine, cut by tools/buggy-sounds.py from two recordings of '74 VW Beetles.
+      Ksa/BuggySound.cs plays the idle and the loaded loop together and sets their pitch and volume
+      each frame, so neither declares a Pitch or a Param.
+    -->
+    <SpatialSoundData Id="KSACarsBuggySpatialData">
+        <VolumeRange Min="6" Max="900" />
+        <TwoDRange Min="2" Max="8" />
+    </SpatialSoundData>
+
+    <Sound Id="KSACarsBuggyStart" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Buggy_Start.wav" Volume="1.0"/>
+        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    </Sound>
+
+    <Sound Id="KSACarsBuggyIdle" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Buggy_Idle.wav" Volume="1.0">
+            <Loop />
+        </SoundFile>
+        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    </Sound>
+
+    <Sound Id="KSACarsBuggyLoad" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Buggy_Load.wav" Volume="1.0">
+            <Loop />
+        </SoundFile>
+        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    </Sound>
+
+    <Sound Id="KSACarsBuggyStop" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Buggy_Stop.wav" Volume="1.0"/>
+        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    </Sound>
+
+    <!--
+      The Eldorado's engine, cut by tools/eldorado-sounds.py: the start and the idle from a 1966 Cadillac
+      Coupe de Ville, the loaded loop and the key-off from a 1980 Chevrolet Impala's V8.
+    -->
+    <SpatialSoundData Id="KSACarsEldoSpatialData">
+        <VolumeRange Min="8" Max="1200" />
+        <TwoDRange Min="2" Max="9" />
+    </SpatialSoundData>
+
+    <Sound Id="KSACarsEldoStart" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Eldo_Start.wav" Volume="1.0"/>
+        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    </Sound>
+
+    <Sound Id="KSACarsEldoIdle" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Eldo_Idle.wav" Volume="1.0">
+            <Loop />
+        </SoundFile>
+        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    </Sound>
+
+    <Sound Id="KSACarsEldoLoad" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Eldo_Load.wav" Volume="1.0">
+            <Loop />
+        </SoundFile>
+        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    </Sound>
+
+    <Sound Id="KSACarsEldoStop" ChannelId="ExternalChannel" Priority="115">
+        <SoundFile Path="Sounds/KSACars_Eldo_Stop.wav" Volume="1.0"/>
+        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    </Sound>
+
+</Assets>

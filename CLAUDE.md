@@ -1,0 +1,360 @@
+# CLAUDE.md
+
+A car mod for **Kitten Space Agency** (KSA, RocketWerkz). KSA has no wheels, so every car's springs,
+tyres and engine are this mod's: a **beach buggy** on long-travel coil-overs, and a red **1976 Cadillac
+Eldorado** convertible that floats on its springs and leans into a turn. Both carry kittens: the driver's
+hands hold the steering wheel and turn it, and either can get out on EVA. A car is driven with the pitch
+and yaw keys, like anything else in KSA.
+
+## Read this first
+
+**`docs/KSA-MODDING-NOTES.md` is the distilled result of reverse-engineering the game.** It has the
+runtime, the loader contract, the type signatures, the reference frames and the gotchas. Read it
+before touching anything KSA-facing.
+
+**`docs/KSA-FRAME-ORDER.md` is the engine's frame order**, which is why the car physics runs where it
+does (see [The cars](#the-cars)), and **`docs/FRAMES-AND-EPOCHS.md`** is what follows from it for
+anything drawn or timed.
+
+KSA has **no official code-modding API**. Everything is community tooling against a pre-release
+game, so the API moves between builds.
+
+## Comments and documentation
+
+**Docs are part of the change, not a follow-up.** If a change makes a line in `CLAUDE.md`, a
+`docs/` file, `README.md` or a comment untrue, fix it in the same commit. A stale line is worse than
+a missing one: it is trusted, and nothing in a build fails when it goes wrong.
+
+**Comment why, never what.** The code says what it does. A comment earns its place only when the
+reason is not recoverable from reading it — an engine contract, a measured number, a constraint
+imposed from somewhere else in the frame, an ordering that looks arbitrary and is not.
+
+```csharp
+// The physics state, not the analytic orbit position: on a landed craft those differ by metres.  ok
+PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic, out double3 positionCcf, ...);
+
+// Get the position in the planet-fixed frame.                                                    delete
+PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic, out double3 positionCcf, ...);
+```
+
+**Keep them short.** A sentence or two. If a comment needs paragraphs, the explanation belongs in
+`docs/` with a one-line pointer to it.
+
+**State the fact, not the history.** A comment says what is true now. It does not narrate what the
+code used to do, what broke, when it was reported, or which commit fixed it — that belongs in git,
+and the reasoning belongs in `docs/`.
+
+**When in doubt, delete.** An unnecessary comment is another thing that can drift out of step with
+the code and mislead the next reader.
+
+## Committing
+
+**Every commit message must be a [Conventional Commit](https://www.conventionalcommits.org/).**
+semantic-release parses these to decide the next version, so a message that does not parse silently
+produces no release and never appears in the changelog.
+
+```
+feat(eldorado): put a picture on the hood ornament
+fix(buggy): keep the driver's hands on the rim at full lock
+docs: write an install guide
+refactor(sim): split the gearbox out of BuggyDrive
+```
+
+| Type | Version effect |
+| --- | --- |
+| `feat`, `fix`, `perf`, `build`, `revert` | **patch** |
+| `!` after the type, or a `BREAKING CHANGE:` footer | **major** |
+| `docs`, `refactor`, `test`, `chore`, `ci`, `style` | no release, and none appear in the changelog |
+| a **minor** | never automatic — tag it by hand |
+
+**The type says what a change is; it does not decide how big the version bump is.** `feat` cuts a
+patch like everything else, so labelling something a feature is a changelog decision. A minor is a
+deliberate act for a milestone — a new car, or a KSA compatibility milestone:
+
+```bash
+git tag -a v0.2.0 -m "a third car"
+git push origin v0.2.0
+```
+
+semantic-release reads the newest tag and carries on from it, so the next `fix` after that is
+0.2.1. A tag is the only thing that anchors a version.
+
+**`feat` means a player can observe the difference in the shipped archive.** Capability nothing
+reachable uses yet is `refactor`; it becomes a feature in the commit that uses it. Developer tooling
+is `chore`, `ci`, `test` or `refactor`, whatever its scope — `feat(tools)` still cuts a release. The
+commit-msg hook warns when a `feat`/`fix`/`perf` commit touches nothing under `src/KSACars/`.
+
+**No `Co-Authored-By` trailer, and no other attribution footer.** Commits carry the repository
+owner's name and nothing else, whoever or whatever drafted them.
+
+Split unrelated work into separate commits. **Batch a session's `docs` into one commit.**
+
+**Commit to `dev`, not to `main`.** `main` is the release branch: a push to it cuts a release.
+
+**Do not commit a behaviour fix as a fix until it has been verified in game.** Compiling, passing
+the suite and having a plausible mechanism are not evidence — the hardest bugs live in the gap
+between the maths and what KSA actually does. Ship the diagnostic, not the guess, and say in the
+message what is unverified.
+
+**A regression test only counts if it fails against the old code.** Check that it does, every time.
+
+**This is enforced.** `tools/check-commit-msg.sh` runs both as a local `commit-msg` hook
+(`./tools/install-hooks.sh`, using `core.hooksPath`) and as a CI job over every commit in a push or
+PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `chore(release):`.
+
+## Environment
+
+- **KSA install**: `/mnt/c/Program Files/Kitten Space Agency` (Windows game, WSL dev)
+- **KSA build these notes were taken against**: `2026.9.22.5482`
+- The system `dotnet` is 8.0 and **cannot build this** — the mod targets **net10.0**. A .NET 10 SDK
+  is installed at `~/.dotnet`. **Use `tools/build.sh` / `tools/test.sh`**, which source
+  `tools/env.sh`. In an interactive shell, `source tools/env.sh` once.
+- `Import/` holds the game's assemblies and is **gitignored**. Repopulate with
+  `./tools/sync-import.sh`. The build also finds a game install or a `ksa-game-assemblies` checkout
+  on its own, see `Directory.Build.props`.
+- **When KSA updates, four things have to move together**, not just `Import/`. See
+  [After a KSA update](#after-a-ksa-update).
+- **The game is launchable from WSL**: `tools/run.sh` starts `StarMap.exe` directly, found under the
+  Windows user profile — override with `STARMAP_DIR`.
+- **A developer's install is marked by a `developer` file beside the DLL**, which `tools/deploy.sh`
+  writes and `tools/package.sh` never carries. `Build.Developer` reads it at load, and only then does
+  the bridge start. **A new developer-only tool goes behind it**, and the startup line in the log says
+  which kind of install is running.
+- **The mod writes its own log** to `<KSA user dir>/Logs/KSACars.log`, with the session before kept
+  as `KSACars.prev.log`; `./tools/ksa-user-dir.sh` prints that directory and `./tools/run.sh --attach`
+  follows the log. KSA's own log, the newest `KittenSpaceAgency.<yymmdd-hhmmss>.<pid>.log` in the
+  same folder, is still the place to look for mod discovery and asset/XML errors.
+
+## Commands
+
+```bash
+./tools/doctor.sh                          # can this machine build, test and run it? -- start here
+./tools/check-all.sh                       # everything CI runs; also the pre-push hook
+./tools/build.sh                           # build the mod (handles the SDK PATH)
+./tools/test.sh                            # the headless tests over Sim/; needs the assemblies, not the game
+./tools/validate-parts.py                  # asset XML ids and paths; runs in deploy.sh
+./tools/check-boundary.sh                  # Sim/ must not reference KSA types
+./tools/check-comments.sh                  # history in comments, XML docs on privates, ratios
+./tools/check-docs.sh                      # layout table, API counts and KSA build vs reality
+./tools/package.sh                         # release zip into dist/ -- no symbols, no game DLLs
+./tools/deploy.sh                          # build and install into the KSA mods folder
+./tools/install-testcraft.sh               # put both cars in the vehicle library
+./tools/run.sh                             # build, deploy, launch, show the mod's output
+./tools/run.sh --attach                    # follow a game that's already running
+python3 tools/ksa-mcp/server.py cli status # drive a running game through the bridge
+./tools/buggy-sounds.py                    # re-cut the buggy's engine from its recordings
+./tools/eldorado-sounds.py                 # ...and the Eldorado's
+./tools/model/checkmesh.py src/KSACars/Meshes/*.glb --near-max 0   # z-fighting and degenerate UVs
+./tools/ksa-user-dir.sh                    # where KSA keeps Logs/, mods/ and saves on this box
+./tools/setup-starmap.sh                   # one-off: install StarMap and write its config
+./tools/check-assemblies.sh --game         # has the installed game moved past the lock?
+./tools/check-ksa-version.sh               # has RocketWerkz published a newer build?
+./tools/api-surface.sh                     # record the KSA API this mod binds to
+./tools/api-surface.sh --check             # ...and fail if the record is stale
+./tools/decompile-assemblies.sh ../ksa-game-assemblies   # refresh the decompiled corpus
+./tools/ksa-api-diff.sh ../ksa-game-assemblies           # which KSA changes hit this mod?
+
+source tools/env.sh                        # then bare dotnet works in this shell
+cd tools/apidump && dotnet run -- ../../Import members KSA.Vehicle   # inspect the game API
+./tools/meshinfo.py "<KSA>/Content/Core/Meshes/CoreStructuralA_MeshAtlas.glb" Tube  # mesh bounds
+```
+
+## Layout
+
+**The source is split by whether it touches KSA.** `Sim/` cannot; `Ksa/` does. The test project
+links `Sim/**` wholesale and references no KSA assembly, so a `using KSA;` under `Sim/` fails the
+test build, and a new file under `Sim/` is tested the moment it exists.
+
+| Path | What |
+| --- | --- |
+| **`src/KSACars/Sim/`** | **no KSA types, linked into the tests wholesale** |
+| `Sim/BuggyProfile.cs` | **one car, as data** — where its hubs, arms and coil-overs are, and how its springs, tyres and engine are tuned; `All` is every car the mod drives. KSA has no wheels, so every one of these numbers is the mod's |
+| `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
+| `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
+| `Sim/FrameLatch.cs` | hands a frame's work out once, to whichever hook reaches it first — **the UI pass is skipped while the UI is hidden and the frame postfix is not** |
+| `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
+| `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
+| `Sim/Vec.cs` | vector helpers |
+| **`src/KSACars/Ksa/`** | **everything that binds to the game** |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the two patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the two places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
+| `Ksa/SeatedCrewHook.cs` | the other patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
+| `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
+| `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame |
+| `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
+| `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
+| `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
+| `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
+| `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn` |
+| `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
+| `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
+| `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
+| `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository |
+| `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py` and `tools/eldorado-sounds.py` |
+| `src/KSACars/mod.toml` | serves as both the content-mod and StarMap manifest |
+| `tests/KSACars.Tests/` | links the KSA-free sources and drives the cars headlessly |
+| `tools/apidump/` | reflection dumper for the game assemblies |
+| `tools/apisurface/` | reads the KSA API this mod binds to out of its own metadata |
+| `tools/audio/` | the recordings the engine sounds are cut from, and the provenance of each |
+| `tools/model/` | the checkers over an exported mesh, and a previewer |
+| `tools/ksa-mcp/server.py` | **an MCP server over the bridge**, registered in `.mcp.json`, returning captures inline; `cli <tool>` runs one from a shell. It launches a game only if none is running and closes only one it launched |
+| `tools/vis/vis.py` | what the bridge's pictures are judged with: same-instant diffs, the temporal-noise map, contact sheets and animations |
+| `tools/install-testcraft.sh` | writes both cars into the vehicle library as ready-to-drive craft |
+| `tools/validate-parts.py` | checks asset Ids and texture, mesh and sound paths against the files and against Core |
+| `docs/KSA-MODDING-NOTES.md` | the runtime, the loader, the types and the gotchas |
+| `docs/KSA-FRAME-ORDER.md` | **the engine's own frame order and what instant each sample belongs to** |
+| `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
+| `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
+| `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 197 members an upgrade has to preserve |
+| `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
+| `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
+| `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
+
+## The cars
+
+**KSA has no wheels, so a car is a part with colliders and the mod drives it.** The colliders stand
+clear of the ground at rest and only touch in a crash, because KSA's terrain friction is one number
+for every collider and a wheel box on the ground drags like a skid. Everything that makes a car drive
+is `Sim/BuggyDrive.cs`: per wheel a spring and damper sized off its share of the car's weight, an
+anti-roll bar across each axle, and a friction circle in which side grip is spent first, so a tyre
+pushing hard in a corner gives up drive before it gives up its line. The steering lock is held to
+what the front tyres can hold at the speed, which is what stops a full-lock flick scrubbing to a
+standstill.
+
+**It runs inside the engine's physics window, never from a StarMap hook.** KSA double-buffers a
+vehicle's state: the worker's result is written over it, the next worker's input is snapshotted, and
+*then* the GUI pass runs. A velocity written from any StarMap hook is overwritten before anything reads
+it. `Ksa/PhysicsHook.cs` prefixes `Vehicle.PrepareWorker`, the one method in that window a mod can
+reach, and `Buggies.Physics` writes there. **Nothing in it may throw** — it runs inside the engine's
+own loop.
+
+**The ground is read in the planet-fixed frame, off the physics state.** `PhysicsStates.GetStatesCcf`
+is where the car actually is this step; the analytic orbit position of a landed craft is metres away
+from it. In the planet-fixed frame the ecliptic's ~29.8 km/s and the planet's spin cancel, so a hub's
+velocity over the ground is just a velocity. KSA rails a car that has stood still, so a driven one is
+woken with `TakeOffRails`.
+
+**Yaw inertia is what lets the side grip settle, so the mass is a box the car's size.** The grip
+removes a share of each wheel's sideways slip every step; against a sphere's inertia, a third of a
+car's, that share overshot, the car rocked on its wheels at 13 deg/s, and the rocking spent the grip
+the drive needed. `KSACarsGameData.xml` gives the Eldorado a `SolidCuboidMass`, and
+`BuggyDriveTests.AYawKickDiesAwayRatherThanRockingTheDriveAway` fails against the sphere.
+
+**Seats and doors are KSA's own.** An `<IVASeat>` per seat, placed at the kitten's eye, and an
+`<EVADoor>` on a mesh-less subpart beside each front seat; a kitten boards and leaves through those
+like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
+`Sim/SteeringGrip.cs` reaches from.
+
+**Two patches, both on public methods, both pinned.** Each has a `PinTheSignature` that is never
+called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
+tracks it and a KSA change to it is a build error. Harmony ships with StarMap, so a player installs
+nothing extra.
+
+## Adding a car
+
+A car is **data plus art**: nothing in the drive, the sound or the hands names a particular car.
+
+1. **Model it** in Blender over MCP, per `.claude/skills/ksa-blender/SKILL.md`: a body, one wheel mesh
+   per kind of wheel, a steering wheel, and glass if it has any, each its own subpart, recentred on
+   its pivot and exported in part space (+X up, +Y forward, +Z the car's left). Run
+   `tools/model/checkmesh.py --near-max 0` on the export. **A human signs off on the geometry before
+   it is unwrapped**, because everything after is welded to the shape.
+2. **Declare it** in `KSACarsAssets.xml` and `KSACarsGameData.xml`: the part, its subparts with Ids
+   ending `<Prefix>WheelFL`, `WheelFR`, `WheelRL`, `WheelRR` and `Steering` (and `Arm…` and `Coil…` if
+   it has visible suspension), its seats, doors, colliders and mass — a box the car's size, not a
+   sphere. **A shipped part's subpart list is append-only and its Id is not renameable**: KSA pairs a
+   saved part with its definition positionally and by Id, and a save that no longer matches closes
+   the game. `docs/KSA-MODDING-NOTES.md` has the loop.
+3. **Give it a `BuggyProfile`** in `Sim/BuggyProfile.cs` and add it to `All`: the hubs, the steering
+   wheel's pivot and axis, the driver's eye, and the tuning. Add tests in `BuggyDriveTests` that it
+   settles, pulls away and shrugs off a yaw kick, and one in `SteeringGripTests` that the driver
+   reaches the rim.
+4. **Give it an engine**: four sounds named `<SoundPrefix>Start`, `Idle`, `Load` and `Stop` in
+   `KSACarsSounds.xml`, cut by a script in `tools/` from recordings kept in `tools/audio/` with their
+   licence. `LoadRecordedRpm` and `IdleRecordedRpm` say what RPM each loop was recorded at.
+5. **Put it in `tools/install-testcraft.sh`**, then drive it: `./tools/deploy.sh`, launch, and the
+   bridge's `spawn` and `drive`.
+
+## CI and releases
+
+Building needs KSA's own assemblies. They are RocketWerkz's copyrighted files and **must never be
+committed here or published anywhere**. They live in the private repository
+**`LaurensDeV/ksa-game-assemblies`**, checked out by CI with a **read-only deploy key** held in the
+`KSA_ASSEMBLIES_KEY` secret. Without the secret — a fork — the build job skips with a notice.
+
+`Directory.Build.props` resolves the folder in tiers, first match wins: `KSA_DLL_DIR` (what CI
+sets), then `Import/`, then a sibling `ksa-game-assemblies` checkout, then the game install.
+
+- **`tooling` (hosted, always runs)** — `tools/check-all.sh`: shellcheck, the Sim/Ksa boundary, the
+  XML, the asset references, the comment and doc rules, the meshes, and no tracked artefacts.
+- **`build` (hosted)** — the build, the tests, `validate-parts.py`, the API surface and the package,
+  against the checked-out assemblies.
+
+**Work happens on `dev`; `main` is the release branch.** Merge `dev` into `main` to release, and
+**merge, do not squash** — semantic-release reads the individual commits to build the changelog.
+It runs on every push to `main`: version, `CHANGELOG.md`, the `<Version>` in the csproj (via
+`tools/set-version.sh`), the tag and a **draft** GitHub Release; the second job builds the archive,
+attaches it and publishes, so no release is public without its archive. **Never edit a version by
+hand.** The changelog is written for players, so only `feat`, `fix`, `perf` and `build` appear in it.
+
+`spacedock.yml` publishes what is attached to SpaceDock, and skips with a notice unless
+`SPACEDOCK_MOD_ID` and `SPACEDOCK_USERNAME` (repository variables) and `SPACEDOCK_PASSWORD` (a secret)
+are all set. It claims compatibility with the build in `ksa-assemblies.lock`. SpaceDock refuses a
+changelog over 10,000 characters, and the archive with it, so `tools/spacedock-changelog.py` cuts one
+that does not fit.
+
+Three things that will bite: **branch protection on `main`** blocks the release commit unless the
+token can bypass it; **a shallow checkout** makes every push look like a first release, hence
+`fetch-depth: 0`; and **semantic-release carries on from the newest tag it can see**, so the first
+release needs one.
+
+**One archive covers Windows and Linux**: the mod is a portable `net10.0` assembly. Case sensitivity
+differs, which is why `validate-parts.py --offline` runs on Linux in CI against the real directory
+listing. Release builds carry **no debug symbols**, and the log starts at `INFO`. `package.sh` refuses
+to ship a `.pdb` or any DLL that is not ours.
+
+### After a KSA update
+
+**You will be told when this happens.** `./tools/check-ksa-version.sh` compares RocketWerkz's
+published build to the lock, and `ksa-version.yml` does the same daily and opens an issue.
+`./tools/build.sh` checks the install against the lock on every build.
+
+The assemblies exist in two places that drift apart silently: your `Import/`, and the private repo CI
+compiles against. `ksa-assemblies.lock` records the expected SHA-256 of each referenced assembly plus
+the game build, and both CI and `sync-import.sh` check against it. **Run the `upgrade-ksa` skill**,
+which is this written out with the reasoning attached:
+
+```bash
+./tools/sync-import.sh                                    # refresh Import/; it reports the drift
+./tools/sync-assemblies.sh      ../ksa-game-assemblies    # the mirror's DLLs
+./tools/decompile-assemblies.sh ../ksa-game-assemblies    # the mirror's sources
+#   set current/KSA_BUILD, commit BOTH together, push there
+./tools/ksa-api-diff.sh ../ksa-game-assemblies      # what actually broke — read this
+./tools/check-assemblies.sh --update                # record the new digests
+./tools/api-surface.sh                              # the surface moves if the fixes did
+#   edit the `build` line in ksa-assemblies.lock, commit it here
+```
+
+Then **recheck `docs/BLOCKED-ON-KSA.md`**: a KSA update is the only thing that changes any of it.
+
+**The compiler only finds half of it.** A member that keeps its name and signature and changes its
+*meaning* compiles clean and is wrong in game; the decompiled corpus and `ksa-api-diff.sh` are for
+that half.
+
+The build number is written in seven places: `ksa-assemblies.lock`, `current/KSA_BUILD` in the
+private repo, and the **KSA build** line under Environment above, `README.md`,
+`docs/KSA-MODDING-NOTES.md`, `docs/KSA-CAMERAS.md` and `docs/BLOCKED-ON-KSA.md`. The lock is the
+source of truth and `check-docs.sh` fails on any prose file that disagrees with it.
+
+## Testing
+
+`tests/KSACars.Tests` drives the cars headlessly: a rig steps `BuggyDrive` against flat ground with the
+engine's own mass and inertia for each car. `BuggyDriveTests` covers settling, pulling away, turning,
+braking, a yaw kick dying away, and the steering lock held to the grip; `SteeringGripTests` that the
+driver reaches the rim of each car's wheel.
+
+**A behaviour change is unverified until it has been seen in game**, whatever the suite says.
+`CHECKLIST.md` records what has been driven and what has not. Both cars were driven through the bridge
+before this repository was split out; **nothing has been seen in game since the split.**
