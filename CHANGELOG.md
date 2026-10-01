@@ -1,3 +1,15 @@
+## [0.1.3](https://github.com/LaurensDeV/KSACars/compare/v0.1.2...v0.1.3) (2026-10-01)
+
+### Features
+
+* **eldorado:** keep the rockets pushing under time warp and in space ([d3a553d](https://github.com/LaurensDeV/KSACars/commit/d3a553dacbba29174e15ae5077cfef0918f99ce6))
+* **panel:** close the panel, and list it in ModMenu ([583c553](https://github.com/LaurensDeV/KSACars/commit/583c55338ca0e3ddab0cb1707cc93ccdda6f6e7b))
+
+### Fixes
+
+* **eldorado:** keep the scoops out of the part thumbnail ([3e56cdf](https://github.com/LaurensDeV/KSACars/commit/3e56cdf6e2868864acc93fbdf42c19338adb5fd1))
+* **eldorado:** seat the mirrors on the doors and clear the wheel wells ([7195dde](https://github.com/LaurensDeV/KSACars/commit/7195ddef439219351021fcc50d96c824d2ec0bef))
+
 ## [0.1.2](https://github.com/LaurensDeV/KSACars/compare/v0.1.1...v0.1.2) (2026-10-01)
 
 ### Features
