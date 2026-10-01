@@ -1,4 +1,4 @@
-# KSACars
+# Fast & Purrious
 
 Cars for **Kitten Space Agency** (RocketWerkz). KSA has no wheels, so these bring their own: springs,
 tyres, an engine and a gearbox, simulated by the mod and driven with the keys you already fly with.
@@ -23,13 +23,13 @@ StarMap's `StarMapConfig.json` to point at your KSA install; StarMap reads that 
 own directory**, so launch it from where it lives. Windows and Linux both work: the mod is a portable
 .NET assembly with no native code.
 
-1. **Get the mod.** Download `KSACars-<version>.zip` from [Releases](../../releases), or build it with
+1. **Get the mod.** Download `FastAndPurrious-<version>.zip` from [Releases](../../releases), or build it with
    `./tools/package.sh`.
 2. **Unzip it into your mods folder**, inside KSA's user directory (on Windows,
    `Documents\My Games\Kitten Space Agency\`). You should end up with:
 
    ```
-   <KSA user directory>/mods/KSACars/
+   <KSA user directory>/mods/FastAndPurrious/
      KSACars.dll
      mod.toml
      KSACars{Assets,GameData,Sounds}.xml
@@ -43,7 +43,7 @@ own directory**, so launch it from where it lives. Windows and Linux both work: 
 
    ```toml
    [[mods]]
-   id = "KSACars"
+   id = "FastAndPurrious"
    enabled = true
    ```
 
@@ -77,11 +77,19 @@ The Eldorado also flies, on four rockets under its floor, worked with the keys y
 | pitch | W / S | in the air, lean forward or back |
 | yaw | A / D | in the air, bank left or right |
 | roll | Q / E | in the air, turn left or right |
+| sprint | Left Shift | hold to fire two rockets on the tail and push the car forward |
 
 
-A car is not destroyed by a hard landing or a collision; it bounces.
+The Eldorado can carry a **scoop** on its nose, switched from the **Fast & Purrious** panel, for shoving rocks about.
+It turns on KSA's experimental ground clutter collisions while it is on, and its **Rock weight** slider
+sets how heavy rocks are: KSA's are solid stone, so by default they weigh 2% of that.
 
-A car that ends up on its roof or its side cannot drive off. The **Car** panel, on screen while you
+The panel's **Move craft with the mouse** picks a craft up with one click and sets it down wherever
+you click next.
+
+A car is not destroyed by a hard landing, a collision or the sea; it bounces.
+
+A car that ends up on its roof or its side cannot drive off. The **Fast & Purrious** panel, on screen while you
 are in one, has an **Unflip** button that sets it back on its wheels where it lies.
 
 ## Build

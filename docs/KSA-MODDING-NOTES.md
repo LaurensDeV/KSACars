@@ -30,7 +30,7 @@ Mods live in `Documents/My Games/Kitten Space Agency/mods/<ModName>/` or
 `mod.toml` beside the DLL:
 
 ```toml
-name = "KSACars"
+name = "FastAndPurrious"
 
 [StarMap]
 EntryAssembly = "KSACars"     # StarMap loads "<EntryAssembly>.dll"
@@ -753,7 +753,7 @@ A mod is a folder with `mod.toml`. The same folder serves as both a content mod 
 code mod:
 
 ```toml
-name = "KSACars"
+name = "FastAndPurrious"
 assets = [ "MyModAssets.xml", "MyModGameData.xml" ]
 
 [StarMap]
@@ -937,14 +937,21 @@ itself runs on worker threads via `VehicleUpdateTask`; do not mutate vehicle sta
 
 Never destroy vehicles while iterating `Program.VehiclesInFrame` — copy to a list first.
 
-## Every way the engine destroys a craft goes through one call
+## The engine destroys a craft in two ways, and one call covers only the first
 
 A hard landing, the ground, the sea, a collision, too much g and too much dynamic pressure are all
 raised by `PhysicsBubble.DetectStructuralFailure` as a `VehicleDestructionEvent` and applied by
 `Universe.DestroyVehicleFromEvent` (public static), from `ApplyRenderEventsToVehicles` on the main
 thread. That spawns the explosion, sheds debris and calls `DestroyVehicle(Kill)`. A Harmony prefix
 there returning false is a per-vehicle veto on all of them at once; the event is raised again every
-step the vehicle stays in trouble. `Ksa/CrashHook.cs` does this for the cars: an Eldorado dropped 180 m
+step the vehicle stays in trouble. **Part failure is separate and does not pass through it.** `PartFailure.Detect` compares the contact
+pressure accumulated on each part with `Part.CrashTolerancePascals` and raises a `PartFailureEvent`,
+whose `Apply` blows the part off; on a one-part craft that is the craft. The tolerance is the
+`CrashTolerance` attribute on `<Part>`, in pascals, or derived from the part's mass and collider volume
+when it is not given. An Eldorado clipping a rock with a wheel pad at 46 m/s was destroyed this way with
+the veto above in place and nothing in either log.
+
+`Ksa/CrashHook.cs` does this for the cars: an Eldorado dropped 180 m
 at 50 m/s bounced and settled on its wheels, level and driveable.
 
 ## How large a craft the engine will take
@@ -1045,6 +1052,34 @@ throttle to it, which contradicts the line under *A vehicle in the sea* that the
 engine. A parked car reads 1.0, which both would give, so this mod does not rely on
 `GetManualThrottle()`: it keeps its own throttle and moves it from the private `_engineFlags`, where
 the held throttle keys are recorded whatever the craft carries.
+
+## Ground clutter can be knocked loose and pushed, if a setting is on
+
+Read from the decompiled source and Core's XML. Switching the setting on at runtime has been seen to
+give rocks colliders, on Luna; a rock coming loose has not been seen.
+
+**Clutter has no colliders unless `groundClutterCollisions` is on**, and it is off by default: the
+setting KSA labels "[Experimental] Enable Collisions" (`GameSettings.GetGroundClutterCollisions()`).
+With it on, rocks, trees and shrubs near a vehicle become Bepu statics (`BubbleClutterStatics.AddCell`);
+grass never does.
+
+**A static rock becomes a dynamic body when one hit carries enough energy.** `ConstraintSim` works out
+`0.5 * vehicle mass * closing speed^2` along the contact normal and hands it to the public
+`BubbleClutterStatics.ReportHit`; at `rock mass * DisplaceEnergyPerKg` (a public static, 75.5 J/kg) the
+static is swapped for a dynamic body that takes its share of the momentum. Below that the rock is a
+wall. That is a closing speed of `sqrt(151 * rock mass / vehicle mass)`: 12 m/s for a rock as heavy as
+the car, 4 m/s for one a tenth of it. A prefix on `ReportHit` can scale the energy for one vehicle, but
+it runs on Bepu's worker threads.
+
+**A loose rock is an ordinary body**: it collides with vehicles, is drawn at its physics pose, sleeps
+when it settles and is written to the save (`ClutterEcotypeSaveData`). KSA draws at most 2048 displaced
+rocks per ecotype.
+
+**Most rocks are far heavier than a car.** Mass is `MassKg * scale^3` from placeholder volumes of dense
+rock: `SmallerRocks` run from tens of kilograms to a few tonnes, `Rocks` from half a tonne to hundreds
+of tonnes, `LargerRocks` to thousands.
+
+**A clutter static counts as terrain**, so hitting one too hard to move it is a ground impact.
 
 ## Held controls are cleared on the controlled vehicle while the UI has the keyboard
 

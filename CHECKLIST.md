@@ -23,7 +23,7 @@ none of it has been seen as **KSACars** yet:
 - [ ] The engine is heard, start to key-off
 - [x] An Eldorado tipped onto its roof by the bridge's `flip`, railed and scraping, is back on its
       wheels, level and off rails, after `unflip`, pointing the way it was
-- [ ] The **Car** panel is seen while a car is flown, its **Unflip** button rights the car, and the
+- [ ] The **Fast & Purrious** panel is seen while a car is flown, its **Unflip** button rights the car, and the
       keys still drive with the panel on screen
 - [ ] The buggy righted, and a car righted from its side and on a slope
 - [x] Headlamps: on the night side both cars throw two beams ahead from the bridge's `lights`, dipped
@@ -45,6 +45,21 @@ none of it has been seen as **KSACars** yet:
 - [x] A hard landing survived: the Eldorado dropped from 180 m at 50 m/s bounces and settles on its
       wheels, level, with no destruction
 - [ ] The rockets' throttle shown on KSA's throttle gauge, moving with the Up / Down keys
+- [x] The boost from the bridge on Luna: 21 m/s in under two seconds, with a flame at each of the two
+      ports on the tail panel
+- [ ] The boost on the Shift key, by a player, and heard
+- [x] The scoop shown on the Eldorado's nose on Luna from the bridge's `scoop`, and the car driving
+      with it on at 7 m/s over flat ground
+- [ ] The craft mover: a car picked up with a click and set down on the ground clicked next, with
+      the rings drawn at its feet and at the target
+- [ ] The Rock weight slider: a boulder that would not move at 100% pushed at 2%, and KSA's weights
+      back when the scoop goes off
+- [ ] A rock knocked loose and pushed by the scoop; the scoop hidden again and its colliders gone
+      when switched off; the panel's Scoop checkbox
+- [ ] A car clipping a rock at speed is not destroyed (it was, at 46 m/s, before its crash
+      tolerance was raised)
+- [ ] A car driven or dropped into the sea is not destroyed (it was, by ocean impact, before the
+      veto covered every cause)
 - [ ] A collision between a car and another craft, and a car dropped on its roof
 - [ ] A landing on the springs, and a hover held over a slope
 - [ ] The engine falls silent past 4x warp, with no key-off, and comes back with no starter at 1x

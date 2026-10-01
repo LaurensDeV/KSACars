@@ -1,6 +1,10 @@
 # CLAUDE.md
 
-A car mod for **Kitten Space Agency** (KSA, RocketWerkz). KSA has no wheels, so every car's springs,
+**Fast & Purrious**, a car mod for **Kitten Space Agency** (KSA, RocketWerkz). That is the name a player
+sees, on the panel, the README and the release archive (`FastAndPurrious-<version>.zip`); and the
+mod's id, which is its install folder and its `manifest.toml` entry, is `FastAndPurrious`. The assembly,
+the namespace, the log, the bridge folder and every part, mesh, texture and sound stay `KSACars`: a save
+pairs a part with its definition by Id, so those cannot be renamed. KSA has no wheels, so every car's springs,
 tyres and engine are this mod's: a **beach buggy** on long-travel coil-overs, and a red **1976 Cadillac
 Eldorado** convertible that floats on its springs and leans into a turn. Both carry kittens: the driver's
 hands hold the steering wheel and turn it, and either can get out on EVA. A car is driven with the pitch
@@ -173,27 +177,37 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
+| `Sim/Boost.cs` | two rockets on the tail as one push along the car's own forward, through its centre of mass — a fixed acceleration whatever the gravity, which is what moves a rock where the tyres have nothing to push against |
 | `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
+| `Sim/TerrainRay.cs` | where a ray from the eye first goes under the ground, walked out along it — **not the mean sphere's hit**, which lands behind a hill seen side-on |
+| `Sim/TerrainMask.cs` | the stretch of a line that lies below a body's highest ground, which is all of it the terrain ray has to walk |
+| `Sim/CursorAim.cs` | the cursor, from window pixels to the framebuffer pixels a camera's ray is asked for in |
+| `Sim/Picking.cs` | what the pointer is over: the nearest thing on screen within its own reach |
+| `Sim/DrawAnchor.cs` | an ecliptic point as an offset from a craft KSA has just placed, so a gizmo lands where the craft is drawn and not where its orbit says |
 | `Sim/FrameLatch.cs` | hands a frame's work out once, to whichever hook reaches it first — **the UI pass is skipped while the UI is hidden and the frame postfix is not** |
 | `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
 | `Sim/Vec.cs` | vector helpers |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
-| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the six patches, and once a frame finds the cars, poses their wheels and plays their engines |
-| `Ksa/PhysicsHook.cs` | **one of the six places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the eight patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the eight places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
 | `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
 | `Ksa/SeatedCrewHook.cs` | the second patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
 | `Ksa/LightsHook.cs` | the third patch — **the headlamps submitted where KSA submits a craft's own lights**, a postfix on `PartTree.UpdateRenderData`; KSA clears its light list after the GUI pass, so a light from any StarMap hook is never drawn |
 | `Ksa/LensColourHook.cs` | the fourth patch, and the only one on a private method — **the colour a lens subpart glows**, written into KSA's per-instance render state; if KSA moves it the patch does not apply and coloured lenses glow white |
 | `Ksa/FlamesHook.cs` | the fifth patch — **a flying car's flames submitted where KSA submits a craft's own plumes**, a postfix on `Vehicle.AddVolumetricExhaustInstances`; KSA empties its plume list just before, so a plume from any StarMap hook is never drawn |
-| `Ksa/CrashHook.cs` | the sixth patch — **a car spared from breaking up**, a prefix on `Universe.DestroyVehicleFromEvent` that turns away a car's ground impacts, collisions and g-loads and leaves the sea and the air alone |
+| `Ksa/CrashHook.cs` | the sixth patch — **a car spared from breaking up**, a prefix on `Universe.DestroyVehicleFromEvent` that turns away every structural failure of a car, whatever the cause |
+| `Ksa/BoostHook.cs` | the seventh patch, on two methods — **the sprint key heard by a car**: a postfix on `Vehicle.OnKey` queues it as `OnKey` queues the engine keys, and one on `Vehicle.ProcessInput` records it where KSA applies the queue. A vehicle's `OnKey` does not know the key at all; only a kitten's does. A prefix on `OnKey` also takes Shift off every other key while a car boosts, since KSA matches a vehicle's keys with their modifiers exactly |
+| `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's switch, the craft mover's and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
 | `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
+| `Ksa/KsaWorld.Pointing.cs` | the part of it the craft mover needs: the cursor's ray and the ground it meets, where a craft is on screen, and gizmo rings and lines |
+| `Ksa/CraftMover.cs` | **picks a craft up with one click and sets it down with the next**, from the panel — through `Vehicle.TeleportToLocation`, so it arrives resting on the ground. Carried over from KSArmory with its helpers |
 | `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
 | `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn` |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
@@ -216,7 +230,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 276 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 337 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -272,11 +286,39 @@ small texture set, drawn four times as subparts. `docs/KSA-MODDING-NOTES.md` has
 
 **A car does not break up when it comes down hard.** KSA destroys a craft past a g-load set by its
 size, and a car dropped a few metres onto its bump stops exceeds it. `Ksa/CrashHook.cs` vetoes that for
-a car's ground impacts, collisions and g-loads; the sea and the air still destroy it.
+a car whatever the cause: ground, sea, collision, g-load or the air. That is one of two
+ways KSA destroys a craft: the other breaks a part whose contact pressure passes its crash tolerance,
+and a car is one part, so each `<Part>` sets `CrashTolerance` far past anything a contact gives.
 
-**The throttle is shown on KSA's own gauge.** `KsaWorld.ShowThrottle` writes the mod's throttle into the
+**The throttle is shown on KSA's own gauge, on a panel KSA would otherwise hide.** The readout is on
+KSA's engine panel, drawn only for a craft with an `EngineController`; `Ksa/HudHook.cs` shows it for a
+car that flies. `KsaWorld.ShowThrottle` writes the mod's throttle into the
 craft's each frame after the GUI pass, which is before KSA reads its gauges; KSA clamps it back to full
 in the next physics window, so it is never read back.
+
+**The Eldorado has a boost: two rockets on its tail, lit while the sprint key is held.** A car has one if
+its profile has `BoostNozzles`. `Sim/Boost.cs` is the push, `Buggies.Flames` draws a flame at each port
+as it does the lift rockets', and the ports are the lift rockets' own mesh turned to face aft. The key is
+read with `Vehicle.GetSprintInput()`, which `Ksa/BoostHook.cs` makes true for a car.
+
+**The Eldorado carries a scoop, switched from the panel.** A car has one if its profile has a
+`ScoopProfile`. The blade is its own subpart and `.glb`; off, it is shrunk to nothing inside the hull,
+because a subpart has no switch for being drawn. Its three collider boxes are declared stowed inside the
+hull's own box, and `Buggies.SetScoop` moves them out to the blade and back by writing
+`ColliderModule.PositionPartAsmb` and setting `NeedsColliderUpdate`, as KSA's own animated parts do.
+
+**A scoop pushes rocks through KSA's own clutter physics, which it has to loosen.** A rock is a fixed
+static until one hit carries enough energy, and at KSA's threshold a car has to ram it. While any scoop
+is on, `KsaWorld.LoosenClutter` lowers `BubbleClutterStatics.DisplaceEnergyPerKg` for every vehicle and
+switches on KSA's experimental ground clutter collisions if they were off; the threshold is put back
+when the last scoop goes off, and the setting is left on. `docs/KSA-MODDING-NOTES.md` has the mechanism.
+
+**Rocks are made lighter while a scoop is on, by the panel's Rock weight.** KSA's rocks are solid stone,
+a hundred times a car's weight at a car's size. `KsaWorld.WeighRocks` scales every
+`ClutterObjectTemplate.MassKg` to a share of what KSA loaded, 2% unless the slider says otherwise, and
+puts KSA's back with the last scoop. KSA reads a rock's mass only when it builds the rock's collider, so
+each change holds the collisions setting off for a moment: KSA drops every rock on the first sync it
+finds it off and rebuilds them, at their new weight, on the first it finds it on.
 
 **A car on its roof is stuck, so the panel can right it.** The springs only push through the wheels,
 and KSA rails a car lying still. `Buggies.Right` queues it and the next physics window writes the pose
@@ -308,7 +350,7 @@ back dipped. It draws almost nothing, because nothing on a car charges the batte
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
 
-**Six patches; five are on public methods and pinned.** Each of those has a `PinTheSignature` that is
+**Eight patches; seven are on public methods and pinned.** Each of those has a `PinTheSignature` that is
 never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
 tracks it and a KSA change to it is a build error. `LensColourHook` patches a private method, which
 cannot be pinned: it checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
