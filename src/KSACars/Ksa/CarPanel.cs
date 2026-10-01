@@ -28,8 +28,9 @@ internal static class CarPanel
         if (ImGui.Begin("Fast & Purrious###Car", Flags))
         {
             ImGui.Text(car.Drive.Profile.DisplayName);
-            ImGui.Text($"{Math.Abs(car.Drive.ForwardSpeed) * 3.6:F0} km/h, gear {car.Drive.Gear + 1}");
-            if (car.Level < 0.5) ImGui.TextDisabled(car.Level < -0.5 ? "on its roof" : "on its side");
+            // On the speed's own line, so nothing under it moves when the car goes over.
+            string lying = car.Level >= 0.5 ? "" : car.Level < -0.5 ? ", on its roof" : ", on its side";
+            ImGui.Text($"{Math.Abs(car.Drive.ForwardSpeed) * 3.6:F0} km/h, gear {car.Drive.Gear + 1}{lying}");
 
             ImGui.Text("Headlights");
             BeamButton(car, "Off", BeamSetting.Off);
@@ -38,21 +39,25 @@ internal static class CarPanel
             ImGui.SameLine(0f, -1f);
             BeamButton(car, "High", BeamSetting.High);
 
-            if (car.Drive.Profile.Scoop is not null)
+            ScoopProfile[] scoops = car.Drive.Profile.Scoops;
+            if (scoops.Length > 0)
             {
-                bool scoop = car.ScoopOn;
-                if (ImGui.Checkbox("Scoop", ref scoop)) car.ScoopOn = scoop;
-                if (scoop)
+                ImGui.Text("Scoop size");
+                if (ImGui.RadioButton("None##scoop", car.Scoop < 0)) car.Scoop = -1;
+                for (int k = 0; k < scoops.Length; k++)
                 {
-                    // Held here while it is dragged and applied on release: every change makes KSA
-                    // rebuild its rocks.
-                    _rockWeight ??= (float)(KsaWorld.RockWeight * 100.0);
-                    float weight = _rockWeight.Value;
-                    ImGui.SliderFloat("Rock weight", ref weight, 0.01f, 100f, "%.2f%%", ImGuiSliderFlags.Logarithmic);
-                    _rockWeight = weight;
-                    if (ImGui.IsItemDeactivatedAfterEdit()) KsaWorld.RockWeight = weight / 100.0;
-                    if (!ImGui.IsItemActive()) _rockWeight = (float)(KsaWorld.RockWeight * 100.0);
+                    ImGui.SameLine(0f, -1f);
+                    if (ImGui.RadioButton($"{scoops[k].Size}##scoop", car.Scoop == k)) car.Scoop = k;
                 }
+
+                // Held here while it is dragged and applied on release: every change makes KSA
+                // rebuild its rocks.
+                _rockWeight ??= (float)(KsaWorld.RockWeight * 100.0);
+                float weight = _rockWeight.Value;
+                ImGui.SliderFloat("Rock weight", ref weight, 0.01f, 100f, "%.2f%%", ImGuiSliderFlags.Logarithmic);
+                _rockWeight = weight;
+                if (ImGui.IsItemDeactivatedAfterEdit()) KsaWorld.RockWeight = weight / 100.0;
+                if (!ImGui.IsItemActive()) _rockWeight = (float)(KsaWorld.RockWeight * 100.0);
             }
 
             bool moving = mover.Enabled;

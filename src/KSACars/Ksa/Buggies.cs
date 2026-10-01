@@ -45,10 +45,23 @@ internal sealed class Buggies
         public double Turn { get; set; }
         public VolumetricExhaustInstance?[]? Flames { get; set; }
         public VolumetricExhaustInstance?[]? BoostFlames { get; set; }
+        public VolumetricExhaustInstance?[]? DownFlames { get; set; }
+        public bool Downforce { get; set; }
+        public bool Pressed { get; set; }
         public bool Boosting { get; set; }
-        public Part? ScoopBlade { get; set; }
-        public bool ScoopOn { get; set; }
-        public bool? ScoopSet { get; set; }
+        public Part?[] ScoopBlades { get; } = new Part?[profile.Scoops.Length];
+        public Part?[] HatchCups { get; } = new Part?[profile.Hatches.Length];
+        public Part?[] HatchBlades { get; } = new Part?[profile.Hatches.Length * Hatch.Blades];
+
+        /// <summary>How far open each group's hatches are, 0 to 1, and whether the driver wants them open.</summary>
+        public double[] HatchOpen { get; } = new double[3];
+        public bool[] HatchWanted { get; } = new bool[3];
+        public bool Ready(ThrusterGroup group) => Hatch.Ready(HatchOpen[(int)group]);
+
+        /// <summary>Which of the profile's scoops is on, or -1 for none.</summary>
+        public int Scoop { get; set; } = -1;
+        public int? ScoopSet { get; set; }
+        public bool ScoopOn => Scoop >= 0;
         public double Climb { get; set; }
     }
 
@@ -62,6 +75,7 @@ internal sealed class Buggies
     private static readonly Dictionary<Vehicle, bool> ToRight = [];
 
     private static bool _complained;
+    private long _posedAtMs;
 
     public IEnumerable<Entry> All => Active.Values;
 
@@ -94,12 +108,14 @@ internal sealed class Buggies
         if (gone is not null) foreach (Vehicle v in gone) Active.Remove(v);
 
         bool scooping = false;
+        bool pushers = false;
         foreach (Entry e in Active.Values)
         {
             SetScoop(e);
             scooping |= e.ScoopOn;
+            pushers |= e.Drive.Profile.Scoops.Length > 0;
         }
-        KsaWorld.LoosenClutter(scooping);
+        KsaWorld.LoosenClutter(scooping, pushers);
 
         foreach (Entry e in Active.Values)
         {
@@ -185,6 +201,9 @@ internal sealed class Buggies
 
     private const string FlameTemplate = "EngineAAuxiliary";
 
+    // The downforce rockets burn steadily, and short: they sit in front of the driver.
+    private const double DownFlame = 0.35;
+
     /// <summary>
     /// A flying car's flames, handed to KSA's plume renderer beside the craft's own engines. No engine is
     /// behind them: the gas each is drawn from is <see cref="Lift.Flame"/>'s, sized by the throttle.
@@ -197,6 +216,8 @@ internal sealed class Buggies
         e.Flames = Burn(e, e.Flames, p.RocketNozzles, new double3(-1, 0, 0), e.Rockets, camera, renderer, frameDeltaTime);
         e.BoostFlames = Burn(e, e.BoostFlames, p.BoostNozzles, new double3(0, -1, 0), e.Boosting ? 1.0 : 0.0,
                              camera, renderer, frameDeltaTime);
+        e.DownFlames = Burn(e, e.DownFlames, p.DownNozzles, new double3(1, 0, 0), e.Pressed ? DownFlame : 0.0,
+                            camera, renderer, frameDeltaTime);
     }
 
     // One set of flames, all at one throttle and all pointing one way in the part's frame. Returns the
@@ -283,19 +304,25 @@ internal sealed class Buggies
     // Puts the scoop's colliders out on the blade or back inside the hull, once each time it changes.
     private static void SetScoop(Entry e)
     {
-        if (e.Drive.Profile.Scoop is not { } scoop || e.ScoopSet == e.ScoopOn) return;
-        e.ScoopSet = e.ScoopOn;
+        ScoopProfile[] scoops = e.Drive.Profile.Scoops;
+        if (scoops.Length == 0 || e.ScoopSet == e.Scoop) return;
+        e.ScoopSet = e.Scoop;
 
         foreach (ColliderModule collider in e.Part.SubtreeModules.Get<ColliderModule>())
         {
-            foreach ((string id, double3 deployed) in scoop.Colliders)
+            for (int k = 0; k < scoops.Length; k++)
             {
-                if (collider.TemplateId != id) continue;
-                collider.PositionPartAsmb = e.ScoopOn ? deployed : scoop.Stowed;
-                collider.NeedsColliderUpdate = true;
+                foreach (ScoopCollider box in scoops[k].Colliders)
+                {
+                    if (collider.TemplateId != box.Id) continue;
+                    bool on = k == e.Scoop;
+                    collider.PositionPartAsmb = on ? box.Deployed : scoops[k].Stowed;
+                    if (box.DeployedTurn is { } turn) collider.Collider2PartAsmb = on ? turn : doubleQuat.Identity;
+                    collider.NeedsColliderUpdate = true;
+                }
             }
         }
-        Log.Info($"{KsaWorld.DisplayName(e.Craft)}: scoop {(e.ScoopOn ? "on" : "off")}");
+        Log.Info($"{KsaWorld.DisplayName(e.Craft)}: {(e.ScoopOn ? scoops[e.Scoop].Name + " on" : "scoop off")}");
     }
 
     /// <summary>Lights or cuts a car's rockets, as KSA's engine start and shutdown keys do.</summary>
@@ -326,8 +353,9 @@ internal sealed class Buggies
             ["level"] = Math.Round(e.Level, 4),
             ["on_rails"] = e.Railed,
             ["lights"] = e.Beam.ToString().ToLowerInvariant(),
-            ["scoop"] = e.ScoopOn,
+            ["scoop"] = e.ScoopOn ? e.Drive.Profile.Scoops[e.Scoop].Name : "off",
             ["boosting"] = e.Boosting,
+            ["downforce"] = e.Downforce,
             ["clutter_collisions"] = KsaWorld.ClutterCollisions,
             ["rock_weight"] = KsaWorld.RockWeight,
             ["lift"] = Math.Round(e.Rockets, 2),
@@ -444,7 +472,13 @@ internal sealed class Buggies
             e.Coils[i] = SubPart(e.Part, p.SubpartPrefix + "Coil" + p.Corners[i].Key);
         }
         e.Steering = SubPart(e.Part, p.SubpartPrefix + "Steering");
-        if (p.Scoop is { } scoop) e.ScoopBlade = SubPart(e.Part, p.SubpartPrefix + scoop.SubpartSuffix);
+        for (int k = 0; k < p.Scoops.Length; k++) e.ScoopBlades[k] = SubPart(e.Part, p.SubpartPrefix + p.Scoops[k].SubpartSuffix);
+        for (int k = 0; k < p.Hatches.Length; k++)
+        {
+            e.HatchCups[k] = SubPart(e.Part, p.SubpartPrefix + p.Hatches[k].Suffix);
+            for (int b = 0; b < Hatch.Blades; b++)
+                e.HatchBlades[(k * Hatch.Blades) + b] = SubPart(e.Part, $"{p.SubpartPrefix}Iris{p.Hatches[k].Suffix}{b}");
+        }
     }
 
     // Matched on the Id the <Part> gives the subpart, which ends in the corner's key.
@@ -500,14 +534,19 @@ internal sealed class Buggies
             if (held.Seconds - dt <= 0.0) Held.Remove(craft);
             else Held[craft] = (held.Input, held.Turn, held.Boost, held.Seconds - dt);
         }
-        e.Boosting = boost && e.Drive.Profile.HasBoost;
+        // A rocket fires once its hatch is open; until then the driver only wants it.
+        e.HatchWanted[(int)ThrusterGroup.Boost] = boost && e.Drive.Profile.HasBoost;
+        e.Boosting = e.HatchWanted[(int)ThrusterGroup.Boost] && e.Ready(ThrusterGroup.Boost);
 
         // KSA's own engine keys: start and shutdown light and cut the rockets, and the throttle keys move
         // the mod's throttle, because KSA pins its own at full on a craft with no engine.
         (bool more, bool less) = KsaWorld.ThrottleKeys(craft);
         if (dt > 0.0 && dt <= 0.1) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
         e.Lit = e.Drive.Profile.HasRockets && (KsaWorld.EngineOn(craft) ?? e.Lit);
-        e.Rockets = e.Lit ? e.Throttle : 0.0;
+        e.HatchWanted[(int)ThrusterGroup.Lift] = e.Lit;
+        e.HatchWanted[(int)ThrusterGroup.Down] = e.Downforce && e.Drive.Profile.HasDownforce;
+        e.Rockets = e.Lit && e.Ready(ThrusterGroup.Lift) ? e.Throttle : 0.0;
+        e.Pressed = e.HatchWanted[(int)ThrusterGroup.Down] && e.Ready(ThrusterGroup.Down);
 
         // The engine integrates a frame as one impulse followed by its own sub-steps, so a spring is
         // only as stable as the frame is short. Under warp the car is left to its colliders.
@@ -516,7 +555,7 @@ internal sealed class Buggies
 
         bool railed = craft.Situation.IsOnRails();
         e.Railed = railed;
-        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && e.Rockets <= 0.0 && !e.Boosting;
+        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && !e.Lit && !e.HatchWanted[(int)ThrusterGroup.Boost] && !e.Downforce;
 
         // KSA only rails a car that has stood still, so one on rails with nobody at the wheel is parked:
         // it is exactly where it was, and costs nothing. Its speed from before it stopped says nothing.
@@ -592,7 +631,10 @@ internal sealed class Buggies
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));
         double air = KsaWorld.ReferenceAirDensityKgPerM3 * KsaWorld.AirDensityRatioAt(craft, KsaWorld.PositionEcl(craft));
 
-        DriveImpulse impulse = e.Drive.Step(e.Input, contacts, hubs, up, forward, mass, gravity, air, dt);
+        // Both sets of rockets at once hold the car where it is, so neither pushes on its own.
+        bool hovering = e.Pressed && e.Rockets > 0.0;
+        bool pressed = e.Pressed && !hovering;
+        DriveImpulse impulse = e.Drive.Step(e.Input, contacts, hubs, up, forward, mass, Downforce.Load(pressed, gravity), air, dt);
         e.Stepped = true;
         e.Level = contacts[0].Valid ? Vec.Dot(up, contacts[0].GroundUp) : e.Level;
         e.YawRate = Vec.Dot(spinBody, up);
@@ -612,9 +654,11 @@ internal sealed class Buggies
 
         // The wheels are off the ground, so the keys that drove them fly the car instead.
         bool airborne = !e.Drive.Grounded.Any(g => g);
+        double3 groundUpBody = Vec.Unit(positionCcf).Transform(ccf2Body);
         LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
-                                  Vec.Unit(positionCcf).Transform(ccf2Body), spinBody, gravity, dt);
-        dv += lift.Velocity + Boost.Push(e.Boosting, forward, dt);
+                                  groundUpBody, spinBody, gravity, dt);
+        dv += hovering ? Hover.Push(up, groundUpBody, e.Climb, gravity, dt) : lift.Velocity + Downforce.Push(pressed, up, dt);
+        dv += Boost.Push(e.Boosting, forward, dt);
         dw += lift.Spin;
         if (!Vec.IsFinite(dv) || !Vec.IsFinite(dw)) return;
 
@@ -674,11 +718,17 @@ internal sealed class Buggies
     /// <summary>Puts the wheels, arms, coil-overs and steering wheel where the drive last left them.</summary>
     public void Pose()
     {
+        // The hatches open in the world's time, so slow motion slows them and a pause holds them; a long
+        // gap between frames is a hitch, and is not turned through.
+        long now = Environment.TickCount64;
+        double dt = _posedAtMs == 0 ? 0.0 : Math.Min((now - _posedAtMs) / 1000.0, 0.1) * Math.Max(KsaWorld.SimulationSpeed, 0.0);
+        _posedAtMs = now;
+
         foreach (Entry e in Active.Values)
         {
             try
             {
-                Pose(e);
+                Pose(e, dt);
             }
             catch (Exception ex)
             {
@@ -689,7 +739,7 @@ internal sealed class Buggies
         }
     }
 
-    private static void Pose(Entry e)
+    private static void Pose(Entry e, double dt)
     {
         BuggyDrive d = e.Drive;
         BuggyCorner[] corners = d.Profile.Corners;
@@ -709,11 +759,34 @@ internal sealed class Buggies
 
         HoldTheWheel(e);
 
-        // Hidden by being shrunk to nothing inside the hull: a subpart has no switch for being drawn.
-        if (d.Profile.Scoop is { } scoop)
+        HatchProfile[] hatches = d.Profile.Hatches;
+        // An iris stays open on a flame that is still dying, however long the sim speed makes that.
+        for (int g = 0; g < e.HatchOpen.Length; g++)
         {
-            Place(e.ScoopBlade, e.ScoopOn ? Vec.Zero : scoop.Stowed, doubleQuat.Identity,
-                  e.ScoopOn ? new double3(1, 1, 1) : new double3(0.001, 0.001, 0.001));
+            bool burning = (ThrusterGroup)g switch
+            {
+                ThrusterGroup.Lift => e.Flames is not null,
+                ThrusterGroup.Boost => e.BoostFlames is not null,
+                _ => e.DownFlames is not null,
+            };
+            e.HatchOpen[g] = Hatch.Advance(e.HatchOpen[g], e.HatchWanted[g] || burning, dt);
+        }
+        for (int k = 0; k < hatches.Length; k++)
+        {
+            Place(e.HatchCups[k], hatches[k].At, Hatch.Facing(hatches[k]), null);
+            for (int b = 0; b < Hatch.Blades; b++)
+            {
+                (double3 at, doubleQuat turned, double3 size) = Hatch.Blade(hatches[k], b, e.HatchOpen[(int)hatches[k].Group]);
+                Place(e.HatchBlades[(k * Hatch.Blades) + b], at, turned, size);
+            }
+        }
+
+        // Hidden by being shrunk to nothing inside the hull: a subpart has no switch for being drawn.
+        for (int k = 0; k < d.Profile.Scoops.Length; k++)
+        {
+            bool on = k == e.Scoop;
+            Place(e.ScoopBlades[k], on ? Vec.Zero : d.Profile.Scoops[k].Stowed, doubleQuat.Identity,
+                  on ? new double3(1, 1, 1) : new double3(0.001, 0.001, 0.001));
         }
 
         Place(e.Steering, d.Profile.SteeringPivot,

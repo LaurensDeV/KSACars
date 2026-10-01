@@ -51,6 +51,7 @@ internal static partial class KsaWorld
     private static readonly Dictionary<ClutterObjectTemplate, double> KsaRockMass = [];
     private static double _rockWeightApplied = 1.0;
     private static long _clutterRebuildUntilMs;
+    private static bool _collisionsWanted;
 
     // How long clutter collisions are held off to make KSA rebuild its rocks. KSA drops every rock
     // collider and loose rock on the first sync it finds the setting off, and builds them again, at
@@ -58,34 +59,40 @@ internal static partial class KsaWorld
     private const long ClutterRebuildMs = 400;
 
     /// <summary>
-    /// While a scoop is on, rocks are knocked loose by a nudge, weigh <see cref="RockWeight"/> of what
-    /// KSA says, and clutter has colliders; with none on, KSA's own threshold and masses are put back.
-    /// The collisions setting is the player's and is left on.
+    /// Rocks are knocked loose by a nudge and weigh <see cref="RockWeight"/> of what KSA says while a
+    /// scoop is on, or while a car that can carry one is about and the player has clutter collisions
+    /// on; otherwise KSA's own threshold and masses are put back. A scoop switches the collisions
+    /// setting on; it is the player's, and is never switched off for good.
     /// </summary>
-    public static void LoosenClutter(bool scooping)
+    public static void LoosenClutter(bool scooping, bool pushers)
     {
         try
         {
-            double weight = scooping ? Math.Clamp(RockWeight, 0.0001, 1.0) : 1.0;
+            // While the setting is held off for a rebuild it says nothing about what the player chose.
+            bool wanted = _clutterRebuildUntilMs != 0 ? _collisionsWanted : GameSettings.Current.Simulation.GroundClutterCollisions;
+            bool loose = scooping || (pushers && wanted);
+
+            double weight = loose ? Math.Clamp(RockWeight, 0.0001, 1.0) : 1.0;
             if (weight != _rockWeightApplied && WeighRocks(weight))
             {
                 _rockWeightApplied = weight;
+                _collisionsWanted = scooping || wanted;
                 _clutterRebuildUntilMs = Environment.TickCount64 + ClutterRebuildMs;
                 Log.Info($"rocks now weigh {weight:P1} of KSA's");
             }
 
-            bool rebuilding = Environment.TickCount64 < _clutterRebuildUntilMs;
-            if (scooping || _clutterRebuildUntilMs != 0)
+            if (_clutterRebuildUntilMs != 0)
             {
-                bool on = !rebuilding;
-                if (GameSettings.Current.Simulation.GroundClutterCollisions != on)
-                {
-                    GameSettings.Current.Simulation.GroundClutterCollisions = on;
-                }
+                bool rebuilding = Environment.TickCount64 < _clutterRebuildUntilMs;
+                GameSettings.Current.Simulation.GroundClutterCollisions = !rebuilding && _collisionsWanted;
                 if (!rebuilding) _clutterRebuildUntilMs = 0;
             }
+            else if (scooping && !wanted)
+            {
+                GameSettings.Current.Simulation.GroundClutterCollisions = true;
+            }
 
-            if (scooping)
+            if (loose)
             {
                 _ksaDisplaceEnergyPerKg ??= BubbleClutterStatics.DisplaceEnergyPerKg;
                 BubbleClutterStatics.DisplaceEnergyPerKg = ScoopDisplaceEnergyPerKg;
