@@ -131,8 +131,15 @@ internal static class BoostHook
     {
         try
         {
-            if (action != InputAction.Sprint || keyAction == GlfwKeyAction.Repeat) return;
-            if (Buggies.Of(__instance) is not { } car || !car.Drive.Profile.HasBoost) return;
+            if (keyAction == GlfwKeyAction.Repeat || Buggies.Of(__instance) is not { } car) return;
+
+            // The RCS key, which a car has nothing else to do with, switches the downforce rockets.
+            if (action == InputAction.ToggleRCS && keyAction == GlfwKeyAction.Press && car.Drive.Profile.HasDownforce)
+            {
+                car.Downforce = !car.Downforce;
+            }
+
+            if (action != InputAction.Sprint || !car.Drive.Profile.HasBoost) return;
 
             KsaWorld.TrySetSprint(__instance, keyAction == GlfwKeyAction.Press);
         }

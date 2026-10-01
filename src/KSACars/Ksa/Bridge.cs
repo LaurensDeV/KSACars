@@ -259,12 +259,24 @@ internal sealed class Bridge
             if (lift > 0.0) flyer.Throttle = lift;
             Buggies.Ignite(flyer, lift > 0.0);
         }
+        if (command.Has("downforce"))
+        {
+            if (Buggies.Of(craft) is not { } pressed) return Failed("that craft is not a buggy");
+            if (!pressed.Drive.Profile.HasDownforce) return Failed("that car has no downward thrusters");
+            pressed.Downforce = command.Flag("downforce", false);
+        }
         if (command.Has("rock_weight")) KsaWorld.RockWeight = Math.Clamp(command.Number("rock_weight", 0.02), 0.0001, 1.0);
         if (command.Has("scoop"))
         {
             if (Buggies.Of(craft) is not { } carrier) return Failed("that craft is not a buggy");
-            if (carrier.Drive.Profile.Scoop is null) return Failed("that car has no scoop");
-            carrier.ScoopOn = command.Flag("scoop", false);
+            ScoopProfile[] scoops = carrier.Drive.Profile.Scoops;
+            if (scoops.Length == 0) return Failed("that car has no scoop");
+
+            // true and false for the first scoop and none, or a scoop by name.
+            string named = command.String("scoop");
+            int byName = Array.FindIndex(scoops, s => string.Equals(s.Name, named, StringComparison.OrdinalIgnoreCase)
+                                                      || string.Equals(s.SubpartSuffix, named, StringComparison.OrdinalIgnoreCase));
+            carrier.Scoop = byName >= 0 ? byName : command.Flag("scoop", false) ? 0 : -1;
         }
         if (command.Flag("flip", false) && !Buggies.Right(craft, tip: true)) return Failed("that craft is not a buggy");
         if (command.Flag("unflip", false) && !Buggies.Right(craft)) return Failed("that craft is not a buggy");

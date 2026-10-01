@@ -78,11 +78,17 @@ The Eldorado also flies, on four rockets under its floor, worked with the keys y
 | yaw | A / D | in the air, bank left or right |
 | roll | Q / E | in the air, turn left or right |
 | sprint | Left Shift | hold to fire two rockets on the tail and push the car forward |
+| toggle RCS | R | switch the downward thrusters, which press the car onto the ground for grip |
+
+With the rockets lit and the downward thrusters on together, the car hovers: it holds its height, and
+the pitch and yaw keys still lean it across the ground.
 
 
-The Eldorado can carry a **scoop** on its nose, switched from the **Fast & Purrious** panel, for shoving rocks about.
-It turns on KSA's experimental ground clutter collisions while it is on, and its **Rock weight** slider
-sets how heavy rocks are: KSA's are solid stone, so by default they weigh 2% of that.
+The Eldorado can carry a **scoop** on its nose, chosen from the **Fast & Purrious** panel under **Scoop size** —
+**Default** at 3.4 m across, the 6 m **XL**, or the 10 m **XXL** — for shoving rocks about.
+A scoop turns on KSA's experimental ground clutter collisions; with that setting on, the Eldorado shoves
+rocks without a scoop too. The panel's **Rock weight** slider sets how heavy rocks are: KSA's are solid
+stone, so by default they weigh 2% of that.
 
 The panel's **Move craft with the mouse** picks a craft up with one click and sets it down wherever
 you click next.

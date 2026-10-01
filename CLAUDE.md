@@ -178,6 +178,9 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
 | `Sim/Boost.cs` | two rockets on the tail as one push along the car's own forward, through its centre of mass — a fixed acceleration whatever the gravity, which is what moves a rock where the tyres have nothing to push against |
+| `Sim/Downforce.cs` | rockets on the bonnet and the boot that press the car onto the ground — a push along its own down through the centre of mass, and **the load the springs are sized off while it is on**, so the car rides at its usual height |
+| `Sim/Hover.cs` | the rockets under the car and the ones on top firing together — **thrust that carries the car's weight and brakes any climb or fall**, so it hangs where it is |
+| `Sim/Hatch.cs` | the iris over each thruster — **where each of its six blades is, how it is turned and how big it is drawn** as it opens, and when its rocket may fire |
 | `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
 | `Sim/TerrainRay.cs` | where a ray from the eye first goes under the ground, walked out along it — **not the mean sphere's hit**, which lands behind a hill seen side-on |
 | `Sim/TerrainMask.cs` | the stretch of a line that lies below a body's highest ground, which is all of it the terrain ray has to walk |
@@ -197,11 +200,11 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/LensColourHook.cs` | the fourth patch, and the only one on a private method — **the colour a lens subpart glows**, written into KSA's per-instance render state; if KSA moves it the patch does not apply and coloured lenses glow white |
 | `Ksa/FlamesHook.cs` | the fifth patch — **a flying car's flames submitted where KSA submits a craft's own plumes**, a postfix on `Vehicle.AddVolumetricExhaustInstances`; KSA empties its plume list just before, so a plume from any StarMap hook is never drawn |
 | `Ksa/CrashHook.cs` | the sixth patch — **a car spared from breaking up**, a prefix on `Universe.DestroyVehicleFromEvent` that turns away every structural failure of a car, whatever the cause |
-| `Ksa/BoostHook.cs` | the seventh patch, on two methods — **the sprint key heard by a car**: a postfix on `Vehicle.OnKey` queues it as `OnKey` queues the engine keys, and one on `Vehicle.ProcessInput` records it where KSA applies the queue. A vehicle's `OnKey` does not know the key at all; only a kitten's does. A prefix on `OnKey` also takes Shift off every other key while a car boosts, since KSA matches a vehicle's keys with their modifiers exactly |
+| `Ksa/BoostHook.cs` | the seventh patch, on two methods — **the sprint key heard by a car**: a postfix on `Vehicle.OnKey` queues it as `OnKey` queues the engine keys, and one on `Vehicle.ProcessInput` records it where KSA applies the queue. A vehicle's `OnKey` does not know the key at all; only a kitten's does. The same postfix switches the downward thrusters on the RCS key. A prefix on `OnKey` also takes Shift off every other key while a car boosts, since KSA matches a vehicle's keys with their modifiers exactly |
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's switch, the craft mover's and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
@@ -230,7 +233,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 337 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 338 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -281,8 +284,17 @@ either, the rockets cannot be lit: nothing but the keys and the bridge's `lift` 
 flame: no propellant is no plume, and any flame is thrust. `Buggies.Flames` builds a
 `VolumetricExhaustInstance` per nozzle from a Core exhaust template and hands it to KSA's renderer each
 frame, drawn from the gas `Lift.Flame` gives for the throttle; `BuggyProfile.RocketNozzles` is where
-they leave the floor: the lips of four ports, one mesh in `Meshes/KSACars_EldoRocket.glb` with its own
-small texture set, drawn four times as subparts. `docs/KSA-MODDING-NOTES.md` has the mechanism.
+they leave the floor. `docs/KSA-MODDING-NOTES.md` has the mechanism.
+
+**Every thruster sits behind an iris that is shut, and unseen, until it is wanted.** The body mesh has a
+round hole at each of `BuggyProfile.Hatches`, with a cup and nozzle behind it and six blades closing it
+flush, each its own subpart drawn in the body's material from a patch of the bonnet's own texels.
+`Sim/Hatch.cs` is where each blade is: half the disc, squashed towards its own side of the rim as it opens,
+so the six straight edges leave a hexagon growing from the centre and no blade has to slide under the
+skin round the hole, which is thin and curved. A group's rockets fire once its irises are open, a tenth
+of a second after they are asked for; they shut once its flames have died, and `Buggies.Pose` moves them in the world's time, so slow motion slows them and a pause holds them.
+**The holes are cut into the exported `.glb`, not modelled in the `.blend`**, so an export from Blender
+loses them until they are cut again.
 
 **A car does not break up when it comes down hard.** KSA destroys a craft past a g-load set by its
 size, and a car dropped a few metres onto its bump stops exceeds it. `Ksa/CrashHook.cs` vetoes that for
@@ -297,26 +309,39 @@ craft's each frame after the GUI pass, which is before KSA reads its gauges; KSA
 in the next physics window, so it is never read back.
 
 **The Eldorado has a boost: two rockets on its tail, lit while the sprint key is held.** A car has one if
-its profile has `BoostNozzles`. `Sim/Boost.cs` is the push, `Buggies.Flames` draws a flame at each port
-as it does the lift rockets', and the ports are the lift rockets' own mesh turned to face aft. The key is
+its profile has `BoostNozzles`. `Sim/Boost.cs` is the push, `Buggies.Flames` draws a flame at each nozzle
+as it does the lift rockets'. The key is
 read with `Vehicle.GetSprintInput()`, which `Ksa/BoostHook.cs` makes true for a car.
 
-**The Eldorado carries a scoop, switched from the panel.** A car has one if its profile has a
-`ScoopProfile`. The blade is its own subpart and `.glb`; off, it is shrunk to nothing inside the hull,
-because a subpart has no switch for being drawn. Its three collider boxes are declared stowed inside the
-hull's own box, and `Buggies.SetScoop` moves them out to the blade and back by writing
-`ColliderModule.PositionPartAsmb` and setting `NeedsColliderUpdate`, as KSA's own animated parts do.
+**The Eldorado has downward thrusters, switched with the RCS key.** A car has them if
+its profile has `DownNozzles`. `Sim/Downforce.cs` adds about a g towards the car's own floor, which on
+Luna is what gives the tyres something to grip with; the drive is stepped with gravity plus that, so the
+springs carry it. `Ksa/BoostHook.cs` hears the key.
+
+**With the lift rockets lit as well, the car hovers.** While both sets fire, `Sim/Hover.cs` replaces both
+pushes with one that cancels gravity and brakes the climb rate, so the car holds its height wherever it
+is; the lift throttle does nothing then, and the keys still lean it across the ground.
+
+**The Eldorado carries a scoop, in three sizes, chosen from the panel.** A car's profile lists its
+`Scoops`, and one or none is on. Each blade is its own subpart, both in one `.glb` and one atlas; off, a
+blade is shrunk to nothing inside the hull, because a subpart has no switch for being drawn. Each
+scoop's three collider boxes are declared stowed inside the hull's own box, and `Buggies.SetScoop` moves
+them out to the blade and back by writing `ColliderModule.PositionPartAsmb` and setting
+`NeedsColliderUpdate`, as KSA's own animated parts do. The bigger scoops' boxes are taller than the hull, so they
+are declared lying down and `ScoopProfile.Upright` is the turn that stands them up; the Mega's are in two
+tiers, because lying down a tier is the most that fits across the hull.
 
 **A scoop pushes rocks through KSA's own clutter physics, which it has to loosen.** A rock is a fixed
 static until one hit carries enough energy, and at KSA's threshold a car has to ram it. While any scoop
 is on, `KsaWorld.LoosenClutter` lowers `BubbleClutterStatics.DisplaceEnergyPerKg` for every vehicle and
-switches on KSA's experimental ground clutter collisions if they were off; the threshold is put back
-when the last scoop goes off, and the setting is left on. `docs/KSA-MODDING-NOTES.md` has the mechanism.
+switches on KSA's experimental ground clutter collisions if they were off, and the setting is left on.
+With no scoop on, rocks stay loose for as long as a car that can carry one is in the world and the
+player has that setting on, so the bare car shoves them too; otherwise the threshold is put back. `docs/KSA-MODDING-NOTES.md` has the mechanism.
 
-**Rocks are made lighter while a scoop is on, by the panel's Rock weight.** KSA's rocks are solid stone,
+**Rocks are made lighter while they are loose, by the panel's Rock weight.** KSA's rocks are solid stone,
 a hundred times a car's weight at a car's size. `KsaWorld.WeighRocks` scales every
 `ClutterObjectTemplate.MassKg` to a share of what KSA loaded, 2% unless the slider says otherwise, and
-puts KSA's back with the last scoop. KSA reads a rock's mass only when it builds the rock's collider, so
+puts KSA's back when they are no longer loose. KSA reads a rock's mass only when it builds the rock's collider, so
 each change holds the collisions setting off for a moment: KSA drops every rock on the first sync it
 finds it off and rebuilds them, at their new weight, on the first it finds it on.
 

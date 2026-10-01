@@ -268,26 +268,39 @@
   -->
   <MeshAtlas Path="Meshes/KSACars_Eldorado.glb" />
 
-  <!-- The rocket ports under the Eldorado's floor: one mesh, drawn four times. -->
-  <MeshAtlas Path="Meshes/KSACars_EldoRocket.glb" />
+  <!--
+    A thruster's hatch: a cup with a nozzle in it, behind a round hole in the bodywork, and one blade of
+    the iris that closes the hole, in the body's own paint. The mod places both.
+  -->
+  <MeshAtlas Path="Meshes/KSACars_EldoIris.glb" />
 
-  <PbrMaterial Id="KSACars_EldoRocket_Material">
-    <Diffuse Path="Textures/KSACars_EldoRocket_Diffuse.png" Category="Vessel" />
-    <Normal Path="Textures/KSACars_EldoRocket_Normal.png" Category="Vessel" />
-    <AoRoughMetal Path="Textures/KSACars_EldoRocket_PBR.png" Category="Vessel" />
+  <PbrMaterial Id="KSACars_EldoIris_Material">
+    <Diffuse Path="Textures/KSACars_EldoIris_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_EldoIris_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_EldoIris_PBR.png" Category="Vessel" />
   </PbrMaterial>
 
-  <SubPart Id="KSACars_EldoRocket_SubPart">
-    <PartModel Id="KSACars_Subpart_EldoRocket_Model">
-      <Mesh Id="KSACars_Subpart_EldoRocket" />
-      <Material Id="KSACars_EldoRocket_Material" />
+  <SubPart Id="KSACars_EldoIrisCup_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoIrisCup_Model">
+      <Mesh Id="KSACars_Subpart_EldoIrisCup" />
+      <Material Id="KSACars_EldoIris_Material" />
     </PartModel>
     <MeshView>
-      <Mesh Id="KSACars_Subpart_EldoRocket_VM" />
+      <Mesh Id="KSACars_Subpart_EldoIrisCup_VM" />
     </MeshView>
   </SubPart>
 
-  <!-- The scoop that hooks into the Eldorado's grille. The mod shows it and hides it. -->
+  <SubPart Id="KSACars_EldoIrisBlade_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoIrisBlade_Model">
+      <Mesh Id="KSACars_Subpart_EldoIrisBlade" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoIrisBlade_VM" />
+    </MeshView>
+  </SubPart>
+
+  <!-- The scoops that hook into the Eldorado's grille, three sizes in one atlas. The mod shows one or neither. -->
   <MeshAtlas Path="Meshes/KSACars_EldoScoop.glb" />
 
   <PbrMaterial Id="KSACars_EldoScoop_Material">
@@ -303,6 +316,26 @@
     </PartModel>
     <MeshView>
       <Mesh Id="KSACars_Subpart_EldoScoop_VM" />
+    </MeshView>
+  </SubPart>
+
+  <SubPart Id="KSACars_EldoScoopXXL_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoScoopXXL_Model">
+      <Mesh Id="KSACars_Subpart_EldoScoopXXL" />
+      <Material Id="KSACars_EldoScoop_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoScoopXXL_VM" />
+    </MeshView>
+  </SubPart>
+
+  <SubPart Id="KSACars_EldoScoopMega_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoScoopMega_Model">
+      <Mesh Id="KSACars_Subpart_EldoScoopMega" />
+      <Material Id="KSACars_EldoScoop_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoScoopMega_VM" />
     </MeshView>
   </SubPart>
 
@@ -429,39 +462,372 @@
     </SubPart>
     <SubPart Id="KSACars_Eldo_TailLens" InstanceOf="KSACars_EldoTailLens_SubPart" />
     <SubPart Id="KSACars_Eldo_MarkerLens" InstanceOf="KSACars_EldoMarkerLens_SubPart" />
-    <SubPart Id="KSACars_Eldo_RocketFL" InstanceOf="KSACars_EldoRocket_SubPart">
+    <SubPart Id="KSACars_Eldo_RocketFL" InstanceOf="KSACars_EldoIrisCup_SubPart">
       <Transform>
-        <Position X="0.19000" Y="0.85000" Z="0.55000" />
+        <Position X="0.19444" Y="0.85000" Z="0.55000" />
+        <Rotation Z="3.14159" />
       </Transform>
     </SubPart>
-    <SubPart Id="KSACars_Eldo_RocketFR" InstanceOf="KSACars_EldoRocket_SubPart">
+    <SubPart Id="KSACars_Eldo_RocketFR" InstanceOf="KSACars_EldoIrisCup_SubPart">
       <Transform>
-        <Position X="0.19000" Y="0.85000" Z="-0.55000" />
+        <Position X="0.19444" Y="0.85000" Z="-0.55000" />
+        <Rotation Z="3.14159" />
       </Transform>
     </SubPart>
-    <SubPart Id="KSACars_Eldo_RocketRL" InstanceOf="KSACars_EldoRocket_SubPart">
+    <SubPart Id="KSACars_Eldo_RocketRL" InstanceOf="KSACars_EldoIrisCup_SubPart">
       <Transform>
         <Position X="0.19000" Y="-0.85000" Z="0.55000" />
+        <Rotation Z="3.14159" />
       </Transform>
     </SubPart>
-    <SubPart Id="KSACars_Eldo_RocketRR" InstanceOf="KSACars_EldoRocket_SubPart">
+    <SubPart Id="KSACars_Eldo_RocketRR" InstanceOf="KSACars_EldoIrisCup_SubPart">
       <Transform>
         <Position X="0.19000" Y="-0.85000" Z="-0.55000" />
+        <Rotation Z="3.14159" />
       </Transform>
     </SubPart>
     <SubPart Id="KSACars_Eldo_Scoop" InstanceOf="KSACars_EldoScoop_SubPart" />
 
-    <!-- The same port again, twice, turned to face aft on the tail panel above the bumper: the boost rockets. -->
-    <SubPart Id="KSACars_Eldo_BoostL" InstanceOf="KSACars_EldoRocket_SubPart">
+    <!-- Two more hatches in the tail panel above the bumper: the boost rockets. -->
+    <SubPart Id="KSACars_Eldo_BoostL" InstanceOf="KSACars_EldoIrisCup_SubPart">
       <Transform>
         <Position X="0.74000" Y="-2.87800" Z="0.70000" />
-        <Rotation Z="1.57080" />
+        <Rotation Z="-1.57080" />
       </Transform>
     </SubPart>
-    <SubPart Id="KSACars_Eldo_BoostR" InstanceOf="KSACars_EldoRocket_SubPart">
+    <SubPart Id="KSACars_Eldo_BoostR" InstanceOf="KSACars_EldoIrisCup_SubPart">
       <Transform>
         <Position X="0.74000" Y="-2.87800" Z="-0.70000" />
-        <Rotation Z="1.57080" />
+        <Rotation Z="-1.57080" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_ScoopXXL" InstanceOf="KSACars_EldoScoopXXL_SubPart" />
+    <SubPart Id="KSACars_Eldo_ScoopMega" InstanceOf="KSACars_EldoScoopMega_SubPart" />
+
+    <!-- And four in the bonnet and the boot: the downforce rockets. -->
+    <SubPart Id="KSACars_Eldo_DownFL" InstanceOf="KSACars_EldoIrisCup_SubPart">
+      <Transform>
+        <Position X="0.98270" Y="1.69998" Z="0.44999" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_DownFR" InstanceOf="KSACars_EldoIrisCup_SubPart">
+      <Transform>
+        <Position X="0.98270" Y="1.69998" Z="-0.44999" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_DownRL" InstanceOf="KSACars_EldoIrisCup_SubPart">
+      <Transform>
+        <Position X="0.95490" Y="-2.50000" Z="0.45000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_DownRR" InstanceOf="KSACars_EldoIrisCup_SubPart">
+      <Transform>
+        <Position X="0.95490" Y="-2.50000" Z="-0.45000" />
+      </Transform>
+    </SubPart>
+
+    <!--
+      Six iris blades to a hatch. The mod places every one each frame; where nothing does, they lie
+      out of sight inside the floor.
+    -->
+    <SubPart Id="KSACars_Eldo_IrisRocketFL0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFL1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFL2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFL3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFL4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFL5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFR0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFR1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFR2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFR3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFR4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketFR5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRL0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRL1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRL2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRL3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRL4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRL5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRR0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRR1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRR2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRR3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRR4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisRocketRR5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostL0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostL1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostL2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostL3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostL4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostL5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostR0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostR1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostR2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostR3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostR4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisBoostR5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFL0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFL1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFL2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFL3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFL4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFL5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFR0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFR1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFR2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFR3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFR4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownFR5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRL0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRL1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRL2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRL3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRL4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRL5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRR0" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRR1" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRR2" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRR3" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRR4" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_IrisDownRR5" InstanceOf="KSACars_EldoIrisBlade_SubPart">
+      <Transform>
+        <Position X="0.20750" Y="0.00000" Z="0.40000" />
       </Transform>
     </SubPart>
 

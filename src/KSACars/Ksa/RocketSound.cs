@@ -53,7 +53,7 @@ internal sealed class RocketSound
     private void Update(Buggies.Entry e)
     {
         // The boost burns flat out, so it sounds as the lift rockets do at full throttle.
-        double burn = e.Boosting ? 1.0 : e.Rockets;
+        double burn = e.Boosting ? 1.0 : Math.Max(e.Rockets, e.Pressed ? 0.35 : 0.0);
         if (burn <= 0.0 || !KsaWorld.IsAlive(e.Craft))
         {
             Stop(e.Craft);

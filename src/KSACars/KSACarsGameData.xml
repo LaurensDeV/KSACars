@@ -219,6 +219,77 @@
         <LengthY M="0.16" />
         <LengthZ M="1.28" />
       </Box>
+      <!--
+        The XXL scoop's blade, 1.9 m tall: too tall to stow upright inside the hull, so each box is
+        declared lying down, thin along X, and the mod stands it up as it moves it out.
+      -->
+      <Box Id="KSACars_EldoScoopXXLMidCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.60" />
+        <LengthY M="1.60" />
+        <LengthZ M="1.90" />
+      </Box>
+      <Box Id="KSACars_EldoScoopXXLLeftCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.20" />
+        <LengthY M="2.55" />
+        <LengthZ M="1.90" />
+      </Box>
+      <Box Id="KSACars_EldoScoopXXLRightCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.20" />
+        <LengthY M="2.55" />
+        <LengthZ M="1.90" />
+      </Box>
+      <!--
+        The Mega scoop's blade, 3.3 m tall, in two tiers of 1.65 m: lying down, a tier is the most
+        that fits across the hull.
+      -->
+      <Box Id="KSACars_EldoScoopMegaMidLowCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.70" />
+        <LengthY M="2.50" />
+        <LengthZ M="1.65" />
+      </Box>
+      <Box Id="KSACars_EldoScoopMegaMidHighCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.70" />
+        <LengthY M="2.50" />
+        <LengthZ M="1.65" />
+      </Box>
+      <Box Id="KSACars_EldoScoopMegaLeftLowCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.25" />
+        <LengthY M="4.30" />
+        <LengthZ M="1.65" />
+      </Box>
+      <Box Id="KSACars_EldoScoopMegaLeftHighCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.25" />
+        <LengthY M="4.30" />
+        <LengthZ M="1.65" />
+      </Box>
+      <Box Id="KSACars_EldoScoopMegaRightLowCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.25" />
+        <LengthY M="4.30" />
+        <LengthZ M="1.65" />
+      </Box>
+      <Box Id="KSACars_EldoScoopMegaRightHighCollider">
+        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.25" />
+        <LengthY M="4.30" />
+        <LengthZ M="1.65" />
+      </Box>
       <Box Id="KSACars_EldoPadFLCollider">
         <LocationAsmb X="0.36" Y="1.604" Z="0.809" />
         <Collider2Asmb X="0" Y="0" Z="0" />

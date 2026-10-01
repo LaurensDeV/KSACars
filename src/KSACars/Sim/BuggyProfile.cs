@@ -14,11 +14,28 @@ public sealed record BuggyCorner(
     bool Driven);
 
 /// <summary>
-/// A scoop a car can carry on its nose: the subpart that is its blade, and where each of its colliders
+/// One of a scoop's collider boxes: where it goes while the scoop is on, and how it is turned there if
+/// it is declared lying down. Off, it is where the part declares it, turned as the part declares it.
+/// </summary>
+public sealed record ScoopCollider(string Id, double3 Deployed, doubleQuat? DeployedTurn = null);
+
+/// <summary>
+/// A scoop a car can carry on its nose: its name, what the panel calls its size, the subpart that is its blade, and where each of its colliders
 /// goes while it is on. Off, the blade is shrunk away inside the hull and the colliders sit where the
 /// part declares them, inside the hull's own.
 /// </summary>
-public sealed record ScoopProfile(string SubpartSuffix, double3 Stowed, (string ColliderId, double3 Deployed)[] Colliders);
+public sealed record ScoopProfile(string Name, string Size, string SubpartSuffix, double3 Stowed, ScoopCollider[] Colliders)
+{
+    /// <summary>
+    /// The turn that stands a box up as a blade. A box taller than the hull cannot be stowed upright
+    /// inside it, so it is declared lying down — thin along the part's up, long along its length, its
+    /// height across its width — and this lays its thickness along the car, its length across it and
+    /// its height up, then swings it <paramref name="yawRad"/> about the vertical for a swept wing.
+    /// </summary>
+    public static doubleQuat Upright(double yawRad) =>
+        doubleQuat.CreateFromAxisAngle(new double3(1, 0, 0), yawRad)
+        * doubleQuat.CreateFromAxisAngle(Vec.Unit(new double3(1, 1, 1)), 2.0 * Math.PI / 3.0);
+}
 
 /// <summary>
 /// A wheeled ground vehicle. KSA has no wheels, so everything here is the mod's: the springs hold the
@@ -84,8 +101,19 @@ public sealed record BuggyProfile
 
     public bool HasBoost => BoostNozzles.Length > 0;
 
-    /// <summary>The scoop this car can carry, or null.</summary>
-    public ScoopProfile? Scoop { get; init; }
+    /// <summary>
+    /// Where the downforce rockets' flames leave their ports on the bonnet and the boot, each pointing
+    /// straight up. A car with none cannot be pressed down.
+    /// </summary>
+    public double3[] DownNozzles { get; init; } = [];
+
+    public bool HasDownforce => DownNozzles.Length > 0;
+
+    /// <summary>The hatches its thrusters fire through; none on a car without thrusters.</summary>
+    public HatchProfile[] Hatches { get; init; } = [];
+
+    /// <summary>The scoops this car can carry, one at a time; none for a car without.</summary>
+    public ScoopProfile[] Scoops { get; init; } = [];
 
     /// <summary>The driver seat's eye point, as its <c>IVASeat</c> declares it.</summary>
     public required double3 DriverEye { get; init; }
@@ -190,18 +218,59 @@ public sealed record BuggyProfile
         HeadLamps = [new double3(0.74, 2.70, 0.77), new double3(0.74, 2.70, -0.77)],
         TailLamps = [new double3(0.55, -3.07, 0.72), new double3(0.55, -3.07, -0.72)],
         ColouredLenses = [("TailLens", 0xFF1408), ("MarkerLens", 0xFF8C14)],
-        // the lips of two ports on the tail panel, above the bumper
-        BoostNozzles = [new double3(0.74, -2.913, 0.70), new double3(0.74, -2.913, -0.70)],
-        // the blade's flat middle, and each wing at its own middle: swept forward 24 degrees
-        // and the boxes come down to 18 cm off the ground, which is what a small rock would pass under
-        Scoop = new ScoopProfile("Scoop", new double3(0.75, -0.18, 0.0),
+        // the lips of two nozzles on the tail panel, above the bumper
+        BoostNozzles = [new double3(0.74, -2.922, 0.70), new double3(0.74, -2.922, -0.70)],
+        // the lips of four nozzles, two on the bonnet and two on the boot
+        DownNozzles =
         [
-            ("KSACars_EldoScoopMidCollider", new double3(0.59, 2.82, 0.0)),
-            ("KSACars_EldoScoopLeftCollider", new double3(0.59, 3.256, 1.125)),
-            ("KSACars_EldoScoopRightCollider", new double3(0.59, 3.256, -1.125)),
-        ]),
-        // the lips of the four ports, 3.5 cm under the floor
-        RocketNozzles = Under(0.155, 0.85, -0.85, 0.55),
+            new double3(1.027, 1.70, 0.45), new double3(1.027, 1.70, -0.45),
+            new double3(0.999, -2.50, 0.45), new double3(0.999, -2.50, -0.45),
+        ],
+        // the centre of each hole and the way the skin faces there, fitted to the body mesh
+        Hatches =
+        [
+            new("RocketFL", new double3(0.1944, 0.85, 0.55), new double3(-0.9984, 0.0567, 0), ThrusterGroup.Lift),
+            new("RocketFR", new double3(0.1944, 0.85, -0.55), new double3(-0.9984, 0.0567, 0), ThrusterGroup.Lift),
+            new("RocketRL", new double3(0.19, -0.85, 0.55), new double3(-1, 0, 0), ThrusterGroup.Lift),
+            new("RocketRR", new double3(0.19, -0.85, -0.55), new double3(-1, 0, 0), ThrusterGroup.Lift),
+            new("BoostL", new double3(0.74, -2.878, 0.7), new double3(0, -1, 0), ThrusterGroup.Boost),
+            new("BoostR", new double3(0.74, -2.878, -0.7), new double3(0, -1, 0), ThrusterGroup.Boost),
+            new("DownFL", new double3(0.9827, 1.7, 0.45), new double3(0.9978, 0.0623, 0.0226), ThrusterGroup.Down),
+            new("DownFR", new double3(0.9827, 1.7, -0.45), new double3(0.9978, 0.0623, -0.0226), ThrusterGroup.Down),
+            new("DownRL", new double3(0.9549, -2.5, 0.45), new double3(0.9987, -0.05, 0), ThrusterGroup.Down),
+            new("DownRR", new double3(0.9549, -2.5, -0.45), new double3(0.9987, -0.05, 0), ThrusterGroup.Down),
+        ],
+        // each blade's flat middle, and each wing at its own middle; the first scoop's boxes come down to
+        // 18 cm off the ground, which is what a small rock would pass under
+        Scoops =
+        [
+            new ScoopProfile("Scoop", "Default", "Scoop", new double3(0.75, -0.18, 0.0),
+            [
+                new("KSACars_EldoScoopMidCollider", new double3(0.59, 2.82, 0.0)),
+                new("KSACars_EldoScoopLeftCollider", new double3(0.59, 3.256, 1.125)),
+                new("KSACars_EldoScoopRightCollider", new double3(0.59, 3.256, -1.125)),
+            ]),
+            // 6 m across and 2.25 m tall, its wings swept 26 degrees: boxes 1.9 m tall, from 20 cm off the ground
+            new ScoopProfile("Scoop XXL", "XL", "ScoopXXL", new double3(0.65, -0.18, 0.0),
+            [
+                new("KSACars_EldoScoopXXLMidCollider", new double3(1.15, 2.86, 0.0), ScoopProfile.Upright(0.0)),
+                new("KSACars_EldoScoopXXLLeftCollider", new double3(1.15, 3.57, 1.875), ScoopProfile.Upright(-0.4538)),
+                new("KSACars_EldoScoopXXLRightCollider", new double3(1.15, 3.57, -1.875), ScoopProfile.Upright(0.4538)),
+            ]),
+            // 10 m across and 3.7 m tall, its wings swept 28 degrees. Its boxes are in two tiers, because a
+            // box as tall as the blade would not fit across the hull lying down.
+            new ScoopProfile("Scoop Mega", "XXL", "ScoopMega", new double3(0.65, -0.18, 0.0),
+            [
+                new("KSACars_EldoScoopMegaMidLowCollider", new double3(1.025, 2.91, 0.0), ScoopProfile.Upright(0.0)),
+                new("KSACars_EldoScoopMegaMidHighCollider", new double3(2.675, 2.91, 0.0), ScoopProfile.Upright(0.0)),
+                new("KSACars_EldoScoopMegaLeftLowCollider", new double3(1.025, 4.06, 3.10), ScoopProfile.Upright(-0.4887)),
+                new("KSACars_EldoScoopMegaLeftHighCollider", new double3(2.675, 4.06, 3.10), ScoopProfile.Upright(-0.4887)),
+                new("KSACars_EldoScoopMegaRightLowCollider", new double3(1.025, 4.06, -3.10), ScoopProfile.Upright(0.4887)),
+                new("KSACars_EldoScoopMegaRightHighCollider", new double3(2.675, 4.06, -3.10), ScoopProfile.Upright(0.4887)),
+            ]),
+        ],
+        // the lips of four nozzles, 4.4 cm under the floor once their hatches are open
+        RocketNozzles = Under(0.146, 0.85, -0.85, 0.55),
         SpringHz = 1.05,
         DampingRatio = 0.26,
         BumpTravel = 0.12,

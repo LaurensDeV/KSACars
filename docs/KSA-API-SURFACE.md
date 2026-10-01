@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-148 types and 337 members across 6 assemblies.
+148 types and 338 members across 6 assemblies.
 
 ## BepuUtilities
 
@@ -286,6 +286,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.ColliderModule
 
 - `Brutal.Numerics.double3 PositionPartAsmb`
+- `Brutal.Numerics.doubleQuat Collider2PartAsmb`
 - `bool NeedsColliderUpdate`
 
 ### KSA.Constants
