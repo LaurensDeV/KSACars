@@ -37,8 +37,12 @@ none of it has been seen as **KSACars** yet:
 - [x] Rockets: through the bridge's `lift` the Eldorado climbs at 0.6, holds its climb rate at 0.5,
       stays level, leans forward to 9 m/s on the throttle key and turns on the steer key
 - [x] Four flames under the Eldorado while the rockets burn, longer at full throttle than at half
-- [x] Four exhaust ports on the Eldorado's underside, with the flames leaving them; the buggy has
-      no rockets and refuses the bridge's `lift`
+- [x] The buggy has no rockets and refuses the bridge's `lift`
+- [x] The irises over the thrusters, on Earth from the bridge: shut, nothing to be seen on the bonnet
+      or the tail panel; the four under the floor and the four on the bonnet and boot open onto their
+      nozzles, with flames
+- [ ] The two irises on the tail panel seen open, any iris seen opening or closing by a player, and
+      held still by a pause
 - [ ] The rockets heard, the flames dying away when cut, and the flames at night and in vacuum
 - [ ] The rockets on KSA's keys, by a player: Z and X light and cut them, Up and Down move the
       throttle, W / S and A / D lean and bank in the air, Q / E turn
@@ -50,6 +54,16 @@ none of it has been seen as **KSACars** yet:
 - [ ] The boost on the Shift key, by a player, and heard
 - [x] The scoop shown on the Eldorado's nose on Luna from the bridge's `scoop`, and the car driving
       with it on at 7 m/s over flat ground
+- [x] The downward thrusters from the bridge on Luna: the car pulling to 12 m/s in five seconds with
+      them on, against about 4 without
+- [x] The hover from the bridge on Earth: climbing at 10 m/s, the downward thrusters switched on stop
+      it within three seconds and hold it at 48 to 50 m for ten more, leaning forward to 9 m/s meanwhile
+- [ ] The hover by a player, on Luna, and started from the ground
+- [ ] The downward thrusters on the R key, by a player
+- [x] The Scoop XXL shown on the Eldorado's nose on Luna from the bridge, the car level and not
+      scraping with it on, and driving with it
+- [ ] The panel's Scoop size choice (None / Default / XL / XXL), a rock pushed by the XXL, and its colliders
+      back inside the hull when it is switched off
 - [ ] The craft mover: a car picked up with a click and set down on the ground clicked next, with
       the rings drawn at its feet and at the target
 - [ ] The Rock weight slider: a boulder that would not move at 100% pushed at 2%, and KSA's weights
