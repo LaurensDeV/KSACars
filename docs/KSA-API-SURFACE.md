@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-119 types and 273 members across 5 assemblies.
+121 types and 276 members across 5 assemblies.
 
 ## BepuUtilities
 
@@ -372,6 +372,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.ManualControlInputs
 
 - `bool EngineOn`
+- `float EngineThrottle`
 
 ### KSA.MassProperties
 
@@ -563,6 +564,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double GetElapsedSeconds()`
 - `double GetSimulationSpeed()`
 - `double get_SimulationSpeed()`
+- `void DestroyVehicleFromEvent(KSA.Vehicle, KSA.VehicleDestructionEvent)`
 - `void SetSimulationSpeed(KSA.SimSpeed)`
 
 ### KSA.UniverseTime
@@ -596,6 +598,14 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void TeleportToLocation(KSA.Celestial, double, double)`
 - `void UpdateAfterPartTreeModification()`
 - `void UpdateSeatedCrewRenderData(KSA.IViewport, int)`
+
+### KSA.VehicleDestructionCause
+
+*referenced as a type only*
+
+### KSA.VehicleDestructionEvent
+
+- `KSA.VehicleDestructionCause Cause`
 
 ### KSA.VehicleEditor
 

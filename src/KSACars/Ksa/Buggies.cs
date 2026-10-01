@@ -90,6 +90,7 @@ internal sealed class Buggies
 
         foreach (Entry e in Active.Values)
         {
+            if (e.Drive.Profile.HasRockets) KsaWorld.ShowThrottle(e.Craft, e.Throttle);
             if (e.Part.LightSwitch is not { } lamps) continue;
             (e.Beam, lamps.LightIsActive) = Headlights.Reconcile(e.Beam, lamps.LightIsActive, e.SwitchSeen);
             e.SwitchSeen = lamps.LightIsActive;

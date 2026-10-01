@@ -53,6 +53,24 @@ internal static class KsaWorld
         }
     }
 
+    /// <summary>
+    /// Puts a throttle on a craft's own throttle gauge. KSA reads the gauge after the GUI pass and
+    /// clamps the value back in the next physics window, so this is written every frame and never read.
+    /// </summary>
+    public static void ShowThrottle(Vehicle craft, double throttle)
+    {
+        try
+        {
+            if (ManualInputs?.GetValue(craft) is not ManualControlInputs inputs) return;
+            inputs.EngineThrottle = (float)Math.Clamp(throttle, 0.0, 1.0);
+            ManualInputs.SetValue(craft, inputs);
+        }
+        catch
+        {
+            // The gauge reads full, as it does on any craft with no engine.
+        }
+    }
+
     /// <summary>Which of the throttle keys are held on a craft.</summary>
     public static (bool Up, bool Down) ThrottleKeys(Vehicle craft)
     {

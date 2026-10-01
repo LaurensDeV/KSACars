@@ -44,6 +44,7 @@ public sealed class KSACarsMod
         LightsHook.Install();
         LensColourHook.Install();
         FlamesHook.Install();
+        CrashHook.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -126,6 +127,7 @@ public sealed class KSACarsMod
         LightsHook.Remove();
         LensColourHook.Remove();
         FlamesHook.Remove();
+        CrashHook.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -148,6 +150,7 @@ public sealed class KSACarsMod
         LightsHook.Remove();
         LensColourHook.Remove();
         FlamesHook.Remove();
+        CrashHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }
