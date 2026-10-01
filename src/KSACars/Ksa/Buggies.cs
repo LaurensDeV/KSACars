@@ -27,6 +27,8 @@ internal sealed class Buggies
         public DriveInput Input { get; set; }
         public bool Stepped { get; set; }
         public bool Railed { get; set; }
+        public double StepSeconds { get; set; }
+        public string Skipped { get; set; } = "";
         public double[] HubHeights { get; } = new double[profile.Corners.Length];
         public double Level { get; set; } = 1.0;
         public double SinceLog { get; set; }
@@ -105,7 +107,14 @@ internal sealed class Buggies
         {
             if (!KsaWorld.IsAlive(v) || Find(v)?.Part != e.Part) (gone ??= []).Add(v);
         }
-        if (gone is not null) foreach (Vehicle v in gone) Active.Remove(v);
+        if (gone is not null)
+        {
+            foreach (Vehicle v in gone)
+            {
+                Active.Remove(v);
+                RailsHook.Forget(v);
+            }
+        }
 
         bool scooping = false;
         bool pushers = false;
@@ -352,6 +361,10 @@ internal sealed class Buggies
             ["hub_height_m"] = e.HubHeights.Select(t => Math.Round(t, 3)).ToArray(),
             ["level"] = Math.Round(e.Level, 4),
             ["on_rails"] = e.Railed,
+            ["skipped"] = e.Skipped,
+            ["situation"] = craft.Situation.ToString(),
+            ["rails_hook"] = RailsHook.Installed,
+            ["step_ms"] = Math.Round(e.StepSeconds * 1000.0, 1),
             ["lights"] = e.Beam.ToString().ToLowerInvariant(),
             ["scoop"] = e.ScoopOn ? e.Drive.Profile.Scoops[e.Scoop].Name : "off",
             ["boosting"] = e.Boosting,
@@ -541,16 +554,24 @@ internal sealed class Buggies
         // KSA's own engine keys: start and shutdown light and cut the rockets, and the throttle keys move
         // the mod's throttle, because KSA pins its own at full on a craft with no engine.
         (bool more, bool less) = KsaWorld.ThrottleKeys(craft);
-        if (dt > 0.0 && dt <= 0.1) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
+        if (dt > 0.0) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
         e.Lit = e.Drive.Profile.HasRockets && (KsaWorld.EngineOn(craft) ?? e.Lit);
         e.HatchWanted[(int)ThrusterGroup.Lift] = e.Lit;
         e.HatchWanted[(int)ThrusterGroup.Down] = e.Downforce && e.Drive.Profile.HasDownforce;
         e.Rockets = e.Lit && e.Ready(ThrusterGroup.Lift) ? e.Throttle : 0.0;
         e.Pressed = e.HatchWanted[(int)ThrusterGroup.Down] && e.Ready(ThrusterGroup.Down);
 
+        // KSA puts a craft out of the air onto its orbit unless an engine of its own is firing.
+        bool burning = e.Rockets > 0.0 || e.Boosting;
+        RailsHook.Mark(craft, burning);
+
         // The engine integrates a frame as one impulse followed by its own sub-steps, so a spring is
-        // only as stable as the frame is short. Under warp the car is left to its colliders.
-        if (!(dt > 0.0) || dt > 0.1) return;
+        // only as stable as the frame is short. Under warp the springs are left out and the car rests on
+        // its colliders; the rockets are a plain push, good for a step of any length, and carry on.
+        if (!(dt > 0.0)) return;
+        bool warped = dt > 0.1;
+        e.StepSeconds = dt;
+        e.Skipped = !craft.HasPhysicsBubble ? "no physics bubble" : craft.Parent is not Celestial ? "no parent body" : "";
         if (!craft.HasPhysicsBubble || craft.Parent is not Celestial body) return;
 
         bool railed = craft.Situation.IsOnRails();
@@ -563,6 +584,18 @@ internal sealed class Buggies
         if (railed && idle && !righting) return;
 
         PhysicsStates states = craft.GetPhysicsStatesMutable();
+
+        // A car coasting on its orbit is rebuilt from it, as KSA rebuilds a craft it is about to split;
+        // one standing on the ground is on rails too, held to the ground and not to an orbit, and is
+        // only woken, below.
+        bool coasting = railed && !craft.Situation.HasAnyContact();
+        if (coasting)
+        {
+            if (!burning) return;
+            Orbit orbit = craft.Orbit;
+            states.UpdateFromAnalytic(orbit, in orbit.StateVectors, craft.Body2Cce, craft.BodyRates, Situation.Maneuvering);
+            railed = false;
+        }
 
         PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic,
                                    out double3 positionCcf, out double3 velocityCcf, out doubleQuat body2Ccf);
@@ -633,8 +666,11 @@ internal sealed class Buggies
 
         // Both sets of rockets at once hold the car where it is, so neither pushes on its own.
         bool hovering = e.Pressed && e.Rockets > 0.0;
-        bool pressed = e.Pressed && !hovering;
-        DriveImpulse impulse = e.Drive.Step(e.Input, contacts, hubs, up, forward, mass, Downforce.Load(pressed, gravity), air, dt);
+        // Pressing the car down is for the tyres' grip, which under warp there is none of.
+        bool pressed = e.Pressed && !hovering && !warped;
+        DriveImpulse impulse = warped
+            ? default
+            : e.Drive.Step(e.Input, contacts, hubs, up, forward, mass, Downforce.Load(pressed, gravity), air, dt);
         e.Stepped = true;
         e.Level = contacts[0].Valid ? Vec.Dot(up, contacts[0].GroundUp) : e.Level;
         e.YawRate = Vec.Dot(spinBody, up);
@@ -653,7 +689,8 @@ internal sealed class Buggies
                          (inverse.ZX * l.X) + (inverse.ZY * l.Y) + (inverse.ZZ * l.Z));
 
         // The wheels are off the ground, so the keys that drove them fly the car instead.
-        bool airborne = !e.Drive.Grounded.Any(g => g);
+        // Under warp the wheels are not stepped, so the hull's own contact says whether it is down.
+        bool airborne = warped ? !e.Scraping : !e.Drive.Grounded.Any(g => g);
         double3 groundUpBody = Vec.Unit(positionCcf).Transform(ccf2Body);
         LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
                                   groundUpBody, spinBody, gravity, dt);

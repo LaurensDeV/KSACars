@@ -55,9 +55,14 @@ public static class Lift
     }
 
     // Stiff enough to hold the car level against a kick, damped just short of critical so it does not rock.
+    // Applied as a spin to aim for and the share of the way there a step covers, which for a short step
+    // is a spring and a damper and for a long one cannot overshoot.
     private const double HoldStiffness = 12.0;
     private const double HoldDamping = 6.0;
     private const double YawDamping = 4.0;
+
+    // The most of a lean one step may take out, however long the step.
+    private const double MostOfTheWay = 0.8;
 
     /// <summary>
     /// One step. On the ground only the thrust is given: the springs hold the car's attitude there, and
@@ -81,8 +86,9 @@ public static class Lift
 
         double yawRate = Vec.Dot(spin, up);
         double3 tumble = spin - (up * yawRate);
-        double3 turn = (Vec.Cross(up, wanted) * HoldStiffness) - (tumble * HoldDamping)
-                       + (up * (YawDamping * ((Math.Clamp(input.Yaw, -1.0, 1.0) * YawRateRadPerSec) - yawRate)));
-        return new LiftPush(push, turn * dt);
+        double3 righting = Vec.Cross(up, wanted) * Math.Min(HoldStiffness / HoldDamping, MostOfTheWay / dt);
+        double3 turn = ((righting - tumble) * (1.0 - Math.Exp(-HoldDamping * dt)))
+                       + (up * (((Math.Clamp(input.Yaw, -1.0, 1.0) * YawRateRadPerSec) - yawRate) * (1.0 - Math.Exp(-YawDamping * dt))));
+        return new LiftPush(push, turn);
     }
 }
