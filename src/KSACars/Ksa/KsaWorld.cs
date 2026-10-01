@@ -17,6 +17,57 @@ internal static class KsaWorld
     /// <summary>Earth's sea-level air (kg/m^3), the one reference every density ratio here is a multiple of.</summary>
     public const double ReferenceAirDensityKgPerM3 = 1.225;
 
+    // A craft's engine switch and its held throttle keys are private to it, and KSA has no accessor for
+    // either. Null when KSA has renamed them, and then a car's rockets are worked from its panel alone.
+    private static readonly FieldInfo? ManualInputs =
+        typeof(Vehicle).GetField("_manualControlInputs", BindingFlags.NonPublic | BindingFlags.Instance) is { } f
+        && f.FieldType == typeof(ManualControlInputs) ? f : null;
+
+    private static readonly FieldInfo? EngineKeys =
+        typeof(Vehicle).GetField("_engineFlags", BindingFlags.NonPublic | BindingFlags.Instance) is { } f
+        && f.FieldType == typeof(EngineFlags) ? f : null;
+
+    /// <summary>Whether the engine keys can be read off a craft at all.</summary>
+    public static bool EngineControlsReachable => ManualInputs is not null && EngineKeys is not null;
+
+    /// <summary>Whether a craft's engines are switched on, as the engine start and shutdown keys leave it.</summary>
+    public static bool? EngineOn(Vehicle craft)
+    {
+        try { return ManualInputs?.GetValue(craft) is ManualControlInputs inputs ? inputs.EngineOn : null; }
+        catch { return null; }
+    }
+
+    /// <summary>Switches a craft's engines on or off, as the engine start and shutdown keys do.</summary>
+    public static bool TrySetEngineOn(Vehicle craft, bool on)
+    {
+        try
+        {
+            if (ManualInputs?.GetValue(craft) is not ManualControlInputs inputs) return false;
+            inputs.EngineOn = on;
+            ManualInputs.SetValue(craft, inputs);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Which of the throttle keys are held on a craft.</summary>
+    public static (bool Up, bool Down) ThrottleKeys(Vehicle craft)
+    {
+        try
+        {
+            return EngineKeys?.GetValue(craft) is EngineFlags flags
+                ? ((flags & EngineFlags.ThrottleUp) != 0, (flags & EngineFlags.ThrottleDown) != 0)
+                : (false, false);
+        }
+        catch
+        {
+            return (false, false);
+        }
+    }
+
     // The field of view KSA's main camera starts with, for when it cannot be read.
     private const double DefaultFovDeg = 50.0;
 

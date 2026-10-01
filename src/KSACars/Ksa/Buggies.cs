@@ -33,15 +33,22 @@ internal sealed class Buggies
         public KittenRenderable? HandsOn { get; set; }
         public DriverHands? Hands { get; set; }
         public bool Scraping { get; set; }
-        public double Lift { get; set; }
+        public double SpringLift { get; set; }
         public double YawRate { get; set; }
         public double SideSpeed { get; set; }
         public BeamSetting Beam { get; set; }
         public bool SwitchSeen { get; set; }
+        /// <summary>The throttle the rockets burn at once lit, and what they are giving now.</summary>
+        public double Throttle { get; set; } = Lift.DefaultThrottle;
+        public double Rockets { get; set; }
+        public bool Lit { get; set; }
+        public double Turn { get; set; }
+        public VolumetricExhaustInstance?[]? Flames { get; set; }
+        public double Climb { get; set; }
     }
 
     // Inputs held by the bridge for so many simulated seconds, ahead of the keys.
-    private static readonly Dictionary<Vehicle, (DriveInput Input, double Seconds)> Held = [];
+    private static readonly Dictionary<Vehicle, (DriveInput Input, double Turn, double Seconds)> Held = [];
 
     // Read by the physics prefix, which has only the vehicle to go on.
     private static readonly Dictionary<Vehicle, Entry> Active = [];
@@ -97,10 +104,10 @@ internal sealed class Buggies
     }
 
     /// <summary>Holds a buggy's throttle and steering for so many simulated seconds, whoever is flying.</summary>
-    public static bool Hold(Vehicle craft, DriveInput input, double seconds)
+    public static bool Hold(Vehicle craft, DriveInput input, double seconds, double turn = 0.0)
     {
         if (!Active.ContainsKey(craft)) return false;
-        if (seconds > 0.0) Held[craft] = (input, seconds);
+        if (seconds > 0.0) Held[craft] = (input, turn, seconds);
         else Held.Remove(craft);
         return true;
     }
@@ -162,6 +169,75 @@ internal sealed class Buggies
         }
     }
 
+    private const string FlameTemplate = "EngineAAuxiliary";
+
+    /// <summary>
+    /// A flying car's flames, handed to KSA's plume renderer beside the craft's own engines. No engine is
+    /// behind them: the gas each is drawn from is <see cref="Lift.Flame"/>'s, sized by the throttle.
+    /// </summary>
+    public static void Flames(Vehicle craft, Camera camera, VolumetricExhaustRenderer renderer, double frameDeltaTime)
+    {
+        if (Active.Count == 0 || renderer.Disabled || !Active.TryGetValue(craft, out Entry? e)) return;
+        if (e.Rockets <= 0.0 && e.Flames is null) return;
+
+        double3[] nozzles = e.Drive.Profile.RocketNozzles;
+        e.Flames ??= new VolumetricExhaustInstance?[nozzles.Length];
+
+        bool burning = e.Rockets > 0.0;
+        FlameGas f = Lift.Flame(e.Rockets);
+        GasProperties gas = new() { Gamma = f.Gamma, SpecificGasConstant = f.SpecificGasConstant };
+        GasConditions inlet = new() { Pressure = f.ChamberPressure, Temperature = f.ChamberTemperature };
+        GasConditions exhaust = new() { Pressure = f.ExitPressure, Temperature = f.ExitTemperature };
+
+        double3 at = KsaWorld.PositionEcl(craft);
+        double air = KsaWorld.AirDensityRatioAt(craft, at);
+        float ambient = (float)(air * 101325.0);
+        float airDensity = (float)(air * KsaWorld.ReferenceAirDensityKgPerM3);
+        float3 airVelocity = craft.Parent is { } parent
+            ? float3.Pack(craft.GetSurfaceVelocityCci().Transform(parent.GetCci2Cce()))
+            : float3.Zero;
+
+        double simDt = frameDeltaTime * Universe.GetSimulationSpeed();
+        double now = Universe.GetElapsedSeconds();
+        double3 craftEgo = camera.GetPositionEgo(craft);
+        doubleQuat body2Cce = craft.Body2Cce;
+        doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;
+        float3 down = float3.Pack((part2Asmb * new double3(-1, 0, 0)).Transform(body2Cce));
+
+        bool any = false;
+        for (int i = 0; i < nozzles.Length; i++)
+        {
+            if (e.Flames[i] is not { } flame)
+            {
+                VolumetricExhaustReference reference = new() { Id = FlameTemplate };
+                reference.Load();
+                flame = e.Flames[i] = new VolumetricExhaustInstance(reference);
+            }
+            if (flame.Template is not { } template) continue;
+
+            // A flame going out keeps the shape it last had, which is what its dying is drawn from.
+            if (burning)
+            {
+                flame.LastPlumeData = RocketNozzle.ComputePlumeData(
+                    in gas, in exhaust, in inlet, inlet.Pressure, f.ExhaustVelocity, ambient, f.ExitRadius,
+                    f.ExitRadius / MathF.Sqrt(f.AreaRatio), RocketDesign.SolveMachNumberFromAreaRatio(gas, f.AreaRatio),
+                    RocketNozzle.ComputeMinGasVisibilityDensity(template, f.ExitRadius));
+            }
+
+            double3 nozzle = e.Part.PositionVehicleAsmb + (part2Asmb * nozzles[i]);
+            float3 where = float3.Pack(craftEgo + craft.PosAsmbToBody(nozzle).Transform(body2Cce));
+            flame.UpdateState(now, burning, simDt, in gas, in exhaust, f.ExhaustVelocity, where, down, where, down,
+                              ambient, airVelocity, airDensity);
+            if (!flame.IsLive) continue;
+
+            any = true;
+            renderer.AddInstance(flame, default, in ExhaustAxialFade.NoFadeOut, in ExhaustDiamondFade.None);
+        }
+
+        // Out and burnt down: the instances go, and the next burn starts from cold.
+        if (!burning && !any) e.Flames = null;
+    }
+
     /// <summary>The colour a subpart's lenses glow, as 0xRRGGBB, or null for KSA's own white.</summary>
     public static uint? LensColour(Part part)
     {
@@ -176,6 +252,13 @@ internal sealed class Buggies
             return null;
         }
         return null;
+    }
+
+    /// <summary>Lights or cuts a car's rockets, as KSA's engine start and shutdown keys do.</summary>
+    public static void Ignite(Entry e, bool on)
+    {
+        e.Lit = on;
+        KsaWorld.TrySetEngineOn(e.Craft, on);
     }
 
     /// <summary>What a buggy is doing, for the bridge; null when the craft is not one.</summary>
@@ -198,6 +281,11 @@ internal sealed class Buggies
             ["level"] = Math.Round(e.Level, 4),
             ["on_rails"] = e.Railed,
             ["lights"] = e.Beam.ToString().ToLowerInvariant(),
+            ["lift"] = Math.Round(e.Rockets, 2),
+            ["lift_throttle"] = Math.Round(e.Throttle, 2),
+            ["rockets_lit"] = e.Lit,
+            ["climb_ms"] = Math.Round(e.Climb, 2),
+            ["flames_live"] = e.Flames?.Count(f => f is { IsLive: true }) ?? 0,
             ["scraping"] = e.Scraping,
             ["yaw_dps"] = Math.Round(e.YawRate * 180.0 / Math.PI, 1),
             ["sideways_ms"] = Math.Round(e.SideSpeed, 2),
@@ -352,12 +440,21 @@ internal sealed class Buggies
     {
         Vehicle craft = e.Craft;
         e.Input = ReadInput(craft);
-        if (Held.TryGetValue(craft, out (DriveInput Input, double Seconds) held))
+        e.Turn = ReadTurn(craft);
+        if (Held.TryGetValue(craft, out (DriveInput Input, double Turn, double Seconds) held))
         {
             e.Input = held.Input;
+            e.Turn = held.Turn;
             if (held.Seconds - dt <= 0.0) Held.Remove(craft);
-            else Held[craft] = (held.Input, held.Seconds - dt);
+            else Held[craft] = (held.Input, held.Turn, held.Seconds - dt);
         }
+
+        // KSA's own engine keys: start and shutdown light and cut the rockets, and the throttle keys move
+        // the mod's throttle, because KSA pins its own at full on a craft with no engine.
+        (bool more, bool less) = KsaWorld.ThrottleKeys(craft);
+        if (dt > 0.0 && dt <= 0.1) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
+        e.Lit = KsaWorld.EngineOn(craft) ?? e.Lit;
+        e.Rockets = e.Lit ? e.Throttle : 0.0;
 
         // The engine integrates a frame as one impulse followed by its own sub-steps, so a spring is
         // only as stable as the frame is short. Under warp the car is left to its colliders.
@@ -366,7 +463,7 @@ internal sealed class Buggies
 
         bool railed = craft.Situation.IsOnRails();
         e.Railed = railed;
-        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0;
+        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && e.Rockets <= 0.0;
 
         // KSA only rails a car that has stood still, so one on rails with nobody at the wheel is parked:
         // it is exactly where it was, and costs nothing. Its speed from before it stopped says nothing.
@@ -446,8 +543,9 @@ internal sealed class Buggies
         e.Stepped = true;
         e.Level = contacts[0].Valid ? Vec.Dot(up, contacts[0].GroundUp) : e.Level;
         e.YawRate = Vec.Dot(spinBody, up);
-        e.Lift = Vec.Dot(impulse.Linear, up) / (mass * gravity * dt);
+        e.SpringLift = Vec.Dot(impulse.Linear, up) / (mass * gravity * dt);
         e.SideSpeed = Vec.Dot(velocityBody, Vec.Cross(up, forward));
+        e.Climb = Vec.Dot(velocityCcf, Vec.Unit(positionCcf));
         // Whether any collider is on the ground: the tyres are not colliders, so this is the hull scraping.
         try { e.Scraping = craft.Situation.HasTerrainContact(); } catch { e.Scraping = false; }
         LogWhileDriven(e, dt);
@@ -458,6 +556,13 @@ internal sealed class Buggies
         double3 dw = new((inverse.XX * l.X) + (inverse.YX * l.Y) + (inverse.ZX * l.Z),
                          (inverse.YX * l.X) + (inverse.YY * l.Y) + (inverse.ZY * l.Z),
                          (inverse.ZX * l.X) + (inverse.ZY * l.Y) + (inverse.ZZ * l.Z));
+
+        // The wheels are off the ground, so the keys that drove them fly the car instead.
+        bool airborne = !e.Drive.Grounded.Any(g => g);
+        LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
+                                  Vec.Unit(positionCcf).Transform(ccf2Body), spinBody, gravity, dt);
+        dv += lift.Velocity;
+        dw += lift.Spin;
         if (!Vec.IsFinite(dv) || !Vec.IsFinite(dw)) return;
 
         states.Kinematic.VelocityPhys += dv.Transform(body2Phys);
@@ -485,7 +590,7 @@ internal sealed class Buggies
                  + $"travel {string.Join(" ", d.Travel.Select(t => t.ToString("F3")))}, "
                  + $"hubs {string.Join(" ", e.HubHeights.Select(t => t.ToString("F2")))} m, level {e.Level:F3}, "
                  + $"yaw {e.YawRate * 180.0 / Math.PI:F0} deg/s, sideways {e.SideSpeed:F1} m/s, step {dt * 1000.0:F1} ms, "
-                 + $"lift {e.Lift:F2} g{(e.Scraping ? ", SCRAPING" : "")}");
+                 + $"lift {e.SpringLift:F2} g{(e.Scraping ? ", SCRAPING" : "")}");
     }
 
     // The craft's own held controls, so the player's bindings carry over: the pitch keys are the
@@ -501,6 +606,16 @@ internal sealed class Buggies
         double steer = (flags.HasFlag(ThrusterMapFlags.YawLeft) ? 1.0 : 0.0)
                        - (flags.HasFlag(ThrusterMapFlags.YawRight) ? 1.0 : 0.0);
         return new DriveInput(throttle, steer);
+    }
+
+    // The roll keys, which turn a car in the air: its pitch and yaw keys lean it there.
+    private static double ReadTurn(Vehicle craft)
+    {
+        ThrusterMapFlags flags;
+        try { flags = craft.GetThrusterFlags(); }
+        catch { return 0.0; }
+
+        return (flags.HasFlag(ThrusterMapFlags.RollLeft) ? 1.0 : 0.0) - (flags.HasFlag(ThrusterMapFlags.RollRight) ? 1.0 : 0.0);
     }
 
     /// <summary>Puts the wheels, arms, coil-overs and steering wheel where the drive last left them.</summary>

@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-101 types and 235 members across 5 assemblies.
+120 types and 274 members across 5 assemblies.
 
 ## BepuUtilities
 
@@ -47,6 +47,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 Cross(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 Unpack(ref Brutal.Numerics.float3, Float)`
+- `Brutal.Numerics.double3 get_Zero()`
 - `Brutal.Numerics.double3 op_Addition(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 op_Division(Brutal.Numerics.double3, double)`
 - `Brutal.Numerics.double3 op_Multiply(Brutal.Numerics.double3, double)`
@@ -99,6 +100,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### Brutal.Numerics.float3
 
 - `Brutal.Numerics.float3 Pack(ref Brutal.Numerics.double3, Float)`
+- `Brutal.Numerics.float3 get_Zero()`
 - `Brutal.Numerics.float3 op_UnaryNegation(Brutal.Numerics.float3)`
 - `void .ctor(float, float, float)`
 
@@ -121,6 +123,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
 - `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `bool RadioButton(Brutal.ImGuiApi.ImString, bool)`
+- `bool SliderFloat(Brutal.ImGuiApi.ImString, ref float, float, float, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
 - `void End()`
 - `void SameLine(float, float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
@@ -128,6 +131,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void TextDisabled(Brutal.ImGuiApi.ImString)`
 
 ### Brutal.ImGuiApi.ImGuiCond
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiSliderFlags
 
 *referenced as a type only*
 
@@ -240,9 +247,30 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `bool PerformEvaForSeat(KSA.Vehicle, KSA.IVASeat)`
 
+### KSA.EngineFlags
+
+*referenced as a type only*
+
+### KSA.ExhaustAxialFade
+
+- `KSA.ExhaustAxialFade NoFadeOut`
+
+### KSA.ExhaustBendTarget
+
+*referenced as a type only*
+
+### KSA.ExhaustDiamondFade
+
+- `KSA.ExhaustDiamondFade None`
+
+### KSA.ExhaustSubmission
+
+*referenced as a type only*
+
 ### KSA.GameAudio
 
 - `KSA.Camera GetAudioCamera()`
+- `void PlaySound(KSA.SoundEvent, KSA.SpatialAudio, ref KSA.IChannel, KSA.IAudio, float, bool)`
 
 ### KSA.GameSave
 
@@ -253,13 +281,29 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void LoadSaveGame(string)`
 - `void MakeUncompressedSave(string)`
 
+### KSA.GasConditions
+
+- `float Pressure`
+- `float Temperature`
+
+### KSA.GasProperties
+
+- `float Gamma`
+- `float SpecificGasConstant`
+
 ### KSA.IAnimProcessor
+
+*referenced as a type only*
+
+### KSA.IAudio
 
 *referenced as a type only*
 
 ### KSA.IChannel
 
 - `bool IsPlaying()`
+- `void SetParameter(KSA.KeyHash, float)`
+- `void SetPaused(bool)`
 - `void SetSpatialAudio(KSA.SpatialAudio)`
 - `void Stop(bool)`
 - `void set_PitchMultiplier(float)`
@@ -272,6 +316,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.IGameViewport
 
 - `KSA.OrbitController get_OrbitController()`
+- `float get_IvaAudio()`
 
 ### KSA.IOrbiter
 
@@ -281,6 +326,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 GetAngularVelocityCce()`
 - `Brutal.Numerics.doubleQuat GetCce2Cci()`
+- `Brutal.Numerics.doubleQuat GetCci2Cce()`
 - `System.Collections.Generic.List`1<KSA.IOrbiter> get_Children()`
 - `double get_Mu()`
 
@@ -327,6 +373,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.LookupCollection`1
 
 *referenced as a type only*
+
+### KSA.ManualControlInputs
+
+- `bool EngineOn`
 
 ### KSA.MassProperties
 
@@ -400,6 +450,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void GetStatesCcf(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void GetStatesCci(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 
+### KSA.PlumeData
+
+*referenced as a type only*
+
 ### KSA.PowerConsumer
 
 - `bool LightIsActive`
@@ -437,6 +491,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.DensityReference Density`
 - `KSA.DistanceReference Level`
 
+### KSA.RocketDesign
+
+- `float SolveMachNumberFromAreaRatio(KSA.GasProperties, double)`
+
+### KSA.RocketNozzle
+
+- `KSA.PlumeData ComputePlumeData(ref KSA.GasProperties, ref KSA.GasConditions, ref KSA.GasConditions, float, float, float, float, float, float, float)`
+- `float ComputeMinGasVisibilityDensity(KSA.VolumetricExhaustTemplate, double)`
+
 ### KSA.ScreenshotCapture
 
 - `void Request(int, string)`
@@ -466,9 +529,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `void Play(KSA.SpatialAudio, float, ref KSA.IChannel, bool)`
 
+### KSA.SoundEvent
+
+- `string SoundId`
+- `void .ctor()`
+
 ### KSA.SpatialAudio
 
+- `double Distance()`
+- `double get_AtmosphericPressure()`
 - `void .ctor(Brutal.Numerics.double3, Brutal.Numerics.double3, double)`
+- `void .ctor(KSA.Astronomical, Brutal.Numerics.double3)`
 
 ### KSA.StateVectors
 
@@ -494,6 +565,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.SimStep GetLastSimStep()`
 - `KSA.UniverseTime GetElapsedTime()`
 - `bool IsPaused()`
+- `double GetElapsedSeconds()`
+- `double GetSimulationSpeed()`
 - `double get_SimulationSpeed()`
 - `void SetSimulationSpeed(KSA.SimSpeed)`
 
@@ -503,6 +576,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.Vehicle
 
+- `Brutal.Numerics.double3 GetSurfaceVelocityCci()`
+- `Brutal.Numerics.double3 PosAsmbToBody(Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 get_CenterOfMassAsmb()`
 - `Brutal.Numerics.double4x4 GetMatrixAsmb2Ego(KSA.Camera)`
 - `Brutal.Numerics.doubleQuat get_Body2Cce()`
@@ -520,6 +595,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `float get_TotalMass()`
 - `int get_SeatCount()`
 - `ref KSA.MassProperties get_TotalMassPropsBody()`
+- `void AddVolumetricExhaustInstances(KSA.Camera, KSA.VolumetricExhaustRenderer, double)`
 - `void PrepareWorker(KSA.SimStep)`
 - `void TakeOffRails()`
 - `void TeleportToLocation(KSA.Celestial, double, double)`
@@ -548,7 +624,34 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `bool Is(KSA.IViewport, KSA.ViewportType)`
 
+### KSA.ViewportRegistry
+
+- `KSA.IGameViewport get_MainViewport()`
+
 ### KSA.ViewportType
+
+*referenced as a type only*
+
+### KSA.VolumetricExhaustInstance
+
+- `KSA.PlumeData LastPlumeData`
+- `KSA.VolumetricExhaustTemplate get_Template()`
+- `bool get_IsLive()`
+- `void .ctor(KSA.VolumetricExhaustReference)`
+- `void UpdateState(double, bool, double, ref KSA.GasProperties, ref KSA.GasConditions, float, Brutal.Numerics.float3, Brutal.Numerics.float3, Brutal.Numerics.float3, Brutal.Numerics.float3, float, Brutal.Numerics.float3, float)`
+
+### KSA.VolumetricExhaustReference
+
+- `void .ctor()`
+- `void Load()`
+- `void set_Id(string)`
+
+### KSA.VolumetricExhaustRenderer
+
+- `KSA.ExhaustSubmission AddInstance(KSA.VolumetricExhaustInstance, ref KSA.ExhaustBendTarget, ref KSA.ExhaustAxialFade, ref KSA.ExhaustDiamondFade)`
+- `bool get_Disabled()`
+
+### KSA.VolumetricExhaustTemplate
 
 *referenced as a type only*
 

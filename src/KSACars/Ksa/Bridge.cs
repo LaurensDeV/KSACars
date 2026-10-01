@@ -238,7 +238,10 @@ internal sealed class Bridge
         {
             DriveInput input = new(Math.Clamp(command.Number("throttle", 0.0), -1.0, 1.0),
                                    Math.Clamp(command.Number("steer", 0.0), -1.0, 1.0));
-            if (!Buggies.Hold(craft, input, command.Number("seconds", 0.0))) return Failed("that craft is not a buggy");
+            if (!Buggies.Hold(craft, input, command.Number("seconds", 0.0), Math.Clamp(command.Number("turn", 0.0), -1.0, 1.0)))
+            {
+                return Failed("that craft is not a buggy");
+            }
         }
 
         if (command.Has("lights"))
@@ -246,6 +249,13 @@ internal sealed class Bridge
             if (Headlights.Parse(command.String("lights")) is not { } setting) return Failed("lights is off, low or high");
             if (Buggies.Of(craft) is not { } car) return Failed("that craft is not a buggy");
             car.Beam = setting;
+        }
+        if (command.Has("lift"))
+        {
+            if (Buggies.Of(craft) is not { } flyer) return Failed("that craft is not a buggy");
+            double lift = Math.Clamp(command.Number("lift", 0.0), 0.0, 1.0);
+            if (lift > 0.0) flyer.Throttle = lift;
+            Buggies.Ignite(flyer, lift > 0.0);
         }
         if (command.Flag("flip", false) && !Buggies.Right(craft, tip: true)) return Failed("that craft is not a buggy");
         if (command.Flag("unflip", false) && !Buggies.Right(craft)) return Failed("that craft is not a buggy");

@@ -19,6 +19,7 @@ public sealed class KSACarsMod
 
     private readonly Buggies _buggies = new();
     private readonly BuggySound _buggySound = new();
+    private readonly RocketSound _rocketSound = new();
     private readonly FrameLatch _frame = new();
     private Bridge? _bridge;
 
@@ -42,6 +43,7 @@ public sealed class KSACarsMod
         SeatedCrewHook.Install();
         LightsHook.Install();
         LensColourHook.Install();
+        FlamesHook.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -99,6 +101,7 @@ public sealed class KSACarsMod
         if (!KsaWorld.InFlightScene)
         {
             _buggySound.StopAll();
+        _rocketSound.StopAll();
             return;
         }
 
@@ -108,6 +111,7 @@ public sealed class KSACarsMod
         _buggies.Sync(KsaWorld.Vehicles);
         _buggies.Pose();
         _buggySound.Update(_buggies, 1f);
+        _rocketSound.Update(_buggies);
     }
 
     [StarMapUnload]
@@ -115,11 +119,13 @@ public sealed class KSACarsMod
     {
         // Audio channels belong to the game and nothing else gives them back.
         _buggySound.StopAll();
+        _rocketSound.StopAll();
         _buggies.Clear();
         PhysicsHook.Remove();
         SeatedCrewHook.Remove();
         LightsHook.Remove();
         LensColourHook.Remove();
+        FlamesHook.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -135,11 +141,13 @@ public sealed class KSACarsMod
 
         _disabled = true;
         _buggySound.StopAll();
+        _rocketSound.StopAll();
         _buggies.Clear();
         PhysicsHook.Remove();
         SeatedCrewHook.Remove();
         LightsHook.Remove();
         LensColourHook.Remove();
+        FlamesHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

@@ -61,6 +61,9 @@ public sealed record BuggyProfile
     /// </summary>
     public (string Suffix, uint Rgb)[] ColouredLenses { get; init; } = [];
 
+    /// <summary>Where the four rockets' flames leave the floor, each pointing straight down.</summary>
+    public required double3[] RocketNozzles { get; init; }
+
     /// <summary>The driver seat's eye point, as its <c>IVASeat</c> declares it.</summary>
     public required double3 DriverEye { get; init; }
 
@@ -133,6 +136,7 @@ public sealed record BuggyProfile
         SteeringAxis = Vec.Unit(new double3(0.52, -0.85, 0.0)),
         DriverEye = new double3(0.99, 0.18, -0.28),
         HeadLamps = [new double3(0.88, 1.56, 0.30), new double3(0.88, 1.56, -0.30)],
+        RocketNozzles = Under(0.28, 0.65, -0.45, 0.42),
         // the tub has no tail lenses, so these only throw their red on the ground
         TailLamps = [new double3(0.70, -2.06, 0.45), new double3(0.70, -2.06, -0.45)],
     };
@@ -164,6 +168,7 @@ public sealed record BuggyProfile
         HeadLamps = [new double3(0.74, 2.70, 0.77), new double3(0.74, 2.70, -0.77)],
         TailLamps = [new double3(0.55, -3.07, 0.72), new double3(0.55, -3.07, -0.72)],
         ColouredLenses = [("TailLens", 0xFF1408), ("MarkerLens", 0xFF8C14)],
+        RocketNozzles = Under(0.19, 0.95, -0.95, 0.55),
         SpringHz = 1.05,
         DampingRatio = 0.26,
         BumpTravel = 0.12,
@@ -186,6 +191,10 @@ public sealed record BuggyProfile
         IdleRecordedRpm = 1400.0,
         GearTopSpeeds = [18.0, 34.0, 55.0],
     };
+
+    // Four points on the floor: a pair ahead and a pair behind, either side of the centre line.
+    private static double3[] Under(double floor, double front, double rear, double side) =>
+        [new(floor, front, side), new(floor, front, -side), new(floor, rear, side), new(floor, rear, -side)];
 
     /// <summary>Every car the mod drives.</summary>
     public static readonly BuggyProfile[] All = [Manx, Eldorado];
