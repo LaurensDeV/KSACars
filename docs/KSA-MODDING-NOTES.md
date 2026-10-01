@@ -1009,6 +1009,43 @@ integrate as `simStep.DeltaTime`.
 **Saving the game from a mod** is `GameSaves.MakeUncompressedSave(name)`, the console's `save` —
 public, and the way to turn a scenario set up through the bridge into a save somebody can load.
 
+## An exhaust plume without an engine
+
+Read from the decompiled source. The plume is built in `Buggies.Flames` and seen in game; the sound is
+built in `Ksa/RocketSound.cs` and has not been listened to.
+
+**A real engine cannot be kept for its flame alone.** A plume's size comes from the chamber and exit gas
+conditions, which are the thrust: `RocketCore.UpdateState` zeroes the throttle when no propellant is
+reachable, and a nozzle with any mass flow pushes the craft. A `<DeLavalNozzle>` that no `<Rocket>`
+references is worse than useless: it still gets a plume instance, and
+`Vehicle.AddVolumetricExhaustInstances` dereferences its missing rocket.
+
+**The renderer takes a plume with no nozzle behind it.** `Program.VolumetricExhaustRenderer` has a
+public `AddInstance(VolumetricExhaustInstance, in ExhaustBendTarget, in ExhaustAxialFade, in
+ExhaustDiamondFade)`, and an instance is built from a template Id alone:
+`new VolumetricExhaustInstance(new VolumetricExhaustReference { Id = "EngineAAuxiliary" })` after
+`Load()`. Each frame its `LastPlumeData` is set from the public static
+`RocketNozzle.ComputePlumeData(...)` with gas numbers of the mod's choosing, `UpdateState(...)` runs
+its start-up and shut-down transients, and it is submitted while `IsLive`. The engine's own
+`VolumetricExhaustRenderer.UpdateTestInstances` does exactly this, with invented gas numbers.
+
+**It has to be submitted inside `Program.OnPreRender`**, after `UpdateFrameData()` empties the list and
+before the render: a postfix on the public `Vehicle.AddVolumetricExhaustInstances(Camera,
+VolumetricExhaustRenderer, double)` sits there, once per vehicle in frame. Positions are camera-relative
+`float3`; `Vehicle.cs` around that method has the maths. Plumes submitted this way do not merge with
+each other, and `MaxVolumetricExhausts == 0` in the graphics settings switches every plume off.
+
+**The engine's sound is reachable the same way**: `GameAudio.PlaySound(new SoundEvent { SoundId =
+"DefaultEngineSoundBehavior" }, ...)` returns a channel whose `Throttle`, `Distance`, `Pressure` and
+`Iva` parameters `Vehicle.UpdateAudio` sets each frame. It plays nothing above 10x.
+
+**A craft with no engine may have its throttle pinned at 1.** `PartTree.RecomputeRocketControls` starts
+the minimum throttle at 1 and lowers it per `EngineController`, and `PrepareWorker` clamps the manual
+throttle to it, which contradicts the line under *A vehicle in the sea* that the throttle needs no
+engine. A parked car reads 1.0, which both would give, so this mod does not rely on
+`GetManualThrottle()`: it keeps its own throttle and moves it from the private `_engineFlags`, where
+the held throttle keys are recorded whatever the craft carries.
+
 ## Held controls are cleared on the controlled vehicle while the UI has the keyboard
 
 `Vehicle.ProcessInput` sets bits — `EngineFlags.ThrottleUp`/`ThrottleDown`, `ThrusterCommandFlags` —

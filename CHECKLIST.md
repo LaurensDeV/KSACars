@@ -34,6 +34,14 @@ none of it has been seen as **KSACars** yet:
       coming back on after a save and reload
 - [ ] The panel's Off / Low / High buttons switch them, and the brightness and reach look right from
       the driver's seat
+- [x] Rockets: through the bridge's `lift` the Eldorado climbs at 0.6, holds its climb rate at 0.5,
+      stays level, leans forward to 9 m/s on the throttle key and turns on the steer key
+- [x] Four flames under the Eldorado while the rockets burn, longer at full throttle than at half
+- [ ] The rockets heard, the flames dying away when cut, and the flames at night and in vacuum
+- [ ] The rockets on KSA's keys, by a player: Z and X light and cut them, Up and Down move the
+      throttle, W / S and A / D lean and bank in the air, Q / E turn
+- [ ] The rockets from the panel's slider, a landing on the springs, the buggy, and a hover held
+      over a slope
 - [ ] The engine falls silent past 4x warp, with no key-off, and comes back with no starter at 1x
 - [ ] **A save holding a car built in the old mod does not load**: its part Ids are gone. Expected,
       and not fixable without the old Ids; rebuild the car
