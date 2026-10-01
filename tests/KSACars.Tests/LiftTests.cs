@@ -11,14 +11,19 @@ public class LiftTests
     private const double G = 9.81;
     private const double Dt = 1.0 / 60.0;
 
-    public static TheoryData<string> Cars => [.. BuggyProfile.All.Select(p => p.PartId)];
-
-    [Theory]
-    [MemberData(nameof(Cars))]
-    public void TheFourNozzlesAreUnderTheFloorAndBalancedAboutTheCentreLine(string id)
+    [Fact]
+    public void OnlyTheEldoradoFlies()
     {
-        BuggyProfile p = BuggyProfile.All.First(x => x.PartId == id);
+        Assert.True(BuggyProfile.Eldorado.HasRockets);
+        Assert.False(BuggyProfile.Manx.HasRockets);
+    }
+
+    [Fact]
+    public void TheFourNozzlesAreUnderTheFloorAndBalancedAboutTheCentreLine()
+    {
+        BuggyProfile p = BuggyProfile.Eldorado;
         Assert.Equal(4, p.RocketNozzles.Length);
+        Assert.Equal(0.0, p.RocketNozzles.Sum(n => n.Y), 9);
         Assert.Equal(0.0, p.RocketNozzles.Sum(n => n.Z), 9);
         Assert.All(p.RocketNozzles, n => Assert.True(n.X < p.Corners.Min(c => c.Hub.X)));
         Assert.All(p.RocketNozzles, n => Assert.InRange(n.Y, p.Corners.Min(c => c.Hub.Y), p.Corners.Max(c => c.Hub.Y)));

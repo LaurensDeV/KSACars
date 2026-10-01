@@ -36,17 +36,6 @@ internal static class CarPanel
             ImGui.SameLine(0f, -1f);
             BeamButton(car, "High", BeamSetting.High);
 
-            ImGui.Text(car.Lit ? "Rockets: lit" : "Rockets: off");
-            float throttle = (float)(car.Throttle * 100.0);
-            if (ImGui.SliderFloat("##rockets", ref throttle, 0f, 100f, "%.0f%%", ImGuiSliderFlags.None)) car.Throttle = throttle / 100.0;
-            if (ImGui.Button(car.Lit ? "Cut" : "Light", null)) Buggies.Ignite(car, !car.Lit);
-            ImGui.SameLine(0f, -1f);
-            if (ImGui.Button("Hover", null))
-            {
-                car.Throttle = 1.0 / Lift.MaxG;
-                Buggies.Ignite(car, true);
-            }
-
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);
         }
         ImGui.End();

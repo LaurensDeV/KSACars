@@ -263,6 +263,25 @@
   -->
   <MeshAtlas Path="Meshes/KSACars_Eldorado.glb" />
 
+  <!-- The rocket ports under the Eldorado's floor: one mesh, drawn four times. -->
+  <MeshAtlas Path="Meshes/KSACars_EldoRocket.glb" />
+
+  <PbrMaterial Id="KSACars_EldoRocket_Material">
+    <Diffuse Path="Textures/KSACars_EldoRocket_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_EldoRocket_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_EldoRocket_PBR.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <SubPart Id="KSACars_EldoRocket_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoRocket_Model">
+      <Mesh Id="KSACars_Subpart_EldoRocket" />
+      <Material Id="KSACars_EldoRocket_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoRocket_VM" />
+    </MeshView>
+  </SubPart>
+
   <PbrMaterial Id="KSACars_Eldorado_Material">
     <Diffuse Path="Textures/KSACars_Eldorado_Diffuse.png" Category="Vessel" />
     <Normal Path="Textures/KSACars_Eldorado_Normal.png" Category="Vessel" />
@@ -386,6 +405,26 @@
     </SubPart>
     <SubPart Id="KSACars_Eldo_TailLens" InstanceOf="KSACars_EldoTailLens_SubPart" />
     <SubPart Id="KSACars_Eldo_MarkerLens" InstanceOf="KSACars_EldoMarkerLens_SubPart" />
+    <SubPart Id="KSACars_Eldo_RocketFL" InstanceOf="KSACars_EldoRocket_SubPart">
+      <Transform>
+        <Position X="0.19000" Y="0.85000" Z="0.55000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_RocketFR" InstanceOf="KSACars_EldoRocket_SubPart">
+      <Transform>
+        <Position X="0.19000" Y="0.85000" Z="-0.55000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_RocketRL" InstanceOf="KSACars_EldoRocket_SubPart">
+      <Transform>
+        <Position X="0.19000" Y="-0.85000" Z="0.55000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_RocketRR" InstanceOf="KSACars_EldoRocket_SubPart">
+      <Transform>
+        <Position X="0.19000" Y="-0.85000" Z="-0.55000" />
+      </Transform>
+    </SubPart>
 
     <Connector Id="_elConnectorAft">
       <Transform>

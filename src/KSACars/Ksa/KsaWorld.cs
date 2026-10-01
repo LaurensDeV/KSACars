@@ -18,7 +18,7 @@ internal static class KsaWorld
     public const double ReferenceAirDensityKgPerM3 = 1.225;
 
     // A craft's engine switch and its held throttle keys are private to it, and KSA has no accessor for
-    // either. Null when KSA has renamed them, and then a car's rockets are worked from its panel alone.
+    // either. Null when KSA has renamed them, and then a car's rockets cannot be lit from the keys.
     private static readonly FieldInfo? ManualInputs =
         typeof(Vehicle).GetField("_manualControlInputs", BindingFlags.NonPublic | BindingFlags.Instance) is { } f
         && f.FieldType == typeof(ManualControlInputs) ? f : null;

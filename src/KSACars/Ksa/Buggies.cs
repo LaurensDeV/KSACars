@@ -257,6 +257,7 @@ internal sealed class Buggies
     /// <summary>Lights or cuts a car's rockets, as KSA's engine start and shutdown keys do.</summary>
     public static void Ignite(Entry e, bool on)
     {
+        if (!e.Drive.Profile.HasRockets) return;
         e.Lit = on;
         KsaWorld.TrySetEngineOn(e.Craft, on);
     }
@@ -453,7 +454,7 @@ internal sealed class Buggies
         // the mod's throttle, because KSA pins its own at full on a craft with no engine.
         (bool more, bool less) = KsaWorld.ThrottleKeys(craft);
         if (dt > 0.0 && dt <= 0.1) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
-        e.Lit = KsaWorld.EngineOn(craft) ?? e.Lit;
+        e.Lit = e.Drive.Profile.HasRockets && (KsaWorld.EngineOn(craft) ?? e.Lit);
         e.Rockets = e.Lit ? e.Throttle : 0.0;
 
         // The engine integrates a frame as one impulse followed by its own sub-steps, so a spring is

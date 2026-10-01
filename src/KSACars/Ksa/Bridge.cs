@@ -253,6 +253,7 @@ internal sealed class Bridge
         if (command.Has("lift"))
         {
             if (Buggies.Of(craft) is not { } flyer) return Failed("that craft is not a buggy");
+            if (!flyer.Drive.Profile.HasRockets) return Failed("that car has no rockets");
             double lift = Math.Clamp(command.Number("lift", 0.0), 0.0, 1.0);
             if (lift > 0.0) flyer.Throttle = lift;
             Buggies.Ignite(flyer, lift > 0.0);

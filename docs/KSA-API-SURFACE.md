@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-120 types and 274 members across 5 assemblies.
+119 types and 273 members across 5 assemblies.
 
 ## BepuUtilities
 
@@ -123,7 +123,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
 - `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `bool RadioButton(Brutal.ImGuiApi.ImString, bool)`
-- `bool SliderFloat(Brutal.ImGuiApi.ImString, ref float, float, float, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
 - `void End()`
 - `void SameLine(float, float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
@@ -131,10 +130,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void TextDisabled(Brutal.ImGuiApi.ImString)`
 
 ### Brutal.ImGuiApi.ImGuiCond
-
-*referenced as a type only*
-
-### Brutal.ImGuiApi.ImGuiSliderFlags
 
 *referenced as a type only*
 
