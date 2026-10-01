@@ -20,6 +20,7 @@ public sealed class KSACarsMod
     private readonly Buggies _buggies = new();
     private readonly BuggySound _buggySound = new();
     private readonly RocketSound _rocketSound = new();
+    private readonly CraftMover _mover = new();
     private readonly FrameLatch _frame = new();
     private Bridge? _bridge;
 
@@ -45,6 +46,8 @@ public sealed class KSACarsMod
         LensColourHook.Install();
         FlamesHook.Install();
         CrashHook.Install();
+        BoostHook.Install();
+        HudHook.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -87,7 +90,17 @@ public sealed class KSACarsMod
         {
             if (_disabled) return;
             StepOnce();
-            if (KsaWorld.InFlightScene) CarPanel.Draw();
+            if (!KsaWorld.InFlightScene)
+            {
+                _mover.Release();
+                return;
+            }
+
+            CarPanel.Draw(_mover);
+            // After the panel, so a click on its checkbox is the panel's and not the world's; and
+            // here rather than in the frame hook, which is past the point gizmos are drawn from.
+            _mover.Update();
+            _mover.Draw();
         }
         catch (Exception e)
         {
@@ -128,6 +141,8 @@ public sealed class KSACarsMod
         LensColourHook.Remove();
         FlamesHook.Remove();
         CrashHook.Remove();
+        BoostHook.Remove();
+        HudHook.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -151,6 +166,8 @@ public sealed class KSACarsMod
         LensColourHook.Remove();
         FlamesHook.Remove();
         CrashHook.Remove();
+        BoostHook.Remove();
+        HudHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

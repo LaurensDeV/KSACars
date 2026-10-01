@@ -14,6 +14,13 @@ public sealed record BuggyCorner(
     bool Driven);
 
 /// <summary>
+/// A scoop a car can carry on its nose: the subpart that is its blade, and where each of its colliders
+/// goes while it is on. Off, the blade is shrunk away inside the hull and the colliders sit where the
+/// part declares them, inside the hull's own.
+/// </summary>
+public sealed record ScoopProfile(string SubpartSuffix, double3 Stowed, (string ColliderId, double3 Deployed)[] Colliders);
+
+/// <summary>
 /// A wheeled ground vehicle. KSA has no wheels, so everything here is the mod's: the springs hold the
 /// hull off the ground, the tyres grip it, and the part's colliders only matter once a spring bottoms out.
 ///
@@ -68,6 +75,17 @@ public sealed record BuggyProfile
     public double3[] RocketNozzles { get; init; } = [];
 
     public bool HasRockets => RocketNozzles.Length > 0;
+
+    /// <summary>
+    /// Where the boost rockets' flames leave their ports on the tail, each pointing straight back. A car
+    /// with none has no boost.
+    /// </summary>
+    public double3[] BoostNozzles { get; init; } = [];
+
+    public bool HasBoost => BoostNozzles.Length > 0;
+
+    /// <summary>The scoop this car can carry, or null.</summary>
+    public ScoopProfile? Scoop { get; init; }
 
     /// <summary>The driver seat's eye point, as its <c>IVASeat</c> declares it.</summary>
     public required double3 DriverEye { get; init; }
@@ -172,6 +190,16 @@ public sealed record BuggyProfile
         HeadLamps = [new double3(0.74, 2.70, 0.77), new double3(0.74, 2.70, -0.77)],
         TailLamps = [new double3(0.55, -3.07, 0.72), new double3(0.55, -3.07, -0.72)],
         ColouredLenses = [("TailLens", 0xFF1408), ("MarkerLens", 0xFF8C14)],
+        // the lips of two ports on the tail panel, above the bumper
+        BoostNozzles = [new double3(0.74, -2.913, 0.70), new double3(0.74, -2.913, -0.70)],
+        // the blade's flat middle, and each wing at its own middle: swept forward 24 degrees
+        // and the boxes come down to 18 cm off the ground, which is what a small rock would pass under
+        Scoop = new ScoopProfile("Scoop", new double3(0.75, -0.18, 0.0),
+        [
+            ("KSACars_EldoScoopMidCollider", new double3(0.59, 2.82, 0.0)),
+            ("KSACars_EldoScoopLeftCollider", new double3(0.59, 3.256, 1.125)),
+            ("KSACars_EldoScoopRightCollider", new double3(0.59, 3.256, -1.125)),
+        ]),
         // the lips of the four ports, 3.5 cm under the floor
         RocketNozzles = Under(0.155, 0.85, -0.85, 0.55),
         SpringHz = 1.05,

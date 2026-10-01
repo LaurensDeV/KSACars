@@ -159,7 +159,12 @@
 
     +X is up from the ground, +Y forward, +Z the left side.
   -->
-  <Part Id="KSACars_Prefab_Buggy">
+  <!--
+    CrashTolerance is the contact pressure, in pascals, past which KSA breaks a part. A car is one
+    part, so its breaking is the car's destruction, and a wheel pad clipping a rock at speed reaches
+    what KSA derives from its mass. Set far past anything a contact gives.
+  -->
+  <Part Id="KSACars_Prefab_Buggy" CrashTolerance="1e12">
 
     <SubPart Id="KSACars_Buggy_Body" InstanceOf="KSACars_BuggyBody_SubPart" />
 
@@ -282,6 +287,25 @@
     </MeshView>
   </SubPart>
 
+  <!-- The scoop that hooks into the Eldorado's grille. The mod shows it and hides it. -->
+  <MeshAtlas Path="Meshes/KSACars_EldoScoop.glb" />
+
+  <PbrMaterial Id="KSACars_EldoScoop_Material">
+    <Diffuse Path="Textures/KSACars_EldoScoop_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_EldoScoop_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_EldoScoop_PBR.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <SubPart Id="KSACars_EldoScoop_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoScoop_Model">
+      <Mesh Id="KSACars_Subpart_EldoScoop" />
+      <Material Id="KSACars_EldoScoop_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoScoop_VM" />
+    </MeshView>
+  </SubPart>
+
   <PbrMaterial Id="KSACars_Eldorado_Material">
     <Diffuse Path="Textures/KSACars_Eldorado_Diffuse.png" Category="Vessel" />
     <Normal Path="Textures/KSACars_Eldorado_Normal.png" Category="Vessel" />
@@ -362,7 +386,7 @@
 
     +X is up from the ground, +Y forward, +Z the left side.
   -->
-  <Part Id="KSACars_Prefab_Eldorado">
+  <Part Id="KSACars_Prefab_Eldorado" CrashTolerance="1e12">
 
     <SubPart Id="KSACars_Eldo_Body" InstanceOf="KSACars_EldoBody_SubPart" />
     <SubPart Id="KSACars_Eldo_WheelFL" InstanceOf="KSACars_EldoWheel_SubPart">
@@ -423,6 +447,21 @@
     <SubPart Id="KSACars_Eldo_RocketRR" InstanceOf="KSACars_EldoRocket_SubPart">
       <Transform>
         <Position X="0.19000" Y="-0.85000" Z="-0.55000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_Scoop" InstanceOf="KSACars_EldoScoop_SubPart" />
+
+    <!-- The same port again, twice, turned to face aft on the tail panel above the bumper: the boost rockets. -->
+    <SubPart Id="KSACars_Eldo_BoostL" InstanceOf="KSACars_EldoRocket_SubPart">
+      <Transform>
+        <Position X="0.74000" Y="-2.87800" Z="0.70000" />
+        <Rotation Z="1.57080" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_BoostR" InstanceOf="KSACars_EldoRocket_SubPart">
+      <Transform>
+        <Position X="0.74000" Y="-2.87800" Z="-0.70000" />
+        <Rotation Z="1.57080" />
       </Transform>
     </SubPart>
 

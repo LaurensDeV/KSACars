@@ -192,6 +192,33 @@
         <LengthY M="5.55" />
         <LengthZ M="1.96" />
       </Box>
+      <!--
+        The scoop's blade: a flat middle and two wings swept forward. Declared stowed, inside the hull
+        box, where they touch nothing; the mod moves them out to the blade while the scoop is on. Stowed
+        they sit high, clear of the ground under the hull. The middle one is deep enough to reach back
+        to the hull's own box, so a rock cannot get in between the blade and the nose.
+      -->
+      <Box Id="KSACars_EldoScoopMidCollider">
+        <LocationAsmb X="0.75" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.82" />
+        <LengthY M="0.52" />
+        <LengthZ M="1.14" />
+      </Box>
+      <Box Id="KSACars_EldoScoopLeftCollider">
+        <LocationAsmb X="0.75" Y="-0.18" Z="0" />
+        <Collider2Asmb X="-0.419" Y="0" Z="0" />
+        <LengthX M="0.82" />
+        <LengthY M="0.16" />
+        <LengthZ M="1.28" />
+      </Box>
+      <Box Id="KSACars_EldoScoopRightCollider">
+        <LocationAsmb X="0.75" Y="-0.18" Z="0" />
+        <Collider2Asmb X="0.419" Y="0" Z="0" />
+        <LengthX M="0.82" />
+        <LengthY M="0.16" />
+        <LengthZ M="1.28" />
+      </Box>
       <Box Id="KSACars_EldoPadFLCollider">
         <LocationAsmb X="0.36" Y="1.604" Z="0.809" />
         <Collider2Asmb X="0" Y="0" Z="0" />

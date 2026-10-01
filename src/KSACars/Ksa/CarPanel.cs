@@ -15,7 +15,9 @@ internal static class CarPanel
     private const ImGuiWindowFlags Flags = ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse
                                            | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav;
 
-    public static void Draw()
+    private static float? _rockWeight;
+
+    public static void Draw(CraftMover mover)
     {
         if (KsaWorld.ControlledVehicle is not { } craft || Buggies.Of(craft) is not { } car) return;
 
@@ -23,7 +25,7 @@ internal static class CarPanel
         float2 at = new(screen.WorkPos.X + 16f, screen.WorkPos.Y + (screen.WorkSize.Y * 0.5f));
         ImGui.SetNextWindowPos(in at, ImGuiCond.FirstUseEver, null);
 
-        if (ImGui.Begin("Car", Flags))
+        if (ImGui.Begin("Fast & Purrious###Car", Flags))
         {
             ImGui.Text(car.Drive.Profile.DisplayName);
             ImGui.Text($"{Math.Abs(car.Drive.ForwardSpeed) * 3.6:F0} km/h, gear {car.Drive.Gear + 1}");
@@ -35,6 +37,32 @@ internal static class CarPanel
             BeamButton(car, "Low", BeamSetting.Low);
             ImGui.SameLine(0f, -1f);
             BeamButton(car, "High", BeamSetting.High);
+
+            if (car.Drive.Profile.Scoop is not null)
+            {
+                bool scoop = car.ScoopOn;
+                if (ImGui.Checkbox("Scoop", ref scoop)) car.ScoopOn = scoop;
+                if (scoop)
+                {
+                    // Held here while it is dragged and applied on release: every change makes KSA
+                    // rebuild its rocks.
+                    _rockWeight ??= (float)(KsaWorld.RockWeight * 100.0);
+                    float weight = _rockWeight.Value;
+                    ImGui.SliderFloat("Rock weight", ref weight, 0.01f, 100f, "%.2f%%", ImGuiSliderFlags.Logarithmic);
+                    _rockWeight = weight;
+                    if (ImGui.IsItemDeactivatedAfterEdit()) KsaWorld.RockWeight = weight / 100.0;
+                    if (!ImGui.IsItemActive()) _rockWeight = (float)(KsaWorld.RockWeight * 100.0);
+                }
+            }
+
+            bool moving = mover.Enabled;
+            if (ImGui.Checkbox("Move craft with the mouse", ref moving)) mover.Enabled = moving;
+            if (moving)
+            {
+                if (mover.Held is { } held) ImGui.TextDisabled($"holding {KsaWorld.DisplayName(held)}: click the ground");
+                else if (mover.Hovered is { } over) ImGui.TextDisabled($"click to pick up {KsaWorld.DisplayName(over)}");
+                else ImGui.TextDisabled("click a craft to pick it up");
+            }
 
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);
         }

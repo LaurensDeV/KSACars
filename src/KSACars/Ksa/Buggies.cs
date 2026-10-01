@@ -44,11 +44,16 @@ internal sealed class Buggies
         public bool Lit { get; set; }
         public double Turn { get; set; }
         public VolumetricExhaustInstance?[]? Flames { get; set; }
+        public VolumetricExhaustInstance?[]? BoostFlames { get; set; }
+        public bool Boosting { get; set; }
+        public Part? ScoopBlade { get; set; }
+        public bool ScoopOn { get; set; }
+        public bool? ScoopSet { get; set; }
         public double Climb { get; set; }
     }
 
     // Inputs held by the bridge for so many simulated seconds, ahead of the keys.
-    private static readonly Dictionary<Vehicle, (DriveInput Input, double Turn, double Seconds)> Held = [];
+    private static readonly Dictionary<Vehicle, (DriveInput Input, double Turn, bool Boost, double Seconds)> Held = [];
 
     // Read by the physics prefix, which has only the vehicle to go on.
     private static readonly Dictionary<Vehicle, Entry> Active = [];
@@ -88,6 +93,14 @@ internal sealed class Buggies
         }
         if (gone is not null) foreach (Vehicle v in gone) Active.Remove(v);
 
+        bool scooping = false;
+        foreach (Entry e in Active.Values)
+        {
+            SetScoop(e);
+            scooping |= e.ScoopOn;
+        }
+        KsaWorld.LoosenClutter(scooping);
+
         foreach (Entry e in Active.Values)
         {
             if (e.Drive.Profile.HasRockets) KsaWorld.ShowThrottle(e.Craft, e.Throttle);
@@ -105,10 +118,10 @@ internal sealed class Buggies
     }
 
     /// <summary>Holds a buggy's throttle and steering for so many simulated seconds, whoever is flying.</summary>
-    public static bool Hold(Vehicle craft, DriveInput input, double seconds, double turn = 0.0)
+    public static bool Hold(Vehicle craft, DriveInput input, double seconds, double turn = 0.0, bool boost = false)
     {
         if (!Active.ContainsKey(craft)) return false;
-        if (seconds > 0.0) Held[craft] = (input, turn, seconds);
+        if (seconds > 0.0) Held[craft] = (input, turn, boost, seconds);
         else Held.Remove(craft);
         return true;
     }
@@ -179,13 +192,26 @@ internal sealed class Buggies
     public static void Flames(Vehicle craft, Camera camera, VolumetricExhaustRenderer renderer, double frameDeltaTime)
     {
         if (Active.Count == 0 || renderer.Disabled || !Active.TryGetValue(craft, out Entry? e)) return;
-        if (e.Rockets <= 0.0 && e.Flames is null) return;
 
-        double3[] nozzles = e.Drive.Profile.RocketNozzles;
-        e.Flames ??= new VolumetricExhaustInstance?[nozzles.Length];
+        BuggyProfile p = e.Drive.Profile;
+        e.Flames = Burn(e, e.Flames, p.RocketNozzles, new double3(-1, 0, 0), e.Rockets, camera, renderer, frameDeltaTime);
+        e.BoostFlames = Burn(e, e.BoostFlames, p.BoostNozzles, new double3(0, -1, 0), e.Boosting ? 1.0 : 0.0,
+                             camera, renderer, frameDeltaTime);
+    }
 
-        bool burning = e.Rockets > 0.0;
-        FlameGas f = Lift.Flame(e.Rockets);
+    // One set of flames, all at one throttle and all pointing one way in the part's frame. Returns the
+    // instances to keep: null once they are out and burnt down, so the next burn starts from cold.
+    private static VolumetricExhaustInstance?[]? Burn(
+        Entry e, VolumetricExhaustInstance?[]? flames, double3[] nozzles, double3 direction, double throttle,
+        Camera camera, VolumetricExhaustRenderer renderer, double frameDeltaTime)
+    {
+        if (nozzles.Length == 0 || (throttle <= 0.0 && flames is null)) return flames;
+
+        Vehicle craft = e.Craft;
+        flames ??= new VolumetricExhaustInstance?[nozzles.Length];
+
+        bool burning = throttle > 0.0;
+        FlameGas f = Lift.Flame(throttle);
         GasProperties gas = new() { Gamma = f.Gamma, SpecificGasConstant = f.SpecificGasConstant };
         GasConditions inlet = new() { Pressure = f.ChamberPressure, Temperature = f.ChamberTemperature };
         GasConditions exhaust = new() { Pressure = f.ExitPressure, Temperature = f.ExitTemperature };
@@ -203,16 +229,16 @@ internal sealed class Buggies
         double3 craftEgo = camera.GetPositionEgo(craft);
         doubleQuat body2Cce = craft.Body2Cce;
         doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;
-        float3 down = float3.Pack((part2Asmb * new double3(-1, 0, 0)).Transform(body2Cce));
+        float3 axis = float3.Pack((part2Asmb * direction).Transform(body2Cce));
 
         bool any = false;
         for (int i = 0; i < nozzles.Length; i++)
         {
-            if (e.Flames[i] is not { } flame)
+            if (flames[i] is not { } flame)
             {
                 VolumetricExhaustReference reference = new() { Id = FlameTemplate };
                 reference.Load();
-                flame = e.Flames[i] = new VolumetricExhaustInstance(reference);
+                flame = flames[i] = new VolumetricExhaustInstance(reference);
             }
             if (flame.Template is not { } template) continue;
 
@@ -227,7 +253,7 @@ internal sealed class Buggies
 
             double3 nozzle = e.Part.PositionVehicleAsmb + (part2Asmb * nozzles[i]);
             float3 where = float3.Pack(craftEgo + craft.PosAsmbToBody(nozzle).Transform(body2Cce));
-            flame.UpdateState(now, burning, simDt, in gas, in exhaust, f.ExhaustVelocity, where, down, where, down,
+            flame.UpdateState(now, burning, simDt, in gas, in exhaust, f.ExhaustVelocity, where, axis, where, axis,
                               ambient, airVelocity, airDensity);
             if (!flame.IsLive) continue;
 
@@ -235,8 +261,7 @@ internal sealed class Buggies
             renderer.AddInstance(flame, default, in ExhaustAxialFade.NoFadeOut, in ExhaustDiamondFade.None);
         }
 
-        // Out and burnt down: the instances go, and the next burn starts from cold.
-        if (!burning && !any) e.Flames = null;
+        return !burning && !any ? null : flames;
     }
 
     /// <summary>The colour a subpart's lenses glow, as 0xRRGGBB, or null for KSA's own white.</summary>
@@ -253,6 +278,24 @@ internal sealed class Buggies
             return null;
         }
         return null;
+    }
+
+    // Puts the scoop's colliders out on the blade or back inside the hull, once each time it changes.
+    private static void SetScoop(Entry e)
+    {
+        if (e.Drive.Profile.Scoop is not { } scoop || e.ScoopSet == e.ScoopOn) return;
+        e.ScoopSet = e.ScoopOn;
+
+        foreach (ColliderModule collider in e.Part.SubtreeModules.Get<ColliderModule>())
+        {
+            foreach ((string id, double3 deployed) in scoop.Colliders)
+            {
+                if (collider.TemplateId != id) continue;
+                collider.PositionPartAsmb = e.ScoopOn ? deployed : scoop.Stowed;
+                collider.NeedsColliderUpdate = true;
+            }
+        }
+        Log.Info($"{KsaWorld.DisplayName(e.Craft)}: scoop {(e.ScoopOn ? "on" : "off")}");
     }
 
     /// <summary>Lights or cuts a car's rockets, as KSA's engine start and shutdown keys do.</summary>
@@ -283,6 +326,10 @@ internal sealed class Buggies
             ["level"] = Math.Round(e.Level, 4),
             ["on_rails"] = e.Railed,
             ["lights"] = e.Beam.ToString().ToLowerInvariant(),
+            ["scoop"] = e.ScoopOn,
+            ["boosting"] = e.Boosting,
+            ["clutter_collisions"] = KsaWorld.ClutterCollisions,
+            ["rock_weight"] = KsaWorld.RockWeight,
             ["lift"] = Math.Round(e.Rockets, 2),
             ["lift_throttle"] = Math.Round(e.Throttle, 2),
             ["rockets_lit"] = e.Lit,
@@ -397,6 +444,7 @@ internal sealed class Buggies
             e.Coils[i] = SubPart(e.Part, p.SubpartPrefix + "Coil" + p.Corners[i].Key);
         }
         e.Steering = SubPart(e.Part, p.SubpartPrefix + "Steering");
+        if (p.Scoop is { } scoop) e.ScoopBlade = SubPart(e.Part, p.SubpartPrefix + scoop.SubpartSuffix);
     }
 
     // Matched on the Id the <Part> gives the subpart, which ends in the corner's key.
@@ -443,13 +491,16 @@ internal sealed class Buggies
         Vehicle craft = e.Craft;
         e.Input = ReadInput(craft);
         e.Turn = ReadTurn(craft);
-        if (Held.TryGetValue(craft, out (DriveInput Input, double Turn, double Seconds) held))
+        bool boost = craft.GetSprintInput();
+        if (Held.TryGetValue(craft, out (DriveInput Input, double Turn, bool Boost, double Seconds) held))
         {
             e.Input = held.Input;
             e.Turn = held.Turn;
+            boost = held.Boost;
             if (held.Seconds - dt <= 0.0) Held.Remove(craft);
-            else Held[craft] = (held.Input, held.Turn, held.Seconds - dt);
+            else Held[craft] = (held.Input, held.Turn, held.Boost, held.Seconds - dt);
         }
+        e.Boosting = boost && e.Drive.Profile.HasBoost;
 
         // KSA's own engine keys: start and shutdown light and cut the rockets, and the throttle keys move
         // the mod's throttle, because KSA pins its own at full on a craft with no engine.
@@ -465,7 +516,7 @@ internal sealed class Buggies
 
         bool railed = craft.Situation.IsOnRails();
         e.Railed = railed;
-        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && e.Rockets <= 0.0;
+        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && e.Rockets <= 0.0 && !e.Boosting;
 
         // KSA only rails a car that has stood still, so one on rails with nobody at the wheel is parked:
         // it is exactly where it was, and costs nothing. Its speed from before it stopped says nothing.
@@ -563,7 +614,7 @@ internal sealed class Buggies
         bool airborne = !e.Drive.Grounded.Any(g => g);
         LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
                                   Vec.Unit(positionCcf).Transform(ccf2Body), spinBody, gravity, dt);
-        dv += lift.Velocity;
+        dv += lift.Velocity + Boost.Push(e.Boosting, forward, dt);
         dw += lift.Spin;
         if (!Vec.IsFinite(dv) || !Vec.IsFinite(dw)) return;
 
@@ -657,6 +708,13 @@ internal sealed class Buggies
         }
 
         HoldTheWheel(e);
+
+        // Hidden by being shrunk to nothing inside the hull: a subpart has no switch for being drawn.
+        if (d.Profile.Scoop is { } scoop)
+        {
+            Place(e.ScoopBlade, e.ScoopOn ? Vec.Zero : scoop.Stowed, doubleQuat.Identity,
+                  e.ScoopOn ? new double3(1, 1, 1) : new double3(0.001, 0.001, 0.001));
+        }
 
         Place(e.Steering, d.Profile.SteeringPivot,
               doubleQuat.CreateFromAxisAngle(d.Profile.SteeringAxis, d.SteerAngle * d.Profile.SteeringRatio), null);

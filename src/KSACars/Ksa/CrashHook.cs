@@ -9,8 +9,8 @@ namespace KSACars;
 /// <see cref="Universe.DestroyVehicleFromEvent"/>, the one call every structural failure ends in.
 ///
 /// <para>KSA breaks a craft up past a g-load set by its size, which a car dropped a few metres onto
-/// its bump stops exceeds. The prefix turns away a car's ground impacts, collisions and g-loads, and
-/// leaves the sea and the air to do what they do to anything else.</para>
+/// its bump stops exceeds, and past a dynamic pressure a car reaches driving into the sea. The prefix
+/// turns every one of them away for a car, whatever the cause.</para>
 ///
 /// <para>A prefix on a public method, pinned by <see cref="PinTheSignature"/>. If it does not apply,
 /// a car breaks up as any craft does.</para>
@@ -66,14 +66,11 @@ internal static class CrashHook
     }
 
     // False spares the craft. Inside the engine's own loop: nothing here may throw.
-    private static bool BeforeDestroy(Vehicle vehicle, VehicleDestructionEvent destructionEvent)
+    private static bool BeforeDestroy(Vehicle vehicle)
     {
         try
         {
-            if (Buggies.Of(vehicle) is null) return true;
-
-            return destructionEvent.Cause is not (VehicleDestructionCause.GroundImpact
-                or VehicleDestructionCause.Collision or VehicleDestructionCause.ExcessiveGForce);
+            return Buggies.Of(vehicle) is null;
         }
         catch (Exception e)
         {

@@ -52,7 +52,9 @@ internal sealed class RocketSound
 
     private void Update(Buggies.Entry e)
     {
-        if (e.Rockets <= 0.0 || !KsaWorld.IsAlive(e.Craft))
+        // The boost burns flat out, so it sounds as the lift rockets do at full throttle.
+        double burn = e.Boosting ? 1.0 : e.Rockets;
+        if (burn <= 0.0 || !KsaWorld.IsAlive(e.Craft))
         {
             Stop(e.Craft);
             return;
@@ -72,7 +74,7 @@ internal sealed class RocketSound
         }
 
         channel!.SetSpatialAudio(spatial);
-        channel.SetParameter(Throttle, (float)e.Rockets);
+        channel.SetParameter(Throttle, (float)burn);
         channel.SetParameter(Distance, (float)spatial.Distance());
         channel.SetParameter(Pressure, (float)spatial.AtmosphericPressure);
         channel.SetParameter(Iva, ViewportRegistry.MainViewport.IvaAudio);

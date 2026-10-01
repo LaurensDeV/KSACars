@@ -238,7 +238,8 @@ internal sealed class Bridge
         {
             DriveInput input = new(Math.Clamp(command.Number("throttle", 0.0), -1.0, 1.0),
                                    Math.Clamp(command.Number("steer", 0.0), -1.0, 1.0));
-            if (!Buggies.Hold(craft, input, command.Number("seconds", 0.0), Math.Clamp(command.Number("turn", 0.0), -1.0, 1.0)))
+            if (!Buggies.Hold(craft, input, command.Number("seconds", 0.0), Math.Clamp(command.Number("turn", 0.0), -1.0, 1.0),
+                              command.Flag("boost", false)))
             {
                 return Failed("that craft is not a buggy");
             }
@@ -257,6 +258,13 @@ internal sealed class Bridge
             double lift = Math.Clamp(command.Number("lift", 0.0), 0.0, 1.0);
             if (lift > 0.0) flyer.Throttle = lift;
             Buggies.Ignite(flyer, lift > 0.0);
+        }
+        if (command.Has("rock_weight")) KsaWorld.RockWeight = Math.Clamp(command.Number("rock_weight", 0.02), 0.0001, 1.0);
+        if (command.Has("scoop"))
+        {
+            if (Buggies.Of(craft) is not { } carrier) return Failed("that craft is not a buggy");
+            if (carrier.Drive.Profile.Scoop is null) return Failed("that car has no scoop");
+            carrier.ScoopOn = command.Flag("scoop", false);
         }
         if (command.Flag("flip", false) && !Buggies.Right(craft, tip: true)) return Failed("that craft is not a buggy");
         if (command.Flag("unflip", false) && !Buggies.Right(craft)) return Failed("that craft is not a buggy");

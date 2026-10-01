@@ -12,7 +12,7 @@ namespace KSACars;
 /// All positions and velocities are in the ecliptic frame (Ecl): inertial, metres, and the frame
 /// <see cref="Vehicle.GetPositionEcl"/> answers in.
 /// </summary>
-internal static class KsaWorld
+internal static partial class KsaWorld
 {
     /// <summary>Earth's sea-level air (kg/m^3), the one reference every density ratio here is a multiple of.</summary>
     public const double ReferenceAirDensityKgPerM3 = 1.225;
@@ -26,6 +26,101 @@ internal static class KsaWorld
     private static readonly FieldInfo? EngineKeys =
         typeof(Vehicle).GetField("_engineFlags", BindingFlags.NonPublic | BindingFlags.Instance) is { } f
         && f.FieldType == typeof(EngineFlags) ? f : null;
+
+    // How easily a rock is knocked loose, in joules of impact a kilogram: KSA's own, and what a scoop
+    // makes it. At KSA's a car has to ram a rock its own weight at 12 m/s to free it.
+    private const float ScoopDisplaceEnergyPerKg = 0.02f;
+    private static float? _ksaDisplaceEnergyPerKg;
+
+    /// <summary>Whether KSA gives ground clutter colliders at all.</summary>
+    public static bool ClutterCollisions
+    {
+        get
+        {
+            try { return GameSettings.GetGroundClutterCollisions(); }
+            catch { return false; }
+        }
+    }
+
+    /// <summary>
+    /// What a rock weighs while a scoop is on, as a share of what KSA says: KSA's rocks are solid stone,
+    /// and one the size of a car is a hundred times its weight.
+    /// </summary>
+    public static double RockWeight { get; set; } = 0.02;
+
+    private static readonly Dictionary<ClutterObjectTemplate, double> KsaRockMass = [];
+    private static double _rockWeightApplied = 1.0;
+    private static long _clutterRebuildUntilMs;
+
+    // How long clutter collisions are held off to make KSA rebuild its rocks. KSA drops every rock
+    // collider and loose rock on the first sync it finds the setting off, and builds them again, at
+    // whatever they now weigh, on the first it finds it on.
+    private const long ClutterRebuildMs = 400;
+
+    /// <summary>
+    /// While a scoop is on, rocks are knocked loose by a nudge, weigh <see cref="RockWeight"/> of what
+    /// KSA says, and clutter has colliders; with none on, KSA's own threshold and masses are put back.
+    /// The collisions setting is the player's and is left on.
+    /// </summary>
+    public static void LoosenClutter(bool scooping)
+    {
+        try
+        {
+            double weight = scooping ? Math.Clamp(RockWeight, 0.0001, 1.0) : 1.0;
+            if (weight != _rockWeightApplied && WeighRocks(weight))
+            {
+                _rockWeightApplied = weight;
+                _clutterRebuildUntilMs = Environment.TickCount64 + ClutterRebuildMs;
+                Log.Info($"rocks now weigh {weight:P1} of KSA's");
+            }
+
+            bool rebuilding = Environment.TickCount64 < _clutterRebuildUntilMs;
+            if (scooping || _clutterRebuildUntilMs != 0)
+            {
+                bool on = !rebuilding;
+                if (GameSettings.Current.Simulation.GroundClutterCollisions != on)
+                {
+                    GameSettings.Current.Simulation.GroundClutterCollisions = on;
+                }
+                if (!rebuilding) _clutterRebuildUntilMs = 0;
+            }
+
+            if (scooping)
+            {
+                _ksaDisplaceEnergyPerKg ??= BubbleClutterStatics.DisplaceEnergyPerKg;
+                BubbleClutterStatics.DisplaceEnergyPerKg = ScoopDisplaceEnergyPerKg;
+            }
+            else if (_ksaDisplaceEnergyPerKg is { } ksa)
+            {
+                BubbleClutterStatics.DisplaceEnergyPerKg = ksa;
+                _ksaDisplaceEnergyPerKg = null;
+            }
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"could not set how easily rocks come loose: {e.Message}");
+        }
+    }
+
+    // Every rock template on every body, set to a share of the mass KSA loaded it with. False when the
+    // renderer that owns them is not up yet, and the caller tries again next frame.
+    private static bool WeighRocks(double share)
+    {
+        if (Program.GetPlanetRenderer()?.GroundClutterRenderer is not { } clutter) return false;
+
+        foreach (ClutterEcotypePhysicalData[] ecotypes in clutter.PlanetPhysicalData.Values)
+        {
+            foreach (ClutterEcotypePhysicalData ecotype in ecotypes)
+            {
+                foreach (ClutterObjectTemplate rock in ecotype.EcotypeReference.ClutterObjects)
+                {
+                    if (!KsaRockMass.TryGetValue(rock, out double mass)) KsaRockMass[rock] = mass = rock.MassKg;
+                    rock.MassKg = mass * share;
+                }
+            }
+        }
+        return true;
+    }
 
     /// <summary>Whether the engine keys can be read off a craft at all.</summary>
     public static bool EngineControlsReachable => ManualInputs is not null && EngineKeys is not null;
@@ -68,6 +163,25 @@ internal static class KsaWorld
         catch
         {
             // The gauge reads full, as it does on any craft with no engine.
+        }
+    }
+
+    /// <summary>
+    /// Records the sprint key as held or released on a craft, where <c>Vehicle.GetSprintInput</c> reads
+    /// it back. KSA keeps it only for a kitten on EVA.
+    /// </summary>
+    public static bool TrySetSprint(Vehicle craft, bool held)
+    {
+        try
+        {
+            if (ManualInputs?.GetValue(craft) is not ManualControlInputs inputs) return false;
+            inputs.Sprint = held;
+            ManualInputs.SetValue(craft, inputs);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
