@@ -58,6 +58,13 @@ none of it has been seen as **KSACars** yet:
       them on, against about 4 without
 - [x] The hover from the bridge on Earth: climbing at 10 m/s, the downward thrusters switched on stop
       it within three seconds and hold it at 48 to 50 m for ten more, leaning forward to 9 m/s meanwhile
+- [x] The rockets under time warp, from the bridge on Earth: level and not on rails at 2x, 4x, 10x and
+      50x, where a step is a second long; the hover holding 42 to 51 m across all of them
+- [x] The rockets above the atmosphere, from the bridge on Earth: off rails and still gaining speed at
+      1,190 km, where before the car was railed above about 100 km and fell back
+- [x] A car railed at 219 km with its rockets cut, woken by lighting them with the hover on: stopped
+      and held at 418.95 km, within 10 m, at 1x and at 50x
+- [ ] Leaning across the ground under warp, a landing under warp, and warp past 50x
 - [ ] The hover by a player, on Luna, and started from the ground
 - [ ] The downward thrusters on the R key, by a player
 - [x] The Scoop XXL shown on the Eldorado's nose on Luna from the bridge, the car level and not

@@ -152,4 +152,38 @@ public class LiftTests
         // About +X a positive turn carries +Y towards +Z, which is the car's left.
         Assert.True(Vec.Dot((doubleQuat.CreateFromAxisAngle(Up, 0.1) * Forward), Left) > 0.0);
     }
+
+    // A car leant about its left axis by an angle, turning at a rate, stepped as the engine would step
+    // it: the hold's spin added, then the lean carried on at that spin for the step.
+    [Theory]
+    [InlineData(1.0 / 60.0)]
+    [InlineData(0.25)]
+    [InlineData(1.0)]
+    [InlineData(10.0)]
+    public void HoweverLongTheStepALeanIsTakenOutAndNeverGrows(double dt)
+    {
+        double lean = 0.5;
+        double rate = 0.0;
+        for (int i = 0; i < 400; i++)
+        {
+            var up = new double3(Math.Cos(lean), Math.Sin(lean), 0);
+            LiftPush push = Lift.Step(new LiftInput(0.5, 0, 0, 0), true, up, Left, Up, Left * rate, G, dt);
+            rate += Vec.Dot(push.Spin, Left);
+            double next = lean + (rate * dt);
+            // just short of critical, so a short step may cross level by a hair; it never grows
+            Assert.True(Math.Abs(next) <= Math.Max(Math.Abs(lean), 0.02));
+            lean = next;
+        }
+        Assert.InRange(lean, -0.01, 0.01);
+    }
+
+    [Theory]
+    [InlineData(0.25)]
+    [InlineData(5.0)]
+    public void HoweverLongTheStepATumbleIsStoppedNotThrownBack(double dt)
+    {
+        LiftPush push = Lift.Step(new LiftInput(0.5, 0, 0, 0), true, Up, Forward, Up, Left * 3.0, G, dt);
+        double after = 3.0 + Vec.Dot(push.Spin, Left);
+        Assert.InRange(after, 0.0, 3.0);
+    }
 }

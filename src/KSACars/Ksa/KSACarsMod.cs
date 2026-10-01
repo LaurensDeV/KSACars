@@ -48,6 +48,7 @@ public sealed class KSACarsMod
         CrashHook.Install();
         BoostHook.Install();
         HudHook.Install();
+        RailsHook.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -143,6 +144,7 @@ public sealed class KSACarsMod
         CrashHook.Remove();
         BoostHook.Remove();
         HudHook.Remove();
+        RailsHook.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -168,6 +170,7 @@ public sealed class KSACarsMod
         CrashHook.Remove();
         BoostHook.Remove();
         HudHook.Remove();
+        RailsHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

@@ -95,6 +95,9 @@ you click next.
 
 A car is not destroyed by a hard landing, a collision or the sea; it bounces.
 
+The panel can be closed; a small **F&P** button stays in its place to open it again, and with
+the ModMenu mod installed it is also under **Mods > Fast & Purrious**.
+
 A car that ends up on its roof or its side cannot drive off. The **Fast & Purrious** panel, on screen while you
 are in one, has an **Unflip** button that sets it back on its wheels where it lies.
 
