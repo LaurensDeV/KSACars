@@ -1,3 +1,9 @@
+## [0.1.2](https://github.com/LaurensDeV/KSACars/compare/v0.1.1...v0.1.2) (2026-10-01)
+
+### Features
+
+* **eldorado:** bigger scoops, iris thrusters, downforce and a hover ([89a0019](https://github.com/LaurensDeV/KSACars/commit/89a00194b5dea45dbdb1776d2a95aaf71728d347))
+
 ## [0.1.1](https://github.com/LaurensDeV/KSACars/compare/v0.1.0...v0.1.1) (2026-10-01)
 
 ### Features
