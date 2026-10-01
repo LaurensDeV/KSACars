@@ -2,7 +2,7 @@
 #
 # Builds a release archive: the mod, and nothing else.
 #
-#   ./tools/package.sh                 # dist/KSACars-<version>.zip
+#   ./tools/package.sh                 # dist/FastAndPurrious-<version>.zip
 #   ./tools/package.sh --version 1.2.0 # override the version in the csproj
 #
 # Release carries no debug symbols (see the csproj) and the log starts at INFO rather than
@@ -32,10 +32,10 @@ fi
 [[ -n "$VERSION" ]] || { echo "error: no <Version> in the csproj and none given" >&2; exit 1; }
 
 OUT_DIR="$REPO_ROOT/dist"
-STAGE="$OUT_DIR/KSACars"
-ARCHIVE="$OUT_DIR/KSACars-$VERSION.zip"
+STAGE="$OUT_DIR/FastAndPurrious"
+ARCHIVE="$OUT_DIR/FastAndPurrious-$VERSION.zip"
 
-echo "packaging KSACars $VERSION"
+echo "packaging FastAndPurrious $VERSION"
 
 # A clean build, so a stale Debug artefact cannot ride along into a release.
 rm -rf "$REPO_ROOT/src/KSACars/bin/Release" "$STAGE" "$ARCHIVE"
@@ -81,7 +81,7 @@ cp "$REPO_ROOT/README.md" "$REPO_ROOT/LICENSE" "$STAGE/"
 # and Python's zipfile is already a dependency of the model tooling.
 ( cd "$OUT_DIR" && python3 -c "
 import shutil, sys
-shutil.make_archive('KSACars-$VERSION', 'zip', root_dir='.', base_dir='KSACars')
+shutil.make_archive('FastAndPurrious-$VERSION', 'zip', root_dir='.', base_dir='FastAndPurrious')
 " )
 rm -rf "$STAGE"
 

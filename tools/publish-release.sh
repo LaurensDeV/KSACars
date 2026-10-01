@@ -49,7 +49,7 @@ fi
 
 echo "building $VERSION"
 ./tools/package.sh --version "$VERSION" >/dev/null
-ARCHIVE="dist/KSACars-$VERSION.zip"
+ARCHIVE="dist/FastAndPurrious-$VERSION.zip"
 [[ -f "$ARCHIVE" ]] || { echo "error: $ARCHIVE was not produced" >&2; exit 1; }
 
 if gh release view "$TAG" >/dev/null 2>&1; then
@@ -72,7 +72,7 @@ elif (( CREATE )); then
     gh release create "$TAG" "$ARCHIVE" \
         --title "$TAG" \
         --generate-notes \
-        --notes "Drop the \`KSACars\` folder into your KSA user directory's \`mods/\`, register it in \`manifest.toml\`, and launch through StarMap. See the README for the full install guide."
+        --notes "Drop the \`FastAndPurrious\` folder into your KSA user directory's \`mods/\`, register it in \`manifest.toml\`, and launch through StarMap. See the README for the full install guide."
 else
     echo "error: no release exists for $TAG." >&2
     echo "       pass --create to make one, or let a push to main cut it first." >&2

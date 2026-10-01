@@ -140,7 +140,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.version.outputs.version }}
-          ARCHIVE: dist/KSACars-${{ needs.version.outputs.version }}.zip
+          ARCHIVE: dist/FastAndPurrious-${{ needs.version.outputs.version }}.zip
         run: |
           set -euo pipefail
           gh release upload "$TAG" "$ARCHIVE" --clobber
@@ -150,7 +150,7 @@ jobs:
 
           ---
 
-          Drop the `KSACars` folder into your KSA user directory's `mods/`, register it in
+          Drop the `FastAndPurrious` folder into your KSA user directory's `mods/`, register it in
           `manifest.toml`, and launch through StarMap. See the README for the full guide.
 
           Works on Windows and Linux — the mod is a portable .NET assembly.

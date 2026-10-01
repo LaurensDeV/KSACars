@@ -65,7 +65,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" \
-             --pattern "KSACars-$VERSION.zip" --dir dist
+             --pattern "FastAndPurrious-$VERSION.zip" --dir dist
 
       - name: Publish
         if: env.HAVE_SPACEDOCK == 'true'
@@ -116,7 +116,7 @@ jobs:
                     -F "changelog=<spacedock-changelog.md" \
                     --form-string "game-version=$version" \
                     --form-string "notify-followers=yes" \
-                    -F "zipball=@dist/KSACars-$VERSION.zip" \
+                    -F "zipball=@dist/FastAndPurrious-$VERSION.zip" \
                     "https://spacedock.info/api/mod/${MOD_ID}/update"; then
             for _ in 1 2 3 4 5 6; do
               sleep 20

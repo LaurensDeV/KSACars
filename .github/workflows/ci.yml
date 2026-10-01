@@ -139,6 +139,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: env.HAVE_KEY == 'true'
         with:
-          name: KSACars-mod
+          name: FastAndPurrious
           path: dist/*.zip
           if-no-files-found: error

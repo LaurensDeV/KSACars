@@ -28,7 +28,7 @@ else
     exit 1
 fi
 
-TARGET="$MODS_DIR/KSACars"
+TARGET="$MODS_DIR/FastAndPurrious"
 
 echo "building ($CONFIG)..."
 dotnet build "$REPO_ROOT/src/KSACars/KSACars.csproj" -c "$CONFIG" --nologo
@@ -105,11 +105,11 @@ MANIFEST="$(dirname "$MODS_DIR")/manifest.toml"
 
 if [[ ! -f "$MANIFEST" ]]; then
     echo "warning: no manifest at $MANIFEST -- register the mod by hand" >&2
-elif grep -q '^[[:space:]]*id[[:space:]]*=[[:space:]]*"KSACars"' "$MANIFEST"; then
+elif grep -q '^[[:space:]]*id[[:space:]]*=[[:space:]]*"FastAndPurrious"' "$MANIFEST"; then
     echo "already registered in $(basename "$MANIFEST")"
 else
     cp "$MANIFEST" "$MANIFEST.bak"
-    printf '\n[[mods]]\nid = "KSACars"\nenabled = true\n' >> "$MANIFEST"
+    printf '\n[[mods]]\nid = "FastAndPurrious"\nenabled = true\n' >> "$MANIFEST"
     echo "registered in $(basename "$MANIFEST") (backup: $(basename "$MANIFEST").bak)"
 fi
 
