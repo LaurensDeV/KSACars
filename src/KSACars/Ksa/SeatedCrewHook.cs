@@ -5,8 +5,7 @@ using KSA;
 namespace KSACars;
 
 /// <summary>
-/// The seventh place this mod patches the game: the crew of an open car, drawn when it is not the
-/// craft being flown.
+/// The crew of an open car, drawn when it is not the craft being flown.
 ///
 /// <para>KSA draws seated kittens for <c>Program.ControlledVehicle</c> alone, which suits a capsule,
 /// whose crew is inside it. A buggy's is out in the open: when one kitten gets out and control

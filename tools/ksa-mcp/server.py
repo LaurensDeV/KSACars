@@ -243,12 +243,14 @@ TOOLS = {
                   "hub heights. With no seconds it only reports, and the report is taken when the command arrives, "
                   "not when the hold ends. focus=true flies it and follows it first; crew=true fills its seats as "
                   "the launch window's Fill Seats does, seat_kittens names who sits where; eva=true lets the driver "
-                  "(or kitten) out. cam_elevation_deg (above the car), cam_azimuth_deg and cam_distance (KSA's "
+                  "(or kitten) out; flip=true tips it onto its roof and unflip=true sets it back on its wheels, as the "
+                  "panel's button does; lights is off, low or high. cam_elevation_deg (above the car), cam_azimuth_deg and cam_distance (KSA's "
                   "orbit distance power, about 1-2 for a car) move the orbit camera on the flown craft.",
                   {"craft": {"type": "string"}, "throttle": _num("-1..1"), "steer": _num("-1..1"),
                    "seconds": _num("sim seconds"), "focus": {"type": "boolean"},
                    "crew": {"type": "boolean"}, "seat_kittens": {"type": "string"},
                    "eva": {"type": "boolean"}, "kitten": {"type": "string"},
+                   "flip": {"type": "boolean"}, "unflip": {"type": "boolean"}, "lights": {"type": "string"},
                    "cam_elevation_deg": _num("deg"), "cam_azimuth_deg": _num("deg"), "cam_distance": _num("power"),
                    "log_every_s": _num("seconds between drive log lines")}, [],
                   lambda a: [_text(json.dumps(send("drive", **a), indent=1))]),

@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-90 types and 197 members across 4 assemblies.
+101 types and 235 members across 5 assemblies.
 
 ## BepuUtilities
 
@@ -69,7 +69,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### Brutal.Numerics.double4x4
 
-*referenced as a type only*
+- `double get_M11()`
+- `double get_M12()`
+- `double get_M13()`
+- `double get_M21()`
+- `double get_M22()`
+- `double get_M23()`
+- `double get_M31()`
+- `double get_M32()`
+- `double get_M33()`
 
 ### Brutal.Numerics.doubleQuat
 
@@ -82,10 +90,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double Y`
 - `double Z`
 
+### Brutal.Numerics.float2
+
+- `float X`
+- `float Y`
+- `void .ctor(float, float)`
+
 ### Brutal.Numerics.float3
 
 - `Brutal.Numerics.float3 Pack(ref Brutal.Numerics.double3, Float)`
 - `Brutal.Numerics.float3 op_UnaryNegation(Brutal.Numerics.float3)`
+- `void .ctor(float, float, float)`
 
 ### Brutal.Numerics.float4x4
 
@@ -97,6 +112,40 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### Brutal.Numerics.floatQuat
 
 - `void .ctor(float, float, float, float)`
+
+## Brutal.ImGui
+
+### Brutal.ImGuiApi.ImGui
+
+- `Brutal.ImGuiApi.ImGuiViewportPtr GetMainViewport()`
+- `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
+- `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
+- `bool RadioButton(Brutal.ImGuiApi.ImString, bool)`
+- `void End()`
+- `void SameLine(float, float)`
+- `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
+- `void Text(Brutal.ImGuiApi.ImString)`
+- `void TextDisabled(Brutal.ImGuiApi.ImString)`
+
+### Brutal.ImGuiApi.ImGuiCond
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiViewportPtr
+
+- `ref Brutal.Numerics.float2 get_WorkPos()`
+- `ref Brutal.Numerics.float2 get_WorkSize()`
+
+### Brutal.ImGuiApi.ImGuiWindowFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImString
+
+- `Brutal.ImGuiApi.ImString op_Implicit(string)`
+- `void .ctor(int, int)`
+- `void AppendFormatted<1>(!!0, int, string)`
+- `void AppendLiteral(System.ReadOnlySpan`1<char>)`
 
 ## KSA
 
@@ -184,6 +233,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.Double3Ex
 
+- `Brutal.Numerics.double3 Transform(Brutal.Numerics.double3, Brutal.Numerics.double4x4)`
 - `Brutal.Numerics.double3 Transform(Brutal.Numerics.double3, Brutal.Numerics.doubleQuat)`
 
 ### KSA.EVADoor
@@ -256,6 +306,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.KinematicStates
 
 - `Brutal.Numerics.double3 AngularVelocityPhys`
+- `Brutal.Numerics.double3 PositionPhys`
 - `Brutal.Numerics.double3 VelocityPhys`
 - `Brutal.Numerics.doubleQuat Body2Phys`
 
@@ -312,7 +363,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 get_PositionVehicleAsmb()`
 - `Brutal.Numerics.doubleQuat get_Asmb2VehicleAsmb()`
+- `KSA.Part get_FullPart()`
+- `KSA.PowerConsumer LightSwitch`
 - `System.ReadOnlySpan`1<KSA.Part> get_SubParts()`
+- `bool IsLightSwitchedOff()`
 - `string get_Id()`
 - `void ResetCachedPosMatrixValues()`
 - `void set_Asmb2ParentAsmb(Brutal.Numerics.doubleQuat)`
@@ -325,6 +379,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.Part get_Root()`
 - `System.ReadOnlySpan`1<KSA.Part> get_Parts()`
 - `void RecomputeAllDerivedData()`
+- `void UpdateRenderData(ref Brutal.Numerics.double4x4, bool, KSA.IViewport, int)`
+
+### KSA.PartTreeRenderData
+
+*referenced as a type only*
 
 ### KSA.PhysicalAtmosphereReference
 
@@ -341,11 +400,16 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void GetStatesCcf(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void GetStatesCci(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 
+### KSA.PowerConsumer
+
+- `bool LightIsActive`
+
 ### KSA.Program
 
 - `KSA.Camera GetMainCamera()`
 - `KSA.IGameViewport get_MainViewport()`
 - `KSA.Program get_Instance()`
+- `KSA.Rendering.Lighting.ILightSystem LightSystem`
 - `KSA.Vehicle get_ControlledVehicle()`
 - `KSA.VehicleEditor Editor`
 - `System.ReadOnlySpan`1<KSA.Vehicle> get_VehiclesInFrame()`
@@ -355,6 +419,18 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.QuaternionEx
 
 - `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
+
+### KSA.Rendering.Lighting.ELightFlags
+
+*referenced as a type only*
+
+### KSA.Rendering.Lighting.ILightSystem
+
+- `void CreateLightInstance(KSA.Rendering.Lighting.Light, KSA.IViewport)`
+
+### KSA.Rendering.Lighting.Light
+
+- `KSA.Rendering.Lighting.Light CreateSpotLight(Brutal.Numerics.double3, Brutal.Numerics.double3, float, float, float, Brutal.Numerics.float3, float, KSA.Rendering.Lighting.ELightFlags)`
 
 ### KSA.Rendering.Water.Data.OceanReference
 

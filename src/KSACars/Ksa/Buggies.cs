@@ -1,6 +1,7 @@
 using BepuUtilities;
 using Brutal.Numerics;
 using KSA;
+using KSA.Rendering.Lighting;
 
 namespace KSACars;
 
@@ -35,6 +36,8 @@ internal sealed class Buggies
         public double Lift { get; set; }
         public double YawRate { get; set; }
         public double SideSpeed { get; set; }
+        public BeamSetting Beam { get; set; }
+        public bool SwitchSeen { get; set; }
     }
 
     // Inputs held by the bridge for so many simulated seconds, ahead of the keys.
@@ -42,6 +45,9 @@ internal sealed class Buggies
 
     // Read by the physics prefix, which has only the vehicle to go on.
     private static readonly Dictionary<Vehicle, Entry> Active = [];
+
+    // Cars asked to be set back on their wheels, and whether instead to be tipped onto the roof.
+    private static readonly Dictionary<Vehicle, bool> ToRight = [];
 
     private static bool _complained;
 
@@ -57,6 +63,12 @@ internal sealed class Buggies
 
             Entry entry = new(v, found.Part, found.Profile);
             Resolve(entry);
+            // A saved car comes back with its switch as it was left.
+            if (found.Part.LightSwitch is { LightIsActive: true })
+            {
+                entry.Beam = BeamSetting.Low;
+                entry.SwitchSeen = true;
+            }
             Active[v] = entry;
             Log.Info($"{found.Profile.DisplayName} on {KsaWorld.DisplayName(v)}: "
                      + $"{entry.Wheels.Count(w => w is not null)} wheel(s) found");
@@ -68,12 +80,20 @@ internal sealed class Buggies
             if (!KsaWorld.IsAlive(v) || Find(v)?.Part != e.Part) (gone ??= []).Add(v);
         }
         if (gone is not null) foreach (Vehicle v in gone) Active.Remove(v);
+
+        foreach (Entry e in Active.Values)
+        {
+            if (e.Part.LightSwitch is not { } lamps) continue;
+            (e.Beam, lamps.LightIsActive) = Headlights.Reconcile(e.Beam, lamps.LightIsActive, e.SwitchSeen);
+            e.SwitchSeen = lamps.LightIsActive;
+        }
     }
 
     public void Clear()
     {
         Active.Clear();
         Held.Clear();
+        ToRight.Clear();
     }
 
     /// <summary>Holds a buggy's throttle and steering for so many simulated seconds, whoever is flying.</summary>
@@ -83,6 +103,79 @@ internal sealed class Buggies
         if (seconds > 0.0) Held[craft] = (input, seconds);
         else Held.Remove(craft);
         return true;
+    }
+
+    /// <summary>The car a craft is, or null when it is not one.</summary>
+    public static Entry? Of(Vehicle craft) => Active.GetValueOrDefault(craft);
+
+    /// <summary>
+    /// Sets a car back on its wheels where it lies, at its next physics step. <paramref name="tip"/>
+    /// turns it onto its roof instead, for the bridge to have something to right.
+    /// </summary>
+    public static bool Right(Vehicle craft, bool tip = false)
+    {
+        if (!Active.ContainsKey(craft)) return false;
+        ToRight[craft] = tip;
+        return true;
+    }
+
+    /// <summary>
+    /// A car's lit headlamps, handed to KSA as spotlights beside the craft's own lights. The matrix is
+    /// the one KSA is drawing the craft with, so the beams sit on the lamps as drawn.
+    /// </summary>
+    public static void LightLamps(PartTree parts, in double4x4 asmb2Ego, IViewport viewport)
+    {
+        if (Active.Count == 0) return;
+        foreach (Entry e in Active.Values)
+        {
+            if (!ReferenceEquals(e.Craft.Parts, parts)) continue;
+            // A flat battery puts the lamps out with the lenses, which KSA darkens itself.
+            if (Headlights.Shape(e.Beam) is not { } beam || e.Part.IsLightSwitchedOff()) return;
+
+            doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;
+            double3 up = part2Asmb * new double3(1, 0, 0);
+            double3 forward = part2Asmb * new double3(0, 1, 0);
+            Shine(e, e.Drive.Profile.HeadLamps, Headlights.Aim(up, forward, beam.DipRad), beam, Headlights.Colour,
+                  beam.Intensity, ELightFlags.CastsShadows | ELightFlags.SoftShadows, in asmb2Ego, viewport);
+
+            BeamShape tail = Headlights.Tail;
+            bool braking = Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed);
+            float brake = braking ? Headlights.BrakeBoost : 1f;
+            Shine(e, e.Drive.Profile.TailLamps, Headlights.Aim(up, -forward, tail.DipRad), tail, Headlights.TailColour,
+                  tail.Intensity * brake, ELightFlags.None, in asmb2Ego, viewport);
+            return;
+        }
+    }
+
+    private static void Shine(Entry e, double3[] lamps, double3 d, BeamShape beam, float3 colour, float intensity,
+                              ELightFlags flags, in double4x4 asmb2Ego, IViewport viewport)
+    {
+        double3 aim = new((d.X * asmb2Ego.M11) + (d.Y * asmb2Ego.M21) + (d.Z * asmb2Ego.M31),
+                          (d.X * asmb2Ego.M12) + (d.Y * asmb2Ego.M22) + (d.Z * asmb2Ego.M32),
+                          (d.X * asmb2Ego.M13) + (d.Y * asmb2Ego.M23) + (d.Z * asmb2Ego.M33));
+        foreach (double3 lamp in lamps)
+        {
+            double3 at = (e.Part.PositionVehicleAsmb + (e.Part.Asmb2VehicleAsmb * lamp)).Transform(asmb2Ego);
+            Program.LightSystem.CreateLightInstance(
+                Light.CreateSpotLight(at, aim, beam.Range, beam.OuterAngle, beam.InnerAngle, colour, intensity, flags),
+                viewport);
+        }
+    }
+
+    /// <summary>The colour a subpart's lenses glow, as 0xRRGGBB, or null for KSA's own white.</summary>
+    public static uint? LensColour(Part part)
+    {
+        if (Active.Count == 0) return null;
+        foreach (Entry e in Active.Values)
+        {
+            if (!ReferenceEquals(e.Part, part.FullPart) || part.Id is not { } id) continue;
+            foreach ((string suffix, uint rgb) in e.Drive.Profile.ColouredLenses)
+            {
+                if (id.EndsWith(e.Drive.Profile.SubpartPrefix + suffix, StringComparison.Ordinal)) return rgb;
+            }
+            return null;
+        }
+        return null;
     }
 
     /// <summary>What a buggy is doing, for the bridge; null when the craft is not one.</summary>
@@ -104,6 +197,7 @@ internal sealed class Buggies
             ["hub_height_m"] = e.HubHeights.Select(t => Math.Round(t, 3)).ToArray(),
             ["level"] = Math.Round(e.Level, 4),
             ["on_rails"] = e.Railed,
+            ["lights"] = e.Beam.ToString().ToLowerInvariant(),
             ["scraping"] = e.Scraping,
             ["yaw_dps"] = Math.Round(e.YawRate * 180.0 / Math.PI, 1),
             ["sideways_ms"] = Math.Round(e.SideSpeed, 2),
@@ -276,7 +370,8 @@ internal sealed class Buggies
 
         // KSA only rails a car that has stood still, so one on rails with nobody at the wheel is parked:
         // it is exactly where it was, and costs nothing. Its speed from before it stopped says nothing.
-        if (railed && idle) return;
+        bool righting = ToRight.Remove(craft, out bool tip);
+        if (railed && idle && !righting) return;
 
         PhysicsStates states = craft.GetPhysicsStatesMutable();
 
@@ -299,10 +394,35 @@ internal sealed class Buggies
         BuggyCorner[] corners = e.Drive.Profile.Corners;
         Span<WheelContact> contacts = stackalloc WheelContact[corners.Length];
         Span<double3> hubs = stackalloc double3[corners.Length];
+        for (int i = 0; i < corners.Length; i++) hubs[i] = partOrigin + (part2Asmb * corners[i].Hub) - com;
+
+        if (righting)
+        {
+            double comRadius = Vec.Len(positionCcf);
+            if (!(comRadius > 0.0)) return;
+            double3 upCcf = positionCcf / comRadius;
+            if (!ground.TryHeight(upCcf.Transform(ccf2Cce), out double under)) return;
+
+            double3 groundUp = upCcf.Transform(ccf2Body);
+            double comHeight = comRadius - (body.MeanRadius + under);
+            RightingMove move = tip
+                ? new RightingMove(doubleQuat.CreateFromAxisAngle(forward, Math.PI), 1.5 - comHeight)
+                : Righting.Solve(corners, hubs, up, forward, groundUp, comHeight);
+
+            // The turn is in the car's own frame, so it goes on first; and the car is left standing
+            // still over the ground, which is what the planet-fixed velocity measures.
+            states.Kinematic.PositionPhys += groundUp.Transform(body2Phys) * move.Lift;
+            states.Kinematic.Body2Phys = body2Phys * move.Turn;
+            states.Kinematic.VelocityPhys -= velocityBody.Transform(body2Phys);
+            states.Kinematic.AngularVelocityPhys = default;
+            if (railed) craft.TakeOffRails();
+            Log.Info($"{KsaWorld.DisplayName(craft)} {(tip ? "tipped onto its roof" : "set back on its wheels")}, lifted {move.Lift:F2} m");
+            return;
+        }
+
         for (int i = 0; i < corners.Length; i++)
         {
-            double3 hub = partOrigin + (part2Asmb * corners[i].Hub) - com;
-            hubs[i] = hub;
+            double3 hub = hubs[i];
 
             double3 atCcf = positionCcf + hub.Transform(body2Ccf);
             double radius = Vec.Len(atCcf);

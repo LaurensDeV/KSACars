@@ -40,6 +40,8 @@ public sealed class KSACarsMod
         // KSA draws seated kittens for the craft being flown alone, so in an open car the one left
         // sitting would vanish when the other gets out.
         SeatedCrewHook.Install();
+        LightsHook.Install();
+        LensColourHook.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -80,7 +82,9 @@ public sealed class KSACarsMod
     {
         try
         {
-            if (!_disabled) StepOnce();
+            if (_disabled) return;
+            StepOnce();
+            if (KsaWorld.InFlightScene) CarPanel.Draw();
         }
         catch (Exception e)
         {
@@ -114,6 +118,8 @@ public sealed class KSACarsMod
         _buggies.Clear();
         PhysicsHook.Remove();
         SeatedCrewHook.Remove();
+        LightsHook.Remove();
+        LensColourHook.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -132,6 +138,8 @@ public sealed class KSACarsMod
         _buggies.Clear();
         PhysicsHook.Remove();
         SeatedCrewHook.Remove();
+        LightsHook.Remove();
+        LensColourHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

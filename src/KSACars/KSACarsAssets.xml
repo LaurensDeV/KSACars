@@ -20,6 +20,7 @@
     <Diffuse Path="Textures/KSACars_Buggy_Diffuse.png" Category="Vessel" />
     <Normal Path="Textures/KSACars_Buggy_Normal.png" Category="Vessel" />
     <AoRoughMetal Path="Textures/KSACars_Buggy_PBR.png" Category="Vessel" />
+    <Emissive Path="Textures/KSACars_Buggy_Emissive.png" Category="Vessel" />
   </PbrMaterial>
 
   <!--
@@ -266,6 +267,7 @@
     <Diffuse Path="Textures/KSACars_Eldorado_Diffuse.png" Category="Vessel" />
     <Normal Path="Textures/KSACars_Eldorado_Normal.png" Category="Vessel" />
     <AoRoughMetal Path="Textures/KSACars_Eldorado_PBR.png" Category="Vessel" />
+    <Emissive Path="Textures/KSACars_Eldorado_Emissive.png" Category="Vessel" />
   </PbrMaterial>
 
   <!-- One wheel mesh for all four corners: a whitewall on a cover is the same from either side. -->
@@ -303,6 +305,29 @@
       <Mesh Id="KSACars_Subpart_EldoGlass" />
       <Material Id="KSACars_Eldorado_Material" />
     </PartModelGlass>
+  </SubPart>
+
+  <!--
+    The red and amber lenses, cut out of the body by tools/model/split-lenses.py: KSA colours a
+    glowing lens per subpart, so one that is not white has to be its own.
+  -->
+  <SubPart Id="KSACars_EldoTailLens_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoTailLens_Model">
+      <Mesh Id="KSACars_Subpart_EldoTailLens" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoTailLens_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_EldoMarkerLens_SubPart">
+    <PartModel Id="KSACars_Subpart_EldoMarkerLens_Model">
+      <Mesh Id="KSACars_Subpart_EldoMarkerLens" />
+      <Material Id="KSACars_Eldorado_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_EldoMarkerLens_VM" />
+    </MeshView>
   </SubPart>
 
   <SubPart Id="KSACars_EldoDoorL_SubPart">
@@ -359,6 +384,8 @@
         <Position X="0.70000" Y="0.10000" Z="-1.12000" />
       </Transform>
     </SubPart>
+    <SubPart Id="KSACars_Eldo_TailLens" InstanceOf="KSACars_EldoTailLens_SubPart" />
+    <SubPart Id="KSACars_Eldo_MarkerLens" InstanceOf="KSACars_EldoMarkerLens_SubPart" />
 
     <Connector Id="_elConnectorAft">
       <Transform>

@@ -241,6 +241,15 @@ internal sealed class Bridge
             if (!Buggies.Hold(craft, input, command.Number("seconds", 0.0))) return Failed("that craft is not a buggy");
         }
 
+        if (command.Has("lights"))
+        {
+            if (Headlights.Parse(command.String("lights")) is not { } setting) return Failed("lights is off, low or high");
+            if (Buggies.Of(craft) is not { } car) return Failed("that craft is not a buggy");
+            car.Beam = setting;
+        }
+        if (command.Flag("flip", false) && !Buggies.Right(craft, tip: true)) return Failed("that craft is not a buggy");
+        if (command.Flag("unflip", false) && !Buggies.Right(craft)) return Failed("that craft is not a buggy");
+
         // What the crew portrait's EVA button does: the driver of a buggy, the first kitten aboard anything else.
         if (command.Flag("eva", false))
         {

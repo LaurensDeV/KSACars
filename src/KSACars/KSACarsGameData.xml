@@ -31,6 +31,14 @@
     </Battery>
 
     <!--
+      The lamps' switch: KSA lights the emissive lenses while it is on. Next to nothing is drawn,
+      because nothing on a car charges the battery and a flat one puts the lamps out.
+    -->
+    <PowerConsumer LightSwitch="true">
+      <Consumed W="0.001" />
+    </PowerConsumer>
+
+    <!--
       Two seats, the driver on the right, behind the wheel. Position is the eye; the engine draws the
       seated kitten's origin 0.63 m below it along UpAxis, and its hips sit 0.19 m above that origin,
       which puts them on the cushion.
@@ -124,6 +132,14 @@
     <Battery>
       <MaximumCapacity J="2000" />
     </Battery>
+
+    <!--
+      The lamps' switch: KSA lights the emissive lenses while it is on. Next to nothing is drawn,
+      because nothing on a car charges the battery and a flat one puts the lamps out.
+    -->
+    <PowerConsumer LightSwitch="true">
+      <Consumed W="0.001" />
+    </PowerConsumer>
 
     <!--
       Left-hand drive: the driver on the car's left, +Z, placed so a kitten's hands reach the rim, and
