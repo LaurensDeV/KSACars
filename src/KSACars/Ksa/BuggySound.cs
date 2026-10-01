@@ -9,7 +9,7 @@ namespace KSACars;
 ///
 /// <para>Two layers rather than one pitched sample, because an idle raised three times over is still an
 /// idle, only faster; a loaded engine sounds different, not just higher. The engine runs while the
-/// buggy is the craft being flown, and a parked one is silent.</para>
+/// buggy is the craft being flown, and a parked one is silent, as is any under warp.</para>
 ///
 /// <para>Pitch and volume are set as plain multipliers every frame. The engine re-applies both on every
 /// active channel each frame, and only its <c>Param</c>-driven multipliers are cleared afterwards, so a
@@ -17,6 +17,10 @@ namespace KSACars;
 /// </summary>
 internal sealed class BuggySound
 {
+
+    // Past this the engine is silent. Under warp its RPM swings many times a second and the loops are
+    // re-pitched to match, which is noise rather than an engine.
+    private const double LoudestSimSpeed = 4.0;
 
     // The starter clip's length, less its fade: the loops come in as it catches.
     private const long CatchesAfterMs = 2000;
@@ -56,6 +60,14 @@ internal sealed class BuggySound
                 PlayOnce(engine.Profile.SoundPrefix + "Start", spatial, volume);
             }
             if (Environment.TickCount64 - engine.StartedMs < CatchesAfterMs) continue;
+
+            // Cut rather than stopped: the engine is still running, so no key-off going in and no
+            // starter coming out.
+            if (KsaWorld.SimulationSpeed > LoudestSimSpeed)
+            {
+                Cut(engine);
+                continue;
+            }
 
             engine.Idle = Keep(engine.Idle, engine.Profile.SoundPrefix + "Idle", spatial, volume);
             engine.Load = Keep(engine.Load, engine.Profile.SoundPrefix + "Load", spatial, volume);
