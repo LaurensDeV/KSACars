@@ -79,6 +79,8 @@ The Eldorado also flies, on four rockets under its floor, worked with the keys y
 | roll | Q / E | in the air, turn left or right |
 
 
+A car is not destroyed by a hard landing or a collision; it bounces.
+
 A car that ends up on its roof or its side cannot drive off. The **Car** panel, on screen while you
 are in one, has an **Unflip** button that sets it back on its wheels where it lies.
 

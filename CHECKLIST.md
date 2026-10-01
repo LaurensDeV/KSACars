@@ -42,6 +42,10 @@ none of it has been seen as **KSACars** yet:
 - [ ] The rockets heard, the flames dying away when cut, and the flames at night and in vacuum
 - [ ] The rockets on KSA's keys, by a player: Z and X light and cut them, Up and Down move the
       throttle, W / S and A / D lean and bank in the air, Q / E turn
+- [x] A hard landing survived: the Eldorado dropped from 180 m at 50 m/s bounces and settles on its
+      wheels, level, with no destruction
+- [ ] The rockets' throttle shown on KSA's throttle gauge, moving with the Up / Down keys
+- [ ] A collision between a car and another craft, and a car dropped on its roof
 - [ ] A landing on the springs, and a hover held over a slope
 - [ ] The engine falls silent past 4x warp, with no key-off, and comes back with no starter at 1x
 - [ ] **A save holding a car built in the old mod does not load**: its part Ids are gone. Expected,

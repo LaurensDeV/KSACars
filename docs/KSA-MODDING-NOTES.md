@@ -944,8 +944,8 @@ raised by `PhysicsBubble.DetectStructuralFailure` as a `VehicleDestructionEvent`
 `Universe.DestroyVehicleFromEvent` (public static), from `ApplyRenderEventsToVehicles` on the main
 thread. That spawns the explosion, sheds debris and calls `DestroyVehicle(Kill)`. A Harmony prefix
 there returning false is a per-vehicle veto on all of them at once; the event is raised again every
-step the vehicle stays in trouble. Installing one works; whether sparing a craft that way leaves it
-in a sane state has not been flown.
+step the vehicle stays in trouble. `Ksa/CrashHook.cs` does this for the cars: an Eldorado dropped 180 m
+at 50 m/s bounced and settled on its wheels, level and driveable.
 
 ## How large a craft the engine will take
 
