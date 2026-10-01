@@ -17,6 +17,32 @@ internal static class CarPanel
 
     private static float? _rockWeight;
 
+    /// <summary>Whether the panel is open. Closed, a small button that opens it is left in its place.</summary>
+    public static bool Visible = true;
+
+    private static bool _warnedModMenu;
+
+    /// <summary>
+    /// Called by ModMenu, if the player has it, to fill this mod's entry in its menu. Static, because
+    /// that is what ModMenu can always call.
+    /// </summary>
+    [ModMenuEntry("Fast & Purrious")]
+    public static void DrawModMenu()
+    {
+        // Inside ModMenu's own menu build, where anything thrown would be its failure and not in this log.
+        try
+        {
+            bool visible = Visible;
+            if (ImGui.MenuItem("Panel", default, ref visible, true)) Visible = visible;
+        }
+        catch (Exception e)
+        {
+            if (_warnedModMenu) return;
+            _warnedModMenu = true;
+            Log.Warn($"ModMenu entry failed, so its Panel item will not work: {e.Message}");
+        }
+    }
+
     public static void Draw(CraftMover mover)
     {
         if (KsaWorld.ControlledVehicle is not { } craft || Buggies.Of(craft) is not { } car) return;
@@ -25,7 +51,17 @@ internal static class CarPanel
         float2 at = new(screen.WorkPos.X + 16f, screen.WorkPos.Y + (screen.WorkSize.Y * 0.5f));
         ImGui.SetNextWindowPos(in at, ImGuiCond.FirstUseEver, null);
 
-        if (ImGui.Begin("Fast & Purrious###Car", Flags))
+        if (!Visible)
+        {
+            if (ImGui.Begin("Fast & Purrious##reopen", Flags | ImGuiWindowFlags.NoTitleBar))
+            {
+                if (ImGui.SmallButton("F&P")) Visible = true;
+            }
+            ImGui.End();
+            return;
+        }
+
+        if (ImGui.Begin("Fast & Purrious###Car", ref Visible, Flags))
         {
             ImGui.Text(car.Drive.Profile.DisplayName);
             // On the speed's own line, so nothing under it moves when the car goes over.
