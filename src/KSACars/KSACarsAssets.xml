@@ -486,7 +486,13 @@
         <Rotation Z="3.14159" />
       </Transform>
     </SubPart>
-    <SubPart Id="KSACars_Eldo_Scoop" InstanceOf="KSACars_EldoScoop_SubPart" />
+    <!-- Declared as it is with no scoop on, shrunk away inside the hull, so the editor and its thumbnail show none. -->
+    <SubPart Id="KSACars_Eldo_Scoop" InstanceOf="KSACars_EldoScoop_SubPart">
+      <Transform>
+        <Position X="0.75000" Y="-0.18000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
 
     <!-- Two more hatches in the tail panel above the bumper: the boost rockets. -->
     <SubPart Id="KSACars_Eldo_BoostL" InstanceOf="KSACars_EldoIrisCup_SubPart">
@@ -501,8 +507,18 @@
         <Rotation Z="-1.57080" />
       </Transform>
     </SubPart>
-    <SubPart Id="KSACars_Eldo_ScoopXXL" InstanceOf="KSACars_EldoScoopXXL_SubPart" />
-    <SubPart Id="KSACars_Eldo_ScoopMega" InstanceOf="KSACars_EldoScoopMega_SubPart" />
+    <SubPart Id="KSACars_Eldo_ScoopXXL" InstanceOf="KSACars_EldoScoopXXL_SubPart">
+      <Transform>
+        <Position X="0.65000" Y="-0.18000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_Eldo_ScoopMega" InstanceOf="KSACars_EldoScoopMega_SubPart">
+      <Transform>
+        <Position X="0.65000" Y="-0.18000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
 
     <!-- And four in the bonnet and the boot: the downforce rockets. -->
     <SubPart Id="KSACars_Eldo_DownFL" InstanceOf="KSACars_EldoIrisCup_SubPart">
