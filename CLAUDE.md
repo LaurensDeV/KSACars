@@ -171,17 +171,22 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BuggyProfile.cs` | **one car, as data** — where its hubs, arms and coil-overs are, and how its springs, tyres and engine are tuned; `All` is every car the mod drives. KSA has no wheels, so every one of these numbers is the mod's |
 | `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
+| `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
+| `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
 | `Sim/FrameLatch.cs` | hands a frame's work out once, to whichever hook reaches it first — **the UI pass is skipped while the UI is hidden and the frame postfix is not** |
 | `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
 | `Sim/Vec.cs` | vector helpers |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
-| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the two patches, and once a frame finds the cars, poses their wheels and plays their engines |
-| `Ksa/PhysicsHook.cs` | **one of the two places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the four patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the four places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
 | `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
-| `Ksa/SeatedCrewHook.cs` | the other patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
+| `Ksa/SeatedCrewHook.cs` | the second patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
+| `Ksa/LightsHook.cs` | the third patch — **the headlamps submitted where KSA submits a craft's own lights**, a postfix on `PartTree.UpdateRenderData`; KSA clears its light list after the GUI pass, so a light from any StarMap hook is never drawn |
+| `Ksa/LensColourHook.cs` | the fourth patch, and the only one on a private method — **the colour a lens subpart glows**, written into KSA's per-instance render state; if KSA moves it the patch does not apply and coloured lenses glow white |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
-| `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch and the **Unflip** button — a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
 | `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
@@ -207,7 +212,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 197 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 235 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -242,14 +247,40 @@ car's, that share overshot, the car rocked on its wheels at 13 deg/s, and the ro
 the drive needed. `KSACarsGameData.xml` gives the Eldorado a `SolidCuboidMass`, and
 `BuggyDriveTests.AYawKickDiesAwayRatherThanRockingTheDriveAway` fails against the sphere.
 
+**A car on its roof is stuck, so the panel can right it.** The springs only push through the wheels,
+and KSA rails a car lying still. `Buggies.Right` queues it and the next physics window writes the pose
+`Sim/Righting.cs` solves: turned upright where it lies, lifted until the lowest tyre is just clear, and
+left standing still. The bridge's `drive` takes `flip` and `unflip` to test it.
+
+**The lamps are KSA spotlights, handed over every frame.** `BuggyProfile.HeadLamps` and `TailLamps` are
+where they are and `Sim/Headlights.cs` what each beam is; `Buggies.LightLamps` submits them from
+`LightsHook`, in the matrix KSA is drawing the craft with. The tail lamps come on with the headlamps and
+burn brighter under braking.
+
+**A lens glows through KSA's emissive map, and a coloured one has to be its own subpart.** KSA's part
+shader reads one channel of the emissive texture as a mask: the glow is white, or the one colour the
+drawn instance carries, which KSA only sets for a battery's status light. `Ksa/LensColourHook.cs` sets
+it per subpart, from `BuggyProfile.ColouredLenses`, so the Eldorado's tail lenses glow red and its side
+markers amber while the headlamps in the body stay white. `tools/model/split-lenses.py` cuts those
+lenses out of the body mesh and **has to be run again after every export from Blender**;
+`tools/model/lens-emissive.py` paints the mask. Both read the lens faces' UVs from `tools/model/lenses/`,
+taken out of the bake-source `.blend`, which have to be re-read if a car is unwrapped again. A light
+cannot stand in for this: it lights the bodywork round the lens as a blob.
+
+**The switch is the part's own.** Each car carries a `<PowerConsumer LightSwitch="true">`, which is what
+KSA darkens the emissive lenses by and saves with the craft. `Headlights.Reconcile` keeps the panel's
+setting and that switch in step; dipped or main beam is the mod's and is not saved, so a saved car comes
+back dipped. It draws almost nothing, because nothing on a car charges the battery.
+
 **Seats and doors are KSA's own.** An `<IVASeat>` per seat, placed at the kitten's eye, and an
 `<EVADoor>` on a mesh-less subpart beside each front seat; a kitten boards and leaves through those
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
 
-**Two patches, both on public methods, both pinned.** Each has a `PinTheSignature` that is never
-called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
-tracks it and a KSA change to it is a build error. Harmony ships with StarMap, so a player installs
+**Four patches; three are on public methods and pinned.** Each of those has a `PinTheSignature` that is
+never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
+tracks it and a KSA change to it is a build error. `LensColourHook` patches a private method, which
+cannot be pinned: it checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
 nothing extra.
 
 ## Adding a car
@@ -263,14 +294,14 @@ A car is **data plus art**: nothing in the drive, the sound or the hands names a
    it is unwrapped**, because everything after is welded to the shape.
 2. **Declare it** in `KSACarsAssets.xml` and `KSACarsGameData.xml`: the part, its subparts with Ids
    ending `<Prefix>WheelFL`, `WheelFR`, `WheelRL`, `WheelRR` and `Steering` (and `Arm…` and `Coil…` if
-   it has visible suspension), its seats, doors, colliders and mass — a box the car's size, not a
+   it has visible suspension), its seats, doors, colliders, light switch and mass — a box the car's size, not a
    sphere. **A shipped part's subpart list is append-only and its Id is not renameable**: KSA pairs a
    saved part with its definition positionally and by Id, and a save that no longer matches closes
    the game. `docs/KSA-MODDING-NOTES.md` has the loop.
 3. **Give it a `BuggyProfile`** in `Sim/BuggyProfile.cs` and add it to `All`: the hubs, the steering
-   wheel's pivot and axis, the driver's eye, and the tuning. Add tests in `BuggyDriveTests` that it
+   wheel's pivot and axis, the driver's eye, the head and tail lamps, and the tuning. Add tests in `BuggyDriveTests` that it
    settles, pulls away and shrugs off a yaw kick, and one in `SteeringGripTests` that the driver
-   reaches the rim.
+   reaches the rim; `HeadlightsTests` covers every car in `All`.
 4. **Give it an engine**: four sounds named `<SoundPrefix>Start`, `Idle`, `Load` and `Stop` in
    `KSACarsSounds.xml`, cut by a script in `tools/` from recordings kept in `tools/audio/` with their
    licence. `LoadRecordedRpm` and `IdleRecordedRpm` say what RPM each loop was recorded at.

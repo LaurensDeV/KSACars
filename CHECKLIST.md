@@ -21,6 +21,20 @@ none of it has been seen as **KSACars** yet:
 - [ ] The driver's hands are on the rim (`hands_solves` above zero in the drive report)
 - [ ] With one kitten out on EVA, the other is still drawn in the car (the seated-crew patch)
 - [ ] The engine is heard, start to key-off
+- [x] An Eldorado tipped onto its roof by the bridge's `flip`, railed and scraping, is back on its
+      wheels, level and off rails, after `unflip`, pointing the way it was
+- [ ] The **Car** panel is seen while a car is flown, its **Unflip** button rights the car, and the
+      keys still drive with the panel on screen
+- [ ] The buggy righted, and a car righted from its side and on a slope
+- [x] Headlamps: on the night side both cars throw two beams ahead from the bridge's `lights`, dipped
+      and main, and go dark on `off`
+- [x] The Eldorado's headlamp lenses glow white with the lamps on, its tail lenses red and its side
+      markers amber, each to the lens's own outline, with red on the ground behind
+- [ ] The buggy's tail lamps (it has no tail lenses), the brake lights brightening, and the lamps
+      coming back on after a save and reload
+- [ ] The panel's Off / Low / High buttons switch them, and the brightness and reach look right from
+      the driver's seat
+- [ ] The engine falls silent past 4x warp, with no key-off, and comes back with no starter at 1x
 - [ ] **A save holding a car built in the old mod does not load**: its part Ids are gone. Expected,
       and not fixable without the old Ids; rebuild the car
 

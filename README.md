@@ -65,6 +65,12 @@ the editor, or launch one straight from the vehicle list. Fill its seats in the 
 
 The car changes gear on its own. The engine is heard while you are driving it.
 
+The same panel switches the headlights between off, dipped and main beam. The tail lights come on
+with them and brighten when you brake.
+
+A car that ends up on its roof or its side cannot drive off. The **Car** panel, on screen while you
+are in one, has an **Unflip** button that sets it back on its wheels where it lies.
+
 ## Build
 
 Requires the **.NET 10 SDK** — the mod targets `net10.0` because that is what KSA runs on. The scripts
