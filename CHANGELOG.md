@@ -1,3 +1,10 @@
+## [0.1.5](https://github.com/LaurensDeV/KSACars/compare/v0.1.4...v0.1.5) (2026-10-02)
+
+### Fixes
+
+* **eldorado:** keep four wheels down through a steering reversal ([b38ef3d](https://github.com/LaurensDeV/KSACars/commit/b38ef3dd562be2c14f810b40638df3deff832670))
+* **eldorado:** lift the wheel pads clear of the ground in a lean ([9218aa8](https://github.com/LaurensDeV/KSACars/commit/9218aa80d05416048d09de290d71b276735eea11))
+
 ## [0.1.4](https://github.com/LaurensDeV/KSACars/compare/v0.1.3...v0.1.4) (2026-10-02)
 
 ### Build and packaging

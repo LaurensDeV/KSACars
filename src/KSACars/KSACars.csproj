@@ -10,7 +10,7 @@
     <LangVersion>latest</LangVersion>
 
     <!-- Stamped into the assembly and used to name the release archive. -->
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
 
     <Product>KSACars</Product>
   </PropertyGroup>
