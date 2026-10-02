@@ -176,6 +176,38 @@ public class BuggyDriveTests
         Assert.True(Math.Abs(turned) > 60.0, $"turned only {turned:F0} deg");
     }
 
+    // Past about 17 degrees of roll the outside tyres' grip, at a centre of mass 0.55 m up, tips the car
+    // over them, and a reversal swings twice the lean of a steady turn.
+    [Theory]
+    [InlineData(30.0, 1.0 / 60.0, 1.0 / 60.0)]
+    [InlineData(45.0, 0.019, 0.025)]
+    [InlineData(70.0, 1.0 / 40.0, 1.0 / 40.0)]
+    public void TheEldoradoLeansThroughASteeringReversalAtSpeedWithoutLiftingAWheel(double speed, double dtA, double dtB)
+    {
+        BuggyProfile p = BuggyProfile.Eldorado;
+        Rig rig = new(dtA, p, Rig.EldoradoCom) { RigMass = 2336.0 };
+        rig.Settle();
+        rig.Pattern = [dtA, dtB];
+        rig.Velocity = new double3(0, speed, 0);
+
+        double lean = 0.0, steady = 0.0, highestHub = 0.0;
+        for (double t = 0.0; t < 5.0; t += (dtA + dtB) / 2.0)
+        {
+            rig.Step(new DriveInput(1.0, t < 1.5 ? 1.0 : -1.0));
+            double roll = Math.Abs(Math.Asin((rig.Attitude * new double3(0, 0, 1)).X)) * 180.0 / Math.PI;
+            lean = Math.Max(lean, roll);
+            if (t < 1.5) steady = Math.Max(steady, roll);
+            foreach (BuggyCorner c in p.Corners)
+            {
+                highestHub = Math.Max(highestHub, (rig.Position + (rig.Attitude * (c.Hub - Rig.EldoradoCom))).X);
+            }
+        }
+
+        Assert.True(steady > 4.0, $"leans only {steady:F1} deg in the turn");
+        Assert.True(lean < 10.0, $"rolled to {lean:F1} deg");
+        Assert.True(highestHub < p.Corners[0].Radius + p.DroopTravel + 0.02, $"a hub {highestHub:F2} m up");
+    }
+
     [Fact]
     public void BrakingFromSpeedStopsIt()
     {
@@ -208,6 +240,7 @@ public class BuggyDriveTests
         // What the engine gives each car, from KSACarsGameData.xml: the buggy's solid sphere, 1.1 m in
         // radius, and the Eldorado's solid cuboid, 1.0 m tall, 5.6 m long and 2.0 m wide.
         public double RigMass = Mass;
+        public double Gravity = G;
         private double3 Inertia => RigMass > 1000
             ? new double3((5.6 * 5.6) + (2.0 * 2.0), (1.0 * 1.0) + (2.0 * 2.0), (1.0 * 1.0) + (5.6 * 5.6)) * (RigMass / 12.0)
             : new double3(1, 1, 1) * (0.4 * RigMass * 1.1 * 1.1);
@@ -239,11 +272,11 @@ public class BuggyDriveTests
             }
 
             DriveImpulse j = Drive.Step(input, contacts, Hubs, new double3(1, 0, 0), new double3(0, 1, 0),
-                                        RigMass, G, 1.225, dt);
+                                        RigMass, Gravity, 1.225, dt);
             Velocity += Attitude * (j.Linear / RigMass);
             Spin += new double3(j.Angular.X / Inertia.X, j.Angular.Y / Inertia.Y, j.Angular.Z / Inertia.Z);
 
-            Velocity += new double3(-G * dt, 0, 0);
+            Velocity += new double3(-Gravity * dt, 0, 0);
             Position += Velocity * dt;
             double rate = Vec.Len(Spin);
             if (rate > 0.0) Attitude *= doubleQuat.CreateFromAxisAngle(Spin / rate, rate * dt);

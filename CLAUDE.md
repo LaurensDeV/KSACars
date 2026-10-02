@@ -246,7 +246,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 clear of the ground at rest and only touch in a crash, because KSA's terrain friction is one number
 for every collider and a wheel box on the ground drags like a skid. Everything that makes a car drive
 is `Sim/BuggyDrive.cs`: per wheel a spring and damper sized off its share of the car's weight, an
-anti-roll bar across each axle, and a friction circle in which side grip is spent first, so a tyre
+anti-roll bar and a roll damper across each axle, the side force put in at the roll centre's height, and a friction circle in which side grip is spent first, so a tyre
 pushing hard in a corner gives up drive before it gives up its line. The steering lock is held to
 what the front tyres can hold at the speed, which is what stops a full-lock flick scrubbing to a
 standstill.
