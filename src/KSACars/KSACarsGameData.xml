@@ -182,7 +182,8 @@
 
     <!--
       The springs hold it up; these touch only in a crash. The hull box starts 30 cm up, and each wheel's
-      pad 16 cm, over the springs' 12 cm of bump.
+      pad 25 cm, over the springs' 12 cm of bump and its lean in a hard turn. At 16 cm the
+      outside pad reaches the ground there and trips the car.
     -->
     <Collider Id="KSACars_EldoCollider">
       <Box Id="KSACars_EldoHullCollider">
@@ -291,30 +292,30 @@
         <LengthZ M="1.65" />
       </Box>
       <Box Id="KSACars_EldoPadFLCollider">
-        <LocationAsmb X="0.36" Y="1.604" Z="0.809" />
+        <LocationAsmb X="0.405" Y="1.604" Z="0.809" />
         <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.40" />
+        <LengthX M="0.31" />
         <LengthY M="0.50" />
         <LengthZ M="0.22" />
       </Box>
       <Box Id="KSACars_EldoPadFRCollider">
-        <LocationAsmb X="0.36" Y="1.604" Z="-0.809" />
+        <LocationAsmb X="0.405" Y="1.604" Z="-0.809" />
         <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.40" />
+        <LengthX M="0.31" />
         <LengthY M="0.50" />
         <LengthZ M="0.22" />
       </Box>
       <Box Id="KSACars_EldoPadRLCollider">
-        <LocationAsmb X="0.36" Y="-1.604" Z="0.807" />
+        <LocationAsmb X="0.405" Y="-1.604" Z="0.807" />
         <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.40" />
+        <LengthX M="0.31" />
         <LengthY M="0.50" />
         <LengthZ M="0.22" />
       </Box>
       <Box Id="KSACars_EldoPadRRCollider">
-        <LocationAsmb X="0.36" Y="-1.604" Z="-0.807" />
+        <LocationAsmb X="0.405" Y="-1.604" Z="-0.807" />
         <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.40" />
+        <LengthX M="0.31" />
         <LengthY M="0.50" />
         <LengthZ M="0.22" />
       </Box>

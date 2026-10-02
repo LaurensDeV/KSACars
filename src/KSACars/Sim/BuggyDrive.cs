@@ -102,12 +102,14 @@ public sealed class BuggyDrive(BuggyProfile profile)
         // How far each wheel is pushed up, from the ground below its hub along the car's own up; an
         // axle's anti-roll bar needs both of its wheels' before either spring can be worked out.
         Span<double> compressions = stackalloc double[n];
+        Span<double> closings = stackalloc double[n];
         for (int i = 0; i < n; i++)
         {
             WheelContact c = contacts[i];
             double tilt = c.Valid ? Vec.Dot(up, c.GroundUp) : 0.0;
             double reach = tilt > 0.2 ? c.HubHeight / tilt : double.PositiveInfinity;
             compressions[i] = c.Valid ? Profile.Corners[i].Radius - reach : double.NegativeInfinity;
+            closings[i] = c.Valid ? -Vec.Dot(c.HubVelocity, c.GroundUp) / Math.Max(tilt, 0.2) : 0.0;
         }
 
         for (int i = 0; i < n; i++)
@@ -132,13 +134,15 @@ public sealed class BuggyDrive(BuggyProfile profile)
             Grounded[i] = true;
             Travel[i] = Math.Min(compression, Profile.BumpTravel);
 
-            double closing = -Vec.Dot(c.HubVelocity, c.GroundUp) / Math.Max(tilt, 0.2);
+            double closing = closings[i];
             double spring = (m * gravity) + (k * compression) + (damping * closing);
             int partner = AxlePartner(i);
             if (partner >= 0)
             {
                 double other = Math.Clamp(compressions[partner], -Profile.DroopTravel, Profile.BumpTravel);
                 spring += Profile.AntiRoll * k * (Math.Min(compression, Profile.BumpTravel) - other);
+                // Half the difference is this wheel's speed in a pure roll, and nothing in a bounce.
+                spring += Profile.RollDamping * m * omega * (closing - closings[partner]);
             }
             if (compression > Profile.BumpTravel) spring += Profile.BumpStopFactor * k * (compression - Profile.BumpTravel);
             double load = Math.Clamp(spring, 0.0, MaxLoadFactor * m * gravity);
@@ -170,6 +174,7 @@ public sealed class BuggyDrive(BuggyProfile profile)
 
             linear += force * dt;
             angular += Vec.Cross(contact, force) * dt;
+            angular += Vec.Cross(up * Profile.RollCentreHeight, side * fSide) * dt;
 
             Spin[i] += vAlong / corner.Radius * dt;
         }

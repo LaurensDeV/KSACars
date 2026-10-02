@@ -130,6 +130,15 @@ public sealed record BuggyProfile
     /// </summary>
     public double AntiRoll { get; init; } = 0.35;
 
+    /// <summary>
+    /// Damping of an axle's two wheels moving against each other, as a fraction of critical for a
+    /// corner's spring, on top of <see cref="DampingRatio"/>. It slows a roll and leaves a bounce alone.
+    /// </summary>
+    public double RollDamping { get; init; }
+
+    /// <summary>How far above the ground a tyre's side force acts on the body: the roll centre's height.</summary>
+    public double RollCentreHeight { get; init; }
+
     public double BumpTravel { get; init; } = 0.14;
     public double DroopTravel { get; init; } = 0.14;
 
@@ -275,7 +284,11 @@ public sealed record BuggyProfile
         DampingRatio = 0.26,
         BumpTravel = 0.12,
         DroopTravel = 0.12,
-        AntiRoll = 0.25,
+        // Soft in roll and well damped in it: at the bounce's damping a steering reversal at speed swings
+        // the lean past 17 degrees, where the outside tyres' grip tips the car over them.
+        AntiRoll = 0.1,
+        RollDamping = 0.5,
+        RollCentreHeight = 0.2,
         FrontGrip = 0.95,
         RearGrip = 1.0,
         LaunchAccelG = 0.4,
