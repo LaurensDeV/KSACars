@@ -1,3 +1,9 @@
+## [0.1.6](https://github.com/LaurensDeV/KSACars/compare/v0.1.5...v0.1.6) (2026-10-06)
+
+### Fixes
+
+* stand a car on a launch pad instead of sinking its wheels into it ([c6c0314](https://github.com/LaurensDeV/KSACars/commit/c6c03146b2041d859591b684d348af6a3ed0c8d0))
+
 ## [0.1.5](https://github.com/LaurensDeV/KSACars/compare/v0.1.4...v0.1.5) (2026-10-02)
 
 ### Fixes
