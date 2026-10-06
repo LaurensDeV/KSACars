@@ -121,4 +121,6 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [x] Getting out by EVA: the passenger steps out beside the car, which stays put, and the driver
       stays drawn
 - [ ] Heard: the Cadillac start and idle and the Impala loop and key-off have never been listened to
+- [x] Launched on a pad (2026.10.7.5541, by the player): stands on the grate at its ride height,
+      0.37 m at each hub, and drives off it
 - [ ] Driven by a player on the keys, rough ground, getting back in
