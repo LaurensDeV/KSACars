@@ -612,6 +612,7 @@ internal sealed class Buggies
 
         doubleQuat ccf2Cce = body.GetCcf2Cce();
         TerrainHeights ground = new(body, accurate: true);
+        LaunchPads pads = LaunchPads.On(body);
 
         BuggyCorner[] corners = e.Drive.Profile.Corners;
         Span<WheelContact> contacts = stackalloc WheelContact[corners.Length];
@@ -627,6 +628,7 @@ internal sealed class Buggies
 
             double3 groundUp = upCcf.Transform(ccf2Body);
             double comHeight = comRadius - (body.MeanRadius + under);
+            if (pads.TryHeightOver(positionCcf, out double overPad)) comHeight = Math.Min(comHeight, overPad);
             RightingMove move = tip
                 ? new RightingMove(doubleQuat.CreateFromAxisAngle(forward, Math.PI), 1.5 - comHeight)
                 : Righting.Solve(corners, hubs, up, forward, groundUp, comHeight);
@@ -652,10 +654,13 @@ internal sealed class Buggies
             double3 dirCcf = atCcf / radius;
             if (!ground.TryHeight(dirCcf.Transform(ccf2Cce), out double height)) continue;
 
-            e.HubHeights[i] = radius - (body.MeanRadius + height);
+            double hubHeight = radius - (body.MeanRadius + height);
+            if (pads.TryHeightOver(atCcf, out double overPad)) hubHeight = Math.Min(hubHeight, overPad);
+
+            e.HubHeights[i] = hubHeight;
             contacts[i] = new WheelContact(
                 Valid: true,
-                HubHeight: radius - (body.MeanRadius + height),
+                HubHeight: hubHeight,
                 GroundUp: dirCcf.Transform(ccf2Body),
                 HubVelocity: velocityBody + Vec.Cross(spinBody, hub));
         }

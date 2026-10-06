@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-150 types and 345 members across 6 assemblies.
+163 types and 370 members across 6 assemblies.
 
 ## BepuUtilities
 
@@ -227,6 +227,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `KSA.PhysicalAtmosphereReference Physical`
 
+### KSA.BoxColliderTemplate
+
+- `KSA.DistanceReference LengthX`
+- `KSA.DistanceReference LengthY`
+- `KSA.DistanceReference LengthZ`
+
 ### KSA.BubbleClutterStatics
 
 - `float DisplaceEnergyPerKg`
@@ -254,6 +260,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 GetDirCcfFromLatLon(double, double)`
 - `Brutal.Numerics.double3 GetSurfacePositionEclFromCce(Brutal.Numerics.double3, bool)`
 - `Brutal.Numerics.doubleQuat GetCcf2Cce()`
+- `KSA.CelestialTemplate get_BodyTemplate()`
 - `double GetLatitudeFromCce(Brutal.Numerics.double3)`
 - `double GetLongitudeFromCce(Brutal.Numerics.double3)`
 - `double GetTerrainHeightFromDirCce(Brutal.Numerics.double3, bool)`
@@ -265,6 +272,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.Astronomical GetIndex(int)`
 - `KSA.LookupCollection`1<KSA.Astronomical> get_All()`
 - `int get_Count()`
+
+### KSA.CelestialTemplate
+
+- `System.Collections.Generic.List`1<KSA.LocationReference> Locations`
 
 ### KSA.CharacterAvatar
 
@@ -292,6 +303,16 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.doubleQuat Collider2PartAsmb`
 - `bool NeedsColliderUpdate`
 
+### KSA.ColliderModule+Template
+
+- `System.Collections.Generic.List`1<KSA.ColliderTemplate> Colliders`
+
+### KSA.ColliderTemplate
+
+- `Brutal.Numerics.double3 get_ShapeOffsetCollider()`
+- `KSA.Vector3Reference Collider2Asmb`
+- `KSA.Vector3Reference LocationAsmb`
+
 ### KSA.Constants
 
 - `string get_DocumentsFolderPath()`
@@ -303,6 +324,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.CrewAssignmentWindow
 
 - `void FillSeats(System.Collections.Generic.List`1<KSA.IVASeat>, KSA.PartTree, string, bool)`
+
+### KSA.CylinderColliderTemplate
+
+- `KSA.DistanceReference LengthY`
+- `KSA.DistanceReference Radius`
 
 ### KSA.DefaultVehicleSaves
 
@@ -504,6 +530,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.KeyHash NameHash`
 - `string Name`
 
+### KSA.LandmarkReference
+
+- `bool IsLaunchPad`
+
+### KSA.LocationReference
+
+- `KSA.StaticObject GetStaticObject()`
+- `void GetAxesCcf(ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3)`
+
 ### KSA.LookupCollection`1
 
 *referenced as a type only*
@@ -625,6 +660,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.QuaternionEx
 
+- `Brutal.Numerics.doubleQuat CreateFromXyzRadians(Brutal.Numerics.double3)`
 - `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
 
 ### KSA.Ray
@@ -704,6 +740,25 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 PositionCci`
 - `Brutal.Numerics.double3 VelocityCci`
 
+### KSA.StaticObject
+
+- `KSA.StaticObjectTemplate Template`
+- `double get_GroundOffset()`
+
+### KSA.StaticObjectTemplate
+
+- `System.Collections.Generic.List`1<KSA.StaticSubObjectInstance> SubObjectInstances`
+- `System.Collections.Generic.List`1<Template> Colliders`
+
+### KSA.StaticSubObjectInstance
+
+- `KSA.StaticSubObjectTemplate GetTemplate()`
+- `KSA.TransformReference Transform`
+
+### KSA.StaticSubObjectTemplate
+
+- `System.Collections.Generic.List`1<Template> Colliders`
+
 ### KSA.StellarBody
 
 *referenced as a type only*
@@ -715,6 +770,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.Transform3D
 
 - `Brutal.Numerics.double3 get_PositionEcl()`
+
+### KSA.TransformReference
+
+- `Brutal.Numerics.double3 get_PositionValue()`
+- `Brutal.Numerics.doubleQuat get_RotationValue()`
 
 ### KSA.Universe
 
@@ -732,6 +792,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.UniverseTime
 
 *referenced as a type only*
+
+### KSA.Vector3Reference
+
+- `Brutal.Numerics.double3 ToDouble3()`
 
 ### KSA.Vehicle
 

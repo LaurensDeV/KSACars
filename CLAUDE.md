@@ -190,6 +190,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/FrameLatch.cs` | hands a frame's work out once, to whichever hook reaches it first — **the UI pass is skipped while the UI is hidden and the frame postfix is not** |
 | `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
+| `Sim/PadSurface.cs` | the top of a structure standing on the ground, as the first of its boxes and cylinders a line dropped from a hub meets — **the height field knows nothing of a launch pad** |
 | `Sim/Vec.cs` | vector helpers |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
 | `Ksa/KSACarsMod.cs` | StarMap entry point: installs the nine patches, and once a frame finds the cars, poses their wheels and plays their engines |
@@ -210,6 +211,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
+| `Ksa/LaunchPads.cs` | a body's launch pads as the colliders KSA stands on each, posed as KSA poses them, so a wheel on a pad is sprung against the pad |
 | `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
 | `Ksa/KsaWorld.Pointing.cs` | the part of it the craft mover needs: the cursor's ray and the ground it meets, where a craft is on screen, and gizmo rings and lines |
 | `Ksa/CraftMover.cs` | **picks a craft up with one click and sets it down with the next**, from the panel — through `Vehicle.TeleportToLocation`, so it arrives resting on the ground. Carried over from KSArmory with its helpers |
@@ -235,7 +237,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 345 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 370 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -263,6 +265,13 @@ is where the car actually is this step; the analytic orbit position of a landed 
 from it. In the planet-fixed frame the ecliptic's ~29.8 km/s and the planet's spin cancel, so a hub's
 velocity over the ground is just a velocity. KSA rails a car that has stood still, so a driven one is
 woken with `TakeOffRails`.
+
+**A launch pad is not in the height field, so a wheel over one is sprung against its colliders.** The
+field answers the levelled ground a pad is built on, 1.75 m under the grate a craft is launched from.
+`Ksa/LaunchPads.cs` reads each pad's boxes and cylinders off its `StaticObjectTemplate` and poses them
+as KSA does; `Sim/PadSurface.cs` drops a line from each hub onto them, and the hub's height is the
+lesser of that and its height over the terrain. A surface up to half a metre above a hub counts as
+under the wheel; anything higher is a roof.
 
 **Yaw inertia is what lets the side grip settle, so the mass is a box the car's size.** The grip
 removes a share of each wheel's sideways slip every step; against a sphere's inertia, a third of a

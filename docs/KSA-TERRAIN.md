@@ -51,7 +51,8 @@ For Earth (`Astronomicals.xml:522`):
 reduces to `heightKm = lerp(heightKm, AltitudeOffset, mask)`, so within its `Radius` — 275 m at
 every shipped site — the field answers a fixed altitude smoothed to the rim rather than whatever
 the cubemap and the noise say. Something aimed at a pad is therefore aimed at flat ground, and the
-static object standing on it is a separate question; see `docs/BLOCKED-ON-KSA.md`.
+static object standing on it is a separate question: its colliders are declared data, which
+`Ksa/LaunchPads.cs` reads so a car's wheels stand on the pad.
 
 ### Resolution
 
