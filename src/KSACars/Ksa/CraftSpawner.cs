@@ -64,7 +64,7 @@ internal static class CraftSpawner
         }
         catch (Exception e)
         {
-            Log.Warn($"spawn: could not load '{craftName}' ({e.GetType().Name})");
+            Log.Error($"spawn: could not load '{craftName}'", e);
         }
 
         return null;
