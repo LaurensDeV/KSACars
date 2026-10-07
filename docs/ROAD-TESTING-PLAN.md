@@ -31,7 +31,7 @@ real terrain, so they show mechanisms and not what the game does.
    ground road under a deck 12 m up is told it is 11.7 m inside the deck, and the car is lifted 12 m.
 4. **A bend hole on a bridge sticks the wheel to the road below**, and the corner falls through the
    deck.
-5. **A low deck grabs a car beside it.** The undrawn shoulder reaches 7.5 m from a road at any height,
+5. ~~**A low deck grabs a car beside it.**~~ Fixed, unseen in game: a raised road has no shoulder. The undrawn shoulder reaches 7.5 m from a road at any height,
    so a car on the grass beside a deck 1 to 2.8 m up is lifted onto it. Every ramp passes through that
    band.
 6. **On a climbing bend the inside of the road is a sawtooth** of 4 to 16 cm, each piece being flat
@@ -51,7 +51,7 @@ real terrain, so they show mechanisms and not what the game does.
 
 ### The editor and the format
 
-11. **A car's memory of its road survives the road being laid again**, which is how raising a road
+11. ~~**A car's memory of its road survives the road being laid again**~~ (fixed, unseen in game), which is how raising a road
     carries a car up with it.
 12. **Splitting a raised road puts the new point on the ground.**
 13. **Nothing limits curvature or gradient.** A corner strength of 0.5 on 30 m legs gives a 2.7 m

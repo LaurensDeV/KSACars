@@ -168,3 +168,5 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       ground, landed and still; taken away, the car was back at 0.34 m
 - [ ] A kitten walking on such a box; a car driven onto one; the boxes after the bubble's origin shifts
       2 km on, after a save is loaded, and after a simulation has been recycled
+- [ ] A road raised in the editor beside a parked car leaves the car on the ground, and a loop of road
+      has no gap where it closes

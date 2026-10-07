@@ -481,9 +481,10 @@ so a raised road still follows the terrain beneath it.
 `Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and the physics
 window takes a hub's height as the least of its height over the terrain, a pad and a road. A road stands a hand above
 the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
-threw a car coming onto it; and a road counts as under a wheel up to two metres into it, because at speed
+threw a car coming onto it, but only where the road is within half a metre of the ground: beside a
+raised road that fall would be a ledge in the air, and lifted a car parked next to it; and a road counts as under a wheel up to two metres into it, because at speed
 a car is a metre into a ramp within one step; a wheel that was over a road last step is still over that
-road however deep, which `Buggies.Entry.RoadOver` remembers. Nothing of KSA's stands where a road is, and
+road however deep, which `Buggies.Entry.RoadOver` remembers, for as long as the roads are not laid again. Nothing of KSA's stands where a road is, and
 the springs push only so hard, so a car a tenth of a metre past its bump stops into a road is set back on
 the surface and loses its speed downwards. Only the mod's
 own wheels know: the car's colliders, a kitten on foot and every other craft pass through a raised road.
