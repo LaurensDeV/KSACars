@@ -203,8 +203,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RoadLaying.cs` | a circuit put on the ground: each run as a line of points on the road's surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
 | `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than its collider's half metre overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
 | `Sim/RoadSlabs.cs` | a laid road as the boxes KSA's physics is given for it: one a stretch, its top on the road's line and half a metre deep, reaching round the outside of a turn, **its size rounded up to a step**, because the physics keeps a shape for every size it has seen |
-| `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend and the slope at each, a kink rounded inside the asphalt, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
-| `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
+| `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
+| `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
 | `Sim/MeshPatch.cs` | **an experiment**: a curved square as vertices, normals, UVs and triangles, in the slab's right-handed frame and wound the way KSA draws, for the mesh made while the game runs |
@@ -530,6 +530,15 @@ cannot put it on the wrong one; `Sim/Autopilot.cs` steers by pure pursuit throug
 steps it in the physics window for the bridge's `lap`, which stands the car at the route's start first
 and files a summary of the run.
 
+**The driver keeps a car on its springs, because the game's colliders are what a hard landing meets.** Over
+a crest it holds the speed at which `Autopilot.CrestShare` of the weight is thrown off, and through a dip
+the one that pushes the springs `DipShare` of the way to their stops, from the bend of the climb
+`Route.Sample.Vertical` carries; the bridge's `lap` with `jump=true` leaves both out. A bend is taken at
+no more than `TipShare` of what would lift the inside wheels, from the track and the height of the centre
+of mass the hubs give it, which binds on none of the three as they ship. The last 40 m of a road are
+braked at 0.3 g and the car is stopped on half its brakes, since a pad collider is 18 cm off the road and
+the buggy's nose goes down 10 under all of them. **None of this has been lapped in game.**
+
 **A road is drawn as slabs: one box, scaled, for each stretch between two points.**
 `tools/model/road-slab.py` writes the box and its asphalt; `Roads.Draw` gives it the road's width,
 `Roads.ThicknessM` of depth and the stretch's length, with its top on the road's line, so a raised road is
@@ -675,7 +684,10 @@ deck's end, at Earth's gravity and Luna's and at three step lengths, and parks i
 for the springs. One is skipped: on Luna a car comes down on its hull at the foot of a ramp its springs
 carry it up on Earth. `KSACARS_BULLETS=<file> ./tools/test.sh` writes every run out as a table. `AutopilotTests` drives each car
 with the route driver round rings at five step lengths, along a bend's edges, through a junction, over a
-ramp and a bridge and to a road's end.
+ramp and a bridge and to a road's end. `ExtremeLapTests` laps every car round the eight circuits of
+`tools/roads/extreme-circuits.py`, which `ExtremeCircuits.cs` lays again point for point, at 60 Hz and at
+the game's uneven steps: finished, on the asphalt, on its wheels and no spring within 2 cm of where a
+collider would touch. `KSACARS_EXTREME_LAPS=<file> ./tools/test.sh` writes them out as a table.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

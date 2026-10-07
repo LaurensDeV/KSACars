@@ -64,7 +64,8 @@ internal static class Roads
     /// <paramref name="through"/> or, with none, round from its first road; with the body they are on
     /// and their surface. Null with the reason. Not for the physics window: it reads the ground anew.
     /// </summary>
-    public static Route? RouteOver(IReadOnlyList<int>? through, double offsetM, out Celestial? body, out RoadSurface? surface, out string why)
+    public static Route? RouteOver(IReadOnlyList<int>? through, double offsetM, double turnRadiusM, out Celestial? body, out RoadSurface? surface,
+                                   out string why)
     {
         body = null;
         surface = null;
@@ -77,7 +78,7 @@ internal static class Roads
         surface = laid.Surface;
         Celestial on = laid.Body;
         return Route.Of(laid.Circuit, on.GetDirCcfFromLatLon, on.MeanRadius, dir => on.GetTerrainHeightFromDirCcf(dir, accurate: true),
-                        laid.LiftM, laid.SpacingM, through, offsetM, out why);
+                        laid.LiftM, laid.SpacingM, through, offsetM, out why, turnRadiusM);
     }
 
     /// <summary>

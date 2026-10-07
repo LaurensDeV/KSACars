@@ -263,15 +263,17 @@ TOOLS = {
                 "(default 1); speed is the cruise in m/s (default the car's top speed), held down for each bend; offset "
                 "is metres left of the road's centre; timeout in simulated seconds (default 600); place=false leaves the "
                 "car where it is instead of standing it on the road at the route's start, facing along it; rows=true "
-                "keeps a line a step. status=true, or no flag, answers whether it is running, why it ended (Finished, "
+                "keeps a line a step, with whether the hull was on anything; jump=true takes crests and dips at "
+                "whatever the bends allow, where it otherwise slows to stay on its springs. status=true, or no flag, answers whether it is running, why it ended (Finished, "
                 "OffRoad, Flipped, Stuck, TimedOut, Failed, Stopped, NotDriven, RoadsRelaid) and the summary so far: "
-                "laps, time, cross-track error, time off the asphalt and in the air, hub heights. stop=true ends it. "
+                "laps, time, cross-track error, time off the asphalt, in the air and with the hull down, hub heights. "
+                "stop=true ends it. "
                 "When it ends the summary is written to Logs/bridge/KSACars/laps/<utc>-<craft>.json, with the rows "
                 "beside it as .csv, added to each second while it runs.",
                 {"craft": {"type": "string"}, "start": {"type": "boolean"}, "status": {"type": "boolean"},
                  "stop": {"type": "boolean"}, "route": {"type": "string"}, "laps": _num("count"), "speed": _num("m/s"),
                  "offset": _num("m left"), "timeout": _num("sim seconds"), "place": {"type": "boolean"},
-                 "rows": {"type": "boolean"}}, [],
+                 "rows": {"type": "boolean"}, "jump": {"type": "boolean"}}, [],
                 lambda a: [_text(json.dumps(send("lap", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),

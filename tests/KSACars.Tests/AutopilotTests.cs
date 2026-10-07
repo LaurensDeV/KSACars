@@ -94,10 +94,10 @@ public class AutopilotTests
         })]);
     });
 
-    internal static Route RouteOn(Track track, IReadOnlyList<int>? through = null, double offset = 0.0)
+    internal static Route RouteOn(Track track, IReadOnlyList<int>? through = null, double offset = 0.0, TrackCar? car = null)
     {
         Route? route = Route.Of(track.Circuit, TrackWorld.DirOf, track.World.RadiusM, track.World.HeightAt, TrackWorld.LiftM,
-                                TrackWorld.SpacingM, through, offset, out string why);
+                                TrackWorld.SpacingM, through, offset, out string why, car is null ? 0.0 : Autopilot.TurnRadius(car.Profile));
         Assert.True(route is not null, why);
         return route!;
     }
@@ -105,7 +105,8 @@ public class AutopilotTests
     // The car stood on the road where the route starts, facing along it, and driven until the driver
     // says the lap is over; then left alone for `after` seconds.
     internal static Lap Drive(TrackCar car, Track track, Route route, double dt, int laps = 1, double cruise = 0.0,
-                              double timeout = 300.0, double after = 0.0, Action<TrackRig, Autopilot>? each = null)
+                              double timeout = 300.0, double after = 0.0, Action<TrackRig, Autopilot>? each = null,
+                              double[]? pattern = null, LapRow[]? rows = null, bool jumps = false)
     {
         TrackRig rig = new(car, track.World, track.Road);
         (double3 at, _, double3 ahead) = route.Standing(1.5 * BuggyDrive.Wheelbase(car.Profile));
@@ -114,15 +115,16 @@ public class AutopilotTests
         rig.Place(east, north, Math.Atan2(ahead.Z, ahead.Y) * 180.0 / Math.PI, above);
         rig.Settle(1.0);
         rig.Dt = dt;
+        rig.Pattern = pattern;
 
-        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout);
+        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps };
         rig.Driver = pilot;
         for (int guard = 0; pilot.End == LapEnd.Running && guard < 2_000_000 && rig.Finite; guard++)
         {
             each?.Invoke(rig, pilot);
             rig.Step(default);
         }
-        for (double t = 0.0; t < after; t += dt) rig.Step(default);
+        for (double t = 0.0; t < after; t += rig.Step(default).Dt) { }
         return new Lap(pilot.End, pilot.Why, pilot.Summary, rig, route, pilot);
     }
 
@@ -222,7 +224,7 @@ public class AutopilotTests
         TrackCar car = TrackCar.Of(name);
         Track junction = Junction();
         int[] nodes = [.. through.Split(',').Select(int.Parse)];
-        Lap lap = Drive(car, junction, RouteOn(junction, nodes), 1.0 / 60.0, after: 3.0);
+        Lap lap = Drive(car, junction, RouteOn(junction, nodes, car: car), 1.0 / 60.0, after: 3.0);
 
         Assert.True(lap.End == LapEnd.Finished, lap.Told);
         Assert.True(lap.Summary.OffAsphaltSeconds == 0.0, lap.Told);
@@ -244,7 +246,8 @@ public class AutopilotTests
     {
         TrackCar car = TrackCar.Of(name);
         Track ramp = Ramp();
-        Lap lap = Drive(car, ramp, RouteOn(ramp), 1.0 / 60.0, cruise: cruise, after: 3.0);
+        // At the speed asked for and no less: left to itself the driver slows for the foot and the top of a ramp.
+        Lap lap = Drive(car, ramp, RouteOn(ramp), 1.0 / 60.0, cruise: cruise, after: 3.0, jumps: true);
 
         Assert.True(lap.End == LapEnd.Finished, lap.Told);
         Assert.True(lap.Summary.MaxSpeed > cruise - 2.0 && lap.Summary.MaxSpeed < cruise + 3.0, lap.Told);

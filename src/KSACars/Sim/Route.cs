@@ -22,9 +22,10 @@ internal sealed class Route
     /// <param name="Across">Level, to the left of it.</param>
     /// <param name="Curvature">Seen from above, 1/m, a left turn positive.</param>
     /// <param name="Slope">Climb for each metre along.</param>
+    /// <param name="Vertical">How the climb itself bends, 1/m: positive through a dip, negative over a crest.</param>
     /// <param name="CentreM">How far to the left of this the road's centre is, m.</param>
     public readonly record struct Sample(double3 At, double S, double3 Tangent, double3 Across, double Curvature,
-                                         double Slope, double HalfWidth, double CentreM);
+                                         double Slope, double Vertical, double HalfWidth, double CentreM);
 
     public const double SpacingM = 1.0;
 
@@ -36,6 +37,12 @@ internal sealed class Route
 
     /// <summary>The share of the road's half width a kink is cut inside by, and the most of the road either side that is given up to it, in half widths.</summary>
     public const double KinkCut = 0.8, KinkReach = 2.0;
+
+    // A line moved to the outside of a kink gets there over this many times as far as it is moved, and no less than this.
+    private const double SwingOver = 8.0, LeastSwingM = 10.0;
+
+    // What the climb's bend is measured over, either side: a road's heights are straight between points two metres apart.
+    private const double VerticalOverM = 4.0;
 
     private readonly Sample[] _samples;
 
@@ -60,8 +67,10 @@ internal sealed class Route
     /// </summary>
     /// <param name="groundAt">The ground's height over the body's mean radius, in a direction from its centre.</param>
     /// <param name="offsetM">How far to the left of the roads' centre line the route runs.</param>
+    /// <param name="turnRadiusM">The tightest turn the car that drives it makes, or nothing for any car: see <see cref="Along"/>.</param>
     public static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, Func<double3, double> groundAt,
-                            double liftM, double spacingM, IReadOnlyList<int>? through, double offsetM, out string why)
+                            double liftM, double spacingM, IReadOnlyList<int>? through, double offsetM, out string why,
+                            double turnRadiusM = 0.0)
     {
         why = "";
         List<int> path = through is { Count: > 0 } ? [.. through] : Following(circuit, dirOf, radiusM);
@@ -98,7 +107,7 @@ internal sealed class Route
             line.RemoveAt(line.Count - 1);
             halfWidths.RemoveAt(halfWidths.Count - 1);
         }
-        if (Along([.. line], [.. halfWidths], closed, offsetM) is not { } route)
+        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM) is not { } route)
         {
             why = "the route has no length";
             return null;
@@ -129,8 +138,13 @@ internal sealed class Route
     /// <summary>
     /// The route along a line of points on the road's surface, from the body's centre; a closed one
     /// carries on from its last point to its first. Null where the line has no length.
+    ///
+    /// <para>A kink cut inside as far as the asphalt allows is a turn of 4 m radius where two 10 m roads
+    /// meet at 120 degrees, which a car that turns in 8 m leaves the road on. So where
+    /// <paramref name="turnRadiusM"/> is more than that the line swings to the outside of the road
+    /// before the kink and back after it, which is the only other room there is.</para>
     /// </summary>
-    public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM)
+    public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0)
     {
         int pieces = closed ? line.Length : line.Length - 1;
         if (pieces < 1 || halfWidths.Length != line.Length) return null;
@@ -157,24 +171,57 @@ internal sealed class Route
 
         // No car turns on the spot, so a kink is rounded: between a point either side of it the line is
         // a curve leaving each along the road, cut inside the kink and still on the asphalt.
+        double each = length / steps;
+        int Wrapped(int i) => ((i % count) + count) % count;
+        List<(int Middle, int Span, double Turn, double OutM)> kinks = [];
+        double[] swing = new double[count];
         for (int k = closed ? 0 : 1; k < line.Length - (closed ? 0 : 1); k++)
         {
             double3 before = line[(k + line.Length - 1) % line.Length], after = line[(k + 1) % line.Length];
-            double turn = Vec.AngleBetween(Vec.RejectFrom(line[k] - before, line[k]), Vec.RejectFrom(after - line[k], line[k]));
+            double3 into = Vec.RejectFrom(line[k] - before, line[k]), outOf = Vec.RejectFrom(after - line[k], line[k]);
+            double turn = Vec.AngleBetween(into, outOf);
             if (turn <= KinkDeg * Math.PI / 180.0) continue;
 
-            double halfTurn = Math.Tan(0.5 * turn);
-            double cut = KinkCut * halfWidths[k] * halfTurn / ((1.0 / Math.Cos(0.5 * turn)) - 1.0);
-            double reachM = Math.Min(cut, KinkReach * halfWidths[k]);
+            // An arc touching both roads a distance out from their middles passes inside the kink by
+            // radius x (secant - 1) - out x secant, and that is all the cut there is room for.
+            double halfTurn = Math.Tan(0.5 * turn), secant = 1.0 / Math.Cos(0.5 * turn);
+            double room = KinkCut * halfWidths[k];
+            double reachM = Math.Min(room * halfTurn / (secant - 1.0), KinkReach * halfWidths[k]);
+            double outM = 0.0;
+            if (turnRadiusM > reachM / halfTurn)
+            {
+                outM = Math.Clamp(((turnRadiusM * (secant - 1.0)) - room) / secant, 0.0, room);
+                reachM = (((room + (outM * secant)) / (secant - 1.0)) - outM) * halfTurn;
+            }
+
             int middle = (int)Math.Round(start[k] / length * steps);
-            int span = (int)Math.Round(reachM / (length / steps));
+            int span = (int)Math.Round(reachM / each);
             span = closed ? Math.Min(span, count / 4) : Math.Min(span, Math.Min(middle - 1, count - 2 - middle));
             if (span < 2) continue;
+            kinks.Add((middle, span, turn, outM));
+            if (!(outM > 0.0)) continue;
 
-            int Wrapped(int i) => ((i % count) + count) % count;
+            int over = (int)Math.Round(Math.Max(SwingOver * outM, LeastSwingM) / each);
+            over = Math.Max(closed ? Math.Min(over, count / 4) : Math.Min(over, Math.Min(middle - span - 1, count - 2 - middle - span)), 0);
+            double toLeft = Vec.Dot(Vec.Cross(into, outOf), line[k]) > 0.0 ? -outM : outM;
+            for (int j = -span - over; j <= span + over; j++)
+            {
+                double t = over > 0 ? Math.Clamp((span + over - Math.Abs(j)) / (double)over, 0.0, 1.0) : 1.0;
+                swing[Wrapped(middle + j)] += toLeft * t * t * (3.0 - (2.0 * t));
+            }
+        }
+
+        if (kinks.Exists(k => k.OutM > 0.0))
+        {
+            double3[] swung = new double3[count];
+            for (int i = 0; i < count; i++) swung[i] = at[i] + (Vec.Cross(Vec.Unit(at[i]), Heading(at, i, 1, closed)) * swing[i]);
+            at = swung;
+        }
+        foreach ((int middle, int span, double turn, double outM) in kinks)
+        {
             double3 a = at[Wrapped(middle - span)], b = at[Wrapped(middle + span)];
             double3 leave = Vec.Unit(a - at[Wrapped(middle - span - 1)]), arrive = Vec.Unit(at[Wrapped(middle + span + 1)] - b);
-            double handle = 4.0 / 3.0 * Math.Tan(0.25 * turn) * (span * (length / steps)) / halfTurn;
+            double handle = 4.0 / 3.0 * Math.Tan(0.25 * turn) * ((span * each / Math.Tan(0.5 * turn)) + outM);
             for (int j = 1; j < 2 * span; j++)
             {
                 at[Wrapped(middle - span + j)] = RoadCurve.Bezier(a, a + (leave * handle), b - (arrive * handle), b, j / (2.0 * span));
@@ -196,6 +243,7 @@ internal sealed class Route
         for (int i = 0; i < count; i++) heading[i] = Heading(at, i, 1, closed);
 
         int reach = Math.Max(1, (int)Math.Round(0.5 * SmoothOverM / (total / steps)));
+        int rise = Math.Max(1, (int)Math.Round(VerticalOverM / (total / steps)));
         Sample[] samples = new Sample[count];
         for (int i = 0; i < count; i++)
         {
@@ -207,9 +255,21 @@ internal sealed class Route
             double3 up = Vec.Unit(at[i]);
             double turn = Math.Atan2(Vec.Dot(Vec.Cross(heading[before], heading[after]), up), Vec.Dot(heading[before], heading[after]));
             double climb = Vec.Len(at[after]) - Vec.Len(at[before]);
+            double slope = between > 0.0 ? climb / between : 0.0;
+
+            // Nothing at an end, where there is no road beyond to bend to.
+            double vertical = 0.0;
+            if (closed || (i >= rise && i < count - rise))
+            {
+                int low = Wrapped(i - rise), high = Wrapped(i + rise);
+                double back = along[i] - along[low], on = along[high] - along[i];
+                if (back <= 0.0) back += total;
+                if (on <= 0.0) on += total;
+                double bends = (((Vec.Len(at[high]) - Vec.Len(at[i])) / on) - ((Vec.Len(at[i]) - Vec.Len(at[low])) / back)) / (0.5 * (back + on));
+                vertical = bends / Math.Pow(1.0 + (slope * slope), 1.5);
+            }
             samples[i] = new Sample(at[i], along[i], heading[i], Vec.Cross(up, heading[i]),
-                                    between > 0.0 ? turn / between : 0.0, between > 0.0 ? climb / between : 0.0,
-                                    half[i], -offsetM);
+                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], -offsetM);
         }
         return new Route(samples, total, closed);
     }

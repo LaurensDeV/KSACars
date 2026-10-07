@@ -725,7 +725,7 @@ internal sealed class Buggies
 
         // A lap's driver has the wheel, ahead of the keys and of anything held: asked here, where the
         // ground under the wheels is known and the drive has not been stepped.
-        if (lapping) e.Input = Laps.Step(craft, positionCcf, body2Ccf, velocityCcf, up, forward, hubs, e.HubHeights, dt);
+        if (lapping) e.Input = Laps.Step(craft, positionCcf, body2Ccf, velocityCcf, up, forward, hubs, e.HubHeights, dt, e.Scraping);
 
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));

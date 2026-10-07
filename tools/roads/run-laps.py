@@ -91,6 +91,7 @@ def main():
                 (f"flight {s.get('longest_flight_s')} s", (s.get("longest_flight_s") or 0) > 0.5),
                 (f"roll {s.get('max_roll_deg')}", (s.get("max_roll_deg") or 0) > 20),
                 (f"pitch {s.get('max_pitch_deg')}", (s.get("max_pitch_deg") or 0) > 20),
+                (f"hull down {s.get('hull_down_s')} s", (s.get("hull_down_s") or 0) > 0),
                 (f"cross {s.get('max_cross_m')} m", (s.get("max_cross_m") or 0) > 2.5)) if hit]
             print(f"   {car:9} {s.get('end','?'):10} {s.get('progress_m',0):7.0f}/{s.get('route_m',0):5.0f} m in {s.get('seconds',0):6.1f} s"
                   f"  vmax {s.get('max_speed_ms',0):5.1f}  cross {s.get('max_cross_m',0):5.2f}  off {s.get('off_asphalt_s',0):5.2f}"

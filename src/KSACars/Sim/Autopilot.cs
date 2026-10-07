@@ -42,6 +42,9 @@ public struct LapSummary
     public double Seconds, DistanceM, ProgressM, LastLapSeconds;
     public double MaxCrossM, MeanCrossM, MaxSpeed;
     public double AirSeconds, LongestFlightSeconds, OffAsphaltSeconds;
+
+    /// <summary>Seconds with the hull on something, where the caller knows: only the tyres are meant to be.</summary>
+    public double HullSeconds;
     public double MinHubM, MaxHubM, MaxRollDeg, MaxPitchDeg, LongestStepSeconds;
 }
 
@@ -53,16 +56,17 @@ public struct LapRow
 
     /// <summary>A bit a wheel: set in the one where its tyre is on something, in the other where it is not over asphalt.</summary>
     public int Grounded, OffAsphalt;
+    public bool HullDown;
     public double3 Position;
 
-    public const string Header = "t,dt,s,cross,speed,wanted,throttle,steer,hub0,hub1,hub2,hub3,grounded,off_asphalt,roll_deg,pitch_deg,x,y,z";
+    public const string Header = "t,dt,s,cross,speed,wanted,throttle,steer,hub0,hub1,hub2,hub3,grounded,off_asphalt,roll_deg,pitch_deg,x,y,z,hull";
 
     public readonly void AppendTo(System.Text.StringBuilder to)
     {
         System.Globalization.CultureInfo plain = System.Globalization.CultureInfo.InvariantCulture;
         to.Append(plain, $"{T:F4},{Dt:F5},{S:F3},{Cross:F3},{Speed:F3},{Wanted:F2},{Throttle:F3},{Steer:F4},");
         to.Append(plain, $"{Hub0:F4},{Hub1:F4},{Hub2:F4},{Hub3:F4},{Grounded},{OffAsphalt},{RollDeg:F2},{PitchDeg:F2},");
-        to.Append(plain, $"{Position.X:F3},{Position.Y:F3},{Position.Z:F3}").Append('\n');
+        to.Append(plain, $"{Position.X:F3},{Position.Y:F3},{Position.Z:F3},{(HullDown ? 1 : 0)}").Append('\n');
     }
 }
 
@@ -75,11 +79,14 @@ public struct LapRow
 /// and asks for a front-wheel angle, which it turns into a steer input through
 /// <see cref="BuggyDrive.SteerLock"/>: the input is a share of a lock that shrinks with speed.</para>
 ///
-/// <para>It holds the least of the speed asked for and what each bend allows, braked for in time. A
+/// <para>It holds the least of the speed asked for and what the road allows, braked for in time. A
 /// bend allows what <see cref="GripShare"/> of the lesser of the front tyres' grip and what full lock
-/// asks of them holds, on the weight and the wings together. The brake is all or nothing, so it is
-/// worked with a gap between on and off, and never below <see cref="LeastBrakeMs"/>, where a negative
-/// throttle is reverse.</para>
+/// asks of them holds, on the weight and the wings together, and no more than <see cref="TipShare"/>
+/// of what would lift the inside wheels. A crest allows what leaves <see cref="CrestShare"/> of the
+/// weight to be thrown off, and a dip what pushes the springs <see cref="DipShare"/> of the way to
+/// their stops, unless it <see cref="Jumps"/>. The brake is all or nothing, so it is worked with a gap
+/// between on and off, and not below <see cref="LeastBrakeMs"/>, where a negative throttle is
+/// reverse, until the end of a road, where the car is braked to a stand and the lap is over.</para>
 ///
 /// <para>Everything is in the body's own frame, where the ground does not move. Nothing here keeps
 /// time or state outside itself, so the same run is the same run twice.</para>
@@ -94,17 +101,33 @@ internal sealed class Autopilot
     /// <summary>The share of the brakes a bend is braked for with, the rest being spare.</summary>
     public const double BrakeShare = 0.7;
 
+    /// <summary>The share of the sideways pull that would lift a car's inside wheels that a bend is taken at.</summary>
+    public const double TipShare = 0.6;
+
+    /// <summary>The share of its weight a car is let throw off over a crest.</summary>
+    public const double CrestShare = 0.6;
+
+    /// <summary>The share of its springs' way to their stops a dip is let push them, over where they ride.</summary>
+    public const double DipShare = 0.35;
+
+    /// <summary>What a car's tightest turn is taken as being wider than, for the line through a kink.</summary>
+    public const double TurnMargin = 1.25;
+
     /// <summary>Seconds of travel the steering aims ahead by.</summary>
     public const double LookAheadSeconds = 0.4;
 
     public const double LeastLookAheadM = 4.0, MostLookAheadM = 60.0;
 
-    /// <summary>Below this a negative throttle is not asked for.</summary>
+    /// <summary>Below this a negative throttle is not asked for, short of the stop at a road's end.</summary>
     public const double LeastBrakeMs = 1.5;
 
     // The brake comes on this far over the speed wanted, or this share of it if that is more, and goes
     // off this far over it.
     private const double BrakeOnMs = 0.3, BrakeOnShare = 0.04, BrakeOffMs = 0.1;
+
+    // The speed wanted is read this far on, in seconds, so the brake's gap is not all above it: a car
+    // that goes into a bend over what the bend allows has no grip left to brake with.
+    private const double BrakeLeadSeconds = 0.1;
 
     // Full throttle from this far under the speed wanted.
     private const double FullThrottleUnderMs = 2.0;
@@ -112,18 +135,26 @@ internal sealed class Autopilot
     // The speed held off the road or pointing away from the route, and the least any bend is taken at.
     private const double RecoverMs = 5.0, CrawlMs = 2.0;
 
-    // The speed the end of a road is come up to, over the last few metres; and how far short of the end
-    // the front wheels are when the lap is over. Under a metre a second a car with its throttle shut
-    // stands still, and from this speed it rolls a metre and a half getting there.
-    private const double ArriveMs = 1.2, ArriveOverM = 5.0, ShortOfEndM = 2.5;
+    // The speed the end of a road is come up to, over the last few metres; how far short of the end the
+    // front wheels are when it is braked to a stop; and the speed at which it is let go, to stand. The
+    // first is well over the metre a second under which a car with its throttle shut is held by its
+    // tyres as a parked one is, which a car still on its way must not be.
+    private const double ArriveMs = 2.0, ArriveOverM = 5.0, ShortOfEndM = 2.5, StoppedMs = 0.7;
+
+    // The end is braked for no harder than this, g, over the last of the road: a soft car stopped hard
+    // has its nose down on the road when it gets there.
+    private const double GentleBrakeG = 0.3, ArriveBrakeOverM = 40.0;
+
+    // The share of what a dip is let push the springs past which it is braked through no harder than that either.
+    private const double DipBrakeShare = 0.3;
 
     private readonly BuggyProfile _profile;
     private readonly Route _route;
     private readonly RoadSurface? _road;
     private readonly double _mass, _gravity, _air, _wheelbase, _stopAt, _timeout;
     private readonly int _lapsWanted;
-    private readonly double[] _limit;
     private readonly LapRow[]? _rows;
+    private double[]? _limit;
 
     private LapSummary _summary;
     private int _index = -1;
@@ -150,12 +181,14 @@ internal sealed class Autopilot
         CruiseMs = cruiseMs > 0.0 ? Math.Min(cruiseMs, profile.TopSpeed) : profile.TopSpeed;
 
         _stopAt = route.Closed ? double.PositiveInfinity : Math.Max(route.LengthM - _wheelbase - ShortOfEndM, 0.0);
-        _limit = Limits();
         _summary.MinHubM = double.PositiveInfinity;
         _summary.MaxHubM = double.NegativeInfinity;
     }
 
     public double CruiseMs { get; }
+
+    /// <summary>Whether crests and dips are taken at whatever the bends allow, to see what a car does in the air.</summary>
+    public bool Jumps { get; init; }
     public LapEnd End { get; private set; }
 
     /// <summary>What went wrong, where the reason alone does not say.</summary>
@@ -173,8 +206,12 @@ internal sealed class Autopilot
         }
     }
 
-    /// <summary>The speed the route allows at each of its samples, m/s.</summary>
+    /// <summary>The speed the route allows at each of its samples, m/s; nothing before the first step, which is where the car is weighed up.</summary>
     public ReadOnlySpan<double> Limit => _limit;
+
+    /// <summary>The tightest turn a car is asked to make, m: what a route for it is drawn with.</summary>
+    public static double TurnRadius(BuggyProfile profile) =>
+        TurnMargin * BuggyDrive.Wheelbase(profile) / Math.Tan(Math.Max(profile.MaxSteerDeg, 1.0) * Math.PI / 180.0);
 
     /// <summary>Ends the lap from outside; one already over keeps the reason it has.</summary>
     public void Finish(LapEnd reason, string why = "")
@@ -184,26 +221,38 @@ internal sealed class Autopilot
         Why = why;
     }
 
-    // What each bend allows, v^2 kappa = share x grip x (g cos(slope) + the wings' press at v), and then
-    // back along the route what the brakes can get down to it from.
-    private double[] Limits()
+    // What the road allows at each sample, and then back along the route what the brakes can get down
+    // to it from. A bend: v^2 kappa = share x grip x what presses the tyres, which is g cos(slope), the
+    // wings' press at v and, over a crest, less what the crest throws off.
+    private double[] Limits(double halfTrackM, double comHeightM)
     {
         ReadOnlySpan<Route.Sample> samples = _route.Samples;
         double[] limit = new double[samples.Length];
         double grip = GripShare * Math.Min(_profile.FrontGrip, _profile.FrontGrip * _profile.SteerOverGrip);
+        if (comHeightM > 0.0) grip = Math.Min(grip, TipShare * halfTrackM / comHeightM);
         double wings = _mass > 0.0 ? 0.5 * _air * _profile.DownforceAreaM2 / _mass : 0.0;
+
+        // What a spring carries over its share of the weight at a compression is that times its rate.
+        double spring = 2.0 * Math.PI * _profile.SpringHz;
+        double dip = DipShare * _profile.BumpTravel * spring * spring;
         for (int i = 0; i < limit.Length; i++)
         {
             Route.Sample s = samples[i];
             double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
-            double short_ = Math.Abs(s.Curvature) - (grip * wings);
-            double bend = short_ > 1e-9 ? Math.Sqrt(grip * _gravity * level / short_) : double.PositiveInfinity;
-            limit[i] = s.S >= _stopAt - ArriveOverM ? ArriveMs : Math.Max(Math.Min(CruiseMs, bend), CrawlMs);
+            double crest = Jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
+            double allowed = Math.Min(CruiseMs, Under(grip * _gravity * level, Math.Abs(s.Curvature) + (grip * (crest - wings))));
+            if (!Jumps)
+            {
+                allowed = Math.Min(allowed, Under(CrestShare * _gravity * level, crest - (CrestShare * wings)));
+                allowed = Math.Min(allowed, Under(dip, Math.Max(s.Vertical, 0.0)));
+            }
+            limit[i] = s.S >= _stopAt - ArriveOverM ? ArriveMs : Math.Max(allowed, CrawlMs);
         }
 
         // A tyre holds its line before it brakes, so what a bend leaves of the grip is all the brakes
-        // have: into a bend the braking is done before the turn is. Twice round a closed route, so
-        // the bend after the line slows the straight before it.
+        // have: into a bend the braking is done before the turn is. The car is taken to be the brake's
+        // gap over the speed it is braked to. Twice round a closed route, so the bend after the line
+        // slows the straight before it.
         double brakes = BrakeShare * _profile.BrakeG * _gravity;
         int last = limit.Length - 1;
         for (int pass = 0; pass < (_route.Closed ? 2 : 1); pass++)
@@ -211,19 +260,49 @@ internal sealed class Autopilot
             for (int i = _route.Closed ? last : last - 1; i >= 0; i--)
             {
                 int next = (i + 1) % limit.Length;
-                double piece = Vec.Len(samples[next].At - samples[i].At);
+                Route.Sample s = samples[i];
+                double piece = Vec.Len(samples[next].At - s.At);
+                double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
+                double crest = Jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
+                // Through a dip too: the brakes' dive and the dip push the same front springs.
+                bool gently = s.S >= _stopAt - ArriveBrakeOverM || (!Jumps && s.Vertical * limit[next] * limit[next] > DipBrakeShare * dip);
+                double most = gently ? Math.Min(brakes, GentleBrakeG * _gravity) : brakes;
                 double from = limit[next];
                 for (int again = 0; again < 2; again++)
                 {
-                    double held = grip * (_gravity + (wings * from * from));
-                    double turning = from * from * Math.Abs(samples[i].Curvature);
+                    double over = from * (1.0 + BrakeOnShare);
+                    double held = grip * Math.Max((_gravity * level) + ((wings - crest) * over * over), 0.0);
+                    double turning = over * over * Math.Abs(s.Curvature);
                     double spare = Math.Sqrt(Math.Max((held * held) - (turning * turning), 0.0));
-                    from = Math.Sqrt((limit[next] * limit[next]) + (2.0 * Math.Min(brakes, spare) * piece));
+
+                    // Gravity along the road is with the brakes up a hill and against them down one.
+                    double slowing = Math.Max(Math.Min(most, spare) + (_gravity * s.Slope * level), 0.0);
+                    from = Math.Sqrt((limit[next] * limit[next]) + (2.0 * slowing * piece));
                 }
                 limit[i] = Math.Min(limit[i], from);
             }
         }
         return limit;
+    }
+
+    // The speed at which v^2 x per = most; any speed where nothing is asked.
+    private static double Under(double most, double per) => per > 1e-9 ? Math.Sqrt(most / per) : double.PositiveInfinity;
+
+    // Half the narrower axle's track, and how high the centre of mass rides with the tyres just touching.
+    private (double HalfTrackM, double ComHeightM) Stance(ReadOnlySpan<double3> hubs, double3 up, double3 forward)
+    {
+        BuggyCorner[] corners = _profile.Corners;
+        double3 left = Vec.Cross(up, forward);
+        double front = 0.0, rear = 0.0, height = 0.0;
+        int fronts = 0, rears = 0, n = Math.Min(corners.Length, hubs.Length);
+        for (int i = 0; i < n; i++)
+        {
+            height += (corners[i].Radius - Vec.Dot(hubs[i], up)) / n;
+            if (corners[i].Steers) { front += Math.Abs(Vec.Dot(hubs[i], left)); fronts++; }
+            else { rear += Math.Abs(Vec.Dot(hubs[i], left)); rears++; }
+        }
+        if (fronts == 0 || rears == 0) return (0.0, 0.0);
+        return (Math.Min(front / fronts, rear / rears), height);
     }
 
     /// <summary>
@@ -235,13 +314,14 @@ internal sealed class Autopilot
     /// <param name="up">The car's own up, in its body frame, and <paramref name="forward"/> its forward.</param>
     /// <param name="hubs">Each corner's hub at rest, relative to the centre of mass, body frame.</param>
     /// <param name="hubHeights">Each hub's height over what is under it.</param>
+    /// <param name="hullDown">Whether anything of the car but its tyres is on something, where that is known.</param>
     public DriveInput Step(double3 positionCcf, doubleQuat body2Ccf, double3 velocityCcf, double3 up, double3 forward,
-                           ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt)
+                           ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt, bool hullDown = false)
     {
         if (End != LapEnd.Running || !(dt > 0.0)) return default;
         try
         {
-            return Drive(positionCcf, body2Ccf, velocityCcf, up, forward, hubs, hubHeights, dt);
+            return Drive(positionCcf, body2Ccf, velocityCcf, up, forward, hubs, hubHeights, dt, hullDown);
         }
         catch (Exception e)
         {
@@ -251,9 +331,14 @@ internal sealed class Autopilot
     }
 
     private DriveInput Drive(double3 position, doubleQuat body2Ccf, double3 velocity, double3 up, double3 forward,
-                             ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt)
+                             ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt, bool hullDown)
     {
         BuggyCorner[] corners = _profile.Corners;
+        if (_limit is not { } limit)
+        {
+            (double halfTrack, double comHeight) = Stance(hubs, up, forward);
+            _limit = limit = Limits(halfTrack, comHeight);
+        }
         double3 radial = Vec.Unit(position);
         double3 ahead = body2Ccf * forward, top = body2Ccf * up;
         double3 left = Vec.Cross(top, ahead);
@@ -295,19 +380,23 @@ internal sealed class Autopilot
         double lockRad = BuggyDrive.SteerLock(_profile, rolling, _gravity, BuggyDrive.WingLoad(_profile, rolling, _air, _mass));
         double steer = lockRad > 0.0 ? Math.Clamp(angle / lockRad, -1.0, 1.0) : 0.0;
 
-        // The least the route allows between here and where the next step ends.
-        double wanted = _limit[_index];
-        double covered = here.S - s;
-        for (int i = _index, guard = 0; covered < Math.Abs(rolling) * dt && guard < _limit.Length; guard++)
+        // The least the route allows between here and where the next step ends, and a little beyond.
+        // Between two samples it is what a steady braking from one to the other passes through: taken
+        // a sample at a time the last few metres of a stop are steps of a metre a second and more,
+        // each of them the brake held on until the nose is down.
+        double wanted = Between(limit, _index, s - here.S);
+        double toGo = (s - here.S) + (Math.Abs(rolling) * (dt + BrakeLeadSeconds));
+        for (int i = _index, guard = 0; guard < limit.Length; guard++)
         {
-            int next = i + 1;
-            if (next >= _limit.Length)
+            int next = i + 1 < limit.Length ? i + 1 : _route.Closed ? 0 : i;
+            double piece = Vec.Len(_route.Samples[next].At - _route.Samples[i].At);
+            if (toGo <= piece || next == i)
             {
-                if (!_route.Closed) break;
-                next = 0;
+                wanted = Math.Min(wanted, Between(limit, i, toGo));
+                break;
             }
-            covered += Vec.Len(_route.Samples[next].At - _route.Samples[i].At);
-            wanted = Math.Min(wanted, _limit[next]);
+            toGo -= piece;
+            wanted = Math.Min(wanted, limit[next]);
             i = next;
         }
 
@@ -317,7 +406,13 @@ internal sealed class Autopilot
         if (wide || Math.Abs(bearing) > Math.PI / 4.0) wanted = Math.Min(wanted, RecoverMs);
 
         bool arrived = !_route.Closed && s >= _stopAt;
-        if (_braking)
+        bool stopped = arrived && rolling <= StoppedMs;
+        if (arrived)
+        {
+            // Every other step, which is half the brakes: all of them put its nose down as it stops.
+            if (_braking || !stopped) Brake(!_braking);
+        }
+        else if (_braking)
         {
             if (rolling <= wanted + BrakeOffMs || rolling < LeastBrakeMs) Brake(false);
         }
@@ -356,7 +451,7 @@ internal sealed class Autopilot
             rows[RowCount++] = new LapRow
             {
                 T = _summary.Seconds, Dt = dt, S = progress, Cross = cross, Speed = speed, Wanted = wanted, Throttle = throttle, Steer = steer,
-                RollDeg = roll, PitchDeg = pitch, Grounded = grounded, OffAsphalt = off, Position = position,
+                RollDeg = roll, PitchDeg = pitch, Grounded = grounded, OffAsphalt = off, HullDown = hullDown, Position = position,
                 Hub0 = Hub(hubHeights, 0), Hub1 = Hub(hubHeights, 1), Hub2 = Hub(hubHeights, 2), Hub3 = Hub(hubHeights, 3),
             };
         }
@@ -372,6 +467,7 @@ internal sealed class Autopilot
         _summary.MaxRollDeg = Math.Max(_summary.MaxRollDeg, Math.Abs(roll));
         _summary.MaxPitchDeg = Math.Max(_summary.MaxPitchDeg, Math.Abs(pitch));
         if (offAsphalt > 0) _summary.OffAsphaltSeconds += dt;
+        if (hullDown) _summary.HullSeconds += dt;
         _flight = onGround == 0 ? _flight + dt : 0.0;
         if (onGround == 0) _summary.AirSeconds += dt;
         _summary.LongestFlightSeconds = Math.Max(_summary.LongestFlightSeconds, _flight);
@@ -380,7 +476,7 @@ internal sealed class Autopilot
         _flippedFor = Vec.Dot(top, radial) < 0.3 ? _flippedFor + dt : 0.0;
         if (progress > _markProgress + 1.0) (_markProgress, _markTime) = (progress, _summary.Seconds);
 
-        if (arrived || (_route.Closed && _summary.Laps >= _lapsWanted)) Finish(LapEnd.Finished);
+        if (stopped || (_route.Closed && _summary.Laps >= _lapsWanted)) Finish(LapEnd.Finished);
         else if (_flippedFor >= FlippedSeconds) Finish(LapEnd.Flipped);
         else if (_offFor >= OffRoadSeconds) Finish(LapEnd.OffRoad);
         else if (_summary.Seconds - _markTime >= StuckSeconds) Finish(LapEnd.Stuck);
@@ -393,6 +489,16 @@ internal sealed class Autopilot
     {
         _braking = on;
         _summary.BrakeToggles++;
+    }
+
+    // What is allowed a distance on from a sample, towards the next.
+    private double Between(double[] limit, int i, double onM)
+    {
+        int next = i + 1 < limit.Length ? i + 1 : _route.Closed ? 0 : i;
+        double piece = Vec.Len(_route.Samples[next].At - _route.Samples[i].At);
+        if (!(piece > 0.0) || !double.IsFinite(limit[i]) || !double.IsFinite(limit[next])) return limit[i];
+        double share = Math.Clamp(onM / piece, 0.0, 1.0);
+        return Math.Sqrt((limit[i] * limit[i]) + (((limit[next] * limit[next]) - (limit[i] * limit[i])) * share));
     }
 
     private static float Hub(ReadOnlySpan<double> heights, int i) => i < heights.Length ? (float)heights[i] : float.NaN;

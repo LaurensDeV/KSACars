@@ -333,7 +333,8 @@ internal sealed class Bridge
                 }
             }
             if (!Laps.Start(craft, through, (int)command.Number("laps", 1.0), command.Number("speed", 0.0), command.Number("offset", 0.0),
-                            command.Number("timeout", 600.0), command.Flag("place", true), command.Flag("rows", false), out string why))
+                            command.Number("timeout", 600.0), command.Flag("place", true), command.Flag("rows", false),
+                            command.Flag("jump", false), out string why))
             {
                 return Failed(why);
             }

@@ -290,7 +290,7 @@ internal sealed class TrackRig
         (double east, double north) = Where;
 
         Read(_road);
-        if (Driver is { } driver) input = driver.Step(Position, Attitude, Velocity, up, forward, _hubs, _hubHeights, dt);
+        if (Driver is { } driver) input = driver.Step(Position, Attitude, Velocity, up, forward, _hubs, _hubHeights, dt, Log.Count > 0 && Log[^1].HullDown);
 
         double clearance = double.PositiveInfinity, deepest = double.NegativeInfinity;
         int onRoad = 0;

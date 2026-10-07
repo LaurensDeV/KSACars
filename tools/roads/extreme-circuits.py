@@ -7,6 +7,9 @@ Writes the circuits the roads are pushed with into the circuit library.
 
 Each is laid out in metres east and north of its own place on Earth, 2.5 km from the next, on the flat
 ground west of -24, -62. They are meant to be driven by the bridge's `lap`, not to be pleasant.
+
+tests/KSACars.Tests/ExtremeCircuits.cs lays the same circuits for the headless laps, point for point: a
+change to a circuit here has to be made there too.
 """
 
 import argparse

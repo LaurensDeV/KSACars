@@ -67,8 +67,9 @@ internal static class Laps
     /// One step of a car's lap: the throttle and steering for it. From the physics window, where
     /// nothing may throw, so whatever goes wrong ends the lap and is its reason.
     /// </summary>
+    /// <param name="hullDown">Whether a collider of the car's was on something as the step before ended.</param>
     public static DriveInput Step(Vehicle craft, double3 positionCcf, doubleQuat body2Ccf, double3 velocityCcf, double3 up, double3 forward,
-                                  ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt)
+                                  ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt, bool hullDown)
     {
         if (!All.TryGetValue(craft, out Lap? lap)) return default;
         try
@@ -78,7 +79,7 @@ internal static class Laps
                 lap.Pilot.Finish(LapEnd.RoadsRelaid);
                 return default;
             }
-            return lap.Pilot.Step(positionCcf, body2Ccf, velocityCcf, up, forward, hubs, hubHeights, dt);
+            return lap.Pilot.Step(positionCcf, body2Ccf, velocityCcf, up, forward, hubs, hubHeights, dt, hullDown);
         }
         catch (Exception e)
         {
@@ -93,29 +94,33 @@ internal static class Laps
     /// <param name="through">The circuit's points to pass through in order, or null to follow its first road round.</param>
     /// <param name="speedMs">The speed to hold where no bend asks for less; nothing is the car's own top speed.</param>
     /// <param name="place">Whether the car is first stood on the road at the route's start, facing along it.</param>
+    /// <param name="jumps">Whether crests and dips are taken at whatever the bends allow.</param>
     public static bool Start(Vehicle craft, IReadOnlyList<int>? through, int laps, double speedMs, double offsetM, double timeoutSeconds,
-                             bool place, bool keepRows, out string why)
+                             bool place, bool keepRows, bool jumps, out string why)
     {
         if (Buggies.Of(craft) is not { } car)
         {
             why = "that craft is not a buggy";
             return false;
         }
-        if (Roads.RouteOver(through, offsetM, out Celestial? body, out RoadSurface? surface, out why) is not { } route) return false;
+        BuggyProfile profile = car.Drive.Profile;
+        if (Roads.RouteOver(through, offsetM, Autopilot.TurnRadius(profile), out Celestial? body, out RoadSurface? surface, out why) is not { } route)
+        {
+            return false;
+        }
         if (!ReferenceEquals(craft.Parent, body))
         {
             why = $"the circuit is laid on {body?.Id}, and the car is not there";
             return false;
         }
 
-        BuggyProfile profile = car.Drive.Profile;
         double3 at = KsaWorld.PositionEcl(craft);
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, at));
         double air = KsaWorld.ReferenceAirDensityKgPerM3 * KsaWorld.AirDensityRatioAt(craft, at);
 
         LapRow[]? rows = keepRows ? new LapRow[MostRows] : null;
         Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air, laps, speedMs,
-                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows);
+                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps };
 
         if (place)
         {
@@ -261,6 +266,7 @@ internal static class Laps
             ["offset_m"] = lap.OffsetM,
             ["placed"] = lap.Placed,
             ["cruise_ms"] = Math.Round(pilot.CruiseMs, 1),
+            ["jumps"] = pilot.Jumps,
             ["mass_kg"] = Math.Round(lap.MassKg, 1),
             ["gravity_ms2"] = Math.Round(lap.Gravity, 4),
             ["air_kgm3"] = Math.Round(lap.AirDensity, 4),
@@ -278,6 +284,7 @@ internal static class Laps
             ["off_asphalt_s"] = Math.Round(s.OffAsphaltSeconds, 2),
             ["air_s"] = Math.Round(s.AirSeconds, 2),
             ["longest_flight_s"] = Math.Round(s.LongestFlightSeconds, 2),
+            ["hull_down_s"] = Math.Round(s.HullSeconds, 2),
             ["hub_low_m"] = s.Steps > 0 ? Math.Round(s.MinHubM, 3) : null,
             ["hub_high_m"] = s.Steps > 0 ? Math.Round(s.MaxHubM, 3) : null,
             ["max_roll_deg"] = Math.Round(s.MaxRollDeg, 1),
