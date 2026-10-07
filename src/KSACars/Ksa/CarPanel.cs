@@ -43,7 +43,7 @@ internal static class CarPanel
         }
     }
 
-    public static void Draw(CraftMover mover)
+    public static void Draw(CraftMover mover, RoadEditor roads)
     {
         if (KsaWorld.ControlledVehicle is not { } craft || Buggies.Of(craft) is not { } car) return;
 
@@ -103,6 +103,15 @@ internal static class CarPanel
                 if (mover.Held is { } held) ImGui.TextDisabled($"holding {KsaWorld.DisplayName(held)}: click the ground");
                 else if (mover.Hovered is { } over) ImGui.TextDisabled($"click to pick up {KsaWorld.DisplayName(over)}");
                 else ImGui.TextDisabled("click a craft to pick it up");
+            }
+
+            // Roads are unfinished, so only a developer's install offers them.
+            if (Build.Developer)
+            {
+                bool editing = roads.Enabled;
+                if (ImGui.Checkbox("Build roads", ref editing)) roads.Enabled = editing;
+                // One of the two has the mouse's clicks on the world.
+                if (roads.Enabled) mover.Enabled = false;
             }
 
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);

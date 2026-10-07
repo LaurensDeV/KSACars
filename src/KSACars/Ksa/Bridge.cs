@@ -97,6 +97,7 @@ internal sealed class Bridge
             "spawn" => Spawn(command),
             "drive" => Drive(command),
             "ground" => Ground(command),
+            "road" => Road(command),
             "save" => SaveGame(command),
             _ => Failed($"no command '{command.Name}'"),
         };
@@ -307,6 +308,79 @@ internal sealed class Bridge
         if (Buggies.Report(craft) is { } report) return Done(report);
         return command.Flag("eva", false) || command.Flag("crew", false) ? Done(new() { ["seats"] = craft.SeatCount })
                                                                           : Failed("that craft is not a buggy");
+    }
+
+    // A test road laid from lat/lon along a heading, on the ground the whole way; clear=true takes it up.
+    private static Reply Road(BridgeCommand command)
+    {
+        if (command.Flag("clear", false))
+        {
+            Roads.Clear();
+            return Done(new() { ["laid"] = false });
+        }
+        if (KsaWorld.ControlledVehicle is not { } flown || KsaWorld.ParentBody(flown) is not { } body)
+        {
+            return Failed("no body under the craft");
+        }
+        if (command.Flag("probe_clutter", false)) return Done(Roads.ProbeClutter(body).ToDictionary(k => k.Key, k => (object?)k.Value));
+        if (!RoadDrawHook.Installed) return Failed("the road hook is not installed");
+
+        Circuit circuit;
+        if (command.String("circuit") is { Length: > 0 } name)
+        {
+            if (CircuitLibrary.Load(name, out string why) is not { } read) return Failed(why);
+            circuit = read;
+        }
+        else
+        {
+            circuit = TestCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0),
+                Math.Clamp(command.Number("length", 300.0), 10.0, 20_000.0), Math.Clamp(command.Number("width", 8.0), 1.0, 40.0));
+            if (command.String("save_as") is { Length: > 0 } saveAs && !CircuitLibrary.Save(circuit with { Name = saveAs }, out string failed))
+            {
+                return Failed(failed);
+            }
+        }
+
+        if (command.Has("edit"))
+        {
+            RoadEditor.AskEnabled = command.Flag("edit", false);
+            RoadEditor.AskCircuit = circuit;
+            if (command.Has("view_distance"))
+            {
+                RoadEditor.AskView = (command.Number("view_yaw", 0.0), command.Number("view_pitch", 60.0), command.Number("view_distance", 250.0));
+            }
+            return Done(new() { ["editing"] = RoadEditor.AskEnabled, ["roads"] = circuit.Roads.Count });
+        }
+
+        (int points, double low, double high) = Roads.Lay(body, circuit, command.Number("lift", 0.07),
+            Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0));
+        KsaWorld.TrySeaLevel(body, out double sea);
+        if (command.Flag("clutter", true)) Roads.ClearClutter(command.Number("margin", 1.5));
+        return Done(new()
+        {
+            ["laid"] = Roads.Any, ["roads"] = circuit.Roads.Count, ["points"] = points, ["cleared_before"] = Roads.ClutterTaken,
+            ["lowest_ground_m"] = Math.Round(low - sea, 2), ["highest_ground_m"] = Math.Round(high - sea, 2),
+            ["library"] = CircuitLibrary.Names(),
+        });
+    }
+
+    // A through road with a bend in it, a side road off its middle and a road closing the two into a
+    // loop: every kind of meeting the layout has, starting at the place asked for.
+    private static Circuit TestCircuit(KSA.Celestial body, double lat, double lon, double headingDeg, double length, double width)
+    {
+        double heading = headingDeg * Math.PI / 180.0;
+        double perDeg = body.MeanRadius * Math.PI / 180.0;
+        (double Lat, double Lon) At(double ahead, double right)
+        {
+            double north = (ahead * Math.Cos(heading)) - (right * Math.Sin(heading));
+            double east = (ahead * Math.Sin(heading)) + (right * Math.Cos(heading));
+            return (lat + (north / perDeg), lon + (east / (perDeg * Math.Cos(lat * Math.PI / 180.0))));
+        }
+
+        (double Lat, double Lon) b = At(0.5 * length, 0.0), c = At(length, 0.3 * length), d = At(0.5 * length, 0.5 * length);
+        return new Circuit { Name = "Test", Body = body.Id, WidthM = width }
+            .AddNode(lat, lon, out int start).Extend(start, b.Lat, b.Lon, out int mid).Extend(mid, c.Lat, c.Lon, out int end)
+            .Extend(mid, d.Lat, d.Lon, out int side).Connect(side, end);
     }
 
     // The ground's height against sea level at lat/lon, negative where it is seabed -- or along a line

@@ -34,6 +34,9 @@ internal sealed class Buggies
         public double StepSeconds { get; set; }
         public string Skipped { get; set; } = "";
         public double[] HubHeights { get; } = new double[profile.Corners.Length];
+
+        /// <summary>How far each hub was above the road under it last step, or null with no road under it.</summary>
+        public double?[] RoadOver { get; } = new double?[profile.Corners.Length];
         public double Level { get; set; } = 1.0;
         public double SinceLog { get; set; }
         public KittenRenderable? HandsOn { get; set; }
@@ -215,6 +218,10 @@ internal sealed class Buggies
     private const string FlameTemplate = "EngineAAuxiliary";
 
     // The downforce rockets burn steadily, and short: they sit in front of the driver.
+    // How far past the end of its travel a wheel may go into a road before the car is set back on it:
+    // that much is the bump stop's to push out, as it does on the ground.
+    private const double RoadBumpStopM = 0.10;
+
     private const double DownFlame = 0.35;
 
     /// <summary>
@@ -645,6 +652,7 @@ internal sealed class Buggies
             double3 groundUp = upCcf.Transform(ccf2Body);
             double comHeight = comRadius - (body.MeanRadius + under);
             if (pads.TryHeightOver(positionCcf, out double overPad)) comHeight = Math.Min(comHeight, overPad);
+            if (Roads.TryHeightOver(body, positionCcf, null, out double overRoad)) comHeight = Math.Min(comHeight, overRoad);
             RightingMove move = tip
                 ? new RightingMove(doubleQuat.CreateFromAxisAngle(forward, Math.PI), 1.5 - comHeight)
                 : Righting.Solve(corners, hubs, up, forward, groundUp, comHeight);
@@ -660,6 +668,8 @@ internal sealed class Buggies
             return;
         }
 
+        // How far the deepest wheel is into a road past the end of its travel and its bump stop's.
+        double sunk = 0.0;
         for (int i = 0; i < corners.Length; i++)
         {
             double3 hub = hubs[i];
@@ -672,6 +682,13 @@ internal sealed class Buggies
 
             double hubHeight = radius - (body.MeanRadius + height);
             if (pads.TryHeightOver(atCcf, out double overPad)) hubHeight = Math.Min(hubHeight, overPad);
+            bool onRoad = Roads.TryHeightOver(body, atCcf, e.RoadOver[i], out double overRoad);
+            e.RoadOver[i] = onRoad ? overRoad : null;
+            if (onRoad && overRoad < hubHeight)
+            {
+                hubHeight = overRoad;
+                sunk = Math.Max(sunk, corners[i].Radius - e.Drive.Profile.BumpTravel - RoadBumpStopM - overRoad);
+            }
 
             e.HubHeights[i] = hubHeight;
             contacts[i] = new WheelContact(
@@ -679,6 +696,27 @@ internal sealed class Buggies
                 HubHeight: hubHeight,
                 GroundUp: dirCcf.Transform(ccf2Body),
                 HubVelocity: velocityBody + Vec.Cross(spinBody, hub));
+        }
+
+        // Nothing of KSA's stands where a road is, so a car that has run into one is not stopped as
+        // the ground stops it, and the springs, which push only so hard, would let it through. It is
+        // set back on the surface and loses what speed it had downwards.
+        if (sunk > 0.0)
+        {
+            double3 straightUp = Vec.Unit(positionCcf).Transform(ccf2Body);
+            double falling = Math.Max(-Vec.Dot(velocityBody, straightUp), 0.0);
+            states.Kinematic.PositionPhys += straightUp.Transform(body2Phys) * sunk;
+            states.Kinematic.VelocityPhys += straightUp.Transform(body2Phys) * falling;
+            for (int i = 0; i < contacts.Length; i++)
+            {
+                if (!contacts[i].Valid) continue;
+                contacts[i] = contacts[i] with
+                {
+                    HubHeight = contacts[i].HubHeight + sunk,
+                    HubVelocity = contacts[i].HubVelocity + (straightUp * falling),
+                };
+                if (e.RoadOver[i] is { } over) e.RoadOver[i] = over + sunk;
+            }
         }
 
         double mass = craft.TotalMass;

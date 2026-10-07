@@ -236,6 +236,18 @@ TOOLS = {
                    {"lat": _num("deg"), "lon": _num("deg"), "to_lat": _num("deg"), "to_lon": _num("deg"),
                     "steps": _num("count")}, ["lat", "lon"],
                    lambda a: [_text(json.dumps(send("ground", **a)))]),
+    "ksa_road": ("Lay the roads of a circuit from the library (circuit), or a test circuit with a junction from lat/lon "
+                 "along heading (deg, 0 north), length and width in metres, kept in the library with save_as. lift is "
+                 "above the ground, spacing between points, margin how far past the edge clutter is cleared "
+                 "(clutter=false leaves it); clear=true takes the roads up. edit=true opens that circuit in the road "
+                 "editor instead, with its free camera at view_yaw and view_pitch (deg) and view_distance (m). "
+                 "probe_clutter=true lays nothing and measures the mod's clutter positions against the game's.",
+                 {"circuit": {"type": "string"}, "save_as": {"type": "string"}, "lat": _num("deg"), "lon": _num("deg"),
+                  "heading": _num("deg"), "length": _num("m"), "width": _num("m"), "lift": _num("m"), "spacing": _num("m"),
+                  "margin": _num("m"), "clutter": {"type": "boolean"}, "clear": {"type": "boolean"},
+                  "edit": {"type": "boolean"}, "probe_clutter": {"type": "boolean"}, "view_yaw": _num("deg"), "view_pitch": _num("deg"),
+                  "view_distance": _num("m")}, [],
+                 lambda a: [_text(json.dumps(send("road", **a)))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),
     "ksa_drive": ("Drive a buggy: hold throttle (-1..1, negative brakes then reverses) and steer (-1 right..1 "

@@ -21,6 +21,7 @@ public sealed class KSACarsMod
     private readonly BuggySound _buggySound = new();
     private readonly RocketSound _rocketSound = new();
     private readonly CraftMover _mover = new();
+    private readonly RoadEditor _roadEditor = new();
     private readonly FrameLatch _frame = new();
     private Bridge? _bridge;
 
@@ -49,6 +50,7 @@ public sealed class KSACarsMod
         BoostHook.Install();
         HudHook.Install();
         RailsHook.Install();
+        RoadDrawHook.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -97,7 +99,8 @@ public sealed class KSACarsMod
                 return;
             }
 
-            CarPanel.Draw(_mover);
+            CarPanel.Draw(_mover, _roadEditor);
+            _roadEditor.Update();
             // After the panel, so a click on its checkbox is the panel's and not the world's; and
             // here rather than in the frame hook, which is past the point gizmos are drawn from.
             _mover.Update();
@@ -145,6 +148,7 @@ public sealed class KSACarsMod
         BoostHook.Remove();
         HudHook.Remove();
         RailsHook.Remove();
+        RoadDrawHook.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -171,6 +175,7 @@ public sealed class KSACarsMod
         BoostHook.Remove();
         HudHook.Remove();
         RailsHook.Remove();
+        RoadDrawHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

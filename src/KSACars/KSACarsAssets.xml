@@ -10,6 +10,17 @@
 -->
 <Assets>
 
+  <!-- A road: one box, drawn by the mod once for each stretch of a road and scaled to it. A <GltfFile>
+       and not a part's mesh, so it carries a material slot. tools/model/road-slab.py writes all four. -->
+  <GltfFile Id="KSACars_RoadSlab_Glb">
+    <Source Path="Meshes/KSACars_RoadSlab.glb" />
+  </GltfFile>
+  <PbrMaterial Id="KSACars_Road_Material">
+    <Diffuse      Path="Textures/KSACars_Road_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_Road_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_Road_PBR.png"     Category="Default" />
+  </PbrMaterial>
+
   <!--
     The beach buggy's atlas and its one material. Authored in Blender over MCP; the number plate is
     lettered into the diffuse, on an island given fourteen times its share of texels so it reads.

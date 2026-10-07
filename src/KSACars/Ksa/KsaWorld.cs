@@ -109,6 +109,23 @@ internal static partial class KsaWorld
         }
     }
 
+    /// <summary>
+    /// Has KSA build its clutter colliders again, which is the only thing that takes away the ones it
+    /// had already built for clutter since masked out. <see cref="LoosenClutter"/> carries it out.
+    /// </summary>
+    public static void RebuildClutterColliders()
+    {
+        try
+        {
+            if (_clutterRebuildUntilMs == 0) _collisionsWanted = GameSettings.Current.Simulation.GroundClutterCollisions;
+            _clutterRebuildUntilMs = Environment.TickCount64 + ClutterRebuildMs;
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"could not have the clutter colliders rebuilt: {e.Message}");
+        }
+    }
+
     // Every rock template on every body, set to a share of the mass KSA loaded it with. False when the
     // renderer that owns them is not up yet, and the caller tries again next frame.
     private static bool WeighRocks(double share)
@@ -738,6 +755,65 @@ internal static partial class KsaWorld
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>The orbit camera turned to look almost straight down on what it follows, its heading kept.</summary>
+    public static bool TryLookStraightDown()
+    {
+        try
+        {
+            return Program.GetMainCamera()?.Following?.OrbitView is { } view
+                   && TryWriteMainOrbit(view.Azimuth, -85.0 * Math.PI / 180.0);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static CameraMode? MainViewMode
+    {
+        get
+        {
+            try { return Program.MainViewport?.Mode; }
+            catch { return null; }
+        }
+    }
+
+    /// <summary>
+    /// The main view put in KSA's fixed mode: at an offset from what the camera follows, looking along
+    /// <paramref name="forwardEcl"/>. The direction is written before the mode, because a frame drawn
+    /// in that mode with none divides by zero.
+    /// </summary>
+    public static bool TryFixedView(double3 offsetFromFollowed, double3 forwardEcl)
+    {
+        if (!Vec.IsFinite(offsetFromFollowed) || !Vec.IsFinite(forwardEcl) || Vec.Len2(forwardEcl) < 1e-12) return false;
+        try
+        {
+            if (Program.MainViewport is not { } viewport || viewport.GetCamera()?.Following is null) return false;
+            if (viewport.FixedController is not { } controller) return false;
+
+            controller.CameraRotation = Vec.Unit(forwardEcl);
+            controller.CameraOffset = offsetFromFollowed;
+            if (viewport.Mode != CameraMode.Fixed) viewport.SetCameraMode(CameraMode.Fixed);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static void RestoreViewMode(CameraMode mode)
+    {
+        try
+        {
+            if (Program.MainViewport is { } viewport && viewport.Mode != mode) viewport.SetCameraMode(mode);
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"could not hand the view back: {e.Message}");
         }
     }
 }
