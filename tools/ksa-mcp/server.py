@@ -251,6 +251,23 @@ TOOLS = {
                   "box_size": _num("m"), "box_thick": _num("m"), "view_yaw": _num("deg"), "view_pitch": _num("deg"),
                   "view_distance": _num("m")}, [],
                  lambda a: [_text(json.dumps(send("road", **a)))]),
+    "ksa_lap": ("A driver that follows a route round the laid circuit (lay one with ksa_road first), stepped inside the "
+                "physics window; it answers at once and never waits for the lap. start=true sets it going on craft (the "
+                "flown one unless named): route is the circuit's point ids to pass through in order, comma separated and "
+                "ending on the first for laps ('1,2,3,5,1'), or without it the circuit's first road followed round; laps "
+                "(default 1); speed is the cruise in m/s (default the car's top speed), held down for each bend; offset "
+                "is metres left of the road's centre; timeout in simulated seconds (default 600); place=false leaves the "
+                "car where it is instead of standing it on the road at the route's start, facing along it; rows=true "
+                "keeps a line a step. status=true, or no flag, answers whether it is running, why it ended (Finished, "
+                "OffRoad, Flipped, Stuck, TimedOut, Failed, Stopped, NotDriven, RoadsRelaid) and the summary so far: "
+                "laps, time, cross-track error, time off the asphalt and in the air, hub heights. stop=true ends it. "
+                "When it ends the summary is written to Logs/bridge/KSACars/laps/<utc>-<craft>.json, with the rows "
+                "beside it as .csv, added to each second while it runs.",
+                {"craft": {"type": "string"}, "start": {"type": "boolean"}, "status": {"type": "boolean"},
+                 "stop": {"type": "boolean"}, "route": {"type": "string"}, "laps": _num("count"), "speed": _num("m/s"),
+                 "offset": _num("m left"), "timeout": _num("sim seconds"), "place": {"type": "boolean"},
+                 "rows": {"type": "boolean"}}, [],
+                lambda a: [_text(json.dumps(send("lap", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),
     "ksa_drive": ("Drive a buggy: hold throttle (-1..1, negative brakes then reverses) and steer (-1 right..1 "

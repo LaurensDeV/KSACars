@@ -23,7 +23,7 @@ internal static class Roads
 
     private sealed record Ribbon(double3[] SurfaceCcf, double HalfWidth, double LengthM, bool Closed);
 
-    private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface);
+    private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM);
 
     private static volatile Laid? _laid;
     private static double3[] _ego = [];
@@ -51,6 +51,27 @@ internal static class Roads
     /// <summary>The roads laid on <paramref name="body"/> as a wheel is over them, or null with none. Swapped whole, as above.</summary>
     public static RoadSurface? SurfaceOn(Celestial body) =>
         _laid is { } laid && ReferenceEquals(laid.Body, body) ? laid.Surface : null;
+
+    /// <summary>
+    /// A line to drive along the roads that are laid, through the circuit's points in
+    /// <paramref name="through"/> or, with none, round from its first road; with the body they are on
+    /// and their surface. Null with the reason. Not for the physics window: it reads the ground anew.
+    /// </summary>
+    public static Route? RouteOver(IReadOnlyList<int>? through, double offsetM, out Celestial? body, out RoadSurface? surface, out string why)
+    {
+        body = null;
+        surface = null;
+        if (_laid is not { } laid)
+        {
+            why = "no circuit is laid: lay one with road first";
+            return null;
+        }
+        body = laid.Body;
+        surface = laid.Surface;
+        Celestial on = laid.Body;
+        return Route.Of(laid.Circuit, on.GetDirCcfFromLatLon, on.MeanRadius, dir => on.GetTerrainHeightFromDirCcf(dir, accurate: true),
+                        laid.LiftM, laid.SpacingM, through, offsetM, out why);
+    }
 
     /// <summary>
     /// How far this mod's reckoning of where KSA put each piece of clutter is from where KSA says it
@@ -236,7 +257,8 @@ internal static class Roads
         Interlocked.Increment(ref _generation);
         List<RoadLaying.Strip> strips = RoadLaying.Lay(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
         _laid = strips.Count > 0
-            ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips))
+            ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips),
+                       circuit, liftM, spacingM)
             : null;
         if (colliders)
         {

@@ -86,6 +86,10 @@ internal sealed class Buggies
     // Cars asked to be set back on their wheels, and whether instead to be tipped onto the roof.
     private static readonly Dictionary<Vehicle, bool> ToRight = [];
 
+    // Cars asked to be stood on a road: the place on its surface under the centre of mass, the road's
+    // own up there and the way to face, in the body's own frame.
+    private static readonly Dictionary<Vehicle, (double3 At, double3 Up, double3 Ahead)> ToStand = [];
+
     private static bool _complained;
     private long _posedAtMs;
 
@@ -150,6 +154,7 @@ internal sealed class Buggies
         Active.Clear();
         Held.Clear();
         ToRight.Clear();
+        ToStand.Clear();
     }
 
     /// <summary>Holds a buggy's throttle and steering for so many simulated seconds, whoever is flying.</summary>
@@ -172,6 +177,18 @@ internal sealed class Buggies
     {
         if (!Active.ContainsKey(craft)) return false;
         ToRight[craft] = tip;
+        return true;
+    }
+
+    /// <summary>
+    /// Stands a car on a surface at its next physics step, on its wheels, at rest and facing
+    /// <paramref name="aheadCcf"/>: <paramref name="atCcf"/> is the place on the surface its centre of
+    /// mass is put over and <paramref name="upCcf"/> the surface's own up, in the body's own frame.
+    /// </summary>
+    public static bool Stand(Vehicle craft, double3 atCcf, double3 upCcf, double3 aheadCcf)
+    {
+        if (!Active.ContainsKey(craft)) return false;
+        ToStand[craft] = (atCcf, upCcf, aheadCcf);
         return true;
     }
 
@@ -605,12 +622,15 @@ internal sealed class Buggies
 
         bool railed = craft.Situation.IsOnRails();
         e.Railed = railed;
-        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && !e.Lit && !e.HatchWanted[(int)ThrusterGroup.Boost] && !e.Downforce;
+        bool lapping = !warped && Laps.Driving(craft);
+        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && !e.Lit && !e.HatchWanted[(int)ThrusterGroup.Boost] && !e.Downforce
+                    && !lapping;
 
         // KSA only rails a car that has stood still, so one on rails with nobody at the wheel is parked:
         // it is exactly where it was, and costs nothing. Its speed from before it stopped says nothing.
         bool righting = ToRight.Remove(craft, out bool tip);
-        if (railed && idle && !righting) return;
+        bool standing = ToStand.Remove(craft, out (double3 At, double3 Up, double3 Ahead) stand);
+        if (railed && idle && !righting && !standing) return;
 
         PhysicsStates states = craft.GetPhysicsStatesMutable();
 
@@ -648,6 +668,25 @@ internal sealed class Buggies
         Span<double3> hubs = stackalloc double3[corners.Length];
         for (int i = 0; i < corners.Length; i++) hubs[i] = partOrigin + (part2Asmb * corners[i].Hub) - com;
 
+        if (standing)
+        {
+            double3 to = stand.At + (stand.Up * Righting.StandingHeight(corners, hubs, up));
+            doubleQuat turn = Righting.Facing(up, forward, stand.Up.Transform(ccf2Body), stand.Ahead.Transform(ccf2Body));
+            states.Kinematic.PositionPhys += (to - positionCcf).Transform(ccf2Body).Transform(body2Phys);
+            states.Kinematic.Body2Phys = body2Phys * turn;
+            states.Kinematic.AngularVelocityPhys = default;
+
+            // Read again where it now is: standing still over the ground is a different speed at a different place.
+            PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic,
+                                       out double3 nowCcf, out double3 stillCcf, out doubleQuat nowBody2Ccf);
+            states.Kinematic.VelocityPhys -= stillCcf.Transform(nowBody2Ccf.Inverse()).Transform(states.Kinematic.Body2Phys);
+            Array.Clear(e.RoadOver);
+            if (railed) craft.TakeOffRails();
+            Log.Info($"{KsaWorld.DisplayName(craft)} stood on the road, moved {Vec.Len(to - positionCcf):F1} m and "
+                     + $"{Vec.Len(nowCcf - to):F3} m from where it was asked to be, facing {Vec.Dot((nowBody2Ccf * forward), stand.Ahead):F3} along it");
+            return;
+        }
+
         if (righting)
         {
             double comRadius = Vec.Len(positionCcf);
@@ -683,6 +722,10 @@ internal sealed class Buggies
         WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs,
                          body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
                          Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights);
+
+        // A lap's driver has the wheel, ahead of the keys and of anything held: asked here, where the
+        // ground under the wheels is known and the drive has not been stepped.
+        if (lapping) e.Input = Laps.Step(craft, positionCcf, body2Ccf, velocityCcf, up, forward, hubs, e.HubHeights, dt);
 
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));

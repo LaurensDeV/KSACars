@@ -29,7 +29,7 @@ internal sealed class Bridge
 
     // A folder of its own: every mod built from the same tooling has a bridge, and two reading one
     // folder each answer whichever command they reach first.
-    private static string Root => Path.Combine(Log.Folder, "bridge", "KSACars");
+    internal static string Root => Path.Combine(Log.Folder, "bridge", "KSACars");
     private static string Inbox => Path.Combine(Root, "in");
     private static string Outbox => Path.Combine(Root, "out");
 
@@ -44,6 +44,9 @@ internal sealed class Bridge
     /// </summary>
     public void Update(double dtPlayer, double dtSim)
     {
+        // Ahead of the queue, which a step holds for as long as the world runs.
+        Laps.Update(dtPlayer);
+
         try
         {
             if (_running is not null && _current is not null)
@@ -98,6 +101,7 @@ internal sealed class Bridge
             "drive" => Drive(command),
             "ground" => Ground(command),
             "road" => Road(command),
+            "lap" => Lap(command),
             "save" => SaveGame(command),
             _ => Failed($"no command '{command.Name}'"),
         };
@@ -308,6 +312,38 @@ internal sealed class Bridge
         if (Buggies.Report(craft) is { } report) return Done(report);
         return command.Flag("eva", false) || command.Flag("crew", false) ? Done(new() { ["seats"] = craft.SeatCount })
                                                                           : Failed("that craft is not a buggy");
+    }
+
+    // A driver that follows a route round the laid circuit: start=true sets one going on a car, stop=true
+    // ends it, and either way or with neither what it has come to so far is answered. It never holds the queue.
+    private static Reply Lap(BridgeCommand command)
+    {
+        if (CraftNamed(command.String("craft")) is not { } craft) return Failed("no such craft");
+
+        if (command.Flag("start", false))
+        {
+            List<int>? through = null;
+            if (command.String("route") is { Length: > 0 } listed)
+            {
+                through = [];
+                foreach (string id in listed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int node)) return Failed($"route: '{id}' is not a point's id");
+                    through.Add(node);
+                }
+            }
+            if (!Laps.Start(craft, through, (int)command.Number("laps", 1.0), command.Number("speed", 0.0), command.Number("offset", 0.0),
+                            command.Number("timeout", 600.0), command.Flag("place", true), command.Flag("rows", false), out string why))
+            {
+                return Failed(why);
+            }
+        }
+        else if (command.Flag("stop", false) && !Laps.Stop(craft))
+        {
+            return Failed("that craft has no lap running");
+        }
+
+        return Laps.Status(craft) is { } status ? Done(status) : Failed("that craft has driven no lap");
     }
 
     // A test road laid from lat/lon along a heading, on the ground the whole way; clear=true takes it up.

@@ -237,7 +237,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
 | `Ksa/KsaWorld.Pointing.cs` | the part of it the craft mover needs: the cursor's ray and the ground it meets, where a craft is on screen, and gizmo rings and lines |
 | `Ksa/CraftMover.cs` | **picks a craft up with one click and sets it down with the next**, from the panel — through `Vehicle.TeleportToLocation`, so it arrives resting on the ground. Carried over from KSArmory with its helpers |
-| `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
+| `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, set a driver going round a circuit, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
+| `Ksa/Laps.cs` | the laps being driven by `Autopilot`, a car each, **kept outside `Buggies.Entry`**: stepped from the physics window, and from the frame hook ended when the car is gone or the roads are laid again, and filed under the bridge's folder as a summary and a line a step |
 | `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn` |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
