@@ -30,16 +30,14 @@ internal static class RoadLayout
     /// </summary>
     public static List<Stretch> Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, double spacingM)
     {
-        Dictionary<int, double3> at = [];
-        foreach (Circuit.Node n in circuit.Nodes) at[n.Id] = Vec.Unit(dirOf(n.LatDeg, n.LonDeg)) * radiusM;
+        Dictionary<int, double3> at = Places(circuit, dirOf, radiusM);
 
         List<Stretch> stretches = [];
         foreach (Circuit.Road road in circuit.Roads)
         {
             if (!at.TryGetValue(road.From, out double3 a) || !at.TryGetValue(road.To, out double3 b)) continue;
-            double3 ha = Handle(circuit, at, road.From, road.To, road.FromHandle, dirOf, radiusM);
-            double3 hb = Handle(circuit, at, road.To, road.From, road.ToHandle, dirOf, radiusM);
-            double3[] line = RoadCurve.Sample(a, a + ha, b + hb, b, spacingM);
+            (_, double3 leave, double3 arrive, _) = Controls(circuit, at, road, dirOf, radiusM);
+            double3[] line = RoadCurve.Sample(a, leave, arrive, b, spacingM);
             double from = circuit.Find(road.From)?.HeightM ?? 0.0, to = circuit.Find(road.To)?.HeightM ?? 0.0;
             double[] height = new double[line.Length];
             for (int i = 0; i < line.Length; i++)
@@ -52,6 +50,34 @@ internal static class RoadLayout
         }
         return stretches;
     }
+
+    /// <summary>Every point of <paramref name="circuit"/> on the body's mean sphere, from its centre, by its id.</summary>
+    public static Dictionary<int, double3> Places(Circuit circuit, Func<double, double, double3> dirOf, double radiusM)
+    {
+        Dictionary<int, double3> at = [];
+        foreach (Circuit.Node n in circuit.Nodes) at[n.Id] = Vec.Unit(dirOf(n.LatDeg, n.LonDeg)) * radiusM;
+        return at;
+    }
+
+    /// <summary>The four points a road's curve is drawn from: its two ends and, between them, where each handle reaches to.</summary>
+    public static (double3 From, double3 Leave, double3 Arrive, double3 To) Controls(
+        Circuit circuit, Dictionary<int, double3> at, Circuit.Road road, Func<double, double, double3> dirOf, double radiusM)
+    {
+        double3 a = at[road.From], b = at[road.To];
+        return (a, a + Handle(circuit, at, road.From, road.To, road.FromHandle, dirOf, radiusM),
+                b + Handle(circuit, at, road.To, road.From, road.ToHandle, dirOf, radiusM), b);
+    }
+
+    /// <summary>A chart flat at the middle of a circuit's points.</summary>
+    public static RoadChart Chart(Circuit circuit, Func<double, double, double3> dirOf, double radiusM) =>
+        RoadChart.About(circuit.Nodes.Select(n => dirOf(n.LatDeg, n.LonDeg)), radiusM, dirOf(90.0, 0.0));
+
+    /// <summary>
+    /// A road's curve on a chart, from its <c>From</c> end to its <c>To</c>: the same four points,
+    /// each put on the chart where it is seen from the body's centre.
+    /// </summary>
+    public static RoadArc Arc(RoadChart chart, (double3 From, double3 Leave, double3 Arrive, double3 To) controls) =>
+        new(chart.Of(controls.From), chart.Of(controls.Leave), chart.Of(controls.Arrive), chart.Of(controls.To));
 
     /// <summary>The handle of the road from <paramref name="node"/> to <paramref name="far"/> at the node, as an offset from it in metres.</summary>
     public static double3 Handle(Circuit circuit, Dictionary<int, double3> at, int node, int far, Circuit.Place? set,
@@ -105,8 +131,7 @@ internal static class RoadLayout
     /// <summary>The circuit's roads joined into runs. Roads of different widths are not joined.</summary>
     public static List<Run> Runs(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, double spacingM)
     {
-        Dictionary<int, double3> at = [];
-        foreach (Circuit.Node n in circuit.Nodes) at[n.Id] = Vec.Unit(dirOf(n.LatDeg, n.LonDeg)) * radiusM;
+        Dictionary<int, double3> at = Places(circuit, dirOf, radiusM);
         List<Stretch> stretches = Of(circuit, dirOf, radiusM, spacingM);
 
         Stretch? Between(int a, int b) => stretches.FirstOrDefault(s => (s.From == a && s.To == b) || (s.From == b && s.To == a));

@@ -129,3 +129,34 @@ internal static class Vec
         return Len2(flattened) < 1e-12 ? AnyPerpendicular(v) : Unit(flattened);
     }
 }
+
+/// <summary>
+/// A place or a step on a flat chart of the ground, in metres east and north. Seen from above with
+/// north ahead, <see cref="Left()"/> is a quarter turn anticlockwise, and <see cref="Cross"/> of two
+/// headings is positive where the second is to the left of the first.
+/// </summary>
+internal readonly record struct Plan(double E, double N)
+{
+    public static Plan operator +(Plan a, Plan b) => new(a.E + b.E, a.N + b.N);
+
+    public static Plan operator -(Plan a, Plan b) => new(a.E - b.E, a.N - b.N);
+
+    public static Plan operator -(Plan a) => new(-a.E, -a.N);
+
+    public static Plan operator *(Plan a, double k) => new(a.E * k, a.N * k);
+
+    public static double Dot(Plan a, Plan b) => (a.E * b.E) + (a.N * b.N);
+
+    public static double Cross(Plan a, Plan b) => (a.E * b.N) - (a.N * b.E);
+
+    public double Len => Math.Sqrt((E * E) + (N * N));
+
+    public Plan Left() => new(-N, E);
+
+    /// <summary>Unit vector, or zero for a degenerate input. Never returns NaN.</summary>
+    public Plan Unit()
+    {
+        double len = Len;
+        return len > 1e-12 ? new Plan(E / len, N / len) : default;
+    }
+}
