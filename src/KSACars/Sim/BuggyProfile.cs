@@ -86,6 +86,12 @@ public sealed record BuggyProfile
     public (string Suffix, uint Rgb)[] ColouredLenses { get; init; } = [];
 
     /// <summary>
+    /// Lenses that are faint until the car brakes, by what their Ids end in, and their colour at full
+    /// brightness as 0xRRGGBB.
+    /// </summary>
+    public (string Suffix, uint Rgb)[] BrakeLenses { get; init; } = [];
+
+    /// <summary>
     /// Where the rockets' flames leave their ports, each pointing straight down. A car with none does
     /// not fly.
     /// </summary>
@@ -162,6 +168,19 @@ public sealed record BuggyProfile
     public double RollingResistance { get; init; } = 0.015;
     public double DragAreaM2 { get; init; } = 0.8;
 
+    /// <summary>
+    /// Engine power at the wheels, W. Above zero the pull is the lesser of the launch pull and power over
+    /// speed, and <see cref="TopSpeed"/> is where the limiter cuts it; at zero the pull fades in a
+    /// straight line from the launch pull to nothing at the top speed.
+    /// </summary>
+    public double PowerW { get; init; }
+
+    /// <summary>
+    /// The wings: half the air's density times the speed squared times this is pressed onto the tyres,
+    /// shared out as the weight is. It adds to their grip and not to the springs' load.
+    /// </summary>
+    public double DownforceAreaM2 { get; init; }
+
     public double MaxSteerDeg { get; init; } = 32.0;
 
     /// <summary>
@@ -174,6 +193,18 @@ public sealed record BuggyProfile
 
     public double IdleRpm { get; init; } = 900.0;
     public double RedlineRpm { get; init; } = 4800.0;
+
+    /// <summary>
+    /// Whether a gear is a ratio: the RPM is the redline's share of the gear's top speed, so a change up
+    /// drops it by the step between two gears and no more. Otherwise each gear sweeps most of the range.
+    /// </summary>
+    public bool GearsAreRatios { get; init; }
+
+    /// <summary>How fast the engine gains revs, RPM a second.</summary>
+    public double RevRisePerSec { get; init; } = 5000.0;
+
+    /// <summary>How fast it loses them: a change up is heard for as long as the drop takes at this.</summary>
+    public double RevFallPerSec { get; init; } = 3500.0;
 
     /// <summary>Of the RPM a wheel speed implies, from a gearbox nobody sees: four gears, shifted at the top.</summary>
     public double[] GearTopSpeeds { get; init; } = [7.0, 13.0, 20.0, 28.0];
@@ -307,12 +338,69 @@ public sealed record BuggyProfile
         GearTopSpeeds = [18.0, 34.0, 55.0],
     };
 
+    /// <summary>
+    /// A 2004 Ferrari F2004: 605 kg on springs that move an inch, slicks, and a V10 that turns 18,000.
+    /// Its wishbones are part of the body and stay put, so the travel and the lock are what the arms
+    /// leave the rims: docs/F2004-REFERENCES.md has the measurement.
+    /// </summary>
+    public static readonly BuggyProfile F2004 = new()
+    {
+        PartId = "KSACars_Prefab_F1",
+        DisplayName = "Ferrari F2004",
+        SubpartPrefix = "F1_",
+        SoundPrefix = "KSACarsF1",
+        // the recording's note is 641 Hz, one bank's firing: two and a half to a turn
+        LoadRecordedRpm = 15380.0,
+        Corners =
+        [
+            F1Corner("FL", front: true, left: true),
+            F1Corner("FR", front: true, left: false),
+            F1Corner("RL", front: false, left: true),
+            F1Corner("RR", front: false, left: false),
+        ],
+        SteeringPivot = new double3(0.558, 0.340, 0.0),
+        SteeringAxis = Vec.Unit(new double3(0.309, -0.951, 0.0)),
+        SteeringRatio = 6.0,
+        SteeringRimRadius = 0.125,
+        DriverEye = new double3(0.75, 0.20, 0.0),
+        HeadLamps = [],
+        TailLamps = [new double3(0.405, -1.97, 0.0)],
+        BrakeLenses = [("RainLens", 0xFF1408)],
+        SpringHz = 3.5,
+        DampingRatio = 0.6,
+        BumpTravel = 0.020,
+        DroopTravel = 0.024,
+        AntiRoll = 0.5,
+        RollDamping = 0.4,
+        RollCentreHeight = 0.03,
+        FrontGrip = 1.8,
+        RearGrip = 1.9,
+        LaunchAccelG = 1.25,
+        PowerW = 645e3,
+        TopSpeed = 105.0,
+        ReverseTopSpeed = 8.0,
+        BrakeG = 1.6,
+        DragAreaM2 = 1.2,
+        DownforceAreaM2 = 3.0,
+        MaxSteerDeg = 20.0,
+        // under the grip limit: side grip is spent first, and a held key at the limit leaves the drive nothing
+        SteerOverGrip = 0.75,
+        SteerRateDegPerSec = 160.0,
+        IdleRpm = 4000.0,
+        RedlineRpm = 18500.0,
+        GearTopSpeeds = [24.0, 38.0, 52.0, 65.0, 77.0, 88.0, 98.0],
+        // seven close ratios and a change in a twentieth of a second
+        GearsAreRatios = true,
+        RevRisePerSec = 40000.0,
+        RevFallPerSec = 60000.0,
+    };
+
     // Four points on the floor: a pair ahead and a pair behind, either side of the centre line.
     private static double3[] Under(double floor, double front, double rear, double side) =>
         [new(floor, front, side), new(floor, front, -side), new(floor, rear, side), new(floor, rear, -side)];
 
     /// <summary>Every car the mod drives.</summary>
-    public static readonly BuggyProfile[] All = [Manx, Eldorado];
+    public static readonly BuggyProfile[] All = [Manx, Eldorado, F2004];
 
     // Off the Blender source, from the 1976 specification: 126.3 in wheelbase, 63.7/63.6 in tracks,
     // LR78-15 tyres. The arm is notional and 2 m long, and the coil-over eyes are never drawn.
@@ -323,6 +411,16 @@ public sealed record BuggyProfile
         double3 hub = new(0.36, y, (front ? 0.809 : 0.8075) * z);
         return new BuggyCorner(key, hub, 0.36, hub + new double3(0, 2.0, 0), hub + new double3(0.30, 0, 0),
                                hub + new double3(0.05, 0, 0), Steers: front, Driven: front);
+    }
+
+    // Off the Blender source: 3050 mm wheelbase, 1470/1405 mm tracks, 660 mm tyres. The arm is notional
+    // and 2 m long, and the coil-over eyes are never drawn.
+    private static BuggyCorner F1Corner(string key, bool front, bool left)
+    {
+        double z = left ? 1.0 : -1.0;
+        double3 hub = new(0.33, front ? 1.525 : -1.525, (front ? 0.735 : 0.7025) * z);
+        return new BuggyCorner(key, hub, 0.33, hub + new double3(0, 2.0, 0), hub + new double3(0.30, 0, 0),
+                               hub + new double3(0.05, 0, 0), Steers: front, Driven: !front);
     }
 
     // Off the Blender source: the hubs, the trailing-arm bushings and the coil-over eyes.

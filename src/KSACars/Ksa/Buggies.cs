@@ -23,6 +23,7 @@ internal sealed class Buggies
         public Part?[] Wheels { get; } = new Part?[profile.Corners.Length];
         public Part?[] Arms { get; } = new Part?[profile.Corners.Length];
         public Part?[] Coils { get; } = new Part?[profile.Corners.Length];
+        public Part?[] Uprights { get; } = new Part?[profile.Corners.Length];
         public Part? Steering { get; set; }
         public DriveInput Input { get; set; }
         public bool Stepped { get; set; }
@@ -305,6 +306,11 @@ internal sealed class Buggies
             {
                 if (id.EndsWith(e.Drive.Profile.SubpartPrefix + suffix, StringComparison.Ordinal)) return rgb;
             }
+            foreach ((string suffix, uint rgb) in e.Drive.Profile.BrakeLenses)
+            {
+                if (!id.EndsWith(e.Drive.Profile.SubpartPrefix + suffix, StringComparison.Ordinal)) continue;
+                return Headlights.BrakeLens(rgb, Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed));
+            }
             return null;
         }
         return null;
@@ -483,6 +489,7 @@ internal sealed class Buggies
             e.Wheels[i] = SubPart(e.Part, p.SubpartPrefix + "Wheel" + p.Corners[i].Key);
             e.Arms[i] = SubPart(e.Part, p.SubpartPrefix + "Arm" + p.Corners[i].Key);
             e.Coils[i] = SubPart(e.Part, p.SubpartPrefix + "Coil" + p.Corners[i].Key);
+            e.Uprights[i] = SubPart(e.Part, p.SubpartPrefix + "Upright" + p.Corners[i].Key);
         }
         e.Steering = SubPart(e.Part, p.SubpartPrefix + "Steering");
         for (int k = 0; k < p.Scoops.Length; k++) e.ScoopBlades[k] = SubPart(e.Part, p.SubpartPrefix + p.Scoops[k].SubpartSuffix);
@@ -792,8 +799,11 @@ internal sealed class Buggies
             doubleQuat armTurn = doubleQuat.CreateFromAxisAngle(new double3(0, 0, 1), angle);
 
             Place(e.Arms[i], corner.ArmPivot, armTurn, null);
-            Place(e.Wheels[i], BuggyDrive.OnArm(corner, corner.Hub, angle),
-                  BuggyDrive.WheelRotation(d.Spin[i], corner.Steers ? d.SteerAngle : 0.0), null);
+            double3 hub = BuggyDrive.OnArm(corner, corner.Hub, angle);
+            double steer = corner.Steers ? d.SteerAngle : 0.0;
+            Place(e.Wheels[i], hub, BuggyDrive.WheelRotation(d.Spin[i], steer), null);
+            // An upright rises and steers with its wheel and does not turn with it.
+            Place(e.Uprights[i], hub, BuggyDrive.WheelRotation(0.0, steer), null);
 
             (doubleQuat coil, double3 squash) = BuggyDrive.CoilPose(corner, angle);
             Place(e.Coils[i], corner.CoilTop, coil, squash);

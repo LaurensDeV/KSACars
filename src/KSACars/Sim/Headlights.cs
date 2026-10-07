@@ -45,6 +45,10 @@ public static class Headlights
     public static bool Braking(double throttle, double forwardSpeed) =>
         (throttle < 0.0 && forwardSpeed > 0.5) || (throttle > 0.0 && forwardSpeed < -0.5);
 
+    /// <summary>A brake lens's colour: as given while braking, an eighth as bright otherwise.</summary>
+    public static uint BrakeLens(uint rgb, bool braking) =>
+        braking ? rgb : (((rgb >> 16) & 0xFF) >> 3 << 16) | (((rgb >> 8) & 0xFF) >> 3 << 8) | ((rgb & 0xFF) >> 3);
+
     /// <summary>
     /// Keeps the panel's setting and the part's own light switch in step, whichever was moved.
     /// <paramref name="seen"/> is what the switch read last frame; a switch that differs from it was

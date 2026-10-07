@@ -20,7 +20,8 @@ public readonly record struct DriveImpulse(double3 Linear, double3 Angular);
 ///
 /// <para>The engine integrates the craft; this only says how hard the ground pushes back. Each wheel
 /// is a spring-damper along the car's up, carrying its share of the static weight at rest, and a tyre
-/// whose drive, brake and side grip share one friction circle of <c>grip x load</c>. Side grip is asked
+/// whose drive, brake and side grip share one friction circle of <c>grip x load</c>, the load being the
+/// spring's and whatever the car's wings press on top of it. Side grip is asked
 /// to cancel the wheel's sideways speed within the step and no more, which is what keeps an explicit
 /// per-frame impulse from ringing.</para>
 ///
@@ -36,6 +37,16 @@ public sealed class BuggyDrive(BuggyProfile profile)
     // A spring never pushes harder than this many times its share of the weight. A craft can be
     // placed with its wheels well into the ground, and the spring alone would throw it into the air.
     private const double MaxLoadFactor = 4.0;
+
+    // The share of the limiter speed over which the pull fades out.
+    private const double LimiterBand = 0.03;
+
+    // How much lighter a car is to roll than its wheels' share of the weight at their half-track would
+    // be: 1.45 to 1.57 for the cars' mass boxes.
+    private const double RollLever = 1.6;
+
+    // An impulse a step holds a spring-damper while stiffness x dt^2 + 2 x damping x dt stays under 4.
+    private const double StepBudget = 3.2;
 
     public BuggyProfile Profile { get; } = profile;
 
@@ -82,13 +93,16 @@ public sealed class BuggyDrive(BuggyProfile profile)
             grounded++;
         }
         ForwardSpeed = grounded > 0 ? speed / grounded : ForwardSpeed;
+        double down = grounded > 0
+            ? Math.Max(0.0, 0.5 * airDensity * Profile.DownforceAreaM2 * ForwardSpeed * ForwardSpeed)
+            : 0.0;
 
-        SteerToward(input.Steer, gravity, dt);
+        SteerToward(input.Steer, gravity, down / mass, dt);
 
         Span<double> share = stackalloc double[n];
         StaticShares(hubs, forward, share);
 
-        double omega = 2.0 * Math.PI * Profile.SpringHz;
+        double omega = SpringRate(dt);
         double3 linear = Vec.Zero;
         double3 angular = Vec.Zero;
 
@@ -158,9 +172,11 @@ public sealed class BuggyDrive(BuggyProfile profile)
             double vSide = Vec.Dot(c.HubVelocity, side);
 
             double grip = corner.Steers ? Profile.FrontGrip : Profile.RearGrip;
-            double limit = grip * load;
+            // The wings press the tyre and not the spring: the grip is on both, the ride height on the weight.
+            double pressed = load + (share[i] * down);
+            double limit = grip * pressed;
 
-            double fAlong = LongitudinalForce(corner, input.Throttle, drive, drivenOnGround, vAlong, m, load, dt);
+            double fAlong = LongitudinalForce(corner, input.Throttle, drive, drivenOnGround, vAlong, m, pressed, dt);
             double fSide = -vSide * m * Settle / dt;
 
             // Holding the line comes first and pushing gets what is left: a tyre that spends its grip on
@@ -173,8 +189,26 @@ public sealed class BuggyDrive(BuggyProfile profile)
             double3 contact = hubs[i] - (up * (corner.Radius - Travel[i]));
 
             linear += force * dt;
-            angular += Vec.Cross(contact, force) * dt;
-            angular += Vec.Cross(up * Profile.RollCentreHeight, side * fSide) * dt;
+
+            // What a tyre holds past its weight's grip it owes the wings, whose load on the body is not
+            // modelled and is what would keep that share from tipping the car. So it goes in level with
+            // the centre of mass, where it turns the car and neither rolls nor pitches it.
+            double3 held = (along * fAlong) + (side * fSide);
+            double asked = Vec.Len(held);
+            double onWeight = grip * load;
+            if (pressed > load && asked > onWeight)
+            {
+                double carried = onWeight / asked;
+                double3 level = contact - (up * Vec.Dot(contact, up));
+                angular += Vec.Cross(contact, (normal * load) + (held * carried)) * dt;
+                angular += Vec.Cross(level, held * (1.0 - carried)) * dt;
+                angular += Vec.Cross(up * Profile.RollCentreHeight, side * (fSide * carried)) * dt;
+            }
+            else
+            {
+                angular += Vec.Cross(contact, force) * dt;
+                angular += Vec.Cross(up * Profile.RollCentreHeight, side * fSide) * dt;
+            }
 
             Spin[i] += vAlong / corner.Radius * dt;
         }
@@ -206,18 +240,34 @@ public sealed class BuggyDrive(BuggyProfile profile)
         return -1;
     }
 
+    // The springs' rate, softened to what this step can carry. The impulse is explicit, and the roll
+    // mode, the stiffest, overshoots once its stiffness and damping per step pass the budget: the car
+    // then rocks from side to side every step and the unloaded tyre drives nothing.
+    private double SpringRate(double dt)
+    {
+        double omega = 2.0 * Math.PI * Profile.SpringHz;
+        double stiff = (1.0 + (2.0 * Profile.AntiRoll)) * RollLever * omega * omega * dt * dt;
+        double damped = 4.0 * (Profile.DampingRatio + Profile.RollDamping) * RollLever * omega * dt;
+        if (!(stiff > 0.0) || !(stiff + damped > StepBudget)) return omega;
+        return omega * (Math.Sqrt((damped * damped) + (4.0 * stiff * StepBudget)) - damped) / (2.0 * stiff);
+    }
+
     private static bool Touching(int i, WheelContact c, double3 up) => c.Valid && Vec.Dot(up, c.GroundUp) > 0.2;
 
     // The lock is the angle whose turn the front tyres can just hold at this speed, v^2 / R = grip g
     // with R = wheelbase / tan(angle), so a flick at speed turns the car rather than scrubbing it to a stop.
-    private void SteerToward(double steer, double gravity, double dt)
+    // The g is what presses the tyres, wings included. A car keeps three degrees whatever its speed, but
+    // not while wings press it: they hold a lock that never falls to nothing, and three degrees at speed
+    // asks the tyres for more than they have.
+    private void SteerToward(double steer, double gravity, double wings, double dt)
     {
         double lockRad = Profile.MaxSteerDeg * Math.PI / 180.0;
         double v2 = ForwardSpeed * ForwardSpeed;
         if (v2 > 1.0)
         {
-            double held = Math.Atan(Wheelbase() * Profile.FrontGrip * gravity * Profile.SteerOverGrip / v2);
-            lockRad = Math.Min(lockRad, Math.Max(held, 3.0 * Math.PI / 180.0));
+            double held = Math.Atan(Wheelbase() * Profile.FrontGrip * (gravity + wings) * Profile.SteerOverGrip / v2);
+            double least = wings > 0.0 ? 0.0 : 3.0 * Math.PI / 180.0;
+            lockRad = Math.Min(lockRad, Math.Max(held, least));
         }
         double wanted = Math.Clamp(steer, -1.0, 1.0) * lockRad;
         SteerAngle = MoveToward(SteerAngle, wanted, Profile.SteerRateDegPerSec * Math.PI / 180.0 * dt);
@@ -266,6 +316,12 @@ public sealed class BuggyDrive(BuggyProfile profile)
         double launch = Profile.LaunchAccelG * gravity * mass;
         if (throttle > 0.0 && ForwardSpeed > -0.5)
         {
+            if (Profile.PowerW > 0.0)
+            {
+                double pull = Math.Min(launch, Profile.PowerW / Math.Max(ForwardSpeed, 1.0));
+                double limiter = (Profile.TopSpeed - ForwardSpeed) / (LimiterBand * Profile.TopSpeed);
+                return throttle * pull * Math.Clamp(limiter, 0.0, 1.0);
+            }
             return throttle * launch * Math.Clamp(1.0 - (ForwardSpeed / Profile.TopSpeed), 0.0, 1.0);
         }
         if (throttle < 0.0 && ForwardSpeed < 0.5)
@@ -312,13 +368,15 @@ public sealed class BuggyDrive(BuggyProfile profile)
 
         double lower = gear == 0 ? 0.0 : tops[gear - 1] * 0.95;
         double fraction = Math.Clamp((speed - (lower * 0.6)) / (tops[gear] - (lower * 0.6)), 0.0, 1.0);
-        double fromWheels = Profile.IdleRpm + ((Profile.RedlineRpm - Profile.IdleRpm) * fraction);
+        double fromWheels = Profile.GearsAreRatios
+            ? Math.Clamp(Profile.RedlineRpm * speed / tops[gear], Profile.IdleRpm, Profile.RedlineRpm)
+            : Profile.IdleRpm + ((Profile.RedlineRpm - Profile.IdleRpm) * fraction);
 
         // Revved in the air or with the wheels spinning: the engine runs free of the road.
         double free = Profile.IdleRpm + ((Profile.RedlineRpm - Profile.IdleRpm) * 0.8 * Math.Abs(throttle));
         double wanted = driven ? Math.Max(fromWheels, Profile.IdleRpm + (Math.Abs(throttle) * 600.0)) : free;
 
-        double rate = wanted > Rpm ? 5000.0 : 3500.0;
+        double rate = wanted > Rpm ? Profile.RevRisePerSec : Profile.RevFallPerSec;
         Rpm = MoveToward(Rpm, wanted, rate * dt);
         Load = MoveToward(Load, Math.Abs(throttle), 4.0 * dt);
     }

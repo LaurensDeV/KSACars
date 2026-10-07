@@ -5,6 +5,8 @@ tyres, an engine and a gearbox, simulated by the mod and driven with the keys yo
 
 - **Beach Buggy** — a fibreglass dune buggy on long-travel coil-overs, with a Beetle engine behind the
   seats and two kittens up front.
+- **Ferrari F2004** — the red 2004 single-seater: one kitten, its head well clear of the cockpit, slicks,
+  wings that hold it down, and a rain light that burns brighter under the brakes.
 - **Cadillac Eldorado** — a red 1976 convertible with the top down, four seats, a whitewall on every
   corner and a V8 that sounds like one. It floats on its springs and leans into a turn.
 
@@ -55,7 +57,7 @@ The mod writes its own log to `Logs/KSACars.log` under the KSA user directory. K
 
 ## Drive
 
-Each car is a whole craft on its own: find **Beach Buggy** or **Cadillac Eldorado** under *Vehicles* in
+Each car is a whole craft on its own: find **Beach Buggy**, **Cadillac Eldorado** or **Ferrari F2004** under *Vehicles* in
 the editor, or launch one straight from the vehicle list. Fill its seats in the launch window.
 
 | Control | Default key | |
@@ -119,3 +121,12 @@ resolve an SDK from `~/.dotnet`; `source tools/env.sh` if you want bare `dotnet`
 ## Licence
 
 MIT. The engine recordings are CC0; `tools/audio/README.md` has where each came from.
+
+## Credits
+
+The Ferrari F2004's engine sounds (`Sounds/KSACars_F1_*.wav`) are adapted from
+[*Red Bull-Cosworth RB1 (2005)*](https://commons.wikimedia.org/wiki/File:Red_Bull-Cosworth_RB1_(2005).ogg)
+by Edvvc, a recording of that car at the 2010 Goodwood Festival of Speed, used under
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). The recording was cut, re-pitched,
+levelled and looped, and those four files are licensed under CC BY-SA 3.0 in turn. Everything else in
+this archive is under the licence in `LICENSE`.

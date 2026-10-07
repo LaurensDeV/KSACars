@@ -857,4 +857,196 @@
 
   </Part>
 
+  <!-- The Ferrari F2004's atlas and its one material. Authored in Blender over MCP. -->
+  <MeshAtlas Path="Meshes/KSACars_F1.glb" />
+
+  <PbrMaterial Id="KSACars_F1_Material">
+    <Diffuse Path="Textures/KSACars_F1_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_F1_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_F1_PBR.png" Category="Vessel" />
+    <Emissive Path="Textures/KSACars_F1_Emissive.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <!--
+    A wheel's spokes are set in from its outer face, so a left wheel is its own mesh: the right one
+    turned half a turn. An upright is the brake drum and duct inside a rim, which the mod moves with
+    the wheel and does not spin. The rain light is its own body so the mod can colour its glow.
+  -->
+  <SubPart Id="KSACars_F1Body_SubPart">
+    <PartModel Id="KSACars_Subpart_F1Body_Model">
+      <Mesh Id="KSACars_Subpart_F1Body" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1Body_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelFrontL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelFrontL_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelFrontL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelFrontL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelFrontR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelFrontR_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelFrontR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelFrontR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelRearL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelRearL_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelRearL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelRearL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelRearR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelRearR_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelRearR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelRearR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightFrontL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightFrontL_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightFrontL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightFrontL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightFrontR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightFrontR_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightFrontR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightFrontR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightRearL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightRearL_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightRearL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightRearL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightRearR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightRearR_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightRearR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightRearR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1Steering_SubPart">
+    <PartModel Id="KSACars_Subpart_F1Steering_Model">
+      <Mesh Id="KSACars_Subpart_F1Steering" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1Steering_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1RainLens_SubPart">
+    <PartModel Id="KSACars_Subpart_F1RainLens_Model">
+      <Mesh Id="KSACars_Subpart_F1RainLens" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1RainLens_VM" />
+    </MeshView>
+  </SubPart>
+
+  <SubPart Id="KSACars_F1Door_SubPart">
+    <EditorTag Value="Hidden" />
+  </SubPart>
+
+  <!--
+    A 2004 Ferrari F2004. The wheels, their uprights and the steering wheel are separate bodies because
+    Ksa/Buggies.cs moves them, off the F2004's BuggyProfile.
+
+    +X is up from the ground, +Y forward, +Z the left side.
+  -->
+  <Part Id="KSACars_Prefab_F1" CrashTolerance="1e12">
+
+    <SubPart Id="KSACars_F1_Body" InstanceOf="KSACars_F1Body_SubPart" />
+    <SubPart Id="KSACars_F1_WheelFL" InstanceOf="KSACars_F1WheelFrontL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_WheelFR" InstanceOf="KSACars_F1WheelFrontR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="-0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_WheelRL" InstanceOf="KSACars_F1WheelRearL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_WheelRR" InstanceOf="KSACars_F1WheelRearR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="-0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightFL" InstanceOf="KSACars_F1UprightFrontL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightFR" InstanceOf="KSACars_F1UprightFrontR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="-0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightRL" InstanceOf="KSACars_F1UprightRearL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightRR" InstanceOf="KSACars_F1UprightRearR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="-0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_Steering" InstanceOf="KSACars_F1Steering_SubPart">
+      <Transform>
+        <Position X="0.55800" Y="0.34000" Z="0.00000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_RainLens" InstanceOf="KSACars_F1RainLens_SubPart" />
+
+    <!-- Beside the cockpit, outboard of the left sidepod: a kitten boards within a metre of its door. -->
+    <SubPart Id="KSACars_F1_Door" InstanceOf="KSACars_F1Door_SubPart">
+      <Transform>
+        <Position X="0.50000" Y="0.20000" Z="0.80000" />
+      </Transform>
+    </SubPart>
+
+    <Connector Id="_f1ConnectorAft">
+      <Transform>
+        <Position X="0.00000" />
+        <Rotation Z="3.14159" />
+        <Scale X="2.00000" Y="2.00000" Z="2.00000" />
+      </Transform>
+    </Connector>
+
+  </Part>
+
 </Assets>

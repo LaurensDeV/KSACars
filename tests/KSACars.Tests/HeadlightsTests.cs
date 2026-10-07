@@ -15,6 +15,8 @@ public class HeadlightsTests
     public void ACarHasALampEachSideAheadOfItsFrontWheels(string id)
     {
         BuggyProfile p = BuggyProfile.All.First(x => x.PartId == id);
+        // A racing car has none.
+        if (p.HeadLamps.Length == 0) return;
         Assert.Equal(2, p.HeadLamps.Length);
         Assert.Equal(p.HeadLamps[0].Z, -p.HeadLamps[1].Z, 6);
         Assert.True(p.HeadLamps[0].Z > 0.2);
@@ -27,8 +29,13 @@ public class HeadlightsTests
     public void ACarHasATailLampEachSideBehindItsRearWheels(string id)
     {
         BuggyProfile p = BuggyProfile.All.First(x => x.PartId == id);
-        Assert.Equal(2, p.TailLamps.Length);
-        Assert.Equal(p.TailLamps[0].Z, -p.TailLamps[1].Z, 6);
+        // Or the one lamp of a racing car, on its centre line.
+        if (p.TailLamps.Length == 1) Assert.Equal(0.0, p.TailLamps[0].Z, 6);
+        else
+        {
+            Assert.Equal(2, p.TailLamps.Length);
+            Assert.Equal(p.TailLamps[0].Z, -p.TailLamps[1].Z, 6);
+        }
         Assert.All(p.TailLamps, lamp => Assert.True(lamp.Y < p.Corners.Min(c => c.Hub.Y)));
     }
 
@@ -112,4 +119,15 @@ public class HeadlightsTests
 
     [Fact]
     public void AnythingElseIsRefused() => Assert.Null(Headlights.Parse("full"));
+
+    [Fact]
+    public void ABrakeLensIsFaintUntilTheCarBrakes()
+    {
+        (string suffix, uint rgb) = Assert.Single(BuggyProfile.F2004.BrakeLenses);
+        Assert.Equal("RainLens", suffix);
+        Assert.Equal(rgb, Headlights.BrakeLens(rgb, braking: true));
+        uint faint = Headlights.BrakeLens(rgb, braking: false);
+        Assert.True((faint >> 16) < (rgb >> 16) / 4, $"{faint:X6} against {rgb:X6}");
+        Assert.True((faint >> 16) > 0, "out altogether");
+    }
 }

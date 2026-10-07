@@ -5,7 +5,7 @@
 #
 #     ./tools/install-testcraft.sh
 #
-# The Beach Buggy and the Eldorado, each its own command source: launch one from the vehicle list,
+# The Beach Buggy, the Eldorado and the F2004, each its own command source: launch one from the vehicle list,
 # or park it with the bridge's spawn.
 #
 set -euo pipefail
@@ -55,6 +55,7 @@ EOF
 }
 install_car "Beach Buggy" KSACars_Prefab_Buggy
 install_car "Eldorado" KSACars_Prefab_Eldorado
+install_car "Ferrari F2004" KSACars_Prefab_F1
 
 echo
 echo "In game: launch either from the vehicle list. No editor work needed."
