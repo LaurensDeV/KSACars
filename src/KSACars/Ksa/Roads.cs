@@ -21,6 +21,13 @@ internal static class Roads
 
     private const double DrawWithinM = 8_000.0;
 
+    // Within NearM a box a stretch, to MiddleM a box for four, beyond it a box for sixteen; and never
+    // more boxes than leaves KSA's 1024 instances a view room for everything else it draws so.
+    private const double NearM = 200.0, MiddleM = 600.0;
+    private const int InstanceBudget = 800;
+
+    private static bool _overBudget;
+
     private sealed record Ribbon(double3[] SurfaceCcf, double HalfWidth, double LengthM, bool Closed);
 
     private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM);
@@ -336,6 +343,7 @@ internal static class Roads
         double3 bodyEgo = laid.Body.GetPositionEcl() - camera.PositionEcl;
         var view = Program.Instance.SuperMeshRenderSystem.ViewForViewport(viewport);
 
+        int drawn = 0;
         foreach (Ribbon road in laid.Ribbons)
         {
             double3[] line = road.SurfaceCcf;
@@ -346,11 +354,21 @@ internal static class Roads
 
             double width = 2.0 * road.HalfWidth;
             double reachBefore = 0.0;
-            for (int i = 0; i < line.Length - 1; i++)
+            int last = line.Length - 1;
+            for (int i = 0; i < last;)
             {
-                double3 along = _ego[i + 1] - _ego[i];
+                // Further off, several stretches are drawn as one box: KSA holds 1024 mesh instances a
+                // view and throws past that, mid-frame, which ends the game.
+                double range = Vec.Len(_ego[i]);
+                int end = Math.Min(i + (range < NearM ? 1 : range < MiddleM ? 4 : 16), last);
+
+                double3 along = _ego[end] - _ego[i];
                 double length = Vec.Len(along);
-                if (!(length > 1e-6)) continue;
+                if (!(length > 1e-6))
+                {
+                    i = end;
+                    continue;
+                }
                 double3 ahead = along / length;
 
                 double3 up = Vec.Unit(line[i]).Transform(ccf2Cce);
@@ -361,7 +379,7 @@ internal static class Roads
                 // and one reaching on along its own slope would stand proud of the next.
                 // A ring's last box is followed by its first, and its first is reached back by the same.
                 double reachAfter = 0.0;
-                int after = i + 2 < line.Length ? i + 2 : road.Closed ? 1 : -1;
+                int after = end + 1 <= last ? end + 1 : road.Closed ? 1 : -1;
                 if (after >= 0)
                 {
                     double3 next = Vec.Unit(_ego[after] - _ego[after - 1]);
@@ -369,12 +387,13 @@ internal static class Roads
                 }
                 if (i == 0 && road.Closed)
                 {
-                    double3 before = Vec.Unit(_ego[line.Length - 1] - _ego[line.Length - 2]);
+                    double3 before = Vec.Unit(_ego[last] - _ego[last - 1]);
                     reachBefore = road.HalfWidth * Math.Abs(Vec.Dot(Vec.Cross(before, ahead), up));
                 }
 
-                if (Vec.Len(_ego[i]) <= DrawWithinM)
+                if (range <= DrawWithinM && drawn < InstanceBudget)
                 {
+                    drawn++;
                     double3 across = Vec.Unit(Vec.Cross(up, ahead));
                     double3 x = across * width;
                     double3 y = Vec.Cross(ahead, across) * ThicknessM;
@@ -387,7 +406,14 @@ internal static class Roads
                     slab.Draw(view);
                 }
                 reachBefore = reachAfter;
+                i = end;
             }
+        }
+
+        if (drawn >= InstanceBudget && !_overBudget)
+        {
+            _overBudget = true;
+            Log.Warn($"more road in view than can be drawn: {InstanceBudget} boxes drawn and the rest left out");
         }
     }
 }
