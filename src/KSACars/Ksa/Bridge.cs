@@ -366,6 +366,15 @@ internal sealed class Bridge
             Roads.TestBox(body, over, size, command.Number("box_thick", 0.5), command.Number("box_top", 0.6));
             return Done(new() { ["box_m"] = size, ["adds_so_far"] = RoadColliders.Adds });
         }
+        if (command.Has("mesh_test") || command.Has("mesh_size") || command.Has("mesh_bend"))
+        {
+            if (!RoadDrawHook.Installed) return Failed("the road hook is not installed");
+            double bend = command.Number("mesh_bend", 0.0);
+            double3 under = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            Dictionary<string, object?> report = Roads.TestMesh(body, under, command.Number("mesh_size", 10.0),
+                command.Number("mesh_test", 3.0), bend, (int)command.Number("mesh_cells", bend == 0.0 ? MeshPatch.MaxCells : 12));
+            return report.TryGetValue("error", out object? error) ? new Reply(false, error?.ToString() ?? "failed", report) : Done(report);
+        }
         if (command.Flag("probe_clutter", false)) return Done(Roads.ProbeClutter(body).ToDictionary(k => k.Key, k => (object?)k.Value));
         if (!RoadDrawHook.Installed) return Failed("the road hook is not installed");
 

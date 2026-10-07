@@ -243,12 +243,17 @@ TOOLS = {
                  "editor instead, with its free camera at view_yaw and view_pitch (deg) and view_distance (m). "
                  "probe_clutter=true lays nothing and measures the mod's clutter positions against the game's. "
                  "box_top puts one collider box (box_size square, box_thick deep) under the flown craft with its "
-                 "top that far above the ground, drawn where it is; box_size=0 takes it away.",
+                 "top that far above the ground, drawn where it is; box_size=0 takes it away. mesh_test draws a "
+                 "curved patch made at runtime that far above the ground under the flown craft (default 3), mesh_size "
+                 "across (default 10); mesh_bend carries its far end that many metres aside and, unless mesh_cells says "
+                 "otherwise, makes it of 12 cells a side instead of 32, written over the same room; mesh_size=0 stops "
+                 "it being drawn. The reply has what was reserved, what KSA's mesh buffers have free and any error.",
                  {"circuit": {"type": "string"}, "save_as": {"type": "string"}, "lat": _num("deg"), "lon": _num("deg"),
                   "heading": _num("deg"), "length": _num("m"), "width": _num("m"), "lift": _num("m"), "spacing": _num("m"),
                   "margin": _num("m"), "clutter": {"type": "boolean"}, "clear": {"type": "boolean"},
                   "edit": {"type": "boolean"}, "probe_clutter": {"type": "boolean"}, "box_top": _num("m"),
-                  "box_size": _num("m"), "box_thick": _num("m"), "view_yaw": _num("deg"), "view_pitch": _num("deg"),
+                  "box_size": _num("m"), "box_thick": _num("m"), "mesh_test": _num("m"),
+                  "mesh_size": _num("m"), "mesh_bend": _num("m"), "mesh_cells": _num("a side"), "view_yaw": _num("deg"), "view_pitch": _num("deg"),
                   "view_distance": _num("m")}, [],
                  lambda a: [_text(json.dumps(send("road", **a)))]),
     "ksa_lap": ("A driver that follows a route round the laid circuit (lay one with ksa_road first), stepped inside the "
