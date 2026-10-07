@@ -361,7 +361,7 @@ internal sealed class Bridge
         }
 
         (int points, double low, double high) = Roads.Lay(body, circuit, command.Number("lift", 0.07),
-            Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0));
+            Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0), colliders: true);
         KsaWorld.TrySeaLevel(body, out double sea);
         if (command.Flag("clutter", true)) Roads.ClearClutter(command.Number("margin", 1.5));
         return Done(new()

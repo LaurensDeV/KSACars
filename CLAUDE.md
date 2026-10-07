@@ -202,6 +202,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
 | `Sim/RoadLaying.cs` | a circuit put on the ground: each run as a line of points on the road's surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
 | `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than two metres overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
+| `Sim/RoadSlabs.cs` | a laid road as the boxes KSA's physics is given for it: one a stretch, its top on the road's line and half a metre deep, reaching round the outside of a turn, **its size rounded up to a step**, because the physics keeps a shape for every size it has seen |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
 | `Sim/Vec.cs` | vector helpers |
@@ -218,10 +219,10 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
 | `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
-| `Ksa/RoadColliders.cs` | **an experiment, on a developer's install**: boxes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. The bridge's `road` with `box_top` puts one under the flown craft. Carried over from KSAGolf and not yet seen to hold anything up |
+| `Ksa/RoadColliders.cs` | **on a developer's install**: boxes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Every laid road's boxes go into each bubble within three kilometres of any of them; the bridge's `road` with `box_top` puts one more under the flown craft |
 | `Ksa/RoadMesh.cs` | the box a road is drawn with as a `StaticMeshRenderable`, its glTF and material asked of KSA's asset managers by reflection, because the name type they take is not public |
-| `Ksa/Roads.cs` | a circuit laid on a body: every road sampled onto the ground, drawn as a slab for each stretch between two points, answered to a wheel asking what is under it, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
-| `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change |
+| `Ksa/Roads.cs` | a circuit laid on a body: every road sampled onto the ground, drawn as a slab for each stretch between two points, handed to the physics as a deeper box for each, answered to a wheel asking what is under it, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
+| `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and their colliders when a drag ends |
 | `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
@@ -495,10 +496,21 @@ however deep, and is never put on one more than two metres above the surface it 
 `RoadSurfaceSweepTests` lays bends, junctions and bridges as the game does and asks what a wheel would.
 **The lookup has not been driven in game.** Nothing of KSA's stands where a road is, and
 the springs push only so hard, so a car a tenth of a metre past its bump stops into a road is set back on
-the surface and loses its speed downwards. Only the mod's
-own wheels know: the car's colliders, a kitten on foot and every other craft pass through a raised road.
-**Not yet seen in game.** `docs/KSA-MODDING-NOTES.md` has how the tube is drawn and how
-the clutter mask is addressed.
+the surface and loses its speed downwards. **Not yet seen in game.**
+
+**Everything but a wheel meets a road through KSA's own physics.** `Sim/RoadSlabs.cs` turns each stretch
+of a laid road into a box with its top on the road's line, half a metre deep where the road is drawn 0.3,
+so that what falls onto one is not through it within a step and a car still fits under a deck.
+`Ksa/RoadColliders.cs` puts them in every physics bubble near the roads as ground clutter of infinite
+mass, which is what KSA lets a craft and a kitten collide with and count as ground. A box is flat across and
+ends square: on a bend each reaches on to where the outside edges of two meet, and on a climbing bend its
+top stands off the surface a wheel is told by the gradient's share of that reach, 7 cm on a 6 m road
+climbing 1 in 8 round a 5 m radius. A box's length is rounded up to a quarter of a metre and its width to
+a half, because KSA's physics keeps a shape for every size it is given and never frees one. The editor
+lays a road's boxes when a drag ends, not while it lasts: thousands of them go into each bubble at once,
+and until then the ones from before stay where they were. **A laid road's boxes have not been seen in
+game**; one box under a parked car has. `docs/KSA-MODDING-NOTES.md` has how a box is made to collide,
+how the tube is drawn and how the clutter mask is addressed.
 
 **A circuit is a graph of points, and a road is a curve between two.** `Sim/Circuit.cs` keeps a point as a
 latitude, a longitude and a height above the ground, so a road follows whatever ground is there. Each end of a road has a
@@ -630,8 +642,8 @@ braking, a yaw kick dying away, the steering lock held to the grip, no car rocki
 step from 1/60 to a tenth of a second, and the F2004's times to speed, its braking and its cornering; `SteeringGripTests` that the
 driver reaches the rim of each car's wheel. `RoadSurfaceSweepTests` sweeps laid roads over legs, turns, corner
 strengths, spacings, widths and heights: every point of a road finds it, a level road is level round every
-bend, a climbing bend has no step, and a junction onto a climbing road and a deck over a road answer the
-right one.
+bend, a climbing bend has no step, a junction onto a climbing road and a deck over a road answer the
+right one, and every point of a road has a collider box under it with its top where the wheel is told.
 
 `TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
 steps it: `WheelGround`, the move back onto a road, `BuggyDrive.Step`, then gravity. On a bare sphere it

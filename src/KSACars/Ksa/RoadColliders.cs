@@ -14,36 +14,46 @@ namespace KSACars;
 
 /// <summary>
 /// Boxes of the mod's own in KSA's physics, so a hull, a kitten and another craft meet a road as they
-/// meet the ground. **An experiment**: one box from the bridge, to find out whether anything rests on it.
+/// meet the ground.
 ///
 /// <para>A static only collides if the engine's narrow phase lets it: its own terrain and launch pad,
 /// terrain blocks, and ground clutter. So each box is registered as clutter with infinite mass, which is
 /// also what makes a kitten's locomotion count it as ground and what stops a hit knocking it loose. The
-/// registration is repeated every pass, because clutter's own bookkeeping clears it.</para>
+/// registration is looked for every pass and made again, because clutter's own bookkeeping clears it.</para>
 ///
 /// <para>One physics simulation belongs to each bubble and steps on a worker thread, so the boxes are
 /// synced from prefixes on its collision passes, against a snapshot swapped in from the main thread.
 /// Shapes live in a registry every simulation shares and that is only writable between vehicle steps, so
 /// they are made there, once a size. When a simulation is recycled the engine clears its statics, and its
-/// state here is dropped. Carried over from KSAGolf, where it ran without error and was never seen to
-/// hold anything up.</para>
+/// state here is dropped.</para>
+///
+/// <para>A bubble is given every box or none: all of them while it is within <see cref="ReachM"/> of
+/// the ball that holds them, so a circuit kilometres across is whole for whatever is anywhere on it.</para>
 /// </summary>
 internal static class RoadColliders
 {
     private const string HarmonyId = "com.ksacars.roadcolliders";
 
-    // Past this a box is too far from a bubble to matter to anything in it.
+    // Past this from the nearest box could be, nothing in a bubble can meet one.
     private const double ReachM = 3000.0;
+
+    // A bubble that has the boxes keeps them this much further out, so one at the edge is not given
+    // and taken thousands of them every pass.
+    private const double KeepM = 300.0;
 
     private sealed record Box(double3 CentreCcf, Quaternion Orientation, TypedIndex Shape);
 
     private sealed record Wanted(Celestial Body, (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes, int Version);
 
-    private sealed record Ready(Celestial Body, Box[] Boxes, int Version);
+    // MiddleCcf and RadiusM: a ball with every box inside it.
+    private sealed record Ready(Celestial Body, Box[] Boxes, double3 MiddleCcf, double RadiusM, int Version);
 
     private sealed class SimState
     {
         public StaticHandle[] Handles = [];
+
+        // Each handle boxed once, as the engine's own dictionary of clutter is keyed through reflection.
+        public object[] Keys = [];
         public int Version = -1;
         public double3 Bub;
     }
@@ -120,7 +130,7 @@ internal static class RoadColliders
         _version++;
         (double3, doubleQuat, double3)[] list = [.. boxes];
         _wanted = body is null || list.Length == 0 ? null : new Wanted(body, list, _version);
-        if (_wanted is null) _ready = new Ready(null!, [], _version);
+        if (_wanted is null) _ready = new Ready(null!, [], default, 0.0, _version);
     }
 
     /// <summary>A box as the physics wants it: its centre, and its axes as a body-fixed rotation.</summary>
@@ -137,7 +147,11 @@ internal static class RoadColliders
         {
             using ShapesUnlock unlocked = ConstraintSim.UnlockShapes();
             Box[] boxes = [.. wanted.Boxes.Select(b => new Box(b.Centre, ToBepu(b.Orientation), ShapeOf(unlocked.Shapes, b.Size)))];
-            _ready = new Ready(wanted.Body, boxes, wanted.Version);
+            double3 middle = default;
+            foreach ((double3 centre, _, _) in wanted.Boxes) middle += centre / wanted.Boxes.Length;
+            double radius = 0.0;
+            foreach ((double3 centre, _, double3 size) in wanted.Boxes) radius = Math.Max(radius, (centre - middle).Length() + (0.5 * size.Length()));
+            _ready = new Ready(wanted.Body, boxes, middle, radius, wanted.Version);
             Log.Info($"road colliders: {boxes.Length} box(es), {ShapesBySize.Count} shape(s) made so far");
         }
         catch (Exception e)
@@ -180,7 +194,7 @@ internal static class RoadColliders
         if (!TryOrigin(sim, out bool ccf, out IParentBody? parent, out double3 bub)) return;
 
         bool here = ready is { Boxes.Length: > 0 } && ccf && ReferenceEquals(parent, ready.Body)
-                    && Vector3Distance(ready.Boxes[0].CentreCcf, bub) < ReachM;
+                    && (ready.MiddleCcf - bub).Length() < ready.RadiusM + ReachM + (state.Handles.Length > 0 ? KeepM : 0.0);
         if (!here)
         {
             if (state.Handles.Length > 0) Clear(sim, state);
@@ -191,6 +205,7 @@ internal static class RoadColliders
         {
             Clear(sim, state);
             state.Handles = [.. ready.Boxes.Select(b => sim.Simulation.Statics.Add(Describe(b, bub), ref KSA.StaticsShouldntAwakenBodies.Shared))];
+            state.Keys = [.. state.Handles.Select(h => (object)h)];
             state.Version = ready.Version;
             state.Bub = bub;
             Interlocked.Increment(ref Adds);
@@ -201,13 +216,14 @@ internal static class RoadColliders
             state.Bub = bub;
         }
 
-        if (sim.ClutterStatics is { } clutter && _clutterStatics?.GetValue(clutter) is IDictionary registered)
+        // The engine takes its own clutter out of that dictionary one at a time and everything out
+        // at once, so with the first and the last of these still in it, all of them are.
+        if (sim.ClutterStatics is { } clutter && _clutterStatics?.GetValue(clutter) is IDictionary registered
+            && !(registered.Contains(state.Keys[0]) && registered.Contains(state.Keys[^1])))
         {
-            foreach (StaticHandle handle in state.Handles) registered[handle] = _solidClutter;
+            foreach (object key in state.Keys) registered[key] = _solidClutter;
         }
     }
-
-    private static double Vector3Distance(double3 a, double3 b) => (a - b).Length();
 
     private static StaticDescription Describe(Box box, double3 bub)
     {
@@ -218,13 +234,14 @@ internal static class RoadColliders
     private static void Clear(ConstraintSim sim, SimState state)
     {
         IDictionary? registered = sim.ClutterStatics is { } clutter ? _clutterStatics?.GetValue(clutter) as IDictionary : null;
-        foreach (StaticHandle handle in state.Handles)
+        for (int k = 0; k < state.Handles.Length; k++)
         {
-            registered?.Remove(handle);
-            sim.Simulation.Statics.Remove(handle);
+            registered?.Remove(state.Keys[k]);
+            sim.Simulation.Statics.Remove(state.Handles[k]);
         }
 
         state.Handles = [];
+        state.Keys = [];
         state.Version = -1;
     }
 

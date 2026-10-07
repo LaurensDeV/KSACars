@@ -551,7 +551,7 @@ internal sealed class RoadEditor
         if (ReferenceEquals(_laidFor, Now) && (_laidFine || !fine)) return;
 
         Celestial body = _body!;
-        Roads.Lay(body, Now, LiftM, fine ? FineSpacingM : CoarseSpacingM);
+        Roads.Lay(body, Now, LiftM, fine ? FineSpacingM : CoarseSpacingM, colliders: fine);
         if (fine) Roads.ClearClutter(ClutterMarginM);
         _laidFor = Now;
         _laidFine = fine;

@@ -9,6 +9,10 @@ namespace KSACars;
 ///
 /// <para>The roads are held in the body's own frame and handed over each frame from the camera, as
 /// <see cref="RoadDrawHook"/> is called.</para>
+///
+/// <para>A hull, a kitten and any other craft meet a road through <see cref="RoadColliders"/>, which is
+/// given a box for each stretch, <see cref="RoadSlabs"/>' and deeper than the one drawn. A wheel is
+/// not a collider and reads the road's height from <see cref="SurfaceOn"/>.</para>
 /// </summary>
 internal static class Roads
 {
@@ -100,6 +104,8 @@ internal static class Roads
     {
         Interlocked.Increment(ref _generation);
         _laid = null;
+        _roadBoxes = null;
+        HandColliders();
         _clutterMarginM = null;
         _clutterStale = true;
     }
@@ -208,7 +214,11 @@ internal static class Roads
     /// Lays a circuit's roads on <paramref name="body"/>, each on the ground along its whole length, and
     /// says how many points they took and the lowest and highest ground under them.
     /// </summary>
-    public static (int Points, double LowM, double HighM) Lay(Celestial body, Circuit circuit, double liftM, double spacingM)
+    /// <param name="colliders">
+    /// Whether the physics is given these roads as well. Thousands of boxes go into every bubble near
+    /// them, so a road being dragged about is not, and what was there before it moved is left.
+    /// </param>
+    public static (int Points, double LowM, double HighM) Lay(Celestial body, Circuit circuit, double liftM, double spacingM, bool colliders)
     {
         _clutterMarginM = null;
         _clutterStale = true;
@@ -228,7 +238,32 @@ internal static class Roads
         _laid = strips.Count > 0
             ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips))
             : null;
+        if (colliders)
+        {
+            List<RoadSlab> slabs = [];
+            foreach (RoadLaying.Strip strip in strips) RoadSlabs.Add(slabs, strip.Line, strip.HalfWidth, strip.Closed);
+            _roadBoxes = slabs.Count > 0
+                ? (body, [.. slabs.Select(s => RoadColliders.Place(s.Centre, s.Along, s.Across, s.Normal,
+                                                                  new double3(s.LengthM, s.WidthM, RoadSlabs.ThicknessM)))])
+                : null;
+            HandColliders();
+        }
         return (points, low, high);
+    }
+
+    private static (Celestial Body, (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes)? _roadBoxes, _testBox;
+
+    // The physics is given the boxes of one body: the roads', and the experiment's with them if it is there too.
+    private static void HandColliders()
+    {
+        if ((_roadBoxes ?? _testBox) is not { } first)
+        {
+            RoadColliders.Want(null, []);
+            return;
+        }
+
+        bool both = _roadBoxes is not null && _testBox is { } test && ReferenceEquals(test.Body, first.Body);
+        RoadColliders.Want(first.Body, both ? [.. first.Boxes, .. _testBox!.Value.Boxes] : first.Boxes);
     }
 
     // A box drawn for the collider experiment: where its top face's near edge is, and its three edges.
@@ -245,7 +280,8 @@ internal static class Roads
         if (!(sizeM > 0.0))
         {
             _marker = null;
-            RoadColliders.Want(null, []);
+            _testBox = null;
+            HandColliders();
             return;
         }
 
@@ -253,7 +289,8 @@ internal static class Roads
         (double3 east, double3 north) = GodView.Compass(up, Vec.Unit(body.GetDirCcfFromLatLon(90.0, 0.0)));
         double top = body.MeanRadius + body.GetTerrainHeightFromDirCcf(up, accurate: true) + topM;
         double3 centre = up * (top - (0.5 * thickM));
-        RoadColliders.Want(body, [RoadColliders.Place(centre, east, north, up, new double3(sizeM, sizeM, thickM))]);
+        _testBox = (body, [RoadColliders.Place(centre, east, north, up, new double3(sizeM, sizeM, thickM))]);
+        HandColliders();
         _marker = new Marker(body, (up * top) - (north * (0.5 * sizeM)), east * sizeM, up * thickM, north * sizeM);
     }
 

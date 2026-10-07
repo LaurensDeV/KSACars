@@ -550,4 +550,140 @@ public class RoadSurfaceSweepTests
             }
         }
     }
+
+    // ---- f. the boxes a hull is given --------------------------------------------------------------
+
+    // The highest box top over a place, as how far it stands above that place (m), or null with no box there.
+    private static double? BoxTopOver(List<RoadSlab> slabs, double3 at)
+    {
+        double? highest = null;
+        foreach (RoadSlab slab in slabs)
+        {
+            double3 from = at - slab.Centre;
+            if (Math.Abs(Vec.Dot(from, slab.Along)) > 0.5 * slab.LengthM || Math.Abs(Vec.Dot(from, slab.Across)) > 0.5 * slab.WidthM) continue;
+            double proud = (0.5 * RoadSlabs.ThicknessM) - Vec.Dot(from, slab.Normal);
+            if (highest is null || proud > highest) highest = proud;
+        }
+        return highest;
+    }
+
+    // A wheel rides the surface and the hull the boxes, so across the whole road there is a box with
+    // its top where the wheel is told the road is. On a level road, to a centimetre. A box is flat
+    // across and a climbing bend is not: toward its edges a box runs ahead of or behind the surface
+    // by the half width times half the turn between two stretches, and stands off it by the
+    // gradient's share of that. 7 cm at the worst here, a 6 m road climbing 1 in 8 round a 5 m
+    // radius; by the same sum, a centimetre on an 8 m road climbing 1 in 10 round 30 m.
+    [Fact]
+    public void EveryPointOfARoadHasABoxUnderItWithItsTopOnTheSurface()
+    {
+        int points = 0, bare = 0, shapes = 0, off = 0;
+        double furthest = 0.0;
+        string firstBare = "", firstOff = "", worst = "";
+        HashSet<(double, double)> sizes = [];
+
+        foreach (double leg in new[] { 30.0, 100.0 })
+        foreach (double turn in new[] { 30.0, 90.0, 150.0 })
+        foreach (double corner in new[] { 0.0, 0.3, 1.0 })
+        foreach (double width in new[] { 6.0, 12.0 })
+        foreach ((double h0, double h1, double h2) in new[] { (0.0, 0.0, 0.0), (0.0, 3.0, 6.0) })
+        {
+            Laid laid = Lay(Bend(leg, turn, corner, width, h0, h1, h2), 2.0);
+            RoadLaying.Strip strip = Assert.Single(laid.Strips);
+            P[] line = Plan(strip.Line);
+            // Tighter than its half width a road folds over itself, and a kink has no one height on its outside.
+            if (TightestRadius(line) < 0.5 * width) continue;
+            shapes++;
+
+            List<RoadSlab> slabs = [];
+            RoadSlabs.Add(slabs, strip.Line, strip.HalfWidth, strip.Closed);
+            foreach (RoadSlab slab in slabs) sizes.Add((slab.LengthM, slab.WidthM));
+            double reach = (0.5 * width) - 0.05;
+            double allowed = 0.01 + (0.5 * width * (2.0 / (2.0 * TightestRadius(line))) * SteepestGradient(laid.Strips));
+            string shape = $"legs {leg} m, turn {turn} deg, corner {corner}, width {width} m, heights {h0}/{h1}/{h2}";
+
+            void Ask(double e, double n)
+            {
+                (double from, double rad, bool pastEnd) = Nearest(line, e, n);
+                if (from > reach + 1e-6 || pastEnd) return;
+                double3 at = At(e, n, rad + Hub);
+                if (!laid.Surface.TryHeightOver(at, out double over)) return;
+                points++;
+                string where = $"{shape}: {e:F2} m east, {n:F2} m north, {from:F2} m off the line";
+                if (BoxTopOver(slabs, At(e, n, rad + Hub - over)) is not { } proud)
+                {
+                    if (bare++ == 0) firstBare = where;
+                    return;
+                }
+                if (Math.Abs(proud) > furthest) worst = $"{shape}, a radius of {TightestRadius(line):F1} m and a gradient of {SteepestGradient(laid.Strips):F2}";
+                furthest = Math.Max(furthest, Math.Abs(proud));
+                if (Math.Abs(proud) > allowed && off++ == 0) firstOff = $"{where}: {proud:F3} m, where {allowed:F3} is what the bend gives";
+            }
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                for (int k = 0; k < 8; k++)
+                {
+                    double angle = (k * Math.PI / 4.0) + 0.1, out_ = k % 2 == 0 ? reach : 0.6 * reach;
+                    Ask(line[i].E + (out_ * Math.Cos(angle)), line[i].N + (out_ * Math.Sin(angle)));
+                }
+                if (i == 0) continue;
+                double de = line[i].E - line[i - 1].E, dn = line[i].N - line[i - 1].N, len = Math.Sqrt((de * de) + (dn * dn));
+                if (len < 1e-6) continue;
+                double me = 0.5 * (line[i].E + line[i - 1].E), mn = 0.5 * (line[i].N + line[i - 1].N);
+                Ask(me - (dn / len * reach), mn + (de / len * reach));
+                Ask(me + (dn / len * reach), mn - (de / len * reach));
+            }
+        }
+
+        Assert.True(shapes >= 25 && points > 20_000, $"only {points} points on {shapes} shapes");
+        Assert.True(bare == 0, $"{bare} of {points} points on a road have no box under them, the first at {firstBare}");
+        Assert.True(off == 0, $"{off} of {points} points have a box top further off the surface than the bend gives, the first at {firstOff}");
+        Assert.True(furthest < 0.08, $"a box top {furthest:F3} m off the surface, on {worst}");
+        // Every size is a shape the physics keeps for good.
+        Assert.True(sizes.Count <= 40, $"{sizes.Count} sizes of box over {shapes} roads");
+    }
+
+    [Fact]
+    public void ARingHasBoxesAllTheWayRoundWithNoGapWhereItCloses()
+    {
+        List<double3> ring = [];
+        for (int i = 0; i <= 40; i++) ring.Add(At(40.0 * Math.Cos(i * Math.PI / 20.0), 40.0 * Math.Sin(i * Math.PI / 20.0), R));
+        ring[^1] = ring[0];
+        List<RoadSlab> slabs = [];
+        RoadSlabs.Add(slabs, [.. ring], 5.0, true);
+
+        Assert.Equal(40, slabs.Count);
+        Assert.Single(slabs.Select(s => (s.LengthM, s.WidthM)).Distinct());
+        for (double angle = -0.5; angle < 0.5; angle += 0.003)
+        {
+            // The ring is forty straight stretches, so its edges are 12 cm inside the circles through their corners.
+            foreach (double radius in new[] { 35.2, 40.0, 44.8 })
+            {
+                double? proud = BoxTopOver(slabs, At(radius * Math.Cos(angle), radius * Math.Sin(angle), R));
+                Assert.True(proud is not null, $"no box {radius} m out at {angle:F3} rad");
+                Assert.True(Math.Abs(proud.Value) < 0.005, $"a box top {proud:F3} m off the ring {radius} m out at {angle:F3} rad");
+            }
+        }
+    }
+
+    // A road's end and its edge are where it is drawn, give or take the step a box's size comes in.
+    [Fact]
+    public void ABoxReachesNoFurtherPastARoadsEndOrEdgeThanItsSizeIsRoundedUpBy()
+    {
+        List<RoadSlab> slabs = [];
+        RoadSlabs.Add(slabs, [At(0.0, 0.0, R), At(2.1, 0.0, R), At(4.3, 0.0, R)], 3.1, false);
+
+        Assert.Equal(2, slabs.Count);
+        foreach (RoadSlab slab in slabs)
+        {
+            Assert.InRange(slab.WidthM, 6.2, 6.2 + RoadSlabs.WidthStepM);
+            Assert.Equal(0.0, slab.WidthM % RoadSlabs.WidthStepM, 9);
+            Assert.Equal(0.0, slab.LengthM % RoadSlabs.LengthStepM, 9);
+        }
+        Assert.NotNull(BoxTopOver(slabs, At(0.0, 3.1, R)));
+        Assert.NotNull(BoxTopOver(slabs, At(4.3, -3.1, R)));
+        Assert.Null(BoxTopOver(slabs, At(-0.5 * RoadSlabs.LengthStepM - 0.01, 0.0, R)));
+        Assert.Null(BoxTopOver(slabs, At(4.3 + (0.5 * RoadSlabs.LengthStepM) + 0.01, 0.0, R)));
+        Assert.Null(BoxTopOver(slabs, At(2.0, 3.1 + (0.5 * RoadSlabs.WidthStepM) + 0.01, R)));
+    }
 }

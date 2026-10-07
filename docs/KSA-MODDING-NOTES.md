@@ -843,15 +843,18 @@ nothing unless the narrow phase lets it (`NarrowPhaseCallbacks.AllowContactGener
 terrain patch and launch pad, terrain blocks, and ground clutter. So a box is added with
 `Simulation.Statics.Add`, posed in the bubble's frame (its planet-fixed position less
 `Origin.PositionBub`), and its handle written into the private `BubbleClutterStatics._statics` with
-infinite mass, every pass, because clutter's own sync clears that dictionary. Shapes go in a registry all
+infinite mass, and again whenever a pass finds it gone, because clutter's own sync clears that dictionary. Shapes go in a registry all
 simulations share, writable only between vehicle steps (`ConstraintSim.UnlockShapes`, from a prefix on
 `Universe.ExecuteNextVehicleSolvers`); the statics are synced from prefixes on
 `ConstraintSim.DetectCollisions` and `Simulate`, re-posed when the bubble's origin moves, and forgotten on
-`TryResetForPool`, which clears them. `Ksa/RoadColliders.cs` is this, carried over from KSAGolf.
+`TryResetForPool`, which clears them. `Ksa/RoadColliders.cs` is this. A contact with such a box counts
+as terrain contact (`ConstraintSim.IsGroundSurfaceFor`), so a craft resting on one is landed, and is
+reported to clutter as a hit, which infinite mass never lets displace or destroy it.
 **Seen in game on 2026.10.10.5554**: a 12 m box put under a parked F2004 with its top half a metre up
 lifted the car onto it by its hull, where it came to rest as landed, and taking the box away set the car
 back on the ground; a box half a metre deep with the car inside it pushed the car down instead, the
-shorter way out. Not seen: a kitten on one, a craft driven onto one, an origin shift, a save loaded.
+shorter way out. Not seen: a laid road's thousands of boxes, a kitten on one, a craft driven onto one,
+a craft railed on one, an origin shift, a save loaded.
 
 **Switching ground clutter off under something**: grass, shrubs, trees and rocks are ecotypes of one
 system. Each is laid on a grid over the six faces of a cube round the body (`CubeCellGrid.DirectionToQscUv`),
