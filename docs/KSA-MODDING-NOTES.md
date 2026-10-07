@@ -824,10 +824,29 @@ Handy Core subparts: `CoreStructuralA_Subpart_TubeA` (0.854 × 0.101 tube),
 `Nosecone{Ballistic,Blunt}{1,2}MSkinA` for the cones themselves). Materials follow
 `<Category>_Material`, e.g. `CoreStructuralA_Material`.
 
-**Not solved**: rendering a mesh at an arbitrary runtime position (for mod-simulated objects
-rather than parts on a vehicle). `KSA.StaticMeshRenderable` has a public constructor and a
-`Transform` field, but needs `IMeshRenderer<InstanceData>` instances owned by the engine's
-render systems.
+**Drawing a mesh at an arbitrary runtime position**: a `StaticMeshRenderable` built over a `<GltfFile>`
+asset draws wherever its `Transform` says each time `Draw` is called, and one renderable can be drawn any
+number of times a frame with a different transform each time. The transform's rows are the mesh's X, Y and
+Z axes and then its origin, camera-relative, and the axes may be scaled each on its own.
+`Ksa/RoadMesh.cs` builds one; the asset managers take a name type that is not public, so it goes through
+reflection. The draw has to be made from a postfix on `SuperMeshRenderSystem.ClearBuckets(IViewport)`:
+anything submitted earlier in the frame is cleared by that call. The `.glb` needs a material slot, which
+a part's mesh does not have.
+
+`SplineRenderer.AddTube`, called from inside `Universe.UpdateRenderData`, sweeps a lit tube along
+camera-relative samples, but its section is a regular polygon of one radius and its normals are radial, so
+it cannot make anything flat and thin.
+
+**Switching ground clutter off under something**: grass, shrubs, trees and rocks are ecotypes of one
+system. Each is laid on a grid over the six faces of a cube round the body (`CubeCellGrid.DirectionToQscUv`),
+`ceil(quarter circumference / (16 x ObjectSeparation))` cells to a face, 16 by 16 slots to a cell and one
+instance a slot. `Generate.comp` puts the instance at the slot's middle plus a hash of the cell and slot,
+up to a slot either way, **with the slot's row running against the face's V**; `Sim/ClutterGrid.cs` is that
+arithmetic. `GroundClutterPlacementData` keeps 256 bits a cell, a cleared bit being an instance neither
+drawn nor collided with: write a cell's mask with `ExcludeCell` and call
+`GroundClutterRenderer.QueueExclusionUpload`, and cells already generated change on the next frame. The
+masks are written into the save (`ClutterEcotypeSaveData`). Seen in game on grass, shrubs and trees; a cell
+over a cube face's edge is not handled.
 
 ## Character attachments
 

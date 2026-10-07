@@ -131,3 +131,35 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [x] Launched on a pad (2026.10.7.5541, by the player): stands on the grate at its ride height,
       0.37 m at each hub, and drives off it
 - [ ] Driven by a player on the keys, rough ground, getting back in
+
+## Roads
+
+- [x] A road drawn as a four-sided tube shows on the ground and follows it (2026.10.10.5554, bridge
+      `road`, a 300 m S-bend at -24, -62 on Earth, seen close and from 40 m up)
+- [x] Grass, shrubs and trees under it are switched off through KSA's exclusion mask: 1,728 tufts,
+      140 shrubs and 11 trees, the surface clear with a few tufts leaning over a 0.75 m margin
+- [x] A circuit with a junction laid from `Sim/Circuit.cs` (bridge `road`): the through road smooth across
+      the junction, the side road square to it, 4 roads from 4 points
+- [ ] A circuit read back from a file in the library
+- [ ] The asphalt's colour, last seen a pale blue-grey
+- [ ] A road over uneven ground: a crater wall on Luna, and rocks cleared with their colliders
+- [ ] Taking a road up puts the clutter back
+- [x] The editor's free camera, set through the bridge: from 220 m at 35 degrees facing east, and from
+      500 m at 80 degrees turned to 200, the circuit under it both times
+- [x] A junction raised 8 m: its three roads ramp up to it
+- [ ] The road editor by hand: placing, joining, splitting, dragging points and handles, the corner and
+      height sliders, undo and redo, save and load, and panning, turning and zooming with the mouse
+- [ ] Junctions and bends drawn as runs: no wedge where a road passes a point, no flicker where a side
+      road meets a through road
+- [ ] A car driven on a road: sprung against it, up a ramp onto a raised one, and under a bridge
+- [ ] Nothing unseen left standing on a road: the clutter colliders rebuilt after the mask changes, and
+      `probe_clutter` showing the reckoned positions within a metre of KSA's
+- [ ] A car driven fast down a slope, on a road and on open ground: no bouncing, since its dampers
+      measure along the slope's own up; and all three cars still settle and corner on the flat
+- [ ] Coming onto a road from the grass without bobbing, meeting a steep ramp at speed without passing
+      through it, and a car on a steep road standing on the surface that is drawn
+- [x] Roads drawn as slab meshes (2026.10.10.5554): asphalt, lit, standing a few centimetres proud of the
+      grass at the car's wheels
+- [ ] A raised road as a thin deck, and bends and junctions drawn as slabs without gaps or flicker
+- [ ] The height knob over the selected point: dragged along its stalk from the side, and straight up the
+      screen from overhead; and a height typed in past 60 m

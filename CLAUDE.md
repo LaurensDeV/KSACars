@@ -177,6 +177,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BuggyProfile.cs` | **one car, as data** — where its hubs, arms and coil-overs are, and how its springs, tyres and engine are tuned; `All` is every car the mod drives. KSA has no wheels, so every one of these numbers is the mod's |
 | `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
 | `docs/F2004-REFERENCES.md` | what the F2004 was modelled from: dimensions, the rules of its year, blueprint stations, the kitten's measurements, and each photograph's author and licence |
+| `Sim/GroundPlane.cs` | the ground under a car as one plane through what is under its four wheels, **whose up is what the dampers measure closing speed along**: straight up, a car running down a slope is closing on the ground as far as they know |
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
@@ -194,10 +195,17 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
 | `Sim/PadSurface.cs` | the top of a structure standing on the ground, as the first of its boxes and cylinders a line dropped from a hub meets — **the height field knows nothing of a launch pad** |
+| `Sim/Circuit.cs` | **a set of roads as it is saved**: points on a body by latitude and longitude, the roads that join them, each point's corner strength and any handle set by hand — its edits, each answering a new circuit so the old one is the undo, and its JSON |
+| `Sim/CircuitHistory.cs` | a circuit being edited and every state it has been through, for undo and redo — **a drag is many changes and one step** |
+| `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
+| `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
+| `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than two metres overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
+| `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
+| `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
 | `Sim/Vec.cs` | vector helpers |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
-| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the nine patches, and once a frame finds the cars, poses their wheels and plays their engines |
-| `Ksa/PhysicsHook.cs` | **one of the nine places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the ten patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the ten places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
 | `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
 | `Ksa/SeatedCrewHook.cs` | the second patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
 | `Ksa/LightsHook.cs` | the third patch — **the headlamps submitted where KSA submits a craft's own lights**, a postfix on `PartTree.UpdateRenderData`; KSA clears its light list after the GUI pass, so a light from any StarMap hook is never drawn |
@@ -207,9 +215,14 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/BoostHook.cs` | the seventh patch, on two methods — **the sprint key heard by a car**: a postfix on `Vehicle.OnKey` queues it as `OnKey` queues the engine keys, and one on `Vehicle.ProcessInput` records it where KSA applies the queue. A vehicle's `OnKey` does not know the key at all; only a kitten's does. The same postfix switches the downward thrusters on the RCS key. A prefix on `OnKey` also takes Shift off every other key while a car boosts, since KSA matches a vehicle's keys with their modifiers exactly |
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
+| `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
+| `Ksa/RoadMesh.cs` | the box a road is drawn with as a `StaticMeshRenderable`, its glTF and material asked of KSA's asset managers by reflection, because the name type they take is not public |
+| `Ksa/Roads.cs` | a circuit laid on a body: every road sampled onto the ground, drawn as a slab for each stretch between two points, answered to a wheel asking what is under it, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
+| `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change |
+| `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
@@ -223,7 +236,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
 | `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
-| `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository |
+| `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository. The road's slab and asphalt are the exception, written by `tools/model/road-slab.py` |
 | `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py`, `tools/eldorado-sounds.py` and `tools/f2004-sounds.py`. **The F2004's four are CC BY-SA 3.0, credited in `README.md`**; the rest are CC0 |
 | `src/KSACars/mod.toml` | serves as both the content-mod and StarMap manifest |
 | `tests/KSACars.Tests/` | links the KSA-free sources and drives the cars headlessly |
@@ -240,7 +253,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 374 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 431 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -290,6 +303,13 @@ vehicle's state: the worker's result is written over it, the next worker's input
 it. `Ksa/PhysicsHook.cs` prefixes `Vehicle.PrepareWorker`, the one method in that window a mod can
 reach, and `Buggies.Physics` writes there. **Nothing in it may throw** — it runs inside the engine's
 own loop.
+
+**The ground's up is the slope's, not the planet's.** The drive damps a wheel by how fast its hub closes
+on the ground along the ground's up, and pushes along it. With straight up, a car going down a slope at
+speed was closing on the ground at the slope's share of its speed, its dampers lifted it off, and it
+bounced until it turned over. `Sim/GroundPlane.cs` fits a plane through the four points under the wheels,
+terrain, pad or road alike, and every wheel takes its up; with a wheel over nothing or a lean past 45
+degrees they keep straight up. **Not yet seen in game**, and it changes every car on every slope.
 
 **The ground is read in the planet-fixed frame, off the physics state.** `PhysicsStates.GetStatesCcf`
 is where the car actually is this step; the analytic orbit position of a landed craft is metres away
@@ -432,11 +452,67 @@ back dipped. It draws almost nothing, because nothing on a car charges the batte
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
 
-**Nine patches; seven are on public methods and pinned.** Each of those has a `PinTheSignature` that is
+**Ten patches; eight are on public methods and pinned.** Each of those has a `PinTheSignature` that is
 never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
 tracks it and a KSA change to it is a build error. `LensColourHook` and `RailsHook` each patch a private method, which
 cannot be pinned: each checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
 nothing extra.
+
+## Roads
+
+**Unfinished: no save remembers which circuits are laid, and a road grips as the ground does.** A circuit is drawn
+with `Ksa/RoadEditor.cs`, switched on from the car's panel on a developer's install, or laid from the bridge. A player's install has no way to lay a road.
+`docs/ROAD-TESTING-PLAN.md` lists the faults known in it and the order they are to be fixed in. **The editor's clicks and drags have not
+been tried in game**; its camera and a raised road have, through the bridge.
+
+**The editor's camera is KSA's fixed mode, written every frame.** `Sim/GodView.cs` is a target on the
+ground, a heading, a tilt and a distance in the body's own frame; `RoadEditor.View` turns it into the
+offset from the followed car and the direction `FixedController` wants, so the view stays over its place
+while the body turns, and puts the player's camera mode back when the editor closes. The tilt stops short
+of straight down, where that controller has no up to roll about.
+
+**A point has a height above the ground, and a road eases between two.** `RoadLayout` ramps a road from
+one end's height to the other's, level at both, and `Roads.Lay` adds that to the ground under each sample,
+so a raised road still follows the terrain beneath it.
+
+**A wheel over a road is sprung against the road, as one over a launch pad is against the pad.**
+`Roads.Lay` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and the physics
+window takes a hub's height as the least of its height over the terrain, a pad and a road. A road stands a hand above
+the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
+threw a car coming onto it; and a road counts as under a wheel up to two metres into it, because at speed
+a car is a metre into a ramp within one step; a wheel that was over a road last step is still over that
+road however deep, which `Buggies.Entry.RoadOver` remembers. Nothing of KSA's stands where a road is, and
+the springs push only so hard, so a car a tenth of a metre past its bump stops into a road is set back on
+the surface and loses its speed downwards. Only the mod's
+own wheels know: the car's colliders, a kitten on foot and every other craft pass through a raised road.
+**Not yet seen in game.** `docs/KSA-MODDING-NOTES.md` has how the tube is drawn and how
+the clutter mask is addressed.
+
+**A circuit is a graph of points, and a road is a curve between two.** `Sim/Circuit.cs` keeps a point as a
+latitude, a longitude and a height above the ground, so a road follows whatever ground is there. Each end of a road has a
+handle, as a vector shape's has: worked out by `Sim/RoadLayout.cs` from the roads meeting at the point and
+scaled by the point's corner strength, or set by hand as another place on the body.
+
+**A road is drawn as slabs: one box, scaled, for each stretch between two points.**
+`tools/model/road-slab.py` writes the box and its asphalt; `Roads.Draw` gives it the road's width,
+`Roads.ThicknessM` of depth and the stretch's length, with its top on the road's line, so a raised road is
+a thin deck and one on the ground stands 7 cm proud. A box ends square, so on a bend each reaches past its
+end far enough to close the wedge on the outside. KSA's swept tube cannot do this: its section is a
+regular polygon, so a road drawn with it is as deep as it is wide.
+
+**A road that goes through a point is one run, and a road that joins is tucked under.**
+`RoadLayout.Runs` joins the roads that carry on through one another into one line, a ring into a closed
+one, and gives every other end at a junction its own centimetre or two of sink, taken up over two widths,
+so no two surfaces there share a plane. **The sink has not been judged in game.**
+
+**Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
+which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances
+within the road's width and a margin and `Roads.ClearClutter` clears their bits. A cleared bit stops a
+collider being built but leaves one already standing, unseen, so every change has KSA build its clutter
+colliders again, by the setting held off for a moment as a change of rock weight does. **The masks are
+only written from the physics window**, by `Roads.SyncClutter`: KSA's physics workers read them while they
+run, KSA writes them only while the workers are parked, and a write from the GUI pass races them. The bridge's
+`road` with `probe_clutter` measures the reckoned positions against KSA's own. KSA writes those bits into a save, so a game saved with a road laid keeps the clearing.
 
 ## Adding a car
 
