@@ -44,6 +44,10 @@ internal static class Roads
         return _laid is { } laid && ReferenceEquals(laid.Body, body) && laid.Surface.TryHeightOver(atCcf, last, out metres);
     }
 
+    /// <summary>The roads laid on <paramref name="body"/> as a wheel is over them, or null with none. Swapped whole, as above.</summary>
+    public static RoadSurface? SurfaceOn(Celestial body) =>
+        _laid is { } laid && ReferenceEquals(laid.Body, body) ? laid.Surface : null;
+
     /// <summary>
     /// How far this mod's reckoning of where KSA put each piece of clutter is from where KSA says it
     /// is, for the cells it has built colliders in: per kind, how many were compared and the mean and

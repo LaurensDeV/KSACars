@@ -221,10 +221,6 @@ internal sealed class Buggies
     private const string FlameTemplate = "EngineAAuxiliary";
 
     // The downforce rockets burn steadily, and short: they sit in front of the driver.
-    // How far past the end of its travel a wheel may go into a road before the car is set back on it:
-    // that much is the bump stop's to push out, as it does on the ground.
-    private const double RoadBumpStopM = 0.10;
-
     private const double DownFlame = 0.35;
 
     /// <summary>
@@ -559,6 +555,13 @@ internal sealed class Buggies
         }
     }
 
+    // KSA's height field is asked in its own frame, and a wheel's direction is in the body's.
+    private sealed class GroundCcf(TerrainHeights ground, doubleQuat ccf2Cce) : ITerrainHeights
+    {
+        public bool TryHeight(double3 dirFromCentre, out double metres) =>
+            ground.TryHeight(dirFromCentre.Transform(ccf2Cce), out metres);
+    }
+
     private static void Step(Entry e, double dt)
     {
         Vehicle craft = e.Craft;
@@ -677,58 +680,14 @@ internal sealed class Buggies
             e.RoadGeneration = Roads.Generation;
         }
 
-        // How far the deepest wheel is into a road past the end of its travel and its bump stop's.
-        double sunk = 0.0;
-        for (int i = 0; i < corners.Length; i++)
+        RoadStop stop = WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs, e.Drive.Profile,
+                                         body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
+                                         Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights);
+        if (stop.Fired)
         {
-            double3 hub = hubs[i];
-
-            double3 atCcf = positionCcf + hub.Transform(body2Ccf);
-            double radius = Vec.Len(atCcf);
-            if (!(radius > 0.0)) continue;
-            double3 dirCcf = atCcf / radius;
-            if (!ground.TryHeight(dirCcf.Transform(ccf2Cce), out double height)) continue;
-
-            double hubHeight = radius - (body.MeanRadius + height);
-            if (pads.TryHeightOver(atCcf, out double overPad)) hubHeight = Math.Min(hubHeight, overPad);
-            bool onRoad = Roads.TryHeightOver(body, atCcf, e.RoadOver[i], out double overRoad);
-            e.RoadOver[i] = onRoad ? overRoad : null;
-            if (onRoad && overRoad < hubHeight)
-            {
-                hubHeight = overRoad;
-                sunk = Math.Max(sunk, corners[i].Radius - e.Drive.Profile.BumpTravel - RoadBumpStopM - overRoad);
-            }
-
-            e.HubHeights[i] = hubHeight;
-            contacts[i] = new WheelContact(
-                Valid: true,
-                HubHeight: hubHeight,
-                GroundUp: dirCcf.Transform(ccf2Body),
-                HubVelocity: velocityBody + Vec.Cross(spinBody, hub));
+            states.Kinematic.PositionPhys += stop.Up.Transform(body2Phys) * stop.LiftM;
+            states.Kinematic.VelocityPhys += stop.Up.Transform(body2Phys) * stop.SpeedMs;
         }
-
-        // Nothing of KSA's stands where a road is, so a car that has run into one is not stopped as
-        // the ground stops it, and the springs, which push only so hard, would let it through. It is
-        // set back on the surface and loses what speed it had downwards.
-        if (sunk > 0.0)
-        {
-            double3 straightUp = Vec.Unit(positionCcf).Transform(ccf2Body);
-            double falling = Math.Max(-Vec.Dot(velocityBody, straightUp), 0.0);
-            states.Kinematic.PositionPhys += straightUp.Transform(body2Phys) * sunk;
-            states.Kinematic.VelocityPhys += straightUp.Transform(body2Phys) * falling;
-            for (int i = 0; i < contacts.Length; i++)
-            {
-                if (!contacts[i].Valid) continue;
-                contacts[i] = contacts[i] with
-                {
-                    HubHeight = contacts[i].HubHeight + sunk,
-                    HubVelocity = contacts[i].HubVelocity + (straightUp * falling),
-                };
-                if (e.RoadOver[i] is { } over) e.RoadOver[i] = over + sunk;
-            }
-        }
-
-        GroundPlane.Tilt(contacts, hubs);
 
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));

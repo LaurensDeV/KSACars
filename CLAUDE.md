@@ -178,6 +178,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
 | `docs/F2004-REFERENCES.md` | what the F2004 was modelled from: dimensions, the rules of its year, blueprint stations, the kitten's measurements, and each photograph's author and licence |
 | `Sim/GroundPlane.cs` | the ground under a car as one plane through what is under its four wheels, **whose up is what the dampers measure closing speed along**: straight up, a car running down a slope is closing on the ground as far as they know |
+| `Sim/WheelGround.cs` | what is under each wheel this step — the nearest of the terrain, a launch pad and a road below its hub — and **the move that sets a car back on a road it has run into**, which the caller owes the craft: the contacts answered are already those of the car moved |
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
@@ -255,7 +256,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 458 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 459 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
