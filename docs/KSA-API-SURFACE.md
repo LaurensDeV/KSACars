@@ -7,7 +7,48 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-190 types and 431 members across 6 assemblies.
+203 types and 458 members across 7 assemblies.
+
+## BepuPhysics
+
+### BepuPhysics.BodyHandle
+
+*referenced as a type only*
+
+### BepuPhysics.Collidables.Box
+
+- `void .ctor(float, float, float)`
+
+### BepuPhysics.Collidables.Shapes
+
+- `BepuPhysics.Collidables.TypedIndex Add<1>(ref !!0)`
+
+### BepuPhysics.Collidables.TypedIndex
+
+*referenced as a type only*
+
+### BepuPhysics.RigidPose
+
+- `void .ctor(System.Numerics.Vector3, System.Numerics.Quaternion)`
+
+### BepuPhysics.Simulation
+
+- `BepuPhysics.Statics get_Statics()`
+
+### BepuPhysics.StaticDescription
+
+- `BepuPhysics.Collidables.TypedIndex Shape`
+- `BepuPhysics.RigidPose Pose`
+
+### BepuPhysics.StaticHandle
+
+*referenced as a type only*
+
+### BepuPhysics.Statics
+
+- `BepuPhysics.StaticHandle Add<1>(ref BepuPhysics.StaticDescription, ref !!0)`
+- `void ApplyDescription<1>(BepuPhysics.StaticHandle, ref BepuPhysics.StaticDescription, ref !!0)`
+- `void Remove(BepuPhysics.StaticHandle)`
 
 ## BepuUtilities
 
@@ -54,6 +95,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 op_Subtraction(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 op_UnaryNegation(Brutal.Numerics.double3)`
 - `bool Equals(Brutal.Numerics.double3)`
+- `bool op_Inequality(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `double Dot(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `double Length()`
 - `double LengthSquared()`
@@ -79,11 +121,13 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double get_M31()`
 - `double get_M32()`
 - `double get_M33()`
+- `void .ctor(double, double, double, double, double, double, double, double, double, double, double, double, double, double, double, double)`
 
 ### Brutal.Numerics.doubleQuat
 
 - `Brutal.Numerics.double3 op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.double3)`
 - `Brutal.Numerics.doubleQuat CreateFromAxisAngle(Brutal.Numerics.double3, double)`
+- `Brutal.Numerics.doubleQuat CreateFromRotationMatrix(Brutal.Numerics.double4x4)`
 - `Brutal.Numerics.doubleQuat get_Identity()`
 - `Brutal.Numerics.doubleQuat op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.doubleQuat)`
 - `double W`
@@ -300,9 +344,19 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `float DisplaceEnergyPerKg`
 
-### KSA.BubbleOrigin
+### KSA.BubbleFrame
 
 *referenced as a type only*
+
+### KSA.BubbleFrameEx
+
+- `bool IsCcf(KSA.BubbleFrame)`
+
+### KSA.BubbleOrigin
+
+- `Brutal.Numerics.double3 PositionBub`
+- `KSA.BubbleFrame BubFrame`
+- `KSA.IParentBody Parent`
 
 ### KSA.Camera
 
@@ -403,7 +457,14 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.ConstraintSim
 
+- `BepuPhysics.Simulation Simulation`
+- `KSA.BubbleClutterStatics get_ClutterStatics()`
+- `KSA.ShapesUnlock UnlockShapes()`
 - `KSA.ShapesUnlock UnlockShapesBlocking()`
+- `System.Collections.Generic.Dictionary`2<BepuPhysics.BodyHandle, KSA.VehicleUpdateState> HandleToState`
+- `bool TryResetForPool()`
+- `void DetectCollisions(double)`
+- `void Simulate(double, ref KSA.SimStep)`
 
 ### KSA.CrewAssignmentWindow
 
@@ -804,6 +865,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 Direction`
 
+### KSA.ReadOnlyPhysicsStates
+
+- `ref KSA.BubbleOrigin Origin`
+
 ### KSA.Rendering.Lighting.ELightFlags
 
 *referenced as a type only*
@@ -836,7 +901,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.ShapesUnlock
 
-*referenced as a type only*
+- `BepuPhysics.Collidables.Shapes get_Shapes()`
 
 ### KSA.SimSpeed
 
@@ -900,6 +965,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.StaticSubObjectTemplate
 
 - `System.Collections.Generic.List`1<Template> Colliders`
+
+### KSA.StaticsShouldntAwakenBodies
+
+- `ref KSA.StaticsShouldntAwakenBodies get_Shared()`
 
 ### KSA.StellarBody
 
@@ -1009,6 +1078,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.VehicleUpdateState
 
+- `KSA.ReadOnlyPhysicsStates GetReadOnlyStates()`
 - `KSA.Vehicle ReadOnlyVehicle`
 
 ### KSA.ViewportEx

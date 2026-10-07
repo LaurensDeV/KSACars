@@ -837,6 +837,22 @@ a part's mesh does not have.
 camera-relative samples, but its section is a regular polygon of one radius and its normals are radial, so
 it cannot make anything flat and thin.
 
+**A collider of a mod's own**: KSA's physics is BepuPhysics, one `Simulation` a physics bubble
+(`PhysicsBubble.ConstraintSim.Simulation`), stepped on a worker. A static added to it collides with
+nothing unless the narrow phase lets it (`NarrowPhaseCallbacks.AllowContactGeneration`): a vehicle's own
+terrain patch and launch pad, terrain blocks, and ground clutter. So a box is added with
+`Simulation.Statics.Add`, posed in the bubble's frame (its planet-fixed position less
+`Origin.PositionBub`), and its handle written into the private `BubbleClutterStatics._statics` with
+infinite mass, every pass, because clutter's own sync clears that dictionary. Shapes go in a registry all
+simulations share, writable only between vehicle steps (`ConstraintSim.UnlockShapes`, from a prefix on
+`Universe.ExecuteNextVehicleSolvers`); the statics are synced from prefixes on
+`ConstraintSim.DetectCollisions` and `Simulate`, re-posed when the bubble's origin moves, and forgotten on
+`TryResetForPool`, which clears them. `Ksa/RoadColliders.cs` is this, carried over from KSAGolf.
+**Seen in game on 2026.10.10.5554**: a 12 m box put under a parked F2004 with its top half a metre up
+lifted the car onto it by its hull, where it came to rest as landed, and taking the box away set the car
+back on the ground; a box half a metre deep with the car inside it pushed the car down instead, the
+shorter way out. Not seen: a kitten on one, a craft driven onto one, an origin shift, a save loaded.
+
 **Switching ground clutter off under something**: grass, shrubs, trees and rocks are ecotypes of one
 system. Each is laid on a grid over the six faces of a cube round the body (`CubeCellGrid.DirectionToQscUv`),
 `ceil(quarter circumference / (16 x ObjectSeparation))` cells to a face, 16 by 16 slots to a cell and one

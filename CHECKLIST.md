@@ -163,3 +163,8 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [ ] A raised road as a thin deck, and bends and junctions drawn as slabs without gaps or flicker
 - [ ] The height knob over the selected point: dragged along its stalk from the side, and straight up the
       screen from overhead; and a height typed in past 60 m
+- [x] A collider box of the mod's own in KSA's physics (bridge `road` with `box_top`): put under a
+      parked F2004 with its top 0.5 m up it lifted the car by its hull, hubs from 0.34 to 0.69 m over the
+      ground, landed and still; taken away, the car was back at 0.34 m
+- [ ] A kitten walking on such a box; a car driven onto one; the boxes after the bubble's origin shifts
+      2 km on, after a save is loaded, and after a simulation has been recycled

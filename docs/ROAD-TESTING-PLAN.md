@@ -83,9 +83,10 @@ The owner decides, because the fixes depend on it:
 
 - **A minimum bend radius**, at least the road's half width. Needed before the surface can be fixed.
 - **Whether a parked car should ride a road up when it is raised under it.**
-- **Whether to spend half a day finding out if a mod can add a static collider to KSA at runtime.** If
-  it can, roads get real colliders: the hard stop goes, and the car's body, a kitten and other craft
-  stop passing through decks. Nothing in `docs/BLOCKED-ON-KSA.md` says either way.
+- ~~Whether a mod can add a static collider to KSA at runtime.~~ **It can, and it holds a car up**:
+  `Ksa/RoadColliders.cs`, seen in game on a parked F2004. So roads get real colliders, the hard stop
+  goes, and the car's body, a kitten and other craft stop passing through decks. Still to see: a kitten
+  on one, the bubble's origin shifting on a long lap, a save loaded.
 
 ### Step 1. Move the road physics into `Sim/`, changing nothing
 
@@ -149,7 +150,12 @@ Judged on, each with a number:
    gets enough load to stop that corner closing this step and no more, at the wheel, outside the load
    cap. It cannot launch, it changes pitch, and it does not depend on the step. Faults 7 to 10. The
    lift stays only for a car put deep into a road. This also acts on terrain, where the hull has taken
-   hard landings until now, so all three cars are driven again. Skipped if step 0 finds colliders.
+   hard landings until now, so all three cars are driven again. **Step 0 found colliders, so this
+   is replaced**: a road's strips become collider boxes, thicker than they are drawn so nothing passes
+   through in a step, and the stop is taken out. The wheels still read the road's height from
+   `RoadSurface`, since the wheel model is the mod's own; the colliders are for the hull and for
+   everything that is not a car. The bump-stop impulse stays in reserve if the hull on a collider at
+   speed proves too harsh.
 4. **A generation on each laid surface**, the car's memory dropped when it changes. Fault 11.
 5. **Split at the road's own height.** Fault 12.
 6. **The radius limit**, in the editor. Fault 13.
