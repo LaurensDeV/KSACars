@@ -85,6 +85,9 @@ def main():
             time.sleep(1.5)
             extra = {k: v for k, v in (("speed", args.speed), ("route", args.route)) if v is not None}
             s = lap(craft, args.wait, laps=args.laps, offset=args.offset, timeout=240, **extra)
+            # Out of the way of the next car: an open route ends in one place, and a car left standing
+            # there is what the next one runs into.
+            bridge("site", craft=craft, lat=first["lat_deg"] - 0.003 - 0.0004 * cars.index(car), lon=first["lon_deg"], timeout=90)
             bad = [w for w, hit in (
                 (s.get("end", "?"), s.get("end") != "Finished"),
                 (f"off asphalt {s.get('off_asphalt_s')} s", (s.get("off_asphalt_s") or 0) > 0.2),
