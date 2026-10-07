@@ -24,7 +24,7 @@ internal static class Roads
     private static volatile Laid? _laid;
     private static double3[] _ego = [];
 
-    public static bool Any => _laid is not null;
+    public static bool Any => _laid is not null || _marker is not null;
 
     /// <summary>
     /// How far a point in <paramref name="body"/>'s own frame is above the road under it (m). Asked
@@ -217,9 +217,45 @@ internal static class Roads
         return (points, low, high);
     }
 
+    // A box drawn for the collider experiment: where its top face's near edge is, and its three edges.
+    private sealed record Marker(Celestial Body, double3 AtCcf, double3 X, double3 Y, double3 Z);
+
+    private static volatile Marker? _marker;
+
+    /// <summary>
+    /// The collider experiment's one box: put into KSA's physics and drawn, centred over a place on the
+    /// ground with its top <paramref name="topM"/> above it. A size of nothing takes it away.
+    /// </summary>
+    public static void TestBox(Celestial body, double3 overCcf, double sizeM, double thickM, double topM)
+    {
+        if (!(sizeM > 0.0))
+        {
+            _marker = null;
+            RoadColliders.Want(null, []);
+            return;
+        }
+
+        double3 up = Vec.Unit(overCcf);
+        (double3 east, double3 north) = GodView.Compass(up, Vec.Unit(body.GetDirCcfFromLatLon(90.0, 0.0)));
+        double top = body.MeanRadius + body.GetTerrainHeightFromDirCcf(up, accurate: true) + topM;
+        double3 centre = up * (top - (0.5 * thickM));
+        RoadColliders.Want(body, [RoadColliders.Place(centre, east, north, up, new double3(sizeM, sizeM, thickM))]);
+        _marker = new Marker(body, (up * top) - (north * (0.5 * sizeM)), east * sizeM, up * thickM, north * sizeM);
+    }
+
     // Inside the engine's render: called through a hook that catches whatever this throws.
     public static void Draw(IViewport viewport)
     {
+        if (_marker is { } marker && RoadMesh.Slab is { } box)
+        {
+            doubleQuat turn = marker.Body.GetCcf2Cce();
+            double3 at = marker.Body.GetPositionEcl() - viewport.GetCamera().PositionEcl + marker.AtCcf.Transform(turn);
+            double3 x = marker.X.Transform(turn), y = marker.Y.Transform(turn), z = marker.Z.Transform(turn);
+            box.Transform = new float4x4((float)x.X, (float)x.Y, (float)x.Z, 0f, (float)y.X, (float)y.Y, (float)y.Z, 0f,
+                                         (float)z.X, (float)z.Y, (float)z.Z, 0f, (float)at.X, (float)at.Y, (float)at.Z, 1f);
+            box.Draw(Program.Instance.SuperMeshRenderSystem.ViewForViewport(viewport));
+        }
+
         if (_laid is not { } laid || RoadMesh.Slab is not { } slab) return;
 
         Camera camera = viewport.GetCamera();

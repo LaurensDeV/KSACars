@@ -79,6 +79,7 @@
     -->
     <!-- Needed to compile against Vehicle's mass-properties signatures (Symmetric3x3). -->
     <Reference Include="$(KsaDllDir)BepuUtilities.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)BepuPhysics.dll" Private="false" />
     <Reference Include="$(KsaDllDir)0Harmony.dll" Private="false" />
   </ItemGroup>
 

@@ -322,6 +322,14 @@ internal sealed class Bridge
         {
             return Failed("no body under the craft");
         }
+        if (command.Has("box_top"))
+        {
+            if (!RoadColliders.Installed) return Failed("the road colliders are not hooked");
+            double size = command.Number("box_size", 12.0);
+            double3 over = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            Roads.TestBox(body, over, size, command.Number("box_thick", 0.5), command.Number("box_top", 0.6));
+            return Done(new() { ["box_m"] = size, ["adds_so_far"] = RoadColliders.Adds });
+        }
         if (command.Flag("probe_clutter", false)) return Done(Roads.ProbeClutter(body).ToDictionary(k => k.Key, k => (object?)k.Value));
         if (!RoadDrawHook.Installed) return Failed("the road hook is not installed");
 

@@ -3,6 +3,7 @@
 # and refresh the private ksa-game-assemblies repo to match - see CLAUDE.md.
 build 2026.10.10.5554
 fd77b88724f4104440df0cf979a851d35eec75ea3a7e86297d04abe47c71aff6  0Harmony.dll
+77185e513bd530deb322e41dd4acda9ad8e32e626cfa19492fb7481f25ed1fa7  BepuPhysics.dll
 e0a1528ded4ef8efcb8002b99704cb8614b7db840d2cb39b5e45eda52d63bc68  BepuUtilities.dll
 4cbae1473d6a3759345f1eec8e62e6c7da1e19f8d10db8d13c005203ec590de4  Brutal.Core.Common.dll
 a217a6098116a1895e965b3a1d4fdee931e59a7a55f326c7d710b0d7eeccd17a  Brutal.Core.Numerics.dll

@@ -241,11 +241,14 @@ TOOLS = {
                  "above the ground, spacing between points, margin how far past the edge clutter is cleared "
                  "(clutter=false leaves it); clear=true takes the roads up. edit=true opens that circuit in the road "
                  "editor instead, with its free camera at view_yaw and view_pitch (deg) and view_distance (m). "
-                 "probe_clutter=true lays nothing and measures the mod's clutter positions against the game's.",
+                 "probe_clutter=true lays nothing and measures the mod's clutter positions against the game's. "
+                 "box_top puts one collider box (box_size square, box_thick deep) under the flown craft with its "
+                 "top that far above the ground, drawn where it is; box_size=0 takes it away.",
                  {"circuit": {"type": "string"}, "save_as": {"type": "string"}, "lat": _num("deg"), "lon": _num("deg"),
                   "heading": _num("deg"), "length": _num("m"), "width": _num("m"), "lift": _num("m"), "spacing": _num("m"),
                   "margin": _num("m"), "clutter": {"type": "boolean"}, "clear": {"type": "boolean"},
-                  "edit": {"type": "boolean"}, "probe_clutter": {"type": "boolean"}, "view_yaw": _num("deg"), "view_pitch": _num("deg"),
+                  "edit": {"type": "boolean"}, "probe_clutter": {"type": "boolean"}, "box_top": _num("m"),
+                  "box_size": _num("m"), "box_thick": _num("m"), "view_yaw": _num("deg"), "view_pitch": _num("deg"),
                   "view_distance": _num("m")}, [],
                  lambda a: [_text(json.dumps(send("road", **a)))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",

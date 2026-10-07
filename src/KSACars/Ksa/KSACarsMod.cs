@@ -51,6 +51,7 @@ public sealed class KSACarsMod
         HudHook.Install();
         RailsHook.Install();
         RoadDrawHook.Install();
+        if (Build.Developer) RoadColliders.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -149,6 +150,7 @@ public sealed class KSACarsMod
         HudHook.Remove();
         RailsHook.Remove();
         RoadDrawHook.Remove();
+            RoadColliders.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
