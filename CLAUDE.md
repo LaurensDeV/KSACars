@@ -207,6 +207,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
+| `Sim/MeshPatch.cs` | **an experiment**: a curved square as vertices, normals, UVs and triangles, in the slab's right-handed frame and wound the way KSA draws, for the mesh made while the game runs |
 | `Sim/Vec.cs` | vector helpers |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
 | `Ksa/KSACarsMod.cs` | StarMap entry point: installs the ten patches, and once a frame finds the cars, poses their wheels and plays their engines |
@@ -222,7 +223,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
 | `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
 | `Ksa/RoadColliders.cs` | **on a developer's install**: boxes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Every laid road's boxes go into each bubble within three kilometres of any of them; the bridge's `road` with `box_top` puts one more under the flown craft |
-| `Ksa/RoadMesh.cs` | the box a road is drawn with as a `StaticMeshRenderable`, its glTF and material asked of KSA's asset managers by reflection, because the name type they take is not public |
+| `Ksa/RoadMesh.cs` | the box a road is drawn with as a `StaticMeshRenderable`, its glTF and material asked of KSA's asset managers by reflection |
+| `Ksa/RuntimeMesh.cs` | **an experiment, not yet seen in game**: a mesh made while the game runs, in room taken once in the three buffers KSA's static meshes share and written over in place, drawn by KSA's own renderer as a `StaticMeshRenderable`; the bridge's `road` with `mesh_test` draws one over the flown craft |
 | `Ksa/Roads.cs` | a circuit laid on a body: every road sampled onto the ground, drawn as a slab for each stretch between two points, handed to the physics as a deeper box for each, answered to a wheel asking what is under it, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and their colliders when a drag ends |
 | `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
@@ -260,7 +262,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 459 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 489 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -534,6 +536,12 @@ and files a summary of the run.
 a thin deck and one on the ground stands 7 cm proud. A box ends square, so on a bend each reaches past its
 end far enough to close the wedge on the outside. KSA's swept tube cannot do this: its section is a
 regular polygon, so a road drawn with it is as deep as it is wide.
+
+**A mesh made while the game runs can be drawn by KSA's own renderer, as an experiment.** `Ksa/RuntimeMesh.cs` takes
+room once in the buffers every static mesh shares, which KSA never gives back, and writes a mesh over it in
+place; the bridge's `road` with `mesh_test` draws `Sim/MeshPatch.cs`'s curved square over the flown craft and
+writes another over it when asked again. It is what a road drawn as one smooth surface would be made of.
+`docs/KSA-MODDING-NOTES.md` has the mechanism. **Not yet seen in game.**
 
 **A road that goes through a point is one run, and a road that joins is tucked under.**
 `RoadLayout.Runs` joins the roads that carry on through one another into one line, a ring into a closed

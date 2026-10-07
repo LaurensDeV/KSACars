@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-203 types and 459 members across 7 assemblies.
+226 types and 489 members across 11 assemblies.
 
 ## BepuPhysics
 
@@ -61,6 +61,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `float ZX`
 - `float ZY`
 - `float ZZ`
+
+## Brutal.Core.Common
+
+### Brutal.ByteSize
+
+- `ulong op_Implicit(Brutal.ByteSize)`
+- `void .ctor(nuint)`
+
+### Brutal.ElementCount
+
+- `Brutal.ElementCount op_Implicit(int)`
 
 ## Brutal.Core.Numerics
 
@@ -151,6 +162,9 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.float3 Pack(ref Brutal.Numerics.double3, Float)`
 - `Brutal.Numerics.float3 get_Zero()`
 - `Brutal.Numerics.float3 op_UnaryNegation(Brutal.Numerics.float3)`
+- `float X`
+- `float Y`
+- `float Z`
 - `void .ctor(float, float, float)`
 
 ### Brutal.Numerics.float4
@@ -304,11 +318,63 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void AppendFormatted<1>(!!0, int, string)`
 - `void AppendLiteral(System.ReadOnlySpan`1<char>)`
 
+## Brutal.Render.Mesh
+
+### Brutal.Render.Mesh.IIndexBufferStorage
+
+*referenced as a type only*
+
+### Brutal.Render.Mesh.IVertexBufferMap`1
+
+*referenced as a type only*
+
+### Brutal.Render.Mesh.MeshExtensions
+
+- `void SetIndicesFromData<1>(Brutal.Render.Mesh.IIndexBufferStorage, System.Span`1<!!0>)`
+- `void SetVerticesFromData<2>(Brutal.Render.Mesh.IVertexBufferMap`1<!!0>, !!0, System.Span`1<!!1>)`
+
+## Brutal.Vulkan
+
+### Brutal.VulkanApi.CommandBuffer
+
+*referenced as a type only*
+
+### Brutal.VulkanApi.VkBuffer
+
+*referenced as a type only*
+
+### Brutal.VulkanApi.VkCommandBufferLevel
+
+*referenced as a type only*
+
+### Brutal.VulkanApi.VkDeviceExtensions
+
+- `void End<1>(!!0)`
+
+## Brutal.Vulkan.Abstractions
+
+### Brutal.VulkanApi.Abstractions.CommandBufferExtensions
+
+- `void Begin(Brutal.VulkanApi.CommandBuffer)`
+
+### Brutal.VulkanApi.Abstractions.LinearBufferPartitioner
+
+- `Brutal.ByteSize get_CurrentOffset()`
+- `Brutal.ByteSize get_FreeSpace()`
+
+### Brutal.VulkanApi.Abstractions.StagingPool
+
+- `Brutal.VulkanApi.CommandBuffer NextCommandBuffer()`
+
 ## KSA
 
 ### KSA.AnimatedRenderable
 
 - `System.Collections.Generic.List`1<KSA.IAnimProcessor> AnimProcessors`
+
+### KSA.AssetManager`1
+
+*referenced as a type only*
 
 ### KSA.Astronomical
 
@@ -586,8 +652,24 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.GltfPbrAssetRef
 
 - `KSA.GpuObjectAssetRef[] Materials`
+- `KSA.GpuTextureAssetRef[] Textures`
+- `KSA.IMeshAsset[] Meshes`
+- `int[] MaterialIndices`
+- `void .ctor(Core.AssetName)`
+
+### KSA.GltfPbrSystem`1
+
+*referenced as a type only*
+
+### KSA.GpuMaterialSystem
+
+*referenced as a type only*
 
 ### KSA.GpuObjectAssetRef
+
+*referenced as a type only*
+
+### KSA.GpuTextureAssetRef
 
 *referenced as a type only*
 
@@ -634,6 +716,14 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.OrbitController get_OrbitController()`
 - `float get_IvaAudio()`
 - `void SetCameraMode(KSA.CameraMode)`
+
+### KSA.IMeshAsset
+
+*referenced as a type only*
+
+### KSA.IMeshRenderer`1
+
+*referenced as a type only*
 
 ### KSA.IOrbiter
 
@@ -694,6 +784,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.InputAction Action`
 - `KSA.Vehicle Vehicle`
 
+### KSA.InstanceData
+
+*referenced as a type only*
+
+### KSA.InterleavedVertex
+
+- `Brutal.Numerics.float2 Uv0`
+- `Brutal.Numerics.float3 Normal`
+
 ### KSA.KinematicStates
 
 - `Brutal.Numerics.double3 AngularVelocityPhys`
@@ -741,6 +840,22 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.MassProperties
 
 - `BepuUtilities.Symmetric3x3 Inertia`
+
+### KSA.MeshIndirectRef
+
+- `KSA.MeshOffsetData Data`
+- `int get_IndexOffset()`
+- `int get_VertexOffset()`
+- `void set_BoundingRadius(float)`
+
+### KSA.MeshIndirectSystem`1
+
+*referenced as a type only*
+
+### KSA.MeshOffsetData
+
+- `Brutal.ElementCount IndexCount`
+- `Brutal.ElementCount VertexCount`
 
 ### KSA.MeshRenderTechnique
 
@@ -946,6 +1061,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.StaticMeshRenderable
 
 - `Brutal.Numerics.float4x4 Transform`
+- `void .ctor(KSA.IMeshRenderer`1<KSA.InstanceData>, Core.AssetName, KSA.IMeshRenderer`1<KSA.InstanceData>, bool)`
 - `void Draw(RenderCore.Systems.ViewHandle)`
 
 ### KSA.StaticObject
@@ -977,8 +1093,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.SuperMeshRenderSystem
 
+- `KSA.GltfPbrSystem`1<KSA.InterleavedVertex> GltfSystem`
+- `KSA.GpuMaterialSystem MaterialSystem`
+- `KSA.MeshIndirectSystem`1<KSA.InterleavedVertex> MeshIndirectSystem`
 - `KSA.MeshRenderTechnique MeshRendererStaticPbr`
 - `KSA.MeshRenderTechnique MeshRendererStaticPrePass`
+- `RenderCore.IVulkanContext DeviceCtx`
 - `RenderCore.Systems.ViewHandle ViewForViewport(KSA.IViewport)`
 - `void ClearBuckets(KSA.IViewport)`
 

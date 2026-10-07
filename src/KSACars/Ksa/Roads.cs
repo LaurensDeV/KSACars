@@ -35,7 +35,7 @@ internal static class Roads
     private static volatile Laid? _laid;
     private static double3[] _ego = [];
 
-    public static bool Any => _laid is not null || _marker is not null;
+    public static bool Any => _laid is not null || _marker is not null || _patch is not null;
 
     private static int _generation;
 
@@ -295,7 +295,7 @@ internal static class Roads
         RoadColliders.Want(first.Body, both ? [.. first.Boxes, .. _testBox!.Value.Boxes] : first.Boxes);
     }
 
-    // A box drawn for the collider experiment: where its top face's near edge is, and its three edges.
+    // Something drawn for an experiment: where its origin is, and its three axes.
     private sealed record Marker(Celestial Body, double3 AtCcf, double3 X, double3 Y, double3 Z);
 
     private static volatile Marker? _marker;
@@ -323,17 +323,100 @@ internal static class Roads
         _marker = new Marker(body, (up * top) - (north * (0.5 * sizeM)), east * sizeM, up * thickM, north * sizeM);
     }
 
+    private static volatile Marker? _patch;
+    private static RuntimeMesh? _patchMesh;
+    private static string? _patchRefused;
+
+    /// <summary>
+    /// The runtime mesh experiment's one patch: a curved square made here, written into the slot
+    /// reserved for it and drawn level over a place on the ground, <paramref name="aboveM"/> up.
+    /// Asked again it is written over in place; a size of nothing stops it being drawn. Answers what
+    /// was reserved, what KSA's buffers have free and what went wrong. For the frame hook: it waits
+    /// for the graphics card.
+    /// </summary>
+    public static Dictionary<string, object?> TestMesh(Celestial body, double3 overCcf, double sizeM, double aboveM, double bendM, int cells)
+    {
+        Dictionary<string, object?> report = [];
+        if (!(sizeM > 0.0))
+        {
+            _patch = null;
+            report["drawn"] = false;
+            report["free"] = RuntimeMesh.Free()?.ToString();
+            return report;
+        }
+
+        // Reserved once, and a refusal kept: KSA never gives back room that was taken on the way to one.
+        if (_patchMesh is null && _patchRefused is null)
+        {
+            _patchMesh = RuntimeMesh.Reserve("KSACars_RuntimePatch", MeshPatch.VerticesFor(MeshPatch.MaxCells),
+                                             MeshPatch.IndicesFor(MeshPatch.MaxCells), out string refused);
+            if (_patchMesh is null)
+            {
+                _patchRefused = refused;
+                Log.Warn($"the runtime mesh cannot be drawn: {refused}");
+            }
+        }
+        if (_patchMesh is not { } mesh)
+        {
+            report["error"] = _patchRefused;
+            report["free"] = RuntimeMesh.Free()?.ToString();
+            return report;
+        }
+
+        MeshPatch patch = MeshPatch.Build(sizeM, cells, bendM);
+        bool uploaded = mesh.Upload(patch.Positions, patch.Normals, patch.Uvs, patch.Indices, patch.Radius(), out string why);
+        report["reserved_vertices"] = mesh.VertexCapacity;
+        report["reserved_indices"] = mesh.IndexCapacity;
+        report["vertex_offset"] = mesh.VertexOffset;
+        report["index_offset"] = mesh.IndexOffset;
+        report["free_before_reserving"] = mesh.FreeBefore.ToString();
+        report["free_after_reserving"] = mesh.FreeAfter.ToString();
+        report["free"] = RuntimeMesh.Free()?.ToString();
+        report["vertices"] = mesh.Vertices;
+        report["indices"] = mesh.Indices;
+        report["drawn"] = uploaded;
+        if (!uploaded)
+        {
+            _patch = null;
+            report["error"] = why;
+            return report;
+        }
+
+        // The patch's own frame is right-handed, so across is north's left: a left-handed one would
+        // turn every triangle's back to the eye.
+        double3 up = Vec.Unit(overCcf);
+        (_, double3 north) = GodView.Compass(up, Vec.Unit(body.GetDirCcfFromLatLon(90.0, 0.0)));
+        double radius = body.MeanRadius + body.GetTerrainHeightFromDirCcf(up, accurate: true) + aboveM;
+        _patch = new Marker(body, (up * radius) - (north * (0.5 * sizeM)), Vec.Cross(up, north), up, north);
+        return report;
+    }
+
+    private static void DrawAt(StaticMeshRenderable mesh, Marker place, IViewport viewport)
+    {
+        doubleQuat turn = place.Body.GetCcf2Cce();
+        double3 at = place.Body.GetPositionEcl() - viewport.GetCamera().PositionEcl + place.AtCcf.Transform(turn);
+        double3 x = place.X.Transform(turn), y = place.Y.Transform(turn), z = place.Z.Transform(turn);
+        mesh.Transform = new float4x4((float)x.X, (float)x.Y, (float)x.Z, 0f, (float)y.X, (float)y.Y, (float)y.Z, 0f,
+                                      (float)z.X, (float)z.Y, (float)z.Z, 0f, (float)at.X, (float)at.Y, (float)at.Z, 1f);
+        mesh.Draw(Program.Instance.SuperMeshRenderSystem.ViewForViewport(viewport));
+    }
+
     // Inside the engine's render: called through a hook that catches whatever this throws.
     public static void Draw(IViewport viewport)
     {
-        if (_marker is { } marker && RoadMesh.Slab is { } box)
+        if (_marker is { } marker && RoadMesh.Slab is { } box) DrawAt(box, marker, viewport);
+
+        if (_patch is { } patch && _patchMesh is { } runtime)
         {
-            doubleQuat turn = marker.Body.GetCcf2Cce();
-            double3 at = marker.Body.GetPositionEcl() - viewport.GetCamera().PositionEcl + marker.AtCcf.Transform(turn);
-            double3 x = marker.X.Transform(turn), y = marker.Y.Transform(turn), z = marker.Z.Transform(turn);
-            box.Transform = new float4x4((float)x.X, (float)x.Y, (float)x.Z, 0f, (float)y.X, (float)y.Y, (float)y.Z, 0f,
-                                         (float)z.X, (float)z.Y, (float)z.Z, 0f, (float)at.X, (float)at.Y, (float)at.Z, 1f);
-            box.Draw(Program.Instance.SuperMeshRenderSystem.ViewForViewport(viewport));
+            try
+            {
+                DrawAt(runtime.Renderable, patch, viewport);
+            }
+            catch (Exception e)
+            {
+                _patch = null;
+                Log.Error("drawing the runtime mesh failed; it is no longer drawn", e);
+            }
         }
 
         if (_laid is not { } laid || RoadMesh.Slab is not { } slab) return;

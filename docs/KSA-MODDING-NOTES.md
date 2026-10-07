@@ -828,10 +828,30 @@ Handy Core subparts: `CoreStructuralA_Subpart_TubeA` (0.854 × 0.101 tube),
 asset draws wherever its `Transform` says each time `Draw` is called, and one renderable can be drawn any
 number of times a frame with a different transform each time. The transform's rows are the mesh's X, Y and
 Z axes and then its origin, camera-relative, and the axes may be scaled each on its own.
-`Ksa/RoadMesh.cs` builds one; the asset managers take a name type that is not public, so it goes through
-reflection. The draw has to be made from a postfix on `SuperMeshRenderSystem.ClearBuckets(IViewport)`:
+`Ksa/RoadMesh.cs` builds one; the asset managers take a `Core.AssetName`, which is in `Planet.Core.dll`, and it
+builds that by reflection. The draw has to be made from a postfix on `SuperMeshRenderSystem.ClearBuckets(IViewport)`:
 anything submitted earlier in the frame is cleared by that call. The `.glb` needs a material slot, which
 a part's mesh does not have.
+
+**Drawing a mesh made at runtime** (`Ksa/RuntimeMesh.cs`; **not yet seen in game**): every static mesh is a
+stretch of three buffers owned by `SuperMeshRenderSystem.MeshIndirectSystem`: normals and UVs
+(`InterleavedVertex`, 20 bytes) in 10 MB, positions (`float3`) in 5 MB, which is 436,000 vertices for the
+whole game, and `int` indices in 10 MB. `AddMesh(AssetName, MeshAsset)` takes room from the end of each,
+uploads, and files a `MeshIndirectRef` under the name; nothing ever gives room back, and a buffer that is
+full throws from whatever was loading. It stores one `VertexOffset`, taken from the normals' buffer and
+used for both, so the two must always have had the same number of vertices put in them. The offsets and
+counts in `MeshIndirectRef.Data` are read anew each frame as the draw is written, so a slot reserved once
+can be redrawn with fewer triangles by setting `Data.IndexCount`, and its bytes replaced with
+`VkUtils.StageAndUploadToBuffer` into `VertexAttribBuffer`, `VertexPosBuffer` and `IndexBuffer` at the
+offset times the stride, through a `StagingPool` from `DeviceCtx.CreateStagingPool()`, whose disposal
+submits the copies and waits. A `GltfPbrAssetRef` built by hand over that `MeshIndirectRef` and a material,
+and added to `GltfSystem` with `TryAdd`, is what a `StaticMeshRenderable` of that name then finds. The
+pipelines cull back faces and take anticlockwise as the front, there are no tangents (the shader takes
+them from the UVs' screen derivatives, so a triangle needs area in the texture), and the instance's axes
+have to be right-handed or every face is turned away. `AssetManager.TryGet` removes what it is asked
+for and returns null: use `IsLoaded` and `GetOrLoad`. The free room is `FreeSpace` on the private
+`_vertexAllocator`, `_vertexPosAllocator` and `_indexAllocator`. `docs/KSA-API-SURFACE.md` does not record
+the `Planet.*` assemblies or members of a generic type, which is most of what this binds to.
 
 `SplineRenderer.AddTube`, called from inside `Universe.UpdateRenderData`, sweeps a lit tube along
 camera-relative samples, but its section is a regular polygon of one radius and its normals are radial, so

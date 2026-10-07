@@ -6,8 +6,7 @@ namespace KSACars;
 /// <summary>
 /// The box a road is drawn with, as something KSA's static mesh renderer will draw wherever it is told.
 ///
-/// <para>KSA's asset managers take the name of an asset as a type of their own that is not public, so
-/// the name is built and the managers are asked by reflection. If any of it is not found the road is
+/// <para>The name of an asset is built and KSA's asset managers are asked by reflection. If any of it is not found the road is
 /// not drawn, and says so once.</para>
 /// </summary>
 internal static class RoadMesh

@@ -81,6 +81,15 @@
     <Reference Include="$(KsaDllDir)BepuUtilities.dll" Private="false" />
     <Reference Include="$(KsaDllDir)BepuPhysics.dll" Private="false" />
     <Reference Include="$(KsaDllDir)0Harmony.dll" Private="false" />
+    <!--
+      What Ksa/RuntimeMesh.cs writes a mesh into KSA's shared buffers with: the asset name and what it
+      is keyed by, the CPU mesh KSA's mesh system is handed, and the staging pool and buffer handles.
+    -->
+    <Reference Include="$(KsaDllDir)Planet.Core.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Core.Collections.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Render.Mesh.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Vulkan.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Vulkan.Abstractions.dll" Private="false" />
   </ItemGroup>
 
   <!--
