@@ -272,6 +272,17 @@ public class BuggyDriveTests
         Assert.True(rig.Velocity.Y < 0.6, $"still at {rig.Velocity.Y:F1} m/s after six seconds of brake");
     }
 
+    // Over a crest a car is off all four wheels for a step or two, and KSA's drag coming back there is a
+    // two-g jab at speed. Flying, or with a rocket lit, that drag is the only one the car has.
+    [Fact]
+    public void TheGamesDragStaysOffOverACrestAndComesBackInFlight()
+    {
+        Assert.True(BuggyDrive.ShedsGameDrag(0.0, burning: false));
+        Assert.True(BuggyDrive.ShedsGameDrag(0.1, burning: false));
+        Assert.False(BuggyDrive.ShedsGameDrag(BuggyDrive.FlightSeconds, burning: false));
+        Assert.False(BuggyDrive.ShedsGameDrag(0.0, burning: true));
+    }
+
     // A held key is full lock, and a lock that asks the tyres for all their grip sideways leaves the
     // drive none: the car crawls up to speed in a turn and falls back to a crawl in a fast one.
     [Theory]

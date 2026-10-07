@@ -24,6 +24,9 @@ internal sealed class Buggies
         public Part?[] Arms { get; } = new Part?[profile.Corners.Length];
         public Part?[] Coils { get; } = new Part?[profile.Corners.Length];
         public Part?[] Uprights { get; } = new Part?[profile.Corners.Length];
+        public double AirborneSeconds { get; set; }
+        public bool DragShed { get; set; }
+        public double GameSkinAreaM2 { get; set; }
         public Part? Steering { get; set; }
         public DriveInput Input { get; set; }
         public bool Stepped { get; set; }
@@ -374,6 +377,7 @@ internal sealed class Buggies
             ["lights"] = e.Beam.ToString().ToLowerInvariant(),
             ["scoop"] = e.ScoopOn ? e.Drive.Profile.Scoops[e.Scoop].Name : "off",
             ["boosting"] = e.Boosting,
+            ["game_drag"] = !e.DragShed,
             ["downforce"] = e.Downforce,
             ["clutter_collisions"] = KsaWorld.ClutterCollisions,
             ["rock_weight"] = KsaWorld.RockWeight,
@@ -525,7 +529,12 @@ internal sealed class Buggies
     /// </summary>
     public static void Physics(Vehicle craft, double dt)
     {
-        if (Active.Count == 0 || !Active.TryGetValue(craft, out Entry? e)) return;
+        if (!Active.TryGetValue(craft, out Entry? e))
+        {
+            // No longer a car the mod drives: it gets KSA's air drag back, here, where the worker is not reading it.
+            if (Shed.Count > 0 && Shed.Remove(craft)) craft.GetPhysicsStatesMutable().Props.RecomputeAerodynamicProperties();
+            return;
+        }
 
         try
         {
@@ -703,6 +712,7 @@ internal sealed class Buggies
         // The wheels are off the ground, so the keys that drove them fly the car instead.
         // Under warp the wheels are not stepped, so the hull's own contact says whether it is down.
         bool airborne = warped ? !e.Scraping : !e.Drive.Grounded.Any(g => g);
+        ShedGameDrag(e, craft, ref states.Props, airborne, burning, dt);
         double3 groundUpBody = Vec.Unit(positionCcf).Transform(ccf2Body);
         LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
                                   groundUpBody, spinBody, gravity, dt);
@@ -723,6 +733,33 @@ internal sealed class Buggies
     // Once a second in play; the bridge shortens it to watch a manoeuvre.
     public static double LogEverySeconds { get; set; } = 1.0;
 
+    /// <summary>Whether KSA's own air drag is kept off a car on its wheels. The bridge clears it to compare.</summary>
+    public static bool ShedsGameDrag { get; set; } = true;
+
+    // Crafts whose aerodynamic record this has zeroed, so one that stops being a car can be given it back.
+    private static readonly HashSet<Vehicle> Shed = [];
+
+    // KSA drags a craft by its colliders' bounding box, a car on its wheels included, and skips all of it
+    // while the record's area is zero. Zeroed every step, because KSA rebuilds it when a kitten boards;
+    // rebuilt from the same box once the car is flying. docs/KSA-MODDING-NOTES.md has the mechanism.
+    private static void ShedGameDrag(Entry e, Vehicle craft, ref VehicleProperties props, bool airborne, bool burning, double dt)
+    {
+        e.AirborneSeconds = airborne ? e.AirborneSeconds + dt : 0.0;
+        bool shed = ShedsGameDrag && BuggyDrive.ShedsGameDrag(e.AirborneSeconds, burning);
+        if (shed)
+        {
+            props.AerodynamicCdABody = default;
+            Shed.Add(craft);
+        }
+        else if (e.DragShed)
+        {
+            props.RecomputeAerodynamicProperties();
+            Shed.Remove(craft);
+        }
+        e.DragShed = shed;
+        e.GameSkinAreaM2 = 0.1 * props.TotalSurfaceArea;
+    }
+
     private static void LogWhileDriven(Entry e, double dt)
     {
         bool driven = e.Input.Throttle != 0.0 || e.Input.Steer != 0.0 || Math.Abs(e.Drive.ForwardSpeed) > 0.5;
@@ -736,7 +773,8 @@ internal sealed class Buggies
                  + $"travel {string.Join(" ", d.Travel.Select(t => t.ToString("F3")))}, "
                  + $"hubs {string.Join(" ", e.HubHeights.Select(t => t.ToString("F2")))} m, level {e.Level:F3}, "
                  + $"yaw {e.YawRate * 180.0 / Math.PI:F0} deg/s, sideways {e.SideSpeed:F1} m/s, step {dt * 1000.0:F1} ms, "
-                 + $"lift {e.SpringLift:F2} g{(e.Scraping ? ", SCRAPING" : "")}");
+                 + $"lift {e.SpringLift:F2} g, game drag {(e.DragShed ? "off" : "on")} (skin {e.GameSkinAreaM2:F2} m2)"
+                 + $"{(e.Scraping ? ", SCRAPING" : "")}");
     }
 
     // The craft's own held controls, so the player's bindings carry over: the pitch keys are the

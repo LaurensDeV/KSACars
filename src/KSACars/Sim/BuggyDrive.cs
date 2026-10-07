@@ -252,6 +252,15 @@ public sealed class BuggyDrive(BuggyProfile profile)
         return omega * (Math.Sqrt((damped * damped) + (4.0 * stiff * StepBudget)) - damped) / (2.0 * stiff);
     }
 
+    /// <summary>How long a car is off all its wheels before KSA's own air drag is let back onto it.</summary>
+    public const double FlightSeconds = 0.4;
+
+    /// <summary>
+    /// Whether KSA's own air drag is kept off a car: on its wheels, and over a crest, but not once it is
+    /// flying or its rockets are lit, where that drag is the only one it has.
+    /// </summary>
+    public static bool ShedsGameDrag(double airborneSeconds, bool burning) => !burning && airborneSeconds < FlightSeconds;
+
     private static bool Touching(int i, WheelContact c, double3 up) => c.Valid && Vec.Dot(up, c.GroundUp) > 0.2;
 
     // The lock is the angle whose turn the front tyres can just hold at this speed, v^2 / R = grip g

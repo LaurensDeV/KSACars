@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-163 types and 370 members across 6 assemblies.
+165 types and 374 members across 6 assemblies.
 
 ## BepuUtilities
 
@@ -226,6 +226,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.AtmosphereReference
 
 - `KSA.PhysicalAtmosphereReference Physical`
+
+### KSA.BoundingBoxCdA
+
+*referenced as a type only*
 
 ### KSA.BoxColliderTemplate
 
@@ -627,6 +631,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `ref KSA.BubbleOrigin Origin`
 - `ref KSA.KinematicStates Kinematic`
+- `ref KSA.VehicleProperties Props`
 - `void GetStatesCcf(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void GetStatesCci(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void UpdateFromAnalytic(KSA.Orbit, ref KSA.StateVectors, Brutal.Numerics.doubleQuat, Brutal.Numerics.double3, KSA.Situation)`
@@ -837,6 +842,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.VehicleEditor
 
 *referenced as a type only*
+
+### KSA.VehicleProperties
+
+- `KSA.BoundingBoxCdA AerodynamicCdABody`
+- `float TotalSurfaceArea`
+- `void RecomputeAerodynamicProperties()`
 
 ### KSA.VehicleSave
 
