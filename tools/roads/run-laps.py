@@ -51,7 +51,10 @@ def lap(craft, wait_s, **args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--circuit", action="append", help="a circuit's name; default every one starting with X")
+    ap.add_argument("--circuit", action="append", help="a circuit's name; default every one of the set")
+    ap.add_argument("--set", default="X", help="the first letter of the circuits to run: X the first eight, Z the harder ones")
+    ap.add_argument("--jump", action="store_true", help="do not slow for crests and dips")
+    ap.add_argument("--timeout", type=float, default=240.0, help="simulated seconds to give a lap")
     ap.add_argument("--car", action="append", choices=list(CARS), help="default all three")
     ap.add_argument("--speed", type=float, help="cruise in m/s; default each car's top speed")
     ap.add_argument("--offset", type=float, default=0.0, help="metres left of the centre line")
@@ -60,7 +63,7 @@ def main():
     ap.add_argument("--wait", type=float, default=300.0, help="wall seconds to give a run")
     args = ap.parse_args()
 
-    circuits = args.circuit or sorted(p.stem for p in library().glob("X *.json"))
+    circuits = args.circuit or sorted(p.stem for p in library().glob(f"{args.set} *.json"))
     cars = args.car or list(CARS)
     present = {o["name"].replace("(flown) ", "") for o in bridge("status").get("others", [])}
 
@@ -84,7 +87,9 @@ def main():
                 continue
             time.sleep(1.5)
             extra = {k: v for k, v in (("speed", args.speed), ("route", args.route)) if v is not None}
-            s = lap(craft, args.wait, laps=args.laps, offset=args.offset, timeout=240, **extra)
+            if args.jump:
+                extra["jump"] = True
+            s = lap(craft, max(args.wait, args.timeout * 1.5), laps=args.laps, offset=args.offset, timeout=args.timeout, **extra)
             # Out of the way of the next car: an open route ends in one place, and a car left standing
             # there is what the next one runs into.
             bridge("site", craft=craft, lat=first["lat_deg"] - 0.003 - 0.0004 * cars.index(car), lon=first["lon_deg"], timeout=90)

@@ -25,8 +25,9 @@ M_PER_DEG_LON = M_PER_DEG_LAT * math.cos(math.radians(LAT0))
 
 
 class Course:
-    def __init__(self, name, what, slot, width=10.0, closed=False):
+    def __init__(self, name, what, slot, width=10.0, closed=False, north=0.0, bank=None):
         self.name, self.what, self.slot, self.width, self.closed = name, what, slot, width, closed
+        self.north, self.bank = north, bank
         self.nodes, self.roads = [], []
 
     def point(self, east, north, height=0.0, corner=1.0, join=True):
@@ -40,12 +41,17 @@ class Course:
 
     def to_json(self):
         east0 = -self.slot * 2500.0
-        nodes = [{"id": i + 1, "lat_deg": LAT0 + n / M_PER_DEG_LAT, "lon_deg": LON0 + (east0 + e) / M_PER_DEG_LON,
+        nodes = [{"id": i + 1, "lat_deg": LAT0 + (self.north + n) / M_PER_DEG_LAT,
+                  "lon_deg": LON0 + (east0 + e) / M_PER_DEG_LON,
                   "corner": c, "height_m": h} for i, (e, n, h, c) in enumerate(self.nodes)]
         roads = [{"from": a, "to": b} for a, b in self.roads]
         if self.closed:
             roads.append({"from": len(self.nodes), "to": 1})
-        return {"version": 1, "name": self.name, "body": "Earth", "width_m": self.width, "nodes": nodes, "roads": roads}
+        if self.bank is not None:
+            for road in roads:
+                road["from_bank_deg"] = road["to_bank_deg"] = self.bank
+        return {"version": 2 if self.bank is not None else 1, "name": self.name, "body": "Earth", "width_m": self.width,
+                "nodes": nodes, "roads": roads}
 
 
 def hairpins():
@@ -143,7 +149,128 @@ def grid():
     return c
 
 
-COURSES = [hairpins, spiral, coaster, eight, speedway, chicane, kinks, grid]
+# The harder set. tests/KSACars.Tests/ExtremeCircuits.cs mirrors only the eight above.
+
+def stelvio():
+    c = Course("Z Stelvio", "twelve 90 m legs climbing 10% between hairpins 18 m across, then 108 m back down in 600 m", 8, width=8.0)
+    legs, rise = 12, 9.0
+    for k in range(legs):
+        y = 18.0 * k
+        xs = (0.0, 90.0) if k % 2 == 0 else (90.0, 0.0)
+        c.point(xs[0], y, rise * k)
+        c.point(xs[1], y, rise * (k + 1))
+    top_x = 0.0 if legs % 2 == 0 else 90.0
+    c.point(top_x - 60.0, 18.0 * legs, rise * legs)
+    c.point(top_x - 120.0, 18.0 * legs + 60.0, rise * legs)
+    c.point(top_x - 120.0, 18.0 * legs + 660.0, 0.0)
+    c.point(top_x - 120.0, 18.0 * legs + 760.0, 0.0)
+    return c
+
+
+def tower():
+    c = Course("Z Tower", "a helix of 14 m radius climbing 9 m a turn for twelve turns, 14% on its inside, then 108 m down in 700 m", 9, width=8.0)
+    turns, per_turn, radius = 12, 9.0, 14.0
+    c.point(-70.0, -radius)
+    for i in range(turns * 8 + 1):
+        a = -math.pi / 2 + i * math.pi / 4
+        c.point(radius * math.cos(a), radius * math.sin(a), per_turn * i / 8.0)
+    top = turns * per_turn
+    c.point(90.0, -radius, top)
+    c.point(790.0, -radius, 0.0)
+    c.point(900.0, -radius, 0.0)
+    return c
+
+
+def corkscrew():
+    c = Course("Z Corkscrew", "a blind crest, 20 m down in 80 m through a left and a right, a dip, and 15 m back up in 60 m", 10)
+    for e, n, h in ((0, 0, 20), (220, 0, 20), (260, 10, 14), (300, 30, 0), (340, 10, 0), (380, -10, 0),
+                    (440, -10, 15), (500, 0, 15), (650, 0, 15), (760, 0, 0), (860, 0, 0)):
+        c.point(float(e), float(n), float(h))
+    c.nodes[0] = (0.0, 0.0, 0.0, 1.0)
+    c.nodes.insert(1, (100.0, 0.0, 20.0, 1.0))
+    c.roads = [(i, i + 1) for i in range(1, len(c.nodes))]
+    return c
+
+
+def ring(name, what, slot, radius, bank, width=12.0, points=16):
+    c = Course(name, what, slot, width=width, closed=True, bank=bank)
+    for i in range(points):
+        a = 2.0 * math.pi * i / points
+        c.point(radius * math.cos(a), radius * math.sin(a))
+    return c
+
+
+def bowl():
+    # Anticlockwise, so the outside is on the right and a negative bank lifts it.
+    return ring("Z Bowl", "a 50 m ring banked 30 degrees into the turn", 11, 50.0, -30.0)
+
+
+def offcamber():
+    return ring("Z Offcamber", "an 80 m ring banked 20 degrees the wrong way", 12, 80.0, 20.0)
+
+
+def sky():
+    c = Course("Z Sky", "up 300 m in 2.5 km, 1.5 km of 5 m road at that height with two 60 m bends, then 300 m down in 1.5 km to a hairpin", 13, width=5.0)
+    for e, n, h in ((0, 0, 0), (150, 0, 0), (2650, 0, 300), (3100, 0, 300), (3220, 120, 300), (3220, 600, 300),
+                    (3100, 720, 300), (2600, 720, 300), (1100, 720, 0), (1000, 720, 0), (970, 750, 0), (1000, 780, 0), (1200, 780, 0)):
+        c.point(float(e), float(n), float(h))
+    return c
+
+
+def alley():
+    c = Course("Z Alley", "a 4.5 m street round nine blocks, every corner a right angle on 25 m legs", 14, width=4.5, closed=True)
+    for e, n in ((0, 0), (75, 0), (75, 25), (150, 25), (150, 100), (100, 100), (100, 150), (25, 150), (25, 75), (-25, 75), (-25, 25), (0, 25)):
+        c.point(float(e), float(n))
+    return c
+
+
+def knot():
+    c = Course("Z Knot", "a trefoil: one road crossing itself three times, alternately over and under", 15, closed=True)
+    for i in range(36):
+        t = 2.0 * math.pi * i / 36
+        c.point(55.0 * (math.sin(t) + 2.0 * math.sin(2.0 * t)), 55.0 * (math.cos(t) - 2.0 * math.cos(2.0 * t)),
+                7.0 * (1.0 - math.sin(3.0 * t)))
+    return c
+
+
+def marathon():
+    c = Course("Z Marathon", "a 20 km lap: 6 km and 3 km straights with a weave down one side, 250 m corners", 0, width=12.0, closed=True, north=9000.0)
+    r, lx, ly = 250.0, 6000.0, 3000.0
+    corners = ((lx, 0.0, -90), (lx, ly, 0), (0.0, ly, 90), (0.0, 0.0, 180))
+    c.point(r, -r)
+    c.point(lx - r, -r)
+    for cx, cy, start in corners:
+        if (cx, cy) == (0.0, ly):                      # the weave, along the top, east to west
+            for k in range(1, 12):
+                c.point(lx - 500.0 * k, ly + (120.0 if k % 2 else -120.0) * (0 if k in (1, 11) else 1))
+        ox = cx - r if cx > 0 else cx + r
+        oy = cy - r if cy > 0 else cy + r
+        for i in (1, 2, 3):
+            a = math.radians(start + 22.5 * i)
+            c.point(ox + r * math.cos(a), oy + r * math.sin(a))
+    return c
+
+
+def vertical():
+    c = Course("Z Vertical", "four walls in a row: 50%, 60%, 67% and 100% up, and 60% to 100% back down, with a short flat on each", 16)
+    for e, h in ((0, 0), (150, 0), (270, 60), (330, 60), (430, 0), (500, 0), (650, 100), (720, 100), (840, 0),
+                 (920, 0), (1000, 80), (1060, 80), (1140, 0), (1220, 0), (1340, 120), (1400, 120), (1500, 0), (1650, 0)):
+        c.point(float(e), 0.0, float(h))
+    return c
+
+
+def cliffs():
+    c = Course("Z Cliffs", "a lap that is never level: 70 m up and down six times round a 150 m ring, 45% to 75%", 17, closed=True)
+    r, points = 150.0, 24
+    for i in range(points):
+        a = 2.0 * math.pi * i / points
+        c.point(r * math.cos(a), r * math.sin(a), 70.0 if i % 4 in (1, 2) else 0.0)
+    return c
+
+
+BRUTAL = [stelvio, tower, corkscrew, bowl, offcamber, sky, alley, knot, marathon, vertical, cliffs]
+
+COURSES = [hairpins, spiral, coaster, eight, speedway, chicane, kinks, grid] + BRUTAL
 
 
 def main():
