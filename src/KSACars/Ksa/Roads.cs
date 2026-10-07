@@ -26,10 +26,6 @@ internal static class Roads
 
     public static bool Any => _laid is not null || _marker is not null;
 
-    /// <summary>
-    /// How far a point in <paramref name="body"/>'s own frame is above the road under it (m). Asked
-    /// from the physics window, where nothing may throw: what is laid is swapped whole, never changed.
-    /// </summary>
     private static int _generation;
 
     /// <summary>
@@ -38,6 +34,10 @@ internal static class Roads
     /// </summary>
     public static int Generation => _generation;
 
+    /// <summary>
+    /// How far a point in <paramref name="body"/>'s own frame is above the road under it (m). Asked
+    /// from the physics window, where nothing may throw: what is laid is swapped whole, never changed.
+    /// </summary>
     public static bool TryHeightOver(Celestial body, double3 atCcf, double? last, out double metres)
     {
         metres = 0.0;
