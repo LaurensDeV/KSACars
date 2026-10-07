@@ -316,21 +316,18 @@ public class RoadRunTests
     public void ARoadThroughAJunctionIsOneRunAndTheSideRoadIsSunkWhereItMeetsIt()
     {
         Circuit c = new Circuit().AddNode(0, 0, out int mid)
-            .Extend(mid, 0, -Deg(200), out int west).Extend(mid, 0, Deg(200), out _).Extend(mid, -Deg(200), 0, out _)
-            .Extend(west, 0, -Deg(400), out _);
+            .Extend(mid, 0, -Deg(200), out int west).Extend(mid, 0, Deg(200), out int east).Extend(mid, -Deg(200), 0, out _)
+            .Extend(west, 0, -Deg(400), out int farWest);
 
-        List<RoadLayout.Run> runs = RoadLayout.Runs(c, DirOf, Radius, 2.0);
+        List<RoadLayout.Run> runs = RoadLayout.Runs(c, DirOf, Radius);
 
         Assert.Equal(2, runs.Count);
-        RoadLayout.Run through = runs.Single(r => r.Line.Length > 250), side = runs.Single(r => r.Line.Length < 250);
+        RoadLayout.Run through = runs.Single(r => r.Legs.Count == 3), side = runs.Single(r => r.Legs.Count == 1);
         Assert.Equal(0.0, through.SinkStartM);
         Assert.Equal(0.0, through.SinkEndM);
-        Assert.Equal(600.0, Vec.Len(through.Line[0] - through.Line[^1]) * Radius, 0);
-        for (int i = 1; i < through.Line.Length; i++)
-        {
-            double step = Vec.Len(through.Line[i] - through.Line[i - 1]) * Radius;
-            Assert.InRange(step, 0.5, 2.6);
-        }
+        Assert.Equal(new[] { east, farWest }.Order(), new[] { through.Legs[0].From, through.Legs[^1].To }.Order());
+        for (int i = 1; i < through.Legs.Count; i++) Assert.Equal(through.Legs[i - 1].To, through.Legs[i].From);
+        Assert.Contains(mid, new[] { through.Legs[1].From, through.Legs[1].To });
         Assert.True(side.SinkStartM + side.SinkEndM > 0.0, "the side road lies in the through road's plane");
         Assert.False(through.Closed);
     }
@@ -340,22 +337,39 @@ public class RoadRunTests
     {
         Circuit ring = new Circuit().AddNode(0, 0, out int a).Extend(a, 0, Deg(200), out int b).Extend(b, Deg(200), Deg(200), out int d)
             .Extend(d, Deg(200), 0, out int e).Connect(e, a);
-        RoadLayout.Run run = Assert.Single(RoadLayout.Runs(ring, DirOf, Radius, 2.0));
+        RoadLayout.Run run = Assert.Single(RoadLayout.Runs(ring, DirOf, Radius));
         Assert.True(run.Closed);
-        Assert.True(Vec.Len(run.Line[0] - run.Line[^1]) * Radius < 1e-6);
+        Assert.Equal(4, run.Legs.Count);
+        Assert.Equal(run.Legs[0].From, run.Legs[^1].To);
 
         Circuit star = new Circuit().AddNode(0, 0, out int mid).Extend(mid, Deg(200), 0, out _)
             .Extend(mid, -Deg(100), Deg(173), out _).Extend(mid, -Deg(100), -Deg(173), out _);
-        List<RoadLayout.Run> arms = RoadLayout.Runs(star, DirOf, Radius, 2.0);
+        List<RoadLayout.Run> arms = RoadLayout.Runs(star, DirOf, Radius);
         Assert.Equal(3, arms.Count);
         Assert.Equal(3, arms.Select(r => Math.Round(r.SinkStartM + r.SinkEndM, 3)).Distinct().Count());
     }
 
     [Fact]
-    public void RoadsOfDifferentWidthsAreNotJoined()
+    public void RoadsOfDifferentWidthsAreOneRunThatEasesFromOneWidthToTheOther()
     {
         Circuit c = new Circuit().AddNode(0, 0, out int a).Extend(a, 0, Deg(200), out int b).Extend(b, 0, Deg(400), out int d).SetWidth(b, d, 6.0);
-        Assert.Equal(2, RoadLayout.Runs(c, DirOf, Radius, 2.0).Count);
+        Assert.Equal(2, Assert.Single(RoadLayout.Runs(c, DirOf, Radius)).Legs.Count);
+
+        RoadRibbon ribbon = Assert.Single(RoadLaying.Ribbons(c, DirOf, Radius, _ => 0.0, 0.07, 2.0));
+        Assert.Equal(5.0, ribbon.At(0.0).HalfWidth, 9);
+        Assert.Equal(4.0, ribbon.At(200.0).HalfWidth, 3);
+        Assert.Equal(3.0, ribbon.At(400.0).HalfWidth, 9);
+        double last = 5.0;
+        for (double s = 0.0; s <= 400.0; s += 0.5)
+        {
+            double half = ribbon.At(s).HalfWidth;
+            Assert.InRange(last - half, 0.0, 0.01);
+            last = half;
+        }
+
+        // Set at an end, a width is what the road is there, whatever the roads either side are.
+        RoadRibbon set = Assert.Single(RoadLaying.Ribbons(c.SetEndWidth(b, a, 12.0), DirOf, Radius, _ => 0.0, 0.07, 2.0));
+        Assert.Equal(6.0, set.At(200.0).HalfWidth, 3);
     }
 }
 
@@ -390,21 +404,33 @@ public class RoadSurfaceTests
     }
 
     [Fact]
-    public void TheRoadFallsAwayPastItsEdgeAndItsEndAsAShoulderAndNotAStep()
+    public void TheRoadFallsAwayPastItsEdgeAndItsEndAsAVergeAndABankAndNotAStep()
     {
         RoadSurface road = new([(Line(0.2, 0.0, 200.0), 4.0, false)]);
 
+        // On the ground, the verge and the bank after it end 0.3 m under it: 1.5 m and 0.4 m out.
         double last = 0.0;
-        for (double across = 3.0; across <= 7.0; across += 0.25)
+        for (double across = 3.0; across <= 5.85; across += 0.05)
         {
-            Assert.True(road.TryHeightOver(At(0.2, 100.0, across), out double over));
-            Assert.True(over - last < 0.25 * RoadSurface.ShoulderSlope + 1e-3, $"a step of {over - last:F3} m at {across} m out");
+            Assert.True(road.TryHeightOver(At(0.2, 100.0, across), out double over), $"no road {across} m out");
+            Assert.True(over - last < (0.05 * RoadRibbon.BankSlope) + 1e-3, $"a step of {over - last:F3} m at {across} m out");
             last = over;
         }
-        Assert.Equal(3.0 * RoadSurface.ShoulderSlope, last, 2);
+        Assert.True(road.TryHeightOver(At(0.2, 100.0, 5.5), out double atVergeEnd));
+        Assert.Equal(RoadRibbon.VergeM * RoadRibbon.VergeSlope, atVergeEnd, 3);
+        Assert.True(road.TryHeightOver(At(0.2, 100.0, 5.85), out double nearToe));
+        Assert.Equal(0.1 + (0.35 * RoadRibbon.BankSlope), nearToe, 3);
+        Assert.False(road.TryHeightOver(At(0.2, 100.0, 6.0), out _));
 
-        Assert.True(road.TryHeightOver(At(0.2, 203.0, 0.0), out double pastEnd));
-        Assert.Equal(3.0 * RoadSurface.ShoulderSlope, pastEnd, 2);
+        Assert.True(road.TryHeightOver(At(0.2, 201.0, 0.0), out double pastEnd));
+        Assert.Equal(1.0 * RoadRibbon.VergeSlope, pastEnd, 3);
+        Assert.True(road.TryHeightOver(At(0.2, -1.2, 3.0), out double pastStart));
+        Assert.Equal(1.2 * RoadRibbon.VergeSlope, pastStart, 3);
+
+        // Off a corner the fall is that of whichever is further, the edge or the end.
+        Assert.True(road.TryHeightOver(At(0.2, 201.0, 5.2), out double corner));
+        Assert.Equal(1.2 * RoadRibbon.VergeSlope, corner, 3);
+        Assert.False(road.TryHeightOver(At(0.2, 203.0, 0.0), out _));
     }
 
     [Fact]
@@ -464,25 +490,30 @@ public class RoadSurfaceTests
     }
 
     [Fact]
-    public void ARaisedRoadHasNoShoulderSoNothingBesideItIsToldItIsUnderIt()
+    public void ARaisedRoadHasABankDownToTheGroundAndADeckHasNothingBesideIt()
     {
-        double3[] line = Line(1.5, 0.0, 200.0);
-        double[] up = [.. line.Select(_ => 1.5)], down = [.. line.Select(_ => 0.07)];
-        RoadSurface raised = new([(line, 4.0, false, (double[]?)up)]);
-        RoadSurface onTheGround = new([(Line(0.07, 0.0, 200.0), 4.0, false, (double[]?)down)]);
+        double3[] line = Line(1.5, 0.0, 200.0), high = Line(6.0, 0.0, 200.0);
+        RoadSurface raised = new([(line, 4.0, false, (double[]?)[.. line.Select(_ => 1.5)])]);
+        RoadSurface deck = new([(high, 4.0, false, (double[]?)[.. high.Select(_ => 6.0)])]);
 
-        // A hub a third of a metre over the grass, walked in from the side and from past the end.
+        // A hub a third of a metre over the grass, walked in from the side. The bank ends 0.3 m under
+        // the grass, 4.9 m out from the edge; nearer the road than 2.6 m out it is more than a
+        // collider's depth over the hub, and what is that far overhead is not under a wheel.
         for (double across = 12.0; across > 4.1; across -= 0.25)
         {
-            Assert.False(raised.TryHeightOver(At(0.33, 100.0, across), out _), $"caught {across} m out");
-            Assert.False(raised.TryHeightOver(At(0.33, 100.0, across), 0.3, out _), $"caught {across} m out, remembered");
+            double out_ = across - 4.0, bank = 1.5 - RoadRibbon.Drop(out_);
+            bool under = out_ < 4.9 && bank - 0.33 <= RoadSurface.StepM;
+            Assert.Equal(under, raised.TryHeightOver(At(0.33, 100.0, across), out double over));
+            if (under) Assert.Equal(0.33 - bank, over, 3);
+
+            Assert.False(deck.TryHeightOver(At(0.33, 100.0, across), out _), $"a deck caught {across} m out");
+            Assert.False(deck.TryHeightOver(At(5.9, 100.0, across), 0.3, out _), $"a deck caught {across} m out, remembered");
         }
-        Assert.False(raised.TryHeightOver(At(0.33, 203.0, 0.0), out _));
+        Assert.False(deck.TryHeightOver(At(5.9, 201.0, 0.0), out _));
+        Assert.True(deck.TryHeightOver(At(6.33, 100.0, 3.9), out double onDeck));
+        Assert.Equal(0.33, onDeck, 3);
         Assert.True(raised.TryHeightOver(At(1.83, 100.0, 3.9), out double on));
         Assert.Equal(0.33, on, 3);
-
-        Assert.True(onTheGround.TryHeightOver(At(0.33, 100.0, 6.0), out double shoulder));
-        Assert.Equal(0.26 + (2.0 * RoadSurface.ShoulderSlope), shoulder, 2);
     }
 
     [Fact]
@@ -527,13 +558,14 @@ public class RoadLayingTests
             double3 dir = Vec.Unit(through.Line[i]);
             Assert.Equal(Radius + 50.0 + (1000.0 * dir.Z) + through.AboveGroundM[i], Vec.Len(through.Line[i]), 6);
         }
-        Assert.Equal(0.07, through.AboveGroundM.Min(), 9);
-        Assert.Equal(6.07, through.AboveGroundM.Max(), 9);
+        // On ground that climbs a hair to the north the smoothed ground is a hair above it.
+        Assert.InRange(through.AboveGroundM.Min(), 0.07, 0.071);
+        Assert.InRange(through.AboveGroundM.Max(), 6.07, 6.071);
 
         // The side road meets the through road at one of its ends, and is under it there by its sink.
         double atJunction = Math.Min(side.AboveGroundM[0], side.AboveGroundM[^1]);
         Assert.InRange(0.07 - atJunction, 0.005, 0.03);
-        Assert.Equal(0.07, side.AboveGroundM[side.AboveGroundM.Length / 2], 9);
+        Assert.InRange(side.AboveGroundM[side.AboveGroundM.Length / 2], 0.07, 0.071);
 
         Assert.True(RoadLaying.Surface(strips).TryHeightOver(through.Line[10] + (Vec.Unit(through.Line[10]) * 0.33), out double over));
         Assert.Equal(0.33, over, 2);

@@ -254,7 +254,7 @@ public class RoadGroundTests
                           + (random.Next(40) == 0 ? 5.0 : 0.0);
             }
 
-            MonotoneCurve smooth = RoadGround.Smooth(ground, Spacing, window, closed);
+            RoadGround smooth = RoadGround.Smooth(ground, Spacing, window, closed);
             double length = (closed ? n : n - 1) * Spacing;
             for (double s = 0.0; s <= length; s += 0.05)
             {
@@ -270,18 +270,18 @@ public class RoadGroundTests
     }
 
     [Fact]
-    public void LevelGroundIsItselfAndASteadySlopeIsAboveItByTheClimbBetweenTwoSamples()
+    public void LevelGroundAndASteadySlopeComeBackAsTheyAre()
     {
         double[] level = [.. Enumerable.Repeat(31.5, 200)];
-        MonotoneCurve flat = RoadGround.Smooth(level, Spacing, 30.0, false);
+        RoadGround flat = RoadGround.Smooth(level, Spacing, 30.0, false);
         for (double s = 0.0; s < 398.0; s += 1.3) Assert.Equal(31.5, flat.At(s), 12);
 
         double[] slope = [.. Enumerable.Range(0, 200).Select(i => 0.05 * i * Spacing)];
-        MonotoneCurve ramp = RoadGround.Smooth(slope, Spacing, 30.0, false);
+        RoadGround ramp = RoadGround.Smooth(slope, Spacing, 30.0, false);
         for (double s = 0.0; s <= 398.0; s += 1.3)
         {
             ramp.At(s, out double height, out double climb, out double bend);
-            Near.Equal((0.05 * s) + (0.05 * Spacing), height, 1e-9);
+            Near.Equal(0.05 * s, height, 1e-9);
             Near.Equal(0.05, climb, 1e-9);
             Near.Equal(0.0, bend, 1e-9);
         }
@@ -294,7 +294,7 @@ public class RoadGroundTests
     {
         double[] ground = new double[200];
         ground[100] = 1.0;
-        MonotoneCurve smooth = RoadGround.Smooth(ground, Spacing, 30.0, false);
+        RoadGround smooth = RoadGround.Smooth(ground, Spacing, 30.0, false);
 
         Assert.True(smooth.At(200.0) >= 1.0);
         Near.Equal(0.0, smooth.At(200.0 - 70.0), 1e-9);

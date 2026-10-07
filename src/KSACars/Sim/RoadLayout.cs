@@ -15,9 +15,9 @@ namespace KSACars;
 internal static class RoadLayout
 {
     /// <summary>
-    /// One road's centre line, as directions from the body's centre, and how far above the ground it
-    /// is at each: eased from one end's height to the other's, level at both, so a road through a
-    /// point has no step in its slope there.
+    /// One road's centre line, as directions from the body's centre, and about how far above the
+    /// ground it is at each, eased from one end's height to the other's: what the editor draws its
+    /// handles and picks a road by. The height a road is laid at is <see cref="RoadProfile"/>'s.
     /// </summary>
     public sealed record Stretch(int From, int To, double WidthM, double3[] Line, double[] HeightM);
 
@@ -118,80 +118,76 @@ internal static class RoadLayout
                && (others.Count == 1 || IsThrough(here, up, leave, far, partner, circuit, at, node)) ? partner : null;
     }
 
+    /// <summary>One road of a run, and whether the run goes along it from its <c>From</c> end to its <c>To</c>.</summary>
+    public sealed record Leg(Circuit.Road Road, bool Forward)
+    {
+        public int From => Forward ? Road.From : Road.To;
+
+        public int To => Forward ? Road.To : Road.From;
+    }
+
     /// <summary>
-    /// A run of roads that go through one another, as one line: what is drawn as a single strip, so
-    /// there is no seam where a road passes a point. An end that meets other roads is sunk by
+    /// A run of roads that go through one another, in the order they are driven: what is laid as one
+    /// surface, so there is no seam where a road passes a point. An end that meets other roads is sunk by
     /// <see cref="SinkStartM"/> or <see cref="SinkEndM"/>, each road at a junction by a different
-    /// amount, so no two surfaces lie in one plane there. A closed run ends on its own first point.
+    /// amount, so no two surfaces lie in one plane there. A closed run ends at the point it starts from.
     /// </summary>
-    public sealed record Run(double WidthM, double3[] Line, double[] HeightM, bool Closed, double SinkStartM, double SinkEndM);
+    public sealed record Run(IReadOnlyList<Leg> Legs, bool Closed, double SinkStartM, double SinkEndM);
 
     private const double SinkM = 0.012, SinkStepM = 0.008;
 
-    /// <summary>The circuit's roads joined into runs. Roads of different widths are not joined.</summary>
-    public static List<Run> Runs(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, double spacingM)
+    /// <summary>The circuit's roads joined into runs, whatever their widths: a road eases from its width to the next one's.</summary>
+    public static List<Run> Runs(Circuit circuit, Func<double, double, double3> dirOf, double radiusM)
     {
         Dictionary<int, double3> at = Places(circuit, dirOf, radiusM);
-        List<Stretch> stretches = Of(circuit, dirOf, radiusM, spacingM);
 
-        Stretch? Between(int a, int b) => stretches.FirstOrDefault(s => (s.From == a && s.To == b) || (s.From == b && s.To == a));
+        Circuit.Road? Between(int a, int b) => at.ContainsKey(a) && at.ContainsKey(b) ? circuit.Roads.FirstOrDefault(r => r.Joins(a, b)) : null;
 
-        // The road a road carries on as past its end at a point: its partner there, if that is mutual and as wide.
-        (int Node, int Far)? Next(int from, int node)
-        {
-            if (Through(circuit, at, node, from) is not { } onward || Through(circuit, at, node, onward) != from) return null;
-            return Between(from, node)?.WidthM == Between(node, onward)?.WidthM ? (node, onward) : null;
-        }
+        // The road a road carries on as past its end at a point: its partner there, if that is mutual.
+        (int Node, int Far)? Next(int from, int node) =>
+            Through(circuit, at, node, from) is { } onward && Through(circuit, at, node, onward) == from ? (node, onward) : null;
 
         List<Run> runs = [];
-        HashSet<Stretch> used = [];
-        foreach (Stretch first in stretches)
+        HashSet<Circuit.Road> used = [];
+        foreach (Circuit.Road first in circuit.Roads)
         {
-            if (used.Contains(first)) continue;
+            if (used.Contains(first) || Between(first.From, first.To) is null) continue;
 
             // Back to where the run starts, or all the way round if it is a ring.
             (int a, int b) = (first.From, first.To);
             bool closed = false;
-            for (int guard = 0; guard <= stretches.Count; guard++)
+            for (int guard = 0; guard <= circuit.Roads.Count; guard++)
             {
                 if (Next(b, a) is not { } before) break;
                 (a, b) = (before.Far, a);
-                if (Between(a, b) == first)
+                if (ReferenceEquals(Between(a, b), first))
                 {
                     closed = true;
                     break;
                 }
             }
 
-            List<double3> line = [];
-            List<double> height = [];
+            List<Leg> legs = [];
             int start = a, end = b;
-            while (Between(a, b) is { } stretch && used.Add(stretch))
+            while (Between(a, b) is { } road && used.Add(road))
             {
-                bool forward = stretch.From == a;
-                for (int i = line.Count == 0 ? 0 : 1; i < stretch.Line.Length; i++)
-                {
-                    int k = forward ? i : stretch.Line.Length - 1 - i;
-                    line.Add(stretch.Line[k]);
-                    height.Add(stretch.HeightM[k]);
-                }
+                legs.Add(new Leg(road, road.From == a));
                 end = b;
                 if (Next(a, b) is not { } onward) break;
                 (a, b) = (b, onward.Far);
             }
 
-            runs.Add(new Run(first.WidthM, [.. line], [.. height], closed,
-                closed ? 0.0 : Sink(circuit, stretches, used, start), closed ? 0.0 : Sink(circuit, stretches, used, end)));
+            runs.Add(new Run(legs, closed, closed ? 0.0 : Sink(circuit, used, start), closed ? 0.0 : Sink(circuit, used, end)));
         }
         return runs;
     }
 
     // Deeper for each run that already ends at the point, so the ones meeting there are all at different depths.
-    private static double Sink(Circuit circuit, List<Stretch> stretches, HashSet<Stretch> used, int node)
+    private static double Sink(Circuit circuit, HashSet<Circuit.Road> used, int node)
     {
         int roads = circuit.Roads.Count(r => r.Touches(node));
         if (roads < 2) return 0.0;
-        int before = stretches.Count(s => used.Contains(s) && (s.From == node || s.To == node)) - 1;
+        int before = circuit.Roads.Count(r => used.Contains(r) && r.Touches(node)) - 1;
         return SinkM + (SinkStepM * Math.Max(before, 0));
     }
 

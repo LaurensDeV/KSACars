@@ -2,28 +2,54 @@ namespace KSACars;
 
 /// <summary>
 /// The ground along a road, smoothed and never buried: a height a distance along that is at or above
-/// the ground at every sample and all the way between two, with no step in its slope.
+/// the ground at every sample and all the way along the straight line between two, with no step in
+/// its slope.
 ///
 /// <para>A road laid on the ground sample by sample has every bump of the ground in it. A plain
 /// average of the ground is smooth and is under half of it, and KSA's terrain cannot be cut away from
 /// over a road. So the samples are averaged under a triangle as wide as the smoothing, which follows
-/// a steady slope exactly; what any sample or its neighbours stand above that average by is taken as
-/// its greatest over the same width, averaged under the same triangle, and added back. The sum is no
-/// lower than a sample or its neighbours anywhere within reach of them, and a curve through it that
-/// never leaves the span of two of its points is therefore above the straight line between two
-/// samples.</para>
+/// a steady slope exactly; how far the ground stands above the curve through those averages is taken
+/// between each two samples, then as its greatest over the same width, averaged under the same
+/// triangle, and added back as a second curve. Neither curve leaves the span of two of its points,
+/// so the second is at least what the ground stands proud by wherever it does, and the sum is at or
+/// above the ground.</para>
 ///
-/// <para>On a steady slope it stands above the ground by the climb between two samples, which is the
-/// cost of answering for the ground between them; on level ground it is the ground.</para>
+/// <para>Level ground and a steady slope come back as they are; a bump is filled over, the road
+/// rising to it and falling from it over the smoothing's width either side.</para>
 /// </summary>
-internal static class RoadGround
+internal sealed class RoadGround
 {
+    private readonly MonotoneCurve _mean;
+    private readonly MonotoneCurve? _proud;
+
+    private RoadGround(MonotoneCurve mean, MonotoneCurve? proud) => (_mean, _proud) = (mean, proud);
+
+    /// <summary>A height that is already the one wanted, with nothing smoothed.</summary>
+    public static RoadGround Along(MonotoneCurve height) => new(height, null);
+
+    public static RoadGround Level(double height) => new(MonotoneCurve.Level(height), null);
+
+    /// <summary>The height <paramref name="s"/> metres along, its slope and how fast that changes.</summary>
+    public void At(double s, out double height, out double slope, out double bend)
+    {
+        _mean.At(s, out height, out slope, out bend);
+        if (_proud is null) return;
+        _proud.At(s, out double more, out double moreSlope, out double moreBend);
+        (height, slope, bend) = (height + more, slope + moreSlope, bend + moreBend);
+    }
+
+    public double At(double s)
+    {
+        At(s, out double height, out _, out _);
+        return height;
+    }
+
     /// <param name="ground">The highest ground across the road at each sample, <paramref name="spacingM"/> apart: on an open road from its start to its end, on a closed one once round without the start again.</param>
     /// <param name="windowM">How far along the road a bump is smoothed over.</param>
-    public static MonotoneCurve Smooth(double[] ground, double spacingM, double windowM, bool closed)
+    public static RoadGround Smooth(double[] ground, double spacingM, double windowM, bool closed)
     {
         int n = ground.Length;
-        if (n == 0) return MonotoneCurve.Level(0.0);
+        if (n == 0) return Level(0.0);
         int reach = Math.Max(0, (int)Math.Ceiling(0.5 * windowM / spacingM));
         if (closed) reach = Math.Min(reach, (n - 1) / 2);
 
@@ -39,25 +65,57 @@ internal static class RoadGround
         for (int j = -reach; j <= reach; j++) total += weight[j + reach] = reach + 1 - Math.Abs(j);
         for (int j = 0; j < weight.Length; j++) weight[j] /= total;
 
-        double[] mean = new double[n], proud = new double[n], most = new double[n], height = new double[n];
+        double[] along = new double[n], mean = new double[n];
         for (int i = 0; i < n; i++)
         {
+            along[i] = i * spacingM;
             for (int j = -reach; j <= reach; j++) mean[i] += weight[j + reach] * Past(i + j);
         }
-        for (int i = 0; i < n; i++) proud[i] = Math.Max(ground[i], Math.Max(ground[In(i - 1)], ground[In(i + 1)])) - mean[i];
-        for (int i = 0; i < n; i++)
+        double period = closed ? n * spacingM : 0.0;
+        MonotoneCurve smooth = new(along, mean, period);
+
+        // How far the straight line between a sample and the next stands above the curve, at its most.
+        int spans = closed ? n : n - 1;
+        double[] over = new double[n];
+        for (int i = 0; i < spans; i++)
         {
-            most[i] = double.NegativeInfinity;
-            for (int j = -reach; j <= reach; j++) most[i] = Math.Max(most[i], proud[In(i + j)]);
-        }
-        for (int i = 0; i < n; i++)
-        {
-            height[i] = mean[i];
-            for (int j = -reach; j <= reach; j++) height[i] += weight[j + reach] * most[In(i + j)];
+            double a = ground[i], b = ground[In(i + 1)], most = double.NegativeInfinity;
+            for (int k = 0; k <= Checks; k++)
+            {
+                double t = (double)k / Checks;
+                most = Math.Max(most, a + ((b - a) * t) - smooth.At(along[i] + (spacingM * t)));
+            }
+            over[i] = most + Slack(spacingM, smooth, along[i]);
         }
 
-        double[] along = new double[n];
-        for (int i = 0; i < n; i++) along[i] = i * spacingM;
-        return new MonotoneCurve(along, height, closed ? n * spacingM : 0.0);
+        double[] proud = new double[n], most_ = new double[n], lift = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            bool before = closed || i > 0, after = i < spans;
+            proud[i] = Math.Max(before ? over[In(i - 1)] : double.NegativeInfinity, after ? over[i] : double.NegativeInfinity);
+            if (double.IsNegativeInfinity(proud[i])) proud[i] = ground[i] - mean[i];
+        }
+        for (int i = 0; i < n; i++)
+        {
+            most_[i] = double.NegativeInfinity;
+            for (int j = -reach; j <= reach; j++) most_[i] = Math.Max(most_[i], proud[In(i + j)]);
+        }
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = -reach; j <= reach; j++) lift[i] += weight[j + reach] * most_[In(i + j)];
+        }
+        return new RoadGround(smooth, new MonotoneCurve(along, lift, period));
+    }
+
+    // The line less the curve is a cubic between two samples, looked at this many times along; it
+    // can stand above the highest of those by no more than its bend allows between two looks.
+    private const int Checks = 8;
+
+    private static double Slack(double spacingM, MonotoneCurve smooth, double from)
+    {
+        smooth.At(from + 1e-9, out _, out _, out double bendStart);
+        smooth.At(from + spacingM - 1e-9, out _, out _, out double bendEnd);
+        double step = spacingM / Checks;
+        return Math.Max(Math.Abs(bendStart), Math.Abs(bendEnd)) * step * step / 8.0;
     }
 }

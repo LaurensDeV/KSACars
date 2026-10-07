@@ -200,15 +200,16 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/CircuitHistory.cs` | a circuit being edited and every state it has been through, for undo and redo — **a drag is many changes and one step** |
 | `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
-| `Sim/RoadLaying.cs` | a circuit put on the ground: each run as a line of points on the road's surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
-| `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than its collider's half metre overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
+| `Sim/RoadLaying.cs` | a circuit put on the ground: each run of its roads as a `RoadRibbon` and as a line of points along that surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
+| `Sim/RoadRibbon.cs` | **a run of roads as one surface**: where it is a distance along and across, the way it faces there, and for any place how far along and across that is — the asphalt leaning by its bank, a verge and an embankment down into the ground past its edge, or a deck with nothing beside it where it is more than 4 m up |
+| `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it and the way that faces, **a road more than its collider's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
 | `Sim/RoadSlabs.cs` | how deep a road's collider is, and a laid road as a box for each stretch, its top on the road's line, **which the tests check and nothing in the game uses**: the physics is given `RoadDeck`'s meshes |
 | `Sim/RoadDeck.cs` | a laid road as the solid KSA's physics is given for it: **one cross-section at each point of its line, shared by the stretches either side**, so the top is one surface, with an underside, sides and end caps, cut into closed chunks of about 200 m that each run on inside the next as a sinking tongue, and every triangle listed so that it is solid from outside |
 | `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/RoadProfile.cs` | what a road is along its length apart from where it goes: **its height as a curve through its points' heights that climbs steadily where they do and never overshoots**, its lean and its width, with the steepest grade and the tightest crest or dip of each road |
-| `Sim/RoadGround.cs` | the ground along a road, **smoothed and never buried**: at or above every sample of the ground and the line between two, with no step in its slope, level ground left as it is and a steady slope followed |
+| `Sim/RoadGround.cs` | the ground along a road, **smoothed and never buried**: at or above every sample of the ground and the line between two, with no step in its slope, level ground and a steady slope left as they are and a bump filled over |
 | `Sim/RoadChart.cs` | **a flat chart of the ground round a circuit**, in metres east and north, so widths, offsets and lookups are plain geometry; stereographic, so every angle is kept and a length `r` from its centre is `(r/2R)^2` too long |
 | `Sim/RoadLine.cs` | a road's centre line on the chart, **measured by its own length**: where it is, its heading and how hard it turns a distance along, whatever speed the curve's parameter goes at, and where it turns tighter than the road on it can |
 | `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
@@ -485,27 +486,46 @@ offset from the followed car and the direction `FixedController` wants, so the v
 while the body turns, and puts the player's camera mode back when the editor closes. The tilt stops short
 of straight down, where that controller has no up to roll about.
 
-**A point has a height above the ground, and a road eases between two.** `RoadLayout` ramps a road from
-one end's height to the other's, level at both, and `Sim/RoadLaying.cs` adds that to the ground under each sample,
-so a raised road still follows the terrain beneath it.
+**A point has a height above the ground, and a road climbs between them as steadily as they do.**
+`Sim/RoadProfile.cs` puts a curve through the heights of a run's points that is a straight ramp where
+they are in a line, rounds a crest or a dip and never goes above or below the two points it is between.
+`Sim/RoadGround.cs` puts that on the ground along the road smoothed over the circuit's `GroundSmoothM`,
+30 m unless set: the highest ground across the road at each sample, so the road is filled under and
+never has the ground through it, since KSA's terrain cannot be cut. A road across a hillside is level
+across and stands on fill on its low side. **A bank and a width can be set at each end of a road, in the
+circuit's file only**: the editor has no control for either, and the boxes a road is drawn and collided
+as are level across and as wide as the road is at its widest.
+
+**One surface a run, which the wheels ask and the boxes are sampled from.** `Sim/RoadRibbon.cs` is a run's
+centre line on a flat chart of the circuit (`Sim/RoadChart.cs`), measured by its own length
+(`Sim/RoadLine.cs`), with the profile along it. Past the asphalt's edge a verge falls at 1 in 15 for
+1.5 m and an embankment at 1 in 2 from there to 0.3 m under the ground; where an edge is more than 4 m
+above the ground the road is a deck with nothing beside it, and a dip under that height shorter than
+20 m between two decks is a deck too. Past an end that is not a deck the same fall carries on ahead.
+`RoadRibbon.TooTight` says where a bend's radius is under 1.25 times the half width and the verge,
+inside which the surface is close to folding over itself; nothing stops a circuit being drawn so, and
+the editor does not yet warn of it. The surface's slope has no step on the centre line; off it there is
+a crease of a few hundredths of a degree at a point where a climbing road's curvature steps, the centre
+line being cubic curves that share a heading there and not a bend.
 
 **A wheel over a road is sprung against the road, as one over a launch pad is against the pad.**
-`Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and
+`Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` over the ribbons, and
 `Sim/WheelGround.cs` takes a hub's height as the least of its height over the terrain, a pad and a road.
-A road stands a hand above
-the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
-threw a car coming onto it, but only where the road is within half a metre of the ground: beside a
-raised road that fall would be a ledge in the air, and lifted a car parked next to it. Each stretch of a
-road between two points answers for the
-ground between the planes that halve the turn at its two ends, so the outside of a bend has no hole and
-the inside no two heights; that holds while the bend's radius is more than the road's half width, and
-tighter than that the highest answer is given. Where roads are over one another a wheel is on the highest
+A wheel is over the ribbon's own surface at the place under it, found by Newton from the nearest of the
+places kept every 2 m along each ribbon, and not over a piece of anything sampled from it. A road stands
+a hand above the ground, and the verge is what brings a wheel up to it instead of a step; beside a raised
+road the wheel is on its embankment where that is under it and on the grass where it is not. Where roads
+are over one another a wheel is on the highest
 one no more than half a metre above its hub, which is how deep a road's collider is: a hub further down
-than that is below it, under a deck. A wheel that was in a road last step, which
+than that is below it, under a deck. Asphalt is answered before any road's verge or bank, because
+the bank of a road up a hillside comes down across the road below it. A wheel that was in a road last step, which
 `Buggies.Entry.RoadOver` remembers for as long as the roads are not laid again, is still on that road
 however deep, and is never put on one more than half a metre above the surface it was in.
+`RoadSurface.TryLocate` also answers the way a laid road's asphalt faces; the wheels do not take it and
+keep the plane through what is under all four, with which every lap in the suite is on its springs.
 `RoadSurfaceSweepTests` lays bends, junctions and bridges as the game does and asks what a wheel would.
-**The lookup has not been driven in game.**
+**The lookup has not been driven in game, and the verge and the embankment are not drawn or collided
+with: a wheel rides a bank nothing shows.**
 
 **Everything but a wheel meets a road through KSA's own physics.** `Sim/RoadDeck.cs` turns a laid road
 into a closed deck of triangles with its top on the road's line, half a metre deep where the road is drawn
@@ -565,9 +585,9 @@ writes another over it when asked again. It is what a road drawn as one smooth s
 `docs/KSA-MODDING-NOTES.md` has the mechanism. **Not yet seen in game.**
 
 **A road that goes through a point is one run, and a road that joins is tucked under.**
-`RoadLayout.Runs` joins the roads that carry on through one another into one line, a ring into a closed
-one, and gives every other end at a junction its own centimetre or two of sink, taken up over two widths,
-so no two surfaces there share a plane. **The sink has not been judged in game.**
+`RoadLayout.Runs` joins the roads that carry on through one another into one run whatever their widths,
+each easing to the next one's, a ring into a closed one, and gives every other end at a junction its own
+centimetre or two of sink, taken up over two widths, so no two surfaces there share a plane. **The sink has not been judged in game.**
 
 **Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances
@@ -685,7 +705,10 @@ strengths, spacings, widths and heights: every point of a road finds it, a level
 bend, a climbing bend has no step, a junction onto a climbing road and a deck over a road answer the
 right one. `RoadDeckTests` builds the physics' deck over straights, bends, rings and laid roads: every
 triangle solid from outside, every chunk closed, its top where the wheel is told, and a tongue inside the
-road it runs on into.
+road it runs on into. `RoadLineTests`, `RoadProfileTests` and `RoadRibbonTests` hold the surface to
+what it is said to be: a chart that keeps angles, a length that is the curve's own, a steady climb with
+nothing to feel at 80 m/s, ground that is never through the road, a facing that is the surface's own with
+no jump, and a place on it found again from where it is.
 
 `TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
 steps it: `WheelGround`, `BuggyDrive.Step`, then gravity. On a bare sphere it

@@ -194,7 +194,8 @@ public class RoadBulletTests
     internal static Outcome Entry(double angleDeg, TrackCar car, double speed, double dt)
     {
         double angle = angleDeg * Math.PI / 180.0;
-        double reach = (0.5 * Width) + (RoadSurface.ShoulderDropM / RoadSurface.ShoulderSlope);
+        // From well clear of the verge, which comes up through the grass a metre out from the road's edge.
+        double reach = (0.5 * Width) + 7.5;
         double across = 2.0 * reach / Math.Sin(angle);
         return Fire(car, Level(), dt, -RunUp(speed) * Math.Cos(angle), -reach - (RunUp(speed) * Math.Sin(angle)), angleDeg, speed,
                     ((RunUp(speed) + across) / speed) + 2.0);
@@ -218,7 +219,9 @@ public class RoadBulletTests
     internal static readonly double[] TallSteps = [0.25, 0.5];
     internal static readonly double[] Grades = [0.0, 0.1, 0.2, -0.1, -0.2];
     internal static readonly double[] EntryAngles = [10.0, 30.0, 90.0];
-    internal static readonly double[] DeckHeights = [1.0, 1.5, 2.0, 3.0];
+    // High enough to be decks, with nothing beside them, and low enough to stand on a bank instead.
+    internal static readonly double[] DeckHeights = [4.5, 6.0, 9.0, 12.0];
+    internal static readonly double[] BankHeights = [1.0, 2.0, 3.0];
     internal static readonly double[] LongSteps = [0.15, 0.4];
 
     // Two metres out from the deck's edge.
@@ -295,7 +298,7 @@ public class RoadBulletTests
         faults.None();
     }
 
-    // A road stands 7 cm proud of the grass and its shoulder brings a wheel up to it at 1 in 15.
+    // A road stands 7 cm proud of the grass and its verge brings a wheel up to it at 1 in 15.
     [Fact]
     public void OntoARoadFromTheGrassAtAnyAngleACarIsCarriedOnItsSprings()
     {
@@ -332,6 +335,27 @@ public class RoadBulletTests
                 foreach (double height in DeckHeights)
                 {
                     foreach (double dt in new[] { Steps[0], Steps[2] }) Calm(faults, Along(height, BesideM, car, speed, dt), car, speed, dt);
+                }
+            }
+        }
+        faults.None();
+    }
+
+    // Two metres out from where the bank of a road so high goes under the grass.
+    private static double PastTheBank(double height) =>
+        -((0.5 * Width) + RoadRibbon.VergeM + ((height + TrackWorld.LiftM + RoadRibbon.BuriedM) / RoadRibbon.BankSlope) + 2.0);
+
+    [Fact]
+    public void OnTheGrassPastTheFootOfARaisedRoadsBankACarIsLeftOnTheGround()
+    {
+        Faults faults = new();
+        foreach (TrackCar car in TrackCar.All)
+        {
+            foreach (double speed in Speeds(car))
+            {
+                foreach (double height in BankHeights)
+                {
+                    foreach (double dt in new[] { Steps[0], Steps[2] }) Calm(faults, Along(height, PastTheBank(height), car, speed, dt), car, speed, dt);
                 }
             }
         }

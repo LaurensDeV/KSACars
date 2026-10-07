@@ -41,7 +41,7 @@ internal sealed class Route
     // A line moved to the outside of a kink gets there over this many times as far as it is moved, and no less than this.
     private const double SwingOver = 8.0, LeastSwingM = 10.0;
 
-    // What the climb's bend is measured over, either side: a road's heights are straight between points two metres apart.
+    // What the climb's bend is measured over, either side: the line is straight between points two metres apart.
     private const double VerticalOverM = 4.0;
 
     private readonly Sample[] _samples;
@@ -80,24 +80,36 @@ internal sealed class Route
             return null;
         }
 
-        List<RoadLayout.Stretch> stretches = RoadLayout.Of(circuit, dirOf, radiusM, spacingM);
+        List<RoadRibbon> ribbons = RoadLaying.Ribbons(circuit, dirOf, radiusM, groundAt, liftM, spacingM);
         List<double3> line = [];
         List<double> halfWidths = [];
         for (int k = 1; k < path.Count; k++)
         {
             int a = path[k - 1], b = path[k];
-            if (stretches.FirstOrDefault(s => (s.From == a && s.To == b) || (s.From == b && s.To == a)) is not { } stretch)
+            RoadRibbon? on = null;
+            RoadRibbon.Span span = default;
+            foreach (RoadRibbon ribbon in ribbons)
+            {
+                foreach (RoadRibbon.Span s in ribbon.Spans)
+                {
+                    if ((s.From == a && s.To == b) || (s.From == b && s.To == a)) (on, span) = (ribbon, s);
+                }
+            }
+            if (on is null)
             {
                 why = $"no road joins {a} and {b}";
                 return null;
             }
-            bool forward = stretch.From == a;
-            for (int i = line.Count == 0 ? 0 : 1; i < stretch.Line.Length; i++)
+
+            double from = span.From == a ? span.FromS : span.ToS, to = span.From == a ? span.ToS : span.FromS;
+            int steps = Math.Max(1, (int)Math.Ceiling(Math.Abs(to - from) / Math.Max(spacingM, 0.01)));
+            for (int i = line.Count == 0 ? 0 : 1; i <= steps; i++)
             {
-                int j = forward ? i : stretch.Line.Length - 1 - i;
-                double3 dir = Vec.Unit(stretch.Line[j]);
-                line.Add(dir * (radiusM + groundAt(dir) + liftM + stretch.HeightM[j]));
-                halfWidths.Add(0.5 * stretch.WidthM);
+                // Just short of each end, so a closed run's last point is not its first come round again.
+                double s = Math.Clamp(from + ((to - from) * i / steps), Math.Min(from, to) + 1e-9, Math.Max(from, to) - 1e-9);
+                RoadRibbon.Section section = on.At(s);
+                line.Add(on.Point(section, 0.0, section.Height + on.Profile.Sink(s)));
+                halfWidths.Add(section.HalfWidth);
             }
         }
 
@@ -121,8 +133,7 @@ internal sealed class Route
         List<int> path = [];
         if (circuit.Roads.Count == 0) return path;
 
-        Dictionary<int, double3> at = [];
-        foreach (Circuit.Node n in circuit.Nodes) at[n.Id] = Vec.Unit(dirOf(n.LatDeg, n.LonDeg)) * radiusM;
+        Dictionary<int, double3> at = RoadLayout.Places(circuit, dirOf, radiusM);
 
         Circuit.Road first = circuit.Roads[0];
         path.Add(first.From);
@@ -180,7 +191,8 @@ internal sealed class Route
             double3 before = line[(k + line.Length - 1) % line.Length], after = line[(k + 1) % line.Length];
             double3 into = Vec.RejectFrom(line[k] - before, line[k]), outOf = Vec.RejectFrom(after - line[k], line[k]);
             double turn = Vec.AngleBetween(into, outOf);
-            if (turn <= KinkDeg * Math.PI / 180.0) continue;
+            // A turn of just that is a kink whichever way its last digit falls.
+            if (turn <= (KinkDeg * Math.PI / 180.0) - 1e-6) continue;
 
             // An arc touching both roads a distance out from their middles passes inside the kink by
             // radius x (secant - 1) - out x secant, and that is all the cut there is room for.

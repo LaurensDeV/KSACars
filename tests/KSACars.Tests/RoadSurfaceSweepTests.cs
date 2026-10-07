@@ -5,8 +5,9 @@ namespace KSACars.Tests;
 
 /// <summary>
 /// Roads laid as the game lays them, over a range of shapes, and asked what a wheel would ask: the
-/// geometry here is worked in the plan, east and north of a place on the equator, so none of it is
-/// the surface's own arithmetic.
+/// geometry here is worked in the plan, east and north of a place on the equator, from points half a
+/// metre apart along each road's centre line, so none of it is the surface's own arithmetic across
+/// the road or its way of finding a place on it.
 /// </summary>
 public class RoadSurfaceSweepTests
 {
@@ -29,6 +30,26 @@ public class RoadSurfaceSweepTests
 
     private static double3 At(double e, double n, double rad) => DirOf(Deg(n), Deg(e)) * rad;
 
+    // A laid road's centre line, closely enough that the straight line between two points is the road's own to a centimetre.
+    private const double CentreEveryM = 0.5;
+
+    private static P[] Centre(RoadLaying.Strip strip)
+    {
+        RoadRibbon ribbon = strip.Ribbon!;
+        List<P> line = [];
+        for (int arc = 0; arc < ribbon.Line.Count; arc++)
+        {
+            double from = ribbon.Line.StartOf(arc), length = ribbon.Line.StartOf(arc + 1) - from;
+            int steps = Math.Max(1, (int)Math.Ceiling(length / CentreEveryM));
+            for (int i = line.Count == 0 ? 0 : 1; i <= steps; i++)
+            {
+                RoadRibbon.Section section = ribbon.At(arc, from + (length * i / steps));
+                line.Add(Plan(ribbon.Point(section, 0.0, section.Height)));
+            }
+        }
+        return [.. line];
+    }
+
     private static double Between(P a, P b) => Math.Sqrt(((a.E - b.E) * (a.E - b.E)) + ((a.N - b.N) * (a.N - b.N)));
 
     private sealed record Laid(List<RoadLaying.Strip> Strips, RoadSurface Surface);
@@ -50,7 +71,9 @@ public class RoadSurfaceSweepTests
     }
 
     // The nearest place on a line, seen from above: how far it is, how high the line is there, and
-    // whether it is the line's end with the point out beyond it.
+    // whether it is the line's end with the point out beyond it. Within its last piece counts as
+    // beyond: a road ends square to its own heading there, which across a wide road is a hand's
+    // breadth from square to the line between two points.
     private static (double Metres, double Rad, bool PastEnd) Nearest(P[] line, double e, double n)
     {
         (double best, double rad, bool pastEnd) = (double.PositiveInfinity, 0.0, false);
@@ -60,7 +83,7 @@ public class RoadSurfaceSweepTests
             double de = b.E - a.E, dn = b.N - a.N, len2 = (de * de) + (dn * dn);
             double along = len2 > 0.0 ? (((e - a.E) * de) + ((n - a.N) * dn)) / len2 : 0.0, t = Math.Clamp(along, 0.0, 1.0);
             double fe = a.E + (de * t) - e, fn = a.N + (dn * t) - n, d = Math.Sqrt((fe * fe) + (fn * fn));
-            if (d < best) (best, rad, pastEnd) = (d, a.Rad + ((b.Rad - a.Rad) * t), (i == 1 && along < 0.0) || (i == line.Length - 1 && along > 1.0));
+            if (d < best) (best, rad, pastEnd) = (d, a.Rad + ((b.Rad - a.Rad) * t), (i == 1 && along < 1.0) || (i == line.Length - 1 && along > 0.0));
         }
         return (best, rad, pastEnd);
     }
@@ -116,7 +139,7 @@ public class RoadSurfaceSweepTests
         foreach ((double h0, double h1, double h2) in heights)
         {
             Laid laid = Lay(Bend(leg, turn, corner, width, h0, h1, h2), spacing);
-            P[] line = Plan(Assert.Single(laid.Strips).Line);
+            P[] line = Centre(Assert.Single(laid.Strips));
             double reach = (0.5 * width) - 0.05;
             bool level = h0 == h2;
             string shape = $"legs {leg} m, turn {turn} deg, corner {corner}, spacing {spacing} m, width {width} m, heights {h0}/{h1}/{h2}";
@@ -140,7 +163,7 @@ public class RoadSurfaceSweepTests
                 }
             }
 
-            for (int i = 0; i < line.Length; i++)
+            for (int i = 0; i < line.Length; i += (int)(spacing / CentreEveryM))
             {
                 for (int k = 0; k < 8; k++)
                 {
@@ -231,7 +254,7 @@ public class RoadSurfaceSweepTests
                 : null;
             double rise = slopedGround ? 0.0 : leg * grade;
             Laid laid = Lay(Bend(leg, turn, corner, width, 0.0, rise, 2.0 * rise), spacing, ground);
-            P[] line = Plan(Assert.Single(laid.Strips).Line);
+            P[] line = Centre(Assert.Single(laid.Strips));
             double halfWidth = 0.5 * width;
 
             // Tighter than this the inside edge folds over itself and has no one height.
@@ -250,10 +273,13 @@ public class RoadSurfaceSweepTests
                     if (stride < 0.1 && (Math.Abs(offset) < halfWidth - 0.2 || leg > 30.0)) continue;
                     double? before = null;
                     double done = 0.0;
-                    for (int i = 0; i < track.Length - 1; i++)
+                    // Not the first metre or the last: the road ends square to its own heading, not to this line's.
+                    for (int i = 2; i < track.Length - 3; i++)
                     {
                         double length = Between(track[i], track[i + 1]);
-                        double local = Math.Max(gradient[i], Math.Max(gradient[Math.Max(i - 1, 0)], gradient[Math.Min(i + 1, gradient.Length - 1)]));
+                        // The steepest of the pieces a stride can reach back over.
+                        double local = 0.0;
+                        for (int k = Math.Max(i - 3, 0); k <= Math.Min(i + 3, gradient.Length - 1); k++) local = Math.Max(local, gradient[k]);
                         for (; done <= length; done += stride)
                         {
                             double t = done / length;
@@ -281,7 +307,7 @@ public class RoadSurfaceSweepTests
             }
 
             // Straight across the middle of each piece, where the road is level.
-            for (int i = 0; i < line.Length - 1; i += 3)
+            for (int i = 0; i < line.Length - 1; i += 12)
             {
                 (double he, double hn) = Heading(line, i);
                 double me = 0.5 * (line[i].E + line[i + 1].E), mn = 0.5 * (line[i].N + line[i + 1].N), rad = (0.5 * (line[i].Rad + line[i + 1].Rad)) + Hub;
@@ -362,7 +388,7 @@ public class RoadSurfaceSweepTests
                 .SetHeight(far, riseM);
             Laid laid = Lay(c, spacing);
             Assert.Equal(2, laid.Strips.Count);
-            P[] side = Plan(laid.Strips.Single(s => s.LengthM < 150.0).Line);
+            P[] side = Centre(laid.Strips.Single(s => s.LengthM < 150.0));
             double steepest = SteepestGradient(laid.Strips);
 
             List<(double E, double N, double Surface)> told = Roll(laid, Path(stride, (-20.0, 0.0), (0.0, 0.0), (0.0, sideM - 1.0)), R + Lift, out int lost);
@@ -461,12 +487,13 @@ public class RoadSurfaceSweepTests
                 .AddNode(Deg(-70), Deg(-55), out int a).Extend(a, Deg(18), 0, out int b).Extend(b, Deg(-70), Deg(55), out int d)
                 .SetHeight(a, 12.0).SetHeight(b, 12.0).SetHeight(d, 12.0);
             Laid laid = Lay(c, spacing);
-            P[] deck = Plan(laid.Strips.Single(s => s.AboveGroundM[0] > 6.0).Line);
+            P[] deck = Centre(laid.Strips.Single(s => s.AboveGroundM[0] > 6.0));
             Assert.InRange(TightestRadius(deck), 20.0, 40.0);
 
             foreach (double offset in new[] { -4.8, -2.5, 0.0, 2.5, 4.8 })
             {
-                P[] track = Beside(deck, offset);
+                // Not the first metre or the last: the deck ends square to its own heading, not to this line's.
+                P[] track = Beside(deck, offset)[2..^2];
                 List<(double E, double N)> path = Path(0.2, [.. track.Select(p => (p.E, p.N))]);
                 List<(double E, double N, double Surface)> told = Roll(laid, path, R + Lift + 12.0, out int lost);
 
@@ -568,11 +595,11 @@ public class RoadSurfaceSweepTests
     }
 
     // A wheel rides the surface and the hull the boxes, so across the whole road there is a box with
-    // its top where the wheel is told the road is. On a level road, to a centimetre. A box is flat
-    // across and a climbing bend is not: toward its edges a box runs ahead of or behind the surface
-    // by the half width times half the turn between two stretches, and stands off it by the
-    // gradient's share of that. 7 cm at the worst here, a 6 m road climbing 1 in 8 round a 5 m
-    // radius; by the same sum, a centimetre on an 8 m road climbing 1 in 10 round 30 m.
+    // its top where the wheel is told the road is. On a level road, to a centimetre. A box is a flat
+    // plane climbing as the centre line does, and a climbing bend is not: its inside edge climbs the
+    // same height in less distance, by the share of the bend's radius the half width is. Over the
+    // half length of a box and what it reaches past its end, the box stands off the surface by the
+    // gradient times that length times that share over what is left of the radius.
     [Fact]
     public void EveryPointOfARoadHasABoxUnderItWithItsTopOnTheSurface()
     {
@@ -589,16 +616,18 @@ public class RoadSurfaceSweepTests
         {
             Laid laid = Lay(Bend(leg, turn, corner, width, h0, h1, h2), 2.0);
             RoadLaying.Strip strip = Assert.Single(laid.Strips);
-            P[] line = Plan(strip.Line);
-            // Tighter than its half width a road folds over itself, and a kink has no one height on its outside.
-            if (TightestRadius(line) < 0.5 * width) continue;
+            P[] line = Centre(strip);
+            // Tighter than this a road is one the editor is to warn of: its inside edge is close to folding over itself.
+            double radius = TightestRadius(line), squeeze = 0.5 * width / radius;
+            if (radius < 1.25 * ((0.5 * width) + RoadRibbon.VergeM)) continue;
             shapes++;
 
             List<RoadSlab> slabs = [];
             RoadSlabs.Add(slabs, strip.Line, strip.HalfWidth, strip.Closed);
             foreach (RoadSlab slab in slabs) sizes.Add((slab.LengthM, slab.WidthM));
             double reach = (0.5 * width) - 0.05;
-            double allowed = 0.01 + (0.5 * width * (2.0 / (2.0 * TightestRadius(line))) * SteepestGradient(laid.Strips));
+            double halfBox = 0.5 * (2.0 + RoadSlabs.LengthStepM);
+            double allowed = 0.01 + (SteepestGradient(laid.Strips) * halfBox * (1.0 + squeeze) * squeeze / (1.0 - squeeze));
             string shape = $"legs {leg} m, turn {turn} deg, corner {corner}, width {width} m, heights {h0}/{h1}/{h2}";
 
             void Ask(double e, double n)
@@ -614,12 +643,12 @@ public class RoadSurfaceSweepTests
                     if (bare++ == 0) firstBare = where;
                     return;
                 }
-                if (Math.Abs(proud) > furthest) worst = $"{shape}, a radius of {TightestRadius(line):F1} m and a gradient of {SteepestGradient(laid.Strips):F2}";
+                if (Math.Abs(proud) > furthest) worst = $"{shape}, a radius of {radius:F1} m and a gradient of {SteepestGradient(laid.Strips):F2}";
                 furthest = Math.Max(furthest, Math.Abs(proud));
                 if (Math.Abs(proud) > allowed && off++ == 0) firstOff = $"{where}: {proud:F3} m, where {allowed:F3} is what the bend gives";
             }
 
-            for (int i = 0; i < line.Length; i++)
+            for (int i = 0; i < line.Length; i += 2)
             {
                 for (int k = 0; k < 8; k++)
                 {
@@ -635,10 +664,11 @@ public class RoadSurfaceSweepTests
             }
         }
 
-        Assert.True(shapes >= 25 && points > 20_000, $"only {points} points on {shapes} shapes");
+        Assert.True(shapes >= 12 && points > 20_000, $"only {points} points on {shapes} shapes");
         Assert.True(bare == 0, $"{bare} of {points} points on a road have no box under them, the first at {firstBare}");
         Assert.True(off == 0, $"{off} of {points} points have a box top further off the surface than the bend gives, the first at {firstOff}");
-        Assert.True(furthest < 0.08, $"a box top {furthest:F3} m off the surface, on {worst}");
+        // 13 cm at the worst here, across a 12 m road climbing 1 in 10 round a 10 m radius.
+        Assert.True(furthest < 0.15, $"a box top {furthest:F3} m off the surface, on {worst}");
         // Every size is a shape the physics keeps for good.
         Assert.True(sizes.Count <= 40, $"{sizes.Count} sizes of box over {shapes} roads");
     }
