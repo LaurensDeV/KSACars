@@ -189,3 +189,13 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       asphalt, no flight, within 0.85 m of the line, roll under a degree
 - [ ] The driver on the buggy and the Eldorado, on a closed lap of several kilometres, and at the edge of
       a road with less than a metre to spare
+- [x] A 3.3 km oval laid and lapped (2026.10.10.5554): laying it closed the game while every stretch was a
+      box, KSA holding 1024 mesh instances a view; with distant stretches drawn as fewer boxes the F2004
+      lapped it at 93.7 m/s
+- [x] A mesh made at runtime (bridge `road` with `mesh_test`): a 10 m crowned, waved patch 3 m over a
+      parked F2004 is lit, carries the asphalt, shades smoothly with no facet to be seen, and casts its
+      shadow on the car and the ground; written over in place with a bent, coarser one at the same
+      offsets, the free room in KSA's buffers unchanged
+- [ ] The eight circuits of `tools/roads/extreme-circuits.py` lapped by all three cars: the F2004 finishes
+      six of eight cleanly; the driver stops the Eldorado and the buggy short of the end, and takes the
+      buggy round the figure of eight fast enough to roll it

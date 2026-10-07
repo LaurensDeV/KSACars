@@ -15,7 +15,7 @@ of the road, and most of the faults found in the roads came from the three disag
 
 ### KSA can draw a mesh made while it runs
 
-Read in the decompiled game, not run.
+Read in the decompiled game, and since seen in game for one patch.
 
 - The static renderer draws whatever is in three shared buffers owned by
   `SuperMeshRenderSystem.MeshIndirectSystem`: positions, normal with UV, and indices. Its `AddMesh` is
@@ -75,7 +75,9 @@ One definition of the surface, which the drawing, the wheels and the collider al
 
 Each step leaves the game working. Only steps 5 and 6 need the game.
 
-0. **Proof**: one patch of mesh made at runtime, drawn over a parked car and replaced in place.
+0. **Proof: done, seen in game.** A crowned, waved 10 m patch made at runtime (`Sim/MeshPatch`,
+   `Ksa/RuntimeMesh`, the bridge's `road` with `mesh_test`) is lit, textured, smoothly shaded and casts
+   its shadow, and is replaced in place without taking more of KSA's buffers.
 1. The chart and the centre line by its own length.
 2. Height, bank and width profiles and the smoothed ground. Circuit format 2, old files still loading.
 3. The surface evaluated and inverted, behind the lookup the wheels use now. Boxes still drawn.
