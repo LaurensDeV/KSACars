@@ -479,8 +479,9 @@ one end's height to the other's, level at both, and `Sim/RoadLaying.cs` adds tha
 so a raised road still follows the terrain beneath it.
 
 **A wheel over a road is sprung against the road, as one over a launch pad is against the pad.**
-`Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and the physics
-window takes a hub's height as the least of its height over the terrain, a pad and a road. A road stands a hand above
+`Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and
+`Sim/WheelGround.cs` takes a hub's height as the least of its height over the terrain, a pad and a road.
+A car under a deck less than two metres over its hubs is set on top of it. A road stands a hand above
 the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
 threw a car coming onto it, but only where the road is within half a metre of the ground: beside a
 raised road that fall would be a ledge in the air, and lifted a car parked next to it; and a road counts as under a wheel up to two metres into it, because at speed
@@ -631,6 +632,14 @@ driver reaches the rim of each car's wheel. `RoadSurfaceSweepTests` sweeps laid 
 strengths, spacings, widths and heights: every point of a road finds it, a level road is level round every
 bend, a climbing bend has no step, and a junction onto a climbing road and a deck over a road answer the
 right one.
+
+`TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
+steps it: `WheelGround`, the move back onto a road, `BuggyDrive.Step`, then gravity. On a bare sphere it
+is the flat `Rig` to a micron. It has no hull, and marks a step in which a collider would have been down;
+what follows such a step is not what the game does. `RoadBulletTests` fires each car, undriven, at a level
+road, ramps, a step in a road, a road's edge, a deck alongside and overhead and a deck's end, at Earth's
+gravity and Luna's and at three step lengths. Seven of them are skipped, each naming the fault in the
+road stop it fails on; `KSACARS_BULLETS=<file> ./tools/test.sh` writes every run out as a table.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

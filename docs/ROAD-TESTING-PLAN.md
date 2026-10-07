@@ -38,20 +38,30 @@ real terrain, so they show mechanisms and not what the game does.
    still there where the bend's radius is under the half width, which fault 13's limit removes) of 4 to 16 cm, each piece being flat
    across its own up.
 
+**A car under a deck one to two metres up is set on top of it**, in its first step, at any speed: the
+price of counting a road two metres above a wheel as under it.
+
 A fault found while fixing those: **the shoulder is decided by the centre line's height above the
 ground**, so on a side slope the downhill shoulder is a ledge in the air, up to 1.75 m at 30%, and can lie
 over a lower road within 7.5 m.
 
 ### The hard stop (`Ksa/Buggies.cs`)
 
-7. **It takes away all of the car's downward speed**, not the part going into the surface. On a
+7. **It takes away all of the car's downward speed** (measured in `RoadBulletStepTests`: a 0.25 m
+   step at 30 to 60 m/s is one hop of 0.14 to 0.21 m on the level and four to eight flights of 0.4 to
+   1.7 m on a 10% descent, 2 to 6 m on 20%), not the part going into the surface. On a
    descent that speed is the car following the slope, so the stop sets it flying level. Read from the
    code; the size of the launch is from one harness only.
-8. **It lifts the whole car by its deepest wheel and leaves its pitch alone**, so a car meeting a ramp
+8. **It lifts the whole car by its deepest wheel and leaves its pitch alone** (measured: a ramp turns
+   a car over only where it asks 7 g or more of the springs, 8 m over 40 m at 50 m/s and up, and none
+   below 4 g; up a 0.5 m step each firing gives 0.18 to 0.46 m of height for nothing), so a car meeting a ramp
    is raised flat. One harness flipped it at speed. Unjudged in game.
-9. **Under time warp it is the only thing holding a car on a road**: the springs are skipped and it is
+9. **Under time warp it is the only thing holding a car on a road** (measured: at a 0.15 s step it
+   fires every step, lifts 0.22 to 0.42 m and the car sits 0.34 to 0.66 m low; at 0.4 s, 1.57 m and
+   1.7 to 1.8 m): the springs are skipped and it is
    not.
-10. **In low gravity it does the springs' work on ramp entries**, their load being capped at four
+10. **In low gravity it does the springs' work on ramp entries** (measured: a ramp foot asking 12 to
+    19 m/s2 fires it 24 to 48 times on Luna and never on Earth), their load being capped at four
     times the car's weight there.
 
 ### The editor and the format
@@ -75,6 +85,8 @@ over a lower road within 7.5 m.
   without it.
 - **Its top speed in air is about 94 m/s**, the 105 m/s in the profile being the rev limiter. That is
   below Monza's 2004 speeds and above what a high-downforce circuit saw.
+- **A parked car creeps down a slope** at g times the grade times the step over 0.7: 4.6 cm/s on 20%
+  at 60 Hz, in the rig. In game KSA may rail it first.
 - **A negative throttle is full brakes whatever its size**, and reverse below half a metre a second.
 
 ## The plan
@@ -95,6 +107,8 @@ The owner decides, because the fixes depend on it:
 
 ### Step 1. Move the road physics into `Sim/`, changing nothing
 
+**Done**, but for `RoadSurface.TryLocate`.
+
 - `Sim/RoadLaying`: runs to lines with ground, lift, height and sink, through `ITerrainHeights`. It
   also hands the surface each point's height above the ground, which the shoulder fix needs.
 - `Sim/WheelGround`: each wheel's ground from terrain, pad and road, the stop, and `GroundPlane.Tilt`,
@@ -106,12 +120,17 @@ Not `RoadSlabs`, unless a test that a slab's corners lie on the surface comes wi
 
 ### Step 2. A rig that can leave the ground: `TrackRig`
 
+**Done.** On a bare sphere it matches the flat rig to a micron and a hundredth of a percent.
+
 Moved up from later, because no fault of the stop can have a failing test without a free body. Beside
 the flat `Rig`. A rigid body in the body-fixed frame on a sphere; each step `WheelGround`,
 `BuggyDrive.Step`, integrate. Synthetic terrain: sphere, slope, side slope, sinusoid, step. Step
 lengths from 4 to 100 ms, fixed, random and replayed.
 
 ### Step 3. Tests that hunt, written to fail
+
+**The geometry sweeps and the bullet runs are written**; junctions and kinks as bullets, offset runs
+and fuzz are not. 1,416 bullet runs; seven tests are skipped on the stop's faults.
 
 None needs a clever driver.
 
