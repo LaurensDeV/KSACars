@@ -199,35 +199,20 @@ internal static class Roads
     {
         _clutterMarginM = null;
         _clutterStale = true;
-        List<Ribbon> ribbons = [];
         int points = 0;
         double low = double.PositiveInfinity, high = double.NegativeInfinity;
-        foreach (RoadLayout.Run run in RoadLayout.Runs(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, spacingM))
+        double Ground(double3 dir)
         {
-            double3[] line = run.Line;
-            if (line.Length < 2) continue;
-
-            double[] along = new double[line.Length];
-            for (int i = 1; i < line.Length; i++) along[i] = along[i - 1] + (Vec.Len(line[i] - line[i - 1]) * body.MeanRadius);
-            double length = along[^1];
-
-            // An end that meets other roads dips under them over a couple of widths.
-            double dip = 2.0 * run.WidthM;
-            for (int i = 0; i < line.Length; i++)
-            {
-                double ground = body.GetTerrainHeightFromDirCcf(line[i], accurate: true);
-                low = Math.Min(low, ground);
-                high = Math.Max(high, ground);
-                double sunk = (run.SinkStartM * Math.Max(0.0, 1.0 - (along[i] / dip)))
-                            + (run.SinkEndM * Math.Max(0.0, 1.0 - ((length - along[i]) / dip)));
-                line[i] *= body.MeanRadius + ground + liftM + run.HeightM[i] - sunk;
-            }
-            points += line.Length;
-            ribbons.Add(new Ribbon(line, 0.5 * run.WidthM, length, run.Closed));
+            double ground = body.GetTerrainHeightFromDirCcf(dir, accurate: true);
+            low = Math.Min(low, ground);
+            high = Math.Max(high, ground);
+            points++;
+            return ground;
         }
 
-        _laid = ribbons.Count > 0
-            ? new Laid(body, [.. ribbons], new RoadSurface(ribbons.Select(r => (r.SurfaceCcf, r.HalfWidth, r.Closed))))
+        List<RoadLaying.Strip> strips = RoadLaying.Lay(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
+        _laid = strips.Count > 0
+            ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips))
             : null;
         return (points, low, high);
     }

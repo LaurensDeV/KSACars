@@ -474,3 +474,46 @@ public class RoadSurfaceTests
         }
     }
 }
+
+public class RoadLayingTests
+{
+    private const double Radius = 6_371_000.0;
+
+    private static double3 DirOf(double latDeg, double lonDeg)
+    {
+        double lat = latDeg * Math.PI / 180.0, lon = lonDeg * Math.PI / 180.0;
+        return new double3(Math.Cos(lat) * Math.Cos(lon), Math.Cos(lat) * Math.Sin(lon), Math.Sin(lat));
+    }
+
+    private static double Deg(double metres) => metres / Radius * 180.0 / Math.PI;
+
+    [Fact]
+    public void ALaidRoadStandsOnTheGroundByItsLiftAndItsPointsHeightsAndDipsWhereItJoinsAnother()
+    {
+        Circuit c = new Circuit { WidthM = 10.0 }.AddNode(0, 0, out int mid)
+            .Extend(mid, 0, -Deg(200), out _).Extend(mid, 0, Deg(200), out int east).Extend(mid, -Deg(200), 0, out _)
+            .SetHeight(east, 6.0);
+
+        List<RoadLaying.Strip> strips = RoadLaying.Lay(c, DirOf, Radius, dir => 50.0 + (1000.0 * dir.Z), 0.07, 2.0);
+
+        RoadLaying.Strip through = strips.Single(s => s.LengthM > 300.0), side = strips.Single(s => s.LengthM < 300.0);
+        Assert.Equal(400.0, through.LengthM, 0);
+        Assert.Equal(5.0, through.HalfWidth);
+
+        for (int i = 0; i < through.Line.Length; i++)
+        {
+            double3 dir = Vec.Unit(through.Line[i]);
+            Assert.Equal(Radius + 50.0 + (1000.0 * dir.Z) + through.AboveGroundM[i], Vec.Len(through.Line[i]), 6);
+        }
+        Assert.Equal(0.07, through.AboveGroundM.Min(), 9);
+        Assert.Equal(6.07, through.AboveGroundM.Max(), 9);
+
+        // The side road meets the through road at one of its ends, and is under it there by its sink.
+        double atJunction = Math.Min(side.AboveGroundM[0], side.AboveGroundM[^1]);
+        Assert.InRange(0.07 - atJunction, 0.005, 0.03);
+        Assert.Equal(0.07, side.AboveGroundM[side.AboveGroundM.Length / 2], 9);
+
+        Assert.True(RoadLaying.Surface(strips).TryHeightOver(through.Line[10] + (Vec.Unit(through.Line[10]) * 0.33), out double over));
+        Assert.Equal(0.33, over, 2);
+    }
+}

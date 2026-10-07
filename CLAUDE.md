@@ -199,6 +199,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/CircuitHistory.cs` | a circuit being edited and every state it has been through, for undo and redo — **a drag is many changes and one step** |
 | `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
+| `Sim/RoadLaying.cs` | a circuit put on the ground: each run as a line of points on the road's surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
 | `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than two metres overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
@@ -472,11 +473,11 @@ while the body turns, and puts the player's camera mode back when the editor clo
 of straight down, where that controller has no up to roll about.
 
 **A point has a height above the ground, and a road eases between two.** `RoadLayout` ramps a road from
-one end's height to the other's, level at both, and `Roads.Lay` adds that to the ground under each sample,
+one end's height to the other's, level at both, and `Sim/RoadLaying.cs` adds that to the ground under each sample,
 so a raised road still follows the terrain beneath it.
 
 **A wheel over a road is sprung against the road, as one over a launch pad is against the pad.**
-`Roads.Lay` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and the physics
+`Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and the physics
 window takes a hub's height as the least of its height over the terrain, a pad and a road. A road stands a hand above
 the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
 threw a car coming onto it; and a road counts as under a wheel up to two metres into it, because at speed
