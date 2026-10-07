@@ -1,0 +1,331 @@
+using Brutal.Numerics;
+
+namespace KSACars;
+
+/// <summary>
+/// A line to drive along, and how far along it a car is: the centre lines of a circuit's roads, taken
+/// in the order the route passes through its points, as samples a metre apart.
+///
+/// <para>Progress is searched for a short way ahead of where it last was and nowhere else. The nearest
+/// point of any road is the wrong one at a junction, at a crossing and where a road passes over
+/// another, and a route that comes back over itself is only told apart by how far along it the car
+/// has got.</para>
+///
+/// <para>The line is the one the roads are laid through, without the centimetre or two an end is sunk
+/// by where it meets other roads.</para>
+/// </summary>
+internal sealed class Route
+{
+    /// <param name="At">On the road's surface, from the body's centre.</param>
+    /// <param name="S">How far along the route, m.</param>
+    /// <param name="Tangent">Level, along the route.</param>
+    /// <param name="Across">Level, to the left of it.</param>
+    /// <param name="Curvature">Seen from above, 1/m, a left turn positive.</param>
+    /// <param name="Slope">Climb for each metre along.</param>
+    /// <param name="CentreM">How far to the left of this the road's centre is, m.</param>
+    public readonly record struct Sample(double3 At, double S, double3 Tangent, double3 Across, double Curvature,
+                                         double Slope, double HalfWidth, double CentreM);
+
+    public const double SpacingM = 1.0;
+
+    /// <summary>What a turn is measured over, so a kink between two straight stretches is a bend and not an instant.</summary>
+    public const double SmoothOverM = 3.0;
+
+    /// <summary>A turn of more than this at one point of a road is a kink, which a road that joins another makes where they meet.</summary>
+    public const double KinkDeg = 30.0;
+
+    /// <summary>The share of the road's half width a kink is cut inside by, and the most of the road either side that is given up to it, in half widths.</summary>
+    public const double KinkCut = 0.8, KinkReach = 2.0;
+
+    private readonly Sample[] _samples;
+
+    public ReadOnlySpan<Sample> Samples => _samples;
+    public int Count => _samples.Length;
+    public double LengthM { get; }
+
+    /// <summary>Whether the route ends where it starts, and is driven round and round.</summary>
+    public bool Closed { get; }
+
+    private Route(Sample[] samples, double lengthM, bool closed)
+    {
+        _samples = samples;
+        LengthM = lengthM;
+        Closed = closed;
+    }
+
+    /// <summary>
+    /// The route through <paramref name="through"/>, a circuit's points in order, ending on the first
+    /// for a lap; or with none given, from the circuit's first road on along whatever road goes through
+    /// each point, until it is back where it started or the road ends. Null with the reason.
+    /// </summary>
+    /// <param name="groundAt">The ground's height over the body's mean radius, in a direction from its centre.</param>
+    /// <param name="offsetM">How far to the left of the roads' centre line the route runs.</param>
+    public static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, Func<double3, double> groundAt,
+                            double liftM, double spacingM, IReadOnlyList<int>? through, double offsetM, out string why)
+    {
+        why = "";
+        List<int> path = through is { Count: > 0 } ? [.. through] : Following(circuit, dirOf, radiusM);
+        if (path.Count < 2)
+        {
+            why = "a route needs two points joined by a road";
+            return null;
+        }
+
+        List<RoadLayout.Stretch> stretches = RoadLayout.Of(circuit, dirOf, radiusM, spacingM);
+        List<double3> line = [];
+        List<double> halfWidths = [];
+        for (int k = 1; k < path.Count; k++)
+        {
+            int a = path[k - 1], b = path[k];
+            if (stretches.FirstOrDefault(s => (s.From == a && s.To == b) || (s.From == b && s.To == a)) is not { } stretch)
+            {
+                why = $"no road joins {a} and {b}";
+                return null;
+            }
+            bool forward = stretch.From == a;
+            for (int i = line.Count == 0 ? 0 : 1; i < stretch.Line.Length; i++)
+            {
+                int j = forward ? i : stretch.Line.Length - 1 - i;
+                double3 dir = Vec.Unit(stretch.Line[j]);
+                line.Add(dir * (radiusM + groundAt(dir) + liftM + stretch.HeightM[j]));
+                halfWidths.Add(0.5 * stretch.WidthM);
+            }
+        }
+
+        bool closed = path.Count > 2 && path[0] == path[^1];
+        if (closed)
+        {
+            line.RemoveAt(line.Count - 1);
+            halfWidths.RemoveAt(halfWidths.Count - 1);
+        }
+        if (Along([.. line], [.. halfWidths], closed, offsetM) is not { } route)
+        {
+            why = "the route has no length";
+            return null;
+        }
+        return route;
+    }
+
+    // From the first road on, along the road that goes through each point.
+    private static List<int> Following(Circuit circuit, Func<double, double, double3> dirOf, double radiusM)
+    {
+        List<int> path = [];
+        if (circuit.Roads.Count == 0) return path;
+
+        Dictionary<int, double3> at = [];
+        foreach (Circuit.Node n in circuit.Nodes) at[n.Id] = Vec.Unit(dirOf(n.LatDeg, n.LonDeg)) * radiusM;
+
+        Circuit.Road first = circuit.Roads[0];
+        path.Add(first.From);
+        path.Add(first.To);
+        HashSet<(int, int)> driven = [(first.From, first.To)];
+        while (RoadLayout.Through(circuit, at, path[^1], path[^2]) is { } onward && driven.Add((path[^1], onward)))
+        {
+            path.Add(onward);
+        }
+        return path;
+    }
+
+    /// <summary>
+    /// The route along a line of points on the road's surface, from the body's centre; a closed one
+    /// carries on from its last point to its first. Null where the line has no length.
+    /// </summary>
+    public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM)
+    {
+        int pieces = closed ? line.Length : line.Length - 1;
+        if (pieces < 1 || halfWidths.Length != line.Length) return null;
+
+        double[] start = new double[pieces + 1];
+        for (int i = 0; i < pieces; i++) start[i + 1] = start[i] + Vec.Len(line[(i + 1) % line.Length] - line[i]);
+        double length = start[pieces];
+        if (!(length > SpacingM)) return null;
+
+        int steps = Math.Max(2, (int)Math.Round(length / SpacingM));
+        int count = closed ? steps : steps + 1;
+        double3[] at = new double3[count];
+        double[] half = new double[count];
+        for (int i = 0, piece = 0; i < count; i++)
+        {
+            double s = length * i / steps;
+            while (piece < pieces - 1 && start[piece + 1] < s) piece++;
+            double span = start[piece + 1] - start[piece];
+            double t = span > 0.0 ? Math.Clamp((s - start[piece]) / span, 0.0, 1.0) : 0.0;
+            int next = (piece + 1) % line.Length;
+            at[i] = line[piece] + ((line[next] - line[piece]) * t);
+            half[i] = halfWidths[piece] + ((halfWidths[next] - halfWidths[piece]) * t);
+        }
+
+        // No car turns on the spot, so a kink is rounded: between a point either side of it the line is
+        // a curve leaving each along the road, cut inside the kink and still on the asphalt.
+        for (int k = closed ? 0 : 1; k < line.Length - (closed ? 0 : 1); k++)
+        {
+            double3 before = line[(k + line.Length - 1) % line.Length], after = line[(k + 1) % line.Length];
+            double turn = Vec.AngleBetween(Vec.RejectFrom(line[k] - before, line[k]), Vec.RejectFrom(after - line[k], line[k]));
+            if (turn <= KinkDeg * Math.PI / 180.0) continue;
+
+            double halfTurn = Math.Tan(0.5 * turn);
+            double cut = KinkCut * halfWidths[k] * halfTurn / ((1.0 / Math.Cos(0.5 * turn)) - 1.0);
+            double reachM = Math.Min(cut, KinkReach * halfWidths[k]);
+            int middle = (int)Math.Round(start[k] / length * steps);
+            int span = (int)Math.Round(reachM / (length / steps));
+            span = closed ? Math.Min(span, count / 4) : Math.Min(span, Math.Min(middle - 1, count - 2 - middle));
+            if (span < 2) continue;
+
+            int Wrapped(int i) => ((i % count) + count) % count;
+            double3 a = at[Wrapped(middle - span)], b = at[Wrapped(middle + span)];
+            double3 leave = Vec.Unit(a - at[Wrapped(middle - span - 1)]), arrive = Vec.Unit(at[Wrapped(middle + span + 1)] - b);
+            double handle = 4.0 / 3.0 * Math.Tan(0.25 * turn) * (span * (length / steps)) / halfTurn;
+            for (int j = 1; j < 2 * span; j++)
+            {
+                at[Wrapped(middle - span + j)] = RoadCurve.Bezier(a, a + (leave * handle), b - (arrive * handle), b, j / (2.0 * span));
+            }
+        }
+
+        if (offsetM != 0.0)
+        {
+            double3[] moved = new double3[count];
+            for (int i = 0; i < count; i++) moved[i] = at[i] + (Vec.Cross(Vec.Unit(at[i]), Heading(at, i, 1, closed)) * offsetM);
+            at = moved;
+        }
+
+        double[] along = new double[count];
+        for (int i = 1; i < count; i++) along[i] = along[i - 1] + Vec.Len(at[i] - at[i - 1]);
+        double total = closed ? along[count - 1] + Vec.Len(at[0] - at[count - 1]) : along[count - 1];
+
+        double3[] heading = new double3[count];
+        for (int i = 0; i < count; i++) heading[i] = Heading(at, i, 1, closed);
+
+        int reach = Math.Max(1, (int)Math.Round(0.5 * SmoothOverM / (total / steps)));
+        Sample[] samples = new Sample[count];
+        for (int i = 0; i < count; i++)
+        {
+            int before = closed ? ((i - reach) % count + count) % count : Math.Max(i - reach, 0);
+            int after = closed ? (i + reach) % count : Math.Min(i + reach, count - 1);
+            double between = along[after] - along[before];
+            if (closed && between <= 0.0) between += total;
+
+            double3 up = Vec.Unit(at[i]);
+            double turn = Math.Atan2(Vec.Dot(Vec.Cross(heading[before], heading[after]), up), Vec.Dot(heading[before], heading[after]));
+            double climb = Vec.Len(at[after]) - Vec.Len(at[before]);
+            samples[i] = new Sample(at[i], along[i], heading[i], Vec.Cross(up, heading[i]),
+                                    between > 0.0 ? turn / between : 0.0, between > 0.0 ? climb / between : 0.0,
+                                    half[i], -offsetM);
+        }
+        return new Route(samples, total, closed);
+    }
+
+    // The way the line runs at a point, level there: from the point before it to the one after.
+    private static double3 Heading(double3[] at, int i, int reach, bool closed)
+    {
+        int count = at.Length;
+        int before = closed ? (i - reach + count) % count : Math.Max(i - reach, 0);
+        int after = closed ? (i + reach) % count : Math.Min(i + reach, count - 1);
+        return Vec.Unit(Vec.RejectFrom(at[after] - at[before], at[i]));
+    }
+
+    /// <summary>The stretch of the route nearest a point, wherever on it that is: for a car that starts where it stands.</summary>
+    public int Nearest(double3 point)
+    {
+        int best = 0;
+        double least = double.PositiveInfinity;
+        int last = Closed ? Count : Count - 1;
+        for (int i = 0; i < last; i++)
+        {
+            double off = Off(point, i, out _, out _);
+            if (off < least) (best, least) = (i, off);
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// Where a point is along the route, looking no further than <paramref name="aheadM"/> on from the
+    /// stretch it was last on, <paramref name="index"/>, which is brought up to date. Answers true
+    /// where that took it over the line that starts a closed route again.
+    /// </summary>
+    /// <param name="s">How far along, m.</param>
+    /// <param name="cross">How far to the left of the route, m.</param>
+    public bool Locate(double3 point, ref int index, double aheadM, out double s, out double cross)
+    {
+        int last = Closed ? Count : Count - 1;
+        int best = index;
+        double least = double.PositiveInfinity, gone = 0.0;
+        s = cross = 0.0;
+        for (int k = 0; k < last && gone <= aheadM; k++)
+        {
+            int i = index + k;
+            if (i >= last)
+            {
+                if (!Closed) break;
+                i -= last;
+            }
+            double off = Off(point, i, out double along, out double beside);
+            if (off < least) (best, least, s, cross) = (i, off, _samples[i].S + along, beside);
+            gone += Piece(i);
+        }
+        bool lapped = best < index;
+        index = best;
+        return lapped;
+    }
+
+    // How far a point is from a stretch, seen from above, squared; how far along it; and how far to its left.
+    private double Off(double3 point, int i, out double along, out double beside)
+    {
+        Sample a = _samples[i];
+        double3 b = _samples[(i + 1) % Count].At;
+        double3 run = b - a.At;
+        double length = Vec.Len(run);
+        double3 from = Vec.RejectFrom(point - a.At, a.At);
+        along = length > 0.0 ? Math.Clamp(Vec.Dot(from, run) / length, 0.0, length) : 0.0;
+        double3 off = Vec.RejectFrom(from - (run * (length > 0.0 ? along / length : 0.0)), a.At);
+        beside = Vec.Dot(off, a.Across);
+        return Vec.Len2(off);
+    }
+
+    private double Piece(int i) => Vec.Len(_samples[(i + 1) % Count].At - _samples[i].At);
+
+    /// <summary>
+    /// The point <paramref name="distanceM"/> further along than <paramref name="s"/>, which is on the
+    /// stretch <paramref name="index"/>. Past the end of a route that has one, straight on.
+    /// </summary>
+    public double3 Ahead(int index, double s, double distanceM)
+    {
+        int last = Closed ? Count : Count - 1;
+        int i = index;
+        double left = distanceM + (s - _samples[i].S);
+        for (int guard = 0; guard < Count; guard++)
+        {
+            double piece = Piece(i);
+            int next = (i + 1) % Count;
+            if (left <= piece || (!Closed && i == last - 1))
+            {
+                return _samples[i].At + ((_samples[next].At - _samples[i].At) * (piece > 0.0 ? left / piece : 0.0));
+            }
+            left -= piece;
+            i = next;
+        }
+        return _samples[i].At;
+    }
+
+    /// <summary>The sample at the start of the stretch a distance along is on.</summary>
+    public int IndexAt(double s)
+    {
+        int last = Closed ? Count : Count - 1;
+        int i = Math.Clamp((int)(s / LengthM * last), 0, last - 1);
+        while (i > 0 && _samples[i].S > s) i--;
+        while (i < last - 1 && _samples[i + 1].S <= s) i++;
+        return i;
+    }
+
+    /// <summary>
+    /// Where a car stands on the road a distance along the route: the place on the surface, the road's
+    /// own up there and the way along it.
+    /// </summary>
+    public (double3 At, double3 Up, double3 Ahead) Standing(double s)
+    {
+        int i = IndexAt(s);
+        Sample a = _samples[i];
+        double3 at = Ahead(i, s, 0.0);
+        double3 up = Vec.Unit(a.At);
+        return (at, Vec.Unit(up - (a.Tangent * a.Slope)), Vec.Unit(a.Tangent + (up * a.Slope)));
+    }
+}

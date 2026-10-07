@@ -32,6 +32,9 @@ public sealed class RoadSurface
     /// <summary>How far the shoulder drops for each metre out from the road, and how far it drops before it ends.</summary>
     public const double ShoulderSlope = 1.0 / 15.0, ShoulderDropM = 0.5;
 
+    // A road's asphalt this far under another's shoulder is what a wheel there is over.
+    private const double AsphaltUnderM = 0.1;
+
     private const double CellM = 32.0;
 
     // Two points nearer than this, seen from above, are one: a stretch that short has no direction.
@@ -128,10 +131,19 @@ public sealed class RoadSurface
     /// those no more than <see cref="StepM"/> above the surface it was on, which is what tells a car
     /// that has run into a ramp from one under a bridge.
     /// </summary>
-    public bool TryHeightOver(double3 at, double? last, out double metres)
+    public bool TryHeightOver(double3 at, double? last, out double metres) => TryLocate(at, last, out metres, out _);
+
+    /// <summary>
+    /// The same, with how far out past the asphalt the point is (m): nothing on the road itself, and
+    /// on the shoulder how far from the road's edge or its end. Where a road joins another, the
+    /// shoulder of one lies a centimetre over the sunk end of the other, and that is asphalt.
+    /// </summary>
+    public bool TryLocate(double3 at, double? last, out double metres, out double outM)
     {
         metres = double.PositiveInfinity;
+        outM = 0.0;
         if (_cells.Count == 0) return false;
+        double asphalt = double.PositiveInfinity;
 
         // A wheel above its road is asked as one new to it, or a deck it flew in over would not be under it.
         double deepest = Math.Min(last ?? 0.0, 0.0) - StepM;
@@ -173,11 +185,18 @@ public sealed class RoadSurface
 
                         double3 on = piece.A + ((piece.B - piece.A) * t);
                         double over = Vec.Dot(at - on, up) + (out_ * ShoulderSlope);
-                        if (over >= deepest && over < metres) metres = over;
+                        if (over < deepest) continue;
+                        if (out_ <= 0.02) asphalt = Math.Min(asphalt, over);
+                        if (over < metres)
+                        {
+                            metres = over;
+                            outM = out_;
+                        }
                     }
                 }
             }
         }
+        if (asphalt - metres <= AsphaltUnderM) outM = 0.0;
         return !double.IsPositiveInfinity(metres);
     }
 }
