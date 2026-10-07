@@ -154,6 +154,9 @@ internal sealed class TrackRig
 
     public List<TrackSample> Log { get; } = [];
 
+    // Asked for each step's input where Buggies asks it: after the ground is read, before the drive.
+    public Autopilot? Driver;
+
     public double3 Up => Vec.Unit(Position);
     public double3 Forward => Attitude * new double3(0, 1, 0);
     public double TerrainUnderM => Vec.Len(Position) - _world.RadiusM - _world.HeightAt(Up);
@@ -287,6 +290,7 @@ internal sealed class TrackRig
         (double east, double north) = Where;
 
         Read(_road);
+        if (Driver is { } driver) input = driver.Step(Position, Attitude, Velocity, up, forward, _hubs, _hubHeights, dt);
 
         double clearance = double.PositiveInfinity, deepest = double.NegativeInfinity;
         int onRoad = 0;
