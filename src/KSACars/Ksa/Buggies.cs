@@ -719,6 +719,8 @@ internal sealed class Buggies
             }
         }
 
+        GroundPlane.Tilt(contacts, hubs);
+
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));
         double air = KsaWorld.ReferenceAirDensityKgPerM3 * KsaWorld.AirDensityRatioAt(craft, KsaWorld.PositionEcl(craft));
