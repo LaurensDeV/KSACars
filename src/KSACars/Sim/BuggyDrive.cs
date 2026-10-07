@@ -263,30 +263,42 @@ public sealed class BuggyDrive(BuggyProfile profile)
 
     private static bool Touching(int i, WheelContact c, double3 up) => c.Valid && Vec.Dot(up, c.GroundUp) > 0.2;
 
-    // The lock is the angle whose turn the front tyres can just hold at this speed, v^2 / R = grip g
-    // with R = wheelbase / tan(angle), so a flick at speed turns the car rather than scrubbing it to a stop.
-    // The g is what presses the tyres, wings included. A car keeps three degrees whatever its speed, but
-    // not while wings press it: they hold a lock that never falls to nothing, and three degrees at speed
-    // asks the tyres for more than they have.
+    /// <summary>
+    /// The most the front wheels turn at a speed, radians: the angle whose turn the front tyres can just
+    /// hold, v^2 / R = grip g with R = wheelbase / tan(angle), so a flick at speed turns the car rather
+    /// than scrubbing it to a stop. A steer input is a share of this.
+    /// </summary>
+    /// <param name="gravity">What presses the tyres, m/s2, without the wings.</param>
+    /// <param name="wings">What the wings add to it at this speed, m/s2: <see cref="WingLoad"/>.</param>
+    public static double SteerLock(BuggyProfile profile, double forwardSpeed, double gravity, double wings)
+    {
+        double lockRad = profile.MaxSteerDeg * Math.PI / 180.0;
+        double v2 = forwardSpeed * forwardSpeed;
+        if (!(v2 > 1.0)) return lockRad;
+
+        // A car keeps three degrees whatever its speed, but not while wings press it: they hold a lock
+        // that never falls to nothing, and three degrees at speed asks the tyres for more than they have.
+        double held = Math.Atan(Wheelbase(profile) * profile.FrontGrip * (gravity + wings) * profile.SteerOverGrip / v2);
+        double least = wings > 0.0 ? 0.0 : 3.0 * Math.PI / 180.0;
+        return Math.Min(lockRad, Math.Max(held, least));
+    }
+
+    /// <summary>How hard the wings press the car at a speed, as an acceleration, m/s2.</summary>
+    public static double WingLoad(BuggyProfile profile, double forwardSpeed, double airDensity, double mass) =>
+        mass > 0.0 ? Math.Max(0.0, 0.5 * airDensity * profile.DownforceAreaM2 * forwardSpeed * forwardSpeed) / mass : 0.0;
+
     private void SteerToward(double steer, double gravity, double wings, double dt)
     {
-        double lockRad = Profile.MaxSteerDeg * Math.PI / 180.0;
-        double v2 = ForwardSpeed * ForwardSpeed;
-        if (v2 > 1.0)
-        {
-            double held = Math.Atan(Wheelbase() * Profile.FrontGrip * (gravity + wings) * Profile.SteerOverGrip / v2);
-            double least = wings > 0.0 ? 0.0 : 3.0 * Math.PI / 180.0;
-            lockRad = Math.Min(lockRad, Math.Max(held, least));
-        }
-        double wanted = Math.Clamp(steer, -1.0, 1.0) * lockRad;
+        double wanted = Math.Clamp(steer, -1.0, 1.0) * SteerLock(Profile, ForwardSpeed, gravity, wings);
         SteerAngle = MoveToward(SteerAngle, wanted, Profile.SteerRateDegPerSec * Math.PI / 180.0 * dt);
     }
 
-    private double Wheelbase()
+    /// <summary>The distance between the axles, m.</summary>
+    public static double Wheelbase(BuggyProfile profile)
     {
         double front = 0.0, rear = 0.0;
         int nFront = 0, nRear = 0;
-        foreach (BuggyCorner c in Profile.Corners)
+        foreach (BuggyCorner c in profile.Corners)
         {
             if (c.Steers) { front += c.Hub.Y; nFront++; }
             else { rear += c.Hub.Y; nRear++; }
