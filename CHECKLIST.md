@@ -171,3 +171,10 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [x] A road laid 2 m from a parked F2004 and laid again at 0.5, 1, 1.5, 2, 3 and 6 m up (bridge `road`,
       2026.10.10.5554) leaves the car where it is, hubs 0.34 m over the ground throughout
 - [ ] The same by dragging the height knob in the editor, and a loop of road with no gap where it closes
+- [ ] Every laid road has collider boxes in KSA's physics, one a stretch and half a metre deep, handed
+      over on a fine lay: a car driven onto one, a kitten on one, a railed car on a deck, an origin shift
+      on a long lap, a save loaded
+- [ ] The roads' hard stop is gone, so a car that bottoms on a road lands on its hull on the collider:
+      a ramp at speed, a bump on a descent, time warp on a road and on a deck
+- [ ] A road counts as under a wheel up to half a metre into it, so a car under any deck it fits under
+      stays on the ground

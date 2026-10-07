@@ -64,6 +64,27 @@ over a lower road within 7.5 m.
     19 m/s2 fires it 24 to 48 times on Luna and never on Earth), their load being capped at four
     times the car's weight there.
 
+**Faults 7 to 10 went with the stop, unseen in game.** `Sim/RoadSlabs` gives every laid road collider
+boxes through `Ksa/RoadColliders`, and the stop is removed. In the rig a 0.25 m step at 30 to 60 m/s on a
+10% or 20% descent is now one to four flights of at most 0.73 s and 0.26 m, as on the level, where it was
+up to ten flights, 4.9 s and 5.9 m; a car parked under a 0.15 or 0.4 s step sits on its hull and stays;
+no ramp's foot turns a car over. What is left of fault 10: on Luna the hull comes down at a ramp's foot
+asking 12 to 19 m/s2, at 1.0 to 1.5 m/s for half a second, the spring cap being four times local weight.
+
+A road now counts as under a wheel up to its collider's half metre and no more, so **a car under any deck
+it fits under stays on the ground**, the least clearance being the car's height and half a metre.
+
+**A collider box is flat across**, so on a climbing bend its top stands up to half the width times half
+the turn times the gradient off the wheel surface: 7 cm on a 6 m road at 13% round 4.9 m, against the
+buggy's 4 cm of pad clearance at full bump. The radius and gradient limits bound it.
+
+**During a drag in the editor only the wheel surface moves**; the colliders move on release, so a railed
+car, or a road raised fast, leaves the car under or inside the new box.
+
+The rig now has a four-point stand-in for the hull, with no friction, nose, belly, roof or road edge. The
+steps it asserts are 5 and 10 cm: a 25 or 50 cm riser is one the nose meets, which the rig cannot show.
+One test is skipped, the ramp's foot on Luna.
+
 ### The editor and the format
 
 11. ~~**A car's memory of its road survives the road being laid again**~~ (fixed, unseen in game), which is how raising a road
