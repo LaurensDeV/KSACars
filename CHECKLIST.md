@@ -168,5 +168,6 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       ground, landed and still; taken away, the car was back at 0.34 m
 - [ ] A kitten walking on such a box; a car driven onto one; the boxes after the bubble's origin shifts
       2 km on, after a save is loaded, and after a simulation has been recycled
-- [ ] A road raised in the editor beside a parked car leaves the car on the ground, and a loop of road
-      has no gap where it closes
+- [x] A road laid 2 m from a parked F2004 and laid again at 0.5, 1, 1.5, 2, 3 and 6 m up (bridge `road`,
+      2026.10.10.5554) leaves the car where it is, hubs 0.34 m over the ground throughout
+- [ ] The same by dragging the height knob in the editor, and a loop of road with no gap where it closes
