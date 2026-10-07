@@ -12,8 +12,9 @@ namespace KSACars;
 ///
 /// <para>A road up to <see cref="StepM"/> above a point counts as under it; one higher than that is
 /// a bridge overhead, and the highest road that is not is the one answered. Asphalt is answered
-/// before any road's verge or embankment, however high: the bank of a road up a hillside comes down
-/// across the road below it, and a car on that road is on its asphalt.</para>
+/// before a verge or an embankment that is no more than <see cref="AsphaltUnderM"/> above it: the
+/// bank of a road up a hillside comes down across the road below it, and a car on that road is on
+/// its asphalt.</para>
 /// </summary>
 public sealed class RoadSurface
 {
@@ -27,6 +28,9 @@ public sealed class RoadSurface
 
     /// <summary>How far out past the asphalt's edge still counts as on it.</summary>
     public const double EdgeM = 0.02;
+
+    /// <summary>How far under another road's verge or bank a road's asphalt is still what a wheel there is over.</summary>
+    public const double AsphaltUnderM = 2.0 * StepM;
 
     private const double CellM = 8.0;
 
@@ -151,8 +155,7 @@ public sealed class RoadSurface
 
         // A wheel above its road is asked as one new to it, or a deck it flew in over would not be under it.
         double deepest = Math.Min(last ?? 0.0, 0.0) - StepM;
-        double height = radius - _chart.RadiusM;
-        bool onAsphalt = false;
+        double height = radius - _chart.RadiusM, overEarth = double.PositiveInfinity, outEarth = 0.0;
         (RoadRibbon? Ribbon, RoadRibbon.Section At, double D, double Height, double Along, double Across) best = default;
 
         foreach ((int r, int i) in places)
@@ -167,18 +170,23 @@ public sealed class RoadSurface
 
             double over = height - surface;
             if (over < deepest) continue;
-            bool asphalt = out_ <= EdgeM;
-            if (asphalt == onAsphalt ? over < metres : asphalt)
+            if (out_ > EdgeM)
+            {
+                if (over < overEarth) (overEarth, outEarth) = (over, out_);
+            }
+            else if (over < metres)
             {
                 metres = over;
-                outM = asphalt ? 0.0 : out_;
-                onAsphalt = asphalt;
                 best = (ribbon, section, d, surface, along, across);
             }
         }
-        if (best.Ribbon is null) return false;
 
-        if (onAsphalt && best.Ribbon.Laid) facing = best.Ribbon.Normal(best.At, best.D, best.Height, best.Along, best.Across);
+        if (best.Ribbon is null || metres - overEarth > AsphaltUnderM)
+        {
+            (metres, outM) = (overEarth, outEarth);
+            return !double.IsPositiveInfinity(metres);
+        }
+        if (best.Ribbon.Laid) facing = best.Ribbon.Normal(best.At, best.D, best.Height, best.Along, best.Across);
         return true;
     }
 

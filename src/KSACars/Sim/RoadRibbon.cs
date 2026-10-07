@@ -11,7 +11,7 @@ namespace KSACars;
 /// at <see cref="VergeSlope"/> for <see cref="VergeM"/>, and an embankment at <see cref="BankSlope"/>
 /// from there to <see cref="BuriedM"/> under the ground. Where an edge is more than
 /// <see cref="DeckOverM"/> above the ground the road is a deck instead, with nothing past its edge.
-/// Past an end that is not a deck the same fall carries on ahead of it.</para>
+/// Past an end that is not a deck the whole section carries on ahead, sunk by the same fall.</para>
 ///
 /// <para>Lengths are the chart's, which a road <c>r</c> metres from the chart's middle and <c>h</c>
 /// above the body's mean radius has too long by <c>(r / 2R)^2 - h / R</c> of themselves.</para>
@@ -258,32 +258,41 @@ internal sealed class RoadRibbon
     {
         double side = d < 0.0 ? -1.0 : 1.0, beside = Math.Abs(d) - at.HalfWidth;
         outM = Math.Max(Math.Max(beside, beyondM), 0.0);
-        if (!(outM > 0.0))
+        if (!(beside > 0.0))
         {
             height = at.Height + (d * at.BankTan);
             alongRise = at.Slope + (d * at.BankRate);
             acrossRise = at.BankTan;
-            return true;
         }
-
-        height = alongRise = acrossRise = 0.0;
-        if (at.Deck) return false;
-        bool ahead = beyondM > Math.Max(beside, 0.0);
-        if (outM > (ahead ? Math.Max(at.ToeLeft, at.ToeRight) : side > 0.0 ? at.ToeLeft : at.ToeRight)) return false;
-
-        double edge = Math.Clamp(d, -at.HalfWidth, at.HalfWidth);
-        double fall = outM <= VergeM ? VergeSlope : BankSlope;
-        height = at.Height + (edge * at.BankTan) - Drop(outM);
-        if (ahead)
+        else
         {
-            // Past the end the surface falls the way the run was going there, and leans as its end does where that is over the asphalt.
-            alongRise = at.S > 0.5 * LengthM ? -fall : fall;
-            acrossRise = beside < 0.0 ? at.BankTan : 0.0;
-            return true;
+            height = alongRise = acrossRise = 0.0;
+            if (at.Deck || beside > (side > 0.0 ? at.ToeLeft : at.ToeRight)) return false;
+            height = at.Height + (side * at.HalfWidth * at.BankTan) - Drop(beside);
+            SideRises(at, side, Fall(beside), out alongRise, out acrossRise);
         }
+        if (!(beyondM > 0.0)) return true;
+
+        // Past an end the whole section carries on ahead as it was there, sunk by the same fall as
+        // goes out from an edge, until both its edges are buried.
+        if (at.Deck || beyondM > Math.Max(at.ToeLeft, at.ToeRight)) return false;
+        height -= Drop(beyondM);
+        alongRise = at.S > 0.5 * LengthM ? -Fall(beyondM) : Fall(beyondM);
+        return true;
+    }
+
+    /// <summary>How steeply the surface falls a distance out from the road's edge: the verge's slope, then the bank's.</summary>
+    public static double Fall(double outM) => outM <= VergeM ? VergeSlope : BankSlope;
+
+    /// <summary>
+    /// The two rises of the verge or the bank on one side, <paramref name="side"/> being 1 for the
+    /// left and -1 for the right: it falls away from the edge at <paramref name="fall"/>, and along
+    /// the road it rises as the edge does, which moves out and up as the road widens and leans.
+    /// </summary>
+    public static void SideRises(in Section at, double side, double fall, out double alongRise, out double acrossRise)
+    {
         alongRise = at.Slope + (side * ((at.HalfRate * at.BankTan) + (at.HalfWidth * at.BankRate))) + (at.HalfRate * fall);
         acrossRise = -side * fall;
-        return true;
     }
 
     /// <summary>A place on the surface, from the body's centre.</summary>

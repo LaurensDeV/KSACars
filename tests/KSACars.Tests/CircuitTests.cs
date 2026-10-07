@@ -427,9 +427,9 @@ public class RoadSurfaceTests
         Assert.True(road.TryHeightOver(At(0.2, -1.2, 3.0), out double pastStart));
         Assert.Equal(1.2 * RoadRibbon.VergeSlope, pastStart, 3);
 
-        // Off a corner the fall is that of whichever is further, the edge or the end.
+        // Off a corner the two falls add: the verge carries on past the end as the road does.
         Assert.True(road.TryHeightOver(At(0.2, 201.0, 5.2), out double corner));
-        Assert.Equal(1.2 * RoadRibbon.VergeSlope, corner, 3);
+        Assert.Equal(2.2 * RoadRibbon.VergeSlope, corner, 3);
         Assert.False(road.TryHeightOver(At(0.2, 203.0, 0.0), out _));
     }
 

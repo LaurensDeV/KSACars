@@ -202,6 +202,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
 | `Sim/RoadLaying.cs` | a circuit put on the ground: each run of its roads as a `RoadRibbon` and as a line of points along that surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
 | `Sim/RoadRibbon.cs` | **a run of roads as one surface**: where it is a distance along and across, the way it faces there, and for any place how far along and across that is — the asphalt leaning by its bank, a verge and an embankment down into the ground past its edge, or a deck with nothing beside it where it is more than 4 m up |
+| `Sim/RoadTessellation.cs` | a ribbon as triangles, **for a mesh that nothing draws or collides with yet**: rows of vertices across the road, closer where it bends, climbs or twists, joined into meshes of about 100 m with the asphalt, the earth and a deck's sides apart, each vertex facing as the surface does and given twice only at a crease |
 | `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it and the way that faces, **a road more than its collider's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
 | `Sim/RoadSlabs.cs` | how deep a road's collider is, and a laid road as a box for each stretch, its top on the road's line, **which the tests check and nothing in the game uses**: the physics is given `RoadDeck`'s meshes |
 | `Sim/RoadDeck.cs` | a laid road as the solid KSA's physics is given for it: **one cross-section at each point of its line, shared by the stretches either side**, so the top is one surface, with an underside, sides and end caps, cut into closed chunks of about 200 m that each run on inside the next as a sinking tongue, and every triangle listed so that it is solid from outside |
@@ -501,7 +502,8 @@ centre line on a flat chart of the circuit (`Sim/RoadChart.cs`), measured by its
 (`Sim/RoadLine.cs`), with the profile along it. Past the asphalt's edge a verge falls at 1 in 15 for
 1.5 m and an embankment at 1 in 2 from there to 0.3 m under the ground; where an edge is more than 4 m
 above the ground the road is a deck with nothing beside it, and a dip under that height shorter than
-20 m between two decks is a deck too. Past an end that is not a deck the same fall carries on ahead.
+20 m between two decks is a deck too. Past an end that is not a deck the whole section carries on ahead,
+sunk by the same fall.
 `RoadRibbon.TooTight` says where a bend's radius is under 1.25 times the half width and the verge,
 inside which the surface is close to folding over itself; nothing stops a circuit being drawn so, and
 the editor does not yet warn of it. The surface's slope has no step on the centre line; off it there is
@@ -517,8 +519,8 @@ a hand above the ground, and the verge is what brings a wheel up to it instead o
 road the wheel is on its embankment where that is under it and on the grass where it is not. Where roads
 are over one another a wheel is on the highest
 one no more than half a metre above its hub, which is how deep a road's collider is: a hub further down
-than that is below it, under a deck. Asphalt is answered before any road's verge or bank, because
-the bank of a road up a hillside comes down across the road below it. A wheel that was in a road last step, which
+than that is below it, under a deck. Asphalt is answered before a verge or a bank no more than a
+metre above it, because the bank of a road up a hillside comes down across the road below it. A wheel that was in a road last step, which
 `Buggies.Entry.RoadOver` remembers for as long as the roads are not laid again, is still on that road
 however deep, and is never put on one more than half a metre above the surface it was in.
 `RoadSurface.TryLocate` also answers the way a laid road's asphalt faces; the wheels do not take it and
@@ -577,6 +579,17 @@ the buggy's nose goes down 10 under all of them. **None of this has been lapped 
 a thin deck and one on the ground stands 7 cm proud. A box ends square, so on a bend each reaches past its
 end far enough to close the wedge on the outside. KSA's swept tube cannot do this: its section is a
 regular polygon, so a road drawn with it is as deep as it is wide.
+
+**The surface can be had as triangles, which nothing in the game uses yet.** `Sim/RoadTessellation.cs`
+puts a row of vertices across a ribbon at stations along it: no further apart than keeps every triangle
+within 5 mm of the surface to the side and 3 mm in height and turns the road's edge or its facing a
+degree, no closer than half a metre, and 10 m apart on a straight, level road. A row is eleven vertices
+on the ground, the bank's foot to the bank's foot with each crease given twice, and nine round a deck,
+which is closed underneath and at its ends; round a kink the rows fan about the point, and what folds on
+its inside is left out. A stretch of about 100 m is one mesh, in the body's own frame about an origin of
+its own so a float holds it, with the arrays `RuntimeMesh.Upload` takes. A fast circuit has about half the
+rows a point every 2 m gives; one of 12 m hairpins has two and a half times as many, the degree at its
+inside edge asking for less than the half metre. **No mesh of a road has been drawn or collided with.**
 
 **A mesh made while the game runs can be drawn by KSA's own renderer, as an experiment.** `Ksa/RuntimeMesh.cs` takes
 room once in the buffers every static mesh shares, which KSA never gives back, and writes a mesh over it in
@@ -708,7 +721,9 @@ triangle solid from outside, every chunk closed, its top where the wheel is told
 road it runs on into. `RoadLineTests`, `RoadProfileTests` and `RoadRibbonTests` hold the surface to
 what it is said to be: a chart that keeps angles, a length that is the curve's own, a steady climb with
 nothing to feel at 80 m/s, ground that is never through the road, a facing that is the surface's own with
-no jump, and a place on it found again from where it is.
+no jump, and a place on it found again from where it is. `RoadTessellationTests` holds the triangles to the surface:
+whole, facing out, no hole or seam in the asphalt across a mesh's border or round a closed run, a deck
+closed all round, and no triangle further from the surface than it is allowed.
 
 `TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
 steps it: `WheelGround`, `BuggyDrive.Step`, then gravity. On a bare sphere it
