@@ -255,6 +255,16 @@ Only now.
   started and polled through the bridge without blocking it. A pose write faces the car along the
   route. The first check is whether a car stays simulated five kilometres from where it started.
 
+**The driver on circuits meant to break it** (`tools/roads/extreme-circuits.py`, lapped in game by
+`tools/roads/run-laps.py` and in the suite by `ExtremeLapTests`): hairpins, a climbing helix, 30% humps, a
+figure of eight with a bridge, a 3.3 km oval, a 6 m chicane, kinks with no rounding and a grid of
+crossroads. In game the roads held on all eight; the failures were the driver's. It now slows for crests
+and dips, swings wide before a kink tighter than the car turns, reads its speed a tenth of a second ahead
+and stops gently, and all 24 laps finish in the rig. **Not lapped in game since.** Three in-game failures
+did not reproduce in the rig and are open: the buggy rolled on the figure of eight and left the grid, and
+the Eldorado and the buggy stood 6 to 13 m short of a road's end. The guess is a pad collider touching a
+road's box; a lap's summary now says how long the hull was down.
+
 ### Step 7. The car's numbers, which need no road
 
 Independent of everything above, and can run beside step 3.
