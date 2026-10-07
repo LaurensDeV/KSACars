@@ -6,7 +6,8 @@ mod's id, which is its install folder and its `manifest.toml` entry, is `FastAnd
 the namespace, the log, the bridge folder and every part, mesh, texture and sound stay `KSACars`: a save
 pairs a part with its definition by Id, so those cannot be renamed. KSA has no wheels, so every car's springs,
 tyres and engine are this mod's: a **beach buggy** on long-travel coil-overs, and a red **1976 Cadillac
-Eldorado** convertible that floats on its springs and leans into a turn. Both carry kittens: the driver's
+Eldorado** convertible that floats on its springs and leans into a turn, and a red **2004 Ferrari F2004**
+on wings and springs that move an inch. All carry kittens: the driver's
 hands hold the steering wheel and turn it, and either can get out on EVA. A car is driven with the pitch
 and yaw keys, like anything else in KSA.
 
@@ -148,6 +149,7 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
 python3 tools/ksa-mcp/server.py cli status # drive a running game through the bridge
 ./tools/buggy-sounds.py                    # re-cut the buggy's engine from its recordings
 ./tools/eldorado-sounds.py                 # ...and the Eldorado's
+./tools/f2004-sounds.py                    # ...and the F2004's, from the one recording that needs a credit
 ./tools/model/checkmesh.py src/KSACars/Meshes/*.glb --near-max 0   # z-fighting and degenerate UVs
 ./tools/ksa-user-dir.sh                    # where KSA keeps Logs/, mods/ and saves on this box
 ./tools/setup-starmap.sh                   # one-off: install StarMap and write its config
@@ -174,6 +176,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | **`src/KSACars/Sim/`** | **no KSA types, linked into the tests wholesale** |
 | `Sim/BuggyProfile.cs` | **one car, as data** — where its hubs, arms and coil-overs are, and how its springs, tyres and engine are tuned; `All` is every car the mod drives. KSA has no wheels, so every one of these numbers is the mod's |
 | `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
+| `docs/F2004-REFERENCES.md` | what the F2004 was modelled from: dimensions, the rules of its year, blueprint stations, the kitten's measurements, and each photograph's author and licence |
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
@@ -221,7 +224,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
 | `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
 | `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository |
-| `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py` and `tools/eldorado-sounds.py` |
+| `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py`, `tools/eldorado-sounds.py` and `tools/f2004-sounds.py`. **The F2004's four are CC BY-SA 3.0, credited in `README.md`**; the rest are CC0 |
 | `src/KSACars/mod.toml` | serves as both the content-mod and StarMap manifest |
 | `tests/KSACars.Tests/` | links the KSA-free sources and drives the cars headlessly |
 | `tools/apidump/` | reflection dumper for the game assemblies |
@@ -237,7 +240,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 370 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 374 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -252,6 +255,34 @@ anti-roll bar and a roll damper across each axle, the side force put in at the r
 pushing hard in a corner gives up drive before it gives up its line. The steering lock is held to
 what the front tyres can hold at the speed, which is what stops a full-lock flick scrubbing to a
 standstill.
+
+**A car with wings pulls with its power and grips with its downforce.** A profile's `PowerW` makes the
+pull the lesser of the launch pull and power over speed, with `TopSpeed` as the rev limiter, and its
+`DownforceAreaM2` presses the tyres with the air: one friction circle on the spring's load and the wings'.
+Nothing presses the body, so the share of a tyre's force past what its weight alone could hold goes in
+level with the centre of mass, where it turns the car and neither rolls nor pitches it. The steering lock
+is held to the grip of the weight and the wings together, and loses its three-degree floor while wings
+press, which at speed asked the F2004's tyres for more than they had. The F2004 has both;
+the other two have neither and drive as they did.
+
+**The springs are softened to what a step can carry.** The impulse is explicit, and past a step that
+depends on the car the roll mode overshoots: the car rocks from side to side every step and the unloaded
+tyre drives nothing, which halved the F2004's pull at KSA's 20 ms. `BuggyDrive.SpringRate` scales the rate
+down above that step, 19 ms for the F2004 and about 80 ms for the other two.
+`BuggyDriveTests.NoCarRocksOnItsSpringsOrLosesItsDriveAtAnyStep` fails without it.
+
+**KSA's own air drag is kept off a car on its wheels.** KSA drags every craft by the bounding box of its
+colliders, a skin term on the box's whole surface included: 3.1 m2 on the F2004, 5.2 on the Eldorado, and
+it held them to 37 and 31 m/s. Its drag code skips the air while the craft's `AerodynamicCdABody` is zero,
+so `Buggies.ShedGameDrag` zeroes it in the physics window, every step because KSA rebuilds it when a kitten
+boards, and rebuilds it from the same box once a car has been off its wheels for `BuggyDrive.FlightSeconds`
+or has a rocket lit, where that drag is the only one it has. A write to it anywhere else races the worker.
+With its wheels on the bottom in shallow water a car loses the water's form drag the same way.
+`docs/KSA-MODDING-NOTES.md` has the mechanism. **Not yet seen in game.**
+
+**An upright rises and steers with its wheel and does not spin.** The F2004's brake drum and duct fill
+its rims, so on the body they would be cut by the rim at the first bump. They are subparts ending
+`Upright<corner>`, which `Buggies.Pose` places at the hub with the steering's turn alone.
 
 **It runs inside the engine's physics window, never from a StarMap hook.** KSA double-buffers a
 vehicle's state: the worker's result is written over it, the next worker's input is snapshotted, and
@@ -418,7 +449,7 @@ A car is **data plus art**: nothing in the drive, the sound or the hands names a
    it is unwrapped**, because everything after is welded to the shape.
 2. **Declare it** in `KSACarsAssets.xml` and `KSACarsGameData.xml`: the part, its subparts with Ids
    ending `<Prefix>WheelFL`, `WheelFR`, `WheelRL`, `WheelRR` and `Steering` (and `Arm…` and `Coil…` if
-   it has visible suspension), its seats, doors, colliders, light switch and mass — a box the car's size, not a
+   it has visible suspension, `Upright…` for what sits inside a rim and must not spin), its seats, doors, colliders, light switch and mass — a box the car's size, not a
    sphere. **A shipped part's subpart list is append-only and its Id is not renameable**: KSA pairs a
    saved part with its definition positionally and by Id, and a save that no longer matches closes
    the game. `docs/KSA-MODDING-NOTES.md` has the loop.
@@ -507,9 +538,11 @@ source of truth and `check-docs.sh` fails on any prose file that disagrees with 
 
 `tests/KSACars.Tests` drives the cars headlessly: a rig steps `BuggyDrive` against flat ground with the
 engine's own mass and inertia for each car. `BuggyDriveTests` covers settling, pulling away, turning,
-braking, a yaw kick dying away, and the steering lock held to the grip; `SteeringGripTests` that the
+braking, a yaw kick dying away, the steering lock held to the grip, no car rocking on its springs at any
+step from 1/60 to a tenth of a second, and the F2004's times to speed, its braking and its cornering; `SteeringGripTests` that the
 driver reaches the rim of each car's wheel.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
-`CHECKLIST.md` records what has been driven and what has not. Both cars were driven through the bridge
-before this repository was split out; **nothing has been seen in game since the split.**
+`CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven
+through the bridge before this repository was split out; since the split only the F2004 has been seen in
+game, parked and pulling away, before its power, its downforce and the game's drag were changed.

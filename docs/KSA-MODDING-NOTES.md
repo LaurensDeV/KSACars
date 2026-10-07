@@ -988,6 +988,19 @@ in 2026.9.22.5482.
   centre and it cannot matter. `docs/BLOCKED-ON-KSA.md` has it.
 - **The force acts at the centre of mass**, so there is no righting moment: a floating craft keeps
   whatever roll and pitch it has, and anything that should come upright has to be given a torque.
+- **A craft in air is dragged by its colliders' box, on the ground or not.** `PhysicsStates.ComputeDerivatives`
+  applies `(CdA + 0.1 × surface area) · ½ρv²` every step to anything in the physics bubble that is not
+  railed. The box is the axis-aligned bounds of the whole collider compound (`Vehicle.UpdateCollisionGeometry`),
+  the mesh's only where a craft has no colliders; `RecomputeAerodynamicProperties` makes the areas of it,
+  with a Cd of 1.2 across and along. A part cannot declare a drag, and `<Diameter>` does not reach it.
+- **That drag is off while `VehicleProperties.AerodynamicCdABody` is zero.** The air branch is gated on
+  the CdA being above zero, skin term, skin torque and air buoyancy with it, and that field is read
+  nowhere else in the game. It is public through `Vehicle.GetPhysicsStatesMutable().Props`, a ref onto
+  the craft's own record, and a write from the `PrepareWorker` prefix is what the next worker integrates
+  with. KSA rebuilds it only in `UpdateAfterPartTreeModification`: creation, load, split, merge, the
+  editor, and a kitten boarding. `TotalSurfaceArea` and `TotalVolume` beside it are read by the sea and
+  must be left alone. The water's branch takes the same CdA, so zeroed it leaves only the skin term there.
+  If KSA drops the gate this compiles clean and the skin term comes back.
 - **Water drag is the air's box drag with the ocean's density**, `(CdA + 0.1 × wetted area) · ½ρv²`
   at the centre of mass (`ComputeDrag`). The box's CdA is per axis, so sideways drag dwarfs drag
   along the long axis, and there is no lift. A slow floating craft goes on rails

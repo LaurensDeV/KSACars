@@ -9,6 +9,13 @@ Both cars were driven in the mod they were built in, and everything below that s
 there. This repository renamed every part, subpart, sound and file, and rewired the entry point, so
 none of it has been seen as **KSACars** yet:
 
+- [x] The F2004 loads, textured, sits level at its modelled height on all four wheels with its uprights
+      found, seats a kitten whose hands are solved onto the wheel, and pulls away and turns (bridge,
+      `TARGET PRACTICE`, 2026-10-07; before its power, downforce and the game's drag were changed)
+- [ ] The F2004 with KSA's drag off: a coast-down with `game_drag` true and false, and its top speed
+- [ ] The Eldorado and the buggy with KSA's drag off: top speed, a boost on wheels, a flight and a landing
+- [ ] The F2004's rain light, faint with the lamps on and bright under the brakes
+- [ ] The F2004's uprights steering with the front wheels and not spinning
 - [ ] The mod loads: `KSACars.log` has the `loading` and `a developer's install` lines, and KSA's own
       log has no asset or XML errors for `KSACarsAssets.xml`, `KSACarsGameData.xml` or
       `KSACarsSounds.xml`
