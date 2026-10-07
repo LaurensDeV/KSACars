@@ -6,11 +6,18 @@ namespace KSACars;
 /// The tops of the roads laid on a body, as something a wheel can be over: each road a strip of its
 /// width either side of a line of points, level across.
 ///
-/// <para>The points are in the body's own frame, where the ground does not move. A road up to
-/// <see cref="StepM"/> above a point counts as under it; one higher than that is a bridge overhead,
-/// and the lower road is the one answered. That is taller than a car, which cannot be under such a
-/// road anyway, because a car meeting a ramp at speed is a metre into it within one step and has to
-/// be pushed back out of it, not let through as if it had driven underneath.</para>
+/// <para>The points are in the body's own frame, where the ground does not move. Each stretch
+/// between two points answers for the ground between the planes that halve the turn at its two
+/// ends, so round a bend every place has one stretch to answer for it: none on the outside is left
+/// without, and none on the inside has two that disagree. That holds while the bend's radius is more
+/// than the road's half width; tighter than that the inside edge folds over itself, and the highest
+/// answer is given.</para>
+///
+/// <para>A road up to <see cref="StepM"/> above a point counts as under it; one higher than that is
+/// a bridge overhead, and the highest road that is not is the one answered. That is taller than a
+/// car, which cannot be under such a road anyway, because a car meeting a ramp at speed is a metre
+/// into it within one step and has to be pushed back out of it, not let through as if it had driven
+/// underneath.</para>
 ///
 /// <para>Past its edge and past its ends a road falls away at <see cref="ShoulderSlope"/>, which is
 /// not drawn: a road stands a hand above the ground, and a wheel meeting that as a step is thrown.</para>
@@ -24,9 +31,17 @@ public sealed class RoadSurface
 
     private const double CellM = 32.0;
 
+    // Two points nearer than this, seen from above, are one: a stretch that short has no direction.
+    private const double LeastPieceM = 1e-6;
+
+    // Along: the stretch's direction seen from above. Across: level, square to it.
+    // PlaneA and PlaneB: the normals, pointing on along the road, of the planes it answers between,
+    // and CosA and CosB the cosine of each to Along.
     // OpenA and OpenB: the road ends there, with nothing carrying on from it.
     // Shouldered: near enough the ground that the fall past its edge reaches it.
-    private readonly record struct Piece(double3 A, double3 B, double HalfWidth, bool OpenA, bool OpenB, bool Shouldered);
+    private readonly record struct Piece(double3 A, double3 B, double3 Along, double3 Across, double LengthM,
+                                         double3 PlaneA, double3 PlaneB, double CosA, double CosB,
+                                         double HalfWidth, bool OpenA, bool OpenB, bool Shouldered);
 
     private readonly Dictionary<(int, int, int), List<Piece>> _cells = [];
     private readonly int _reach;
@@ -44,20 +59,59 @@ public sealed class RoadSurface
     /// </param>
     public RoadSurface(IEnumerable<(double3[] Line, double HalfWidth, bool Closed, double[]? AboveGroundM)> roads)
     {
-        double widest = 0.0;
+        double furthest = 0.0;
         foreach ((double3[] line, double halfWidth, bool closed, double[]? above) in roads)
         {
-            widest = Math.Max(widest, halfWidth);
-            for (int i = 1; i < line.Length; i++)
+            List<double3> points = [], along = [];
+            List<bool> low = [];
+            for (int i = 0; i < line.Length; i++)
             {
-                (int, int, int) cell = Cell(line[i - 1]);
+                bool isLow = above is null || above[i] <= ShoulderDropM;
+                if (points.Count > 0)
+                {
+                    double3 flat = Vec.RejectFrom(line[i] - points[^1], points[^1] + line[i]);
+                    if (!(Vec.Len(flat) >= LeastPieceM))
+                    {
+                        low[^1] &= isLow;
+                        continue;
+                    }
+                    along.Add(Vec.Unit(flat));
+                }
+                points.Add(line[i]);
+                low.Add(isLow);
+            }
+
+            int count = along.Count;
+            bool ring = closed && count > 1;
+            for (int i = 0; i < count; i++)
+            {
+                bool openA = !ring && i == 0, openB = !ring && i == count - 1;
+                double3 a = points[i], b = points[i + 1];
+                double3 planeA = openA ? along[i] : Halving(along[(i + count - 1) % count], along[i], a, along[i]);
+                double3 planeB = openB ? along[i] : Halving(along[i], along[(i + 1) % count], b, along[i]);
+                Piece piece = new(a, b, along[i], Vec.Unit(Vec.Cross(a + b, along[i])), Vec.Len(Vec.RejectFrom(b - a, a + b)),
+                                  planeA, planeB, Vec.Dot(planeA, along[i]), Vec.Dot(planeB, along[i]),
+                                  halfWidth, openA, openB, low[i] && low[i + 1]);
+
+                (int, int, int) cell = Cell(a);
                 if (!_cells.TryGetValue(cell, out List<Piece>? pieces)) _cells[cell] = pieces = [];
-                bool low = above is null || (above[i - 1] <= ShoulderDropM && above[i] <= ShoulderDropM);
-                pieces.Add(new Piece(line[i - 1], line[i], halfWidth, !closed && i == 1, !closed && i == line.Length - 1, low));
+                pieces.Add(piece);
+
+                // The furthest from its start a stretch answers for: its own length on, and past each
+                // end and each edge the half width and the shoulder, the corner of that half as far again.
+                furthest = Math.Max(furthest, Vec.Len(b - a) + (1.5 * (halfWidth + (ShoulderDropM / ShoulderSlope))));
             }
         }
-        // A piece is filed under where it starts, so the search goes a piece's length and a half width past its own cell.
-        _reach = 1 + (int)Math.Ceiling((widest + (ShoulderDropM / ShoulderSlope)) / CellM);
+        // A stretch is filed under where it starts, and a cell more for a wheel in the air over it.
+        _reach = 1 + (int)Math.Ceiling(furthest / CellM);
+    }
+
+    // The plane between two stretches that meet at a point: upright there, and halving the turn seen
+    // from above. Where the road doubles straight back there is no such plane, and a stretch ends square.
+    private static double3 Halving(double3 before, double3 after, double3 at, double3 square)
+    {
+        double3 both = Vec.RejectFrom(before + after, at);
+        return Vec.Len(both) > 1e-6 ? Vec.Unit(both) : square;
     }
 
     private static (int, int, int) Cell(double3 p) => ((int)Math.Floor(p.X / CellM), (int)Math.Floor(p.Y / CellM), (int)Math.Floor(p.Z / CellM));
@@ -66,29 +120,19 @@ public sealed class RoadSurface
     public bool TryHeightOver(double3 at, out double metres) => TryHeightOver(at, null, out metres);
 
     /// <summary>
-    /// The same for a point that was <paramref name="last"/> above a road a moment ago: it is still
-    /// over that road however far into it it has got, and the road answered is the one whose surface is
-    /// nearest where it was. That is what tells a car that has run into a ramp from one under a bridge.
+    /// The same for a point that was <paramref name="last"/> above a road a moment ago. One that was
+    /// in a road is still over that road however far into it it has got: the roads it may be on are
+    /// those no more than <see cref="StepM"/> above the surface it was on, which is what tells a car
+    /// that has run into a ramp from one under a bridge.
     /// </summary>
     public bool TryHeightOver(double3 at, double? last, out double metres)
     {
-        if (last is { } before)
-        {
-            // Further than a car moves in a step, the road has been moved from under it, and it is
-            // looked for afresh: a road raised in the editor does not take a car up with it.
-            if (Nearest(at, before, out metres) && Math.Abs(metres - before) <= FollowedM) return true;
-            last = null;
-        }
-        return Nearest(at, last, out metres);
-    }
-
-    /// <summary>How far a road's surface can be from where a wheel was over it a step ago and still be the road it was on.</summary>
-    public const double FollowedM = 25.0;
-
-    private bool Nearest(double3 at, double? last, out double metres)
-    {
         metres = double.PositiveInfinity;
         if (_cells.Count == 0) return false;
+
+        // A wheel above its road is asked as one new to it, or a deck it flew in over would not be under it.
+        double deepest = Math.Min(last ?? 0.0, 0.0) - StepM;
+        double3 up = Vec.Unit(at);
 
         (int cx, int cy, int cz) = Cell(at);
         for (int x = cx - _reach; x <= cx + _reach; x++)
@@ -100,35 +144,33 @@ public sealed class RoadSurface
                     if (!_cells.TryGetValue((x, y, z), out List<Piece>? pieces)) continue;
                     foreach (Piece piece in pieces)
                     {
-                        // Where along the piece the point is, seen from above: measured along the piece
-                        // itself, a point over a ramp is put too far down it and so too near its surface.
-                        double3 up = Vec.Unit(piece.A);
-                        double3 flat = Vec.RejectFrom(piece.B - piece.A, up);
-                        double length = Math.Max(Vec.Len(flat), 1e-6);
-                        double t = Vec.Dot(at - piece.A, flat) / (length * length);
+                        // Past an end's plane is the next stretch's to answer, unless the road ends there.
+                        double3 fromA = at - piece.A;
+                        double pastA = -Vec.Dot(fromA, piece.PlaneA), pastB = -Vec.Dot(piece.B - at, piece.PlaneB);
+                        if ((pastA > 0.0 && !piece.OpenA) || (pastB > 0.0 && !piece.OpenB)) continue;
 
-                        // Past a piece's end is the next piece's to answer, unless the road ends there:
-                        // then it is the shoulder, level with the end and falling away from it.
-                        double past = Math.Max(Math.Max(-t, t - 1.0), 0.0) * length;
-                        if (past > 0.02 && !(t < 0.0 ? piece.OpenA : piece.OpenB)) continue;
+                        // Square to the stretch and not to the line that halves the turn, which on the
+                        // outside of a bend is further from the point than the road is wide.
+                        double along = Vec.Dot(fromA, piece.Along);
+                        double beside = Math.Abs(Vec.Dot(fromA, piece.Across)) - piece.HalfWidth;
+                        double beyond = Math.Max(-along, along - piece.LengthM);
 
-                        double3 on = piece.A + ((piece.B - piece.A) * Math.Clamp(t, 0.0, 1.0));
-                        double3 off = at - on;
-                        double height = Vec.Dot(off, up);
-                        double3 beside = at - (piece.A + (flat * t));
-                        double out_ = Math.Max(Vec.Len(beside - (up * Vec.Dot(beside, up))) - piece.HalfWidth, 0.0) + past;
+                        // Off an open end is the shoulder, falling from the end. Round the outside of a
+                        // turn the road carries on as far past its stretch as it is wide, as it is drawn.
+                        bool pastEnd = along < 0.0 ? piece.OpenA : piece.OpenB;
+                        double out_ = pastEnd ? Math.Max(beside, 0.0) + Math.Max(beyond, 0.0)
+                                              : Math.Max(Math.Max(beside, beyond - piece.HalfWidth), 0.0);
                         if (out_ * ShoulderSlope > ShoulderDropM || (out_ > 0.02 && !piece.Shouldered)) continue;
 
-                        double over = height + (out_ * ShoulderSlope);
-                        if (last is { } was)
-                        {
-                            if (Math.Abs(over - was) >= Math.Abs(metres - was)) continue;
-                        }
-                        else if (over < -StepM || over >= metres)
-                        {
-                            continue;
-                        }
-                        metres = over;
+                        // How far along, as the share of the way from one plane to the other measured
+                        // along the stretch, so both stretches at a plane give the height of the point they share.
+                        double fromPlaneA = -pastA / Math.Max(piece.CosA, 1e-3), toPlaneB = -pastB / Math.Max(piece.CosB, 1e-3);
+                        double span = fromPlaneA + toPlaneB;
+                        double t = span > 1e-9 ? Math.Clamp(fromPlaneA / span, 0.0, 1.0) : 0.5;
+
+                        double3 on = piece.A + ((piece.B - piece.A) * t);
+                        double over = Vec.Dot(at - on, up) + (out_ * ShoulderSlope);
+                        if (over >= deepest && over < metres) metres = over;
                     }
                 }
             }
