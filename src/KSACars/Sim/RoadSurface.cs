@@ -14,17 +14,20 @@ namespace KSACars;
 /// answer is given.</para>
 ///
 /// <para>A road up to <see cref="StepM"/> above a point counts as under it; one higher than that is
-/// a bridge overhead, and the highest road that is not is the one answered. That is taller than a
-/// car, which cannot be under such a road anyway, because a car meeting a ramp at speed is a metre
-/// into it within one step and has to be pushed back out of it, not let through as if it had driven
-/// underneath.</para>
+/// a bridge overhead, and the highest road that is not is the one answered.</para>
 ///
 /// <para>Past its edge and past its ends a road falls away at <see cref="ShoulderSlope"/>, which is
 /// not drawn: a road stands a hand above the ground, and a wheel meeting that as a step is thrown.</para>
 /// </summary>
 public sealed class RoadSurface
 {
-    public const double StepM = 2.0;
+    /// <summary>
+    /// As deep as a road's collider is. A hub nearer the top than that is inside the box, where no
+    /// car can be driven and one is only on its way back out; a hub further down is below the box, and
+    /// under a deck. A hull on the box keeps a hub well above its top, so no more is needed for a car
+    /// that has come down hard.
+    /// </summary>
+    public const double StepM = RoadSlabs.ThicknessM;
 
     /// <summary>How far the shoulder drops for each metre out from the road, and how far it drops before it ends.</summary>
     public const double ShoulderSlope = 1.0 / 15.0, ShoulderDropM = 0.5;

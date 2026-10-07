@@ -178,7 +178,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
 | `docs/F2004-REFERENCES.md` | what the F2004 was modelled from: dimensions, the rules of its year, blueprint stations, the kitten's measurements, and each photograph's author and licence |
 | `Sim/GroundPlane.cs` | the ground under a car as one plane through what is under its four wheels, **whose up is what the dampers measure closing speed along**: straight up, a car running down a slope is closing on the ground as far as they know |
-| `Sim/WheelGround.cs` | what is under each wheel this step — the nearest of the terrain, a launch pad and a road below its hub — and **the move that sets a car back on a road it has run into**, which the caller owes the craft: the contacts answered are already those of the car moved |
+| `Sim/WheelGround.cs` | what is under each wheel this step — the nearest of the terrain, a launch pad and a road below its hub — as the contacts the drive is stepped against, **the wheels' alone**: a hull on a road is the road's colliders' to stop |
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
@@ -201,7 +201,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
 | `Sim/RoadLaying.cs` | a circuit put on the ground: each run as a line of points on the road's surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
-| `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than two metres overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
+| `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than its collider's half metre overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
 | `Sim/RoadSlabs.cs` | a laid road as the boxes KSA's physics is given for it: one a stretch, its top on the road's line and half a metre deep, reaching round the outside of a turn, **its size rounded up to a step**, because the physics keeps a shape for every size it has seen |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/ClutterGrid.cs` | **where KSA scatters grass, trees and rocks, worked out as its generation shader works it out**, so the ones under a road can be named in KSA's per-cell mask |
@@ -482,27 +482,28 @@ so a raised road still follows the terrain beneath it.
 **A wheel over a road is sprung against the road, as one over a launch pad is against the pad.**
 `Sim/RoadLaying.cs` builds a `Sim/RoadSurface.cs` from the same points the road is drawn through, and
 `Sim/WheelGround.cs` takes a hub's height as the least of its height over the terrain, a pad and a road.
-A car under a deck less than two metres over its hubs is set on top of it. A road stands a hand above
+A road stands a hand above
 the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
 threw a car coming onto it, but only where the road is within half a metre of the ground: beside a
-raised road that fall would be a ledge in the air, and lifted a car parked next to it; and a road counts as under a wheel up to two metres into it, because at speed
-a car is a metre into a ramp within one step. Each stretch of a road between two points answers for the
+raised road that fall would be a ledge in the air, and lifted a car parked next to it. Each stretch of a
+road between two points answers for the
 ground between the planes that halve the turn at its two ends, so the outside of a bend has no hole and
 the inside no two heights; that holds while the bend's radius is more than the road's half width, and
 tighter than that the highest answer is given. Where roads are over one another a wheel is on the highest
-one no more than two metres above it; a wheel that was in a road last step, which
+one no more than half a metre above its hub, which is how deep a road's collider is: a hub further down
+than that is below the box, under a deck. A wheel that was in a road last step, which
 `Buggies.Entry.RoadOver` remembers for as long as the roads are not laid again, is still on that road
-however deep, and is never put on one more than two metres above the surface it was in.
+however deep, and is never put on one more than half a metre above the surface it was in.
 `RoadSurfaceSweepTests` lays bends, junctions and bridges as the game does and asks what a wheel would.
-**The lookup has not been driven in game.** Nothing of KSA's stands where a road is, and
-the springs push only so hard, so a car a tenth of a metre past its bump stops into a road is set back on
-the surface and loses its speed downwards. **Not yet seen in game.**
+**The lookup has not been driven in game.**
 
 **Everything but a wheel meets a road through KSA's own physics.** `Sim/RoadSlabs.cs` turns each stretch
 of a laid road into a box with its top on the road's line, half a metre deep where the road is drawn 0.3,
 so that what falls onto one is not through it within a step and a car still fits under a deck.
 `Ksa/RoadColliders.cs` puts them in every physics bubble near the roads as ground clutter of infinite
-mass, which is what KSA lets a craft and a kitten collide with and count as ground. A box is flat across and
+mass, which is what KSA lets a craft and a kitten collide with and count as ground. So a car that meets
+a ramp harder than its springs can carry comes down on its hull, as it does on the ground, and under
+time warp, where the springs are left out, it rests on its hull on the road. A box is flat across and
 ends square: on a bend each reaches on to where the outside edges of two meet, and on a climbing bend its
 top stands off the surface a wheel is told by the gradient's share of that reach, 7 cm on a 6 m road
 climbing 1 in 8 round a 5 m radius. A box's length is rounded up to a quarter of a metre and its width to
@@ -646,12 +647,15 @@ bend, a climbing bend has no step, a junction onto a climbing road and a deck ov
 right one, and every point of a road has a collider box under it with its top where the wheel is told.
 
 `TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
-steps it: `WheelGround`, the move back onto a road, `BuggyDrive.Step`, then gravity. On a bare sphere it
-is the flat `Rig` to a micron. It has no hull, and marks a step in which a collider would have been down;
-what follows such a step is not what the game does. `RoadBulletTests` fires each car, undriven, at a level
-road, ramps, a step in a road, a road's edge, a deck alongside and overhead and a deck's end, at Earth's
-gravity and Luna's and at three step lengths. Seven of them are skipped, each naming the fault in the
-road stop it fails on; `KSACARS_BULLETS=<file> ./tools/test.sh` writes every run out as a table.
+steps it: `WheelGround`, `BuggyDrive.Step`, then gravity. On a bare sphere it
+is the flat `Rig` to a micron. Its hull is four points, one under each hub at the height the car's lowest
+collider ends, stopped dead at the ground or a road: it does not rub, has no nose, belly or roof, and
+meets a road's top and never its edge, so a run marks each step the hull was down and how hard it came
+down, and what a car does after that is the rig's and not the game's. `RoadBulletTests` fires each car,
+undriven, at a level road, ramps, a step in a road, a road's edge, a deck alongside and overhead and a
+deck's end, at Earth's gravity and Luna's and at three step lengths, and parks it under a step too long
+for the springs. One is skipped: on Luna a car comes down on its hull at the foot of a ramp its springs
+carry it up on Earth. `KSACARS_BULLETS=<file> ./tools/test.sh` writes every run out as a table.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

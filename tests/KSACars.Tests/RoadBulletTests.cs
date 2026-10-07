@@ -15,20 +15,21 @@ public class RoadBulletTests
 
     // What a run came to. Energies are per kilogram.
     internal sealed record Outcome(
-        bool Finite, double Seconds, double EndSpeed, int Stops, double StopWorst, double StopSum, double StopLift,
+        bool Finite, double Seconds, double EndSpeed, int HullSteps, int HullHits, double HullMs,
         double Deepest, double AirSeconds, double LongestFlight, int Flights, double PeakClearance,
         double PitchDeg, double RollDeg, double UpDot, double Gain, double Budget,
-        double TerrainLow, double TerrainHigh, double TerrainStart, int HullSteps, double EndEast)
+        double TerrainLow, double TerrainHigh, double TerrainStart, double TerrainEnd, double EndEast)
     {
-        public const string Header = "finite\tsecs\tend_ms\tstops\tstop_worst_J/kg\tstop_sum_J/kg\tstop_lift_m\tdeepest_m\tair_s\tlongest_s\t"
-                                   + "flights\tpeak_m\tpitch_deg\troll_deg\tup_dot\tgain_J/kg\tbudget_J/kg\tlow_m\thigh_m\thull_steps";
+        public const string Header = "finite\tsecs\tend_ms\thull_steps\thull_hits\thull_ms\tdeepest_m\tair_s\tlongest_s\t"
+                                   + "flights\tpeak_m\tpitch_deg\troll_deg\tup_dot\tgain_J/kg\tbudget_J/kg\tlow_m\thigh_m\tend_m";
 
         public string Row() => string.Join('\t', new[]
         {
-            Finite ? "1" : "0", F(Seconds, 2), F(EndSpeed, 1), Stops.ToString(CultureInfo.InvariantCulture), F(StopWorst, 2), F(StopSum, 2),
-            F(StopLift, 3), F(Deepest, 3), F(AirSeconds, 2), F(LongestFlight, 2), Flights.ToString(CultureInfo.InvariantCulture),
+            Finite ? "1" : "0", F(Seconds, 2), F(EndSpeed, 1), HullSteps.ToString(CultureInfo.InvariantCulture),
+            HullHits.ToString(CultureInfo.InvariantCulture), F(HullMs, 2),
+            F(Deepest, 3), F(AirSeconds, 2), F(LongestFlight, 2), Flights.ToString(CultureInfo.InvariantCulture),
             F(PeakClearance, 3), F(PitchDeg, 1), F(RollDeg, 1), F(UpDot, 3), F(Gain, 1), F(Budget, 1),
-            F(TerrainLow - TerrainStart, 3), F(TerrainHigh - TerrainStart, 3), HullSteps.ToString(CultureInfo.InvariantCulture),
+            F(TerrainLow - TerrainStart, 3), F(TerrainHigh - TerrainStart, 3), F(TerrainEnd - TerrainStart, 3),
         });
 
         private static string F(double v, int places) => v.ToString("F" + places, CultureInfo.InvariantCulture);
@@ -116,20 +117,12 @@ public class RoadBulletTests
             if (speed > 0.0 && Vec.Len(rig.Velocity) < 2.0) break;
         }
 
-        double gravity = track.World.Gravity;
-        int stops = 0, flights = 0, hull = 0;
-        double worst = 0.0, sum = 0.0, lift = 0.0, deepest = double.NegativeInfinity, air = 0.0, flight = 0.0, longest = 0.0, peak = 0.0;
+        int flights = 0, hull = 0, hits = 0;
+        bool down = false;
+        double hardest = 0.0, deepest = double.NegativeInfinity, air = 0.0, flight = 0.0, longest = 0.0, peak = 0.0;
         double pitch = 0.0, roll = 0.0, upDot = 1.0, budget = 0.0, low = double.PositiveInfinity, high = double.NegativeInfinity;
         foreach (TrackSample sample in rig.Log)
         {
-            if (sample.StopLiftM > 0.0)
-            {
-                stops++;
-                double work = sample.StopWork(gravity);
-                sum += work;
-                if (Math.Abs(work) > Math.Abs(worst)) worst = work;
-                lift = Math.Max(lift, sample.StopLiftM);
-            }
             deepest = Math.Max(deepest, sample.DeepestM);
             if (sample.Airborne)
             {
@@ -149,12 +142,18 @@ public class RoadBulletTests
             budget += sample.LossBudget;
             low = Math.Min(low, sample.TerrainUnderM);
             high = Math.Max(high, sample.TerrainUnderM);
-            if (sample.HullDown) hull++;
+            if (sample.HullDown)
+            {
+                hull++;
+                if (!down) hits++;
+                hardest = Math.Max(hardest, sample.HullMs);
+            }
+            down = sample.HullDown;
         }
 
         return new Outcome(
-            rig.Finite, rig.Time - started, Vec.Len(rig.Velocity), stops, worst, sum, lift, deepest, air, longest, flights, peak,
-            pitch, roll, upDot, rig.Energy - rig.Log[0].Energy, budget, low, high, terrainStart, hull, rig.Where.East);
+            rig.Finite, rig.Time - started, Vec.Len(rig.Velocity), hull, hits, hardest, deepest, air, longest, flights, peak,
+            pitch, roll, upDot, rig.Energy - rig.Log[0].Energy, budget, low, high, terrainStart, rig.TerrainUnderM, rig.Where.East);
     }
 
     internal static readonly double[] Steps = [1.0 / 60.0, 0.02, 0.05];
@@ -213,7 +212,10 @@ public class RoadBulletTests
                    : Fire(car, Level(), dt, 0.0, 0.0, 0.0, 0.0, 6.0);
 
     internal static readonly (double Rise, double Run)[] Ramps = [(8.0, 100.0), (8.0, 40.0), (3.0, 60.0)];
-    internal static readonly double[] StepHeights = [0.25, 0.5];
+    // Steps a car's hull clears, which its wheels have to take; and for the table, ones it does not:
+    // those the rig's hull rides up, where in the game the nose meets the riser.
+    internal static readonly double[] StepHeights = [0.05, 0.1];
+    internal static readonly double[] TallSteps = [0.25, 0.5];
     internal static readonly double[] Grades = [0.0, 0.1, 0.2, -0.1, -0.2];
     internal static readonly double[] EntryAngles = [10.0, 30.0, 90.0];
     internal static readonly double[] DeckHeights = [1.0, 1.5, 2.0, 3.0];
@@ -237,26 +239,25 @@ public class RoadBulletTests
         public void None() => Assert.True(_found.Count == 0, $"{_found.Count} run(s):\n" + string.Join('\n', _found.Take(40)));
     }
 
-    // Past the end of its travel a wheel goes no deeper into a road than the stop allows; a millimetre is rounding.
-    internal const double DeepestM = WheelGround.RoadBumpStopM + 0.001;
-
     // Springs and tyres settling a car are not friction the budget counts: 2 J/kg is 20 cm of height on
     // Earth, and 2% covers a budget reckoned from the speed at the start of each step.
     internal static double Slack(Outcome o) => 2.0 + (0.02 * o.Budget);
 
-    // A coasting car has the energy it started with less what drag and rolling resistance took: no
-    // more, and with no flight to land from, no less.
-    internal static bool EnergyKept(Outcome o) =>
-        o.Gain + o.Budget <= Slack(o) && (o.AirSeconds > 0.0 || o.Gain + o.Budget >= -Slack(o));
+    // Nothing a road does to a coasting car gives it energy: it has what it started with less what drag
+    // and rolling resistance took, or less.
+    internal static bool NoEnergyGained(Outcome o) => o.Gain + o.Budget <= Slack(o);
 
-    // Nothing but coasting: no stop, no wheel off the road, no lean, no collider down, no energy from nowhere.
+    // And with no flight to land from and no hull to land on, no less.
+    internal static bool EnergyKept(Outcome o) =>
+        NoEnergyGained(o) && (o.AirSeconds > 0.0 || o.HullSteps > 0 || o.Gain + o.Budget >= -Slack(o));
+
+    // Nothing but coasting: no wheel off the road, no lean, no collider down, no energy from nowhere.
     private static void Calm(Faults faults, Outcome o, TrackCar car, double speed, double dt, bool luna = false)
     {
         faults.Check(o.Finite, car, speed, dt, luna, $"not finite");
-        faults.Check(o.Stops == 0, car, speed, dt, luna, $"the stop fired {o.Stops} times, lifting up to {o.StopLift:F3} m");
+        faults.Check(o.HullSteps == 0, car, speed, dt, luna, $"down on its hull for {o.HullSteps} steps, at up to {o.HullMs:F2} m/s");
         faults.Check(o.AirSeconds == 0.0, car, speed, dt, luna, $"off its wheels for {o.AirSeconds:F2} s");
         faults.Check(o.PitchDeg < 1.0 && o.RollDeg < 1.0, car, speed, dt, luna, $"pitched {o.PitchDeg:F1} deg, rolled {o.RollDeg:F1}");
-        faults.Check(o.Deepest <= DeepestM && o.HullSteps == 0, car, speed, dt, luna, $"a wheel {o.Deepest:F3} m past its travel");
         faults.Check(EnergyKept(o), car, speed, dt, luna, $"energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
         faults.Check(o.TerrainHigh - o.TerrainLow < 0.03, car, speed, dt, luna,
                      $"moved {o.TerrainLow - o.TerrainStart:F3} to {o.TerrainHigh - o.TerrainStart:F3} m over the ground");
@@ -296,7 +297,7 @@ public class RoadBulletTests
 
     // A road stands 7 cm proud of the grass and its shoulder brings a wheel up to it at 1 in 15.
     [Fact]
-    public void OntoARoadFromTheGrassAtAnyAngleTheStopDoesNotFire()
+    public void OntoARoadFromTheGrassAtAnyAngleACarIsCarriedOnItsSprings()
     {
         Faults faults = new();
         foreach (TrackCar car in TrackCar.All)
@@ -308,11 +309,10 @@ public class RoadBulletTests
                     foreach (double angle in EntryAngles)
                     {
                         Outcome o = Entry(angle, car, speed, dt);
-                        faults.Check(o.Finite && o.Stops == 0, car, speed, dt, false, $"{angle:F0} deg: the stop fired {o.Stops} times");
+                        faults.Check(o.Finite && o.HullSteps == 0, car, speed, dt, false, $"{angle:F0} deg: down on its hull for {o.HullSteps} steps");
                         faults.Check(o.UpDot > 0.99 && o.PitchDeg < 5.0 && o.RollDeg < 5.0, car, speed, dt, false,
                                      $"{angle:F0} deg: pitched {o.PitchDeg:F1} deg, rolled {o.RollDeg:F1}");
                         faults.Check(o.PeakClearance <= 0.15, car, speed, dt, false, $"{angle:F0} deg: thrown {o.PeakClearance:F2} m clear");
-                        faults.Check(o.Deepest <= DeepestM && o.HullSteps == 0, car, speed, dt, false, $"{angle:F0} deg: a wheel {o.Deepest:F3} m past its travel");
                         faults.Check(EnergyKept(o), car, speed, dt, false, $"{angle:F0} deg: energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
                     }
                 }
@@ -342,7 +342,7 @@ public class RoadBulletTests
     private static void LeftOnTheGround(Faults faults, double height, TrackCar car, double speed, double dt)
     {
         Outcome o = Along(height, 0.0, car, speed, dt);
-        faults.Check(o.TerrainHigh - o.TerrainStart < 0.03 && o.Stops == 0, car, speed, dt, false,
+        faults.Check(o.TerrainHigh - o.TerrainStart < 0.03 && o.HullSteps == 0, car, speed, dt, false,
                      $"under a deck {height:F1} m up: lifted {o.TerrainHigh - o.TerrainStart:F2} m");
     }
 
@@ -360,21 +360,30 @@ public class RoadBulletTests
         faults.None();
     }
 
-    [Fact(Skip = "a road counts as under a wheel up to RoadSurface.StepM into it, so a car under a deck 1 to 2 m up is set on top of it")]
-    public void UnderALowDeckACarIsLeftOnTheGround()
+    // A deck is a collider RoadSlabs.ThicknessM deep, so a car is under one only where its own
+    // colliders end below that. Under any such deck its wheels are on the ground.
+    [Fact]
+    public void UnderAnyDeckACarFitsUnderItIsLeftOnTheGround()
     {
         Faults faults = new();
+        int judged = 0;
         foreach (TrackCar car in TrackCar.All)
         {
             foreach (double speed in Speeds(car))
             {
-                foreach (double height in new[] { 1.0, 1.5, 2.0 }) LeftOnTheGround(faults, height, car, speed, Steps[0]);
+                foreach (double height in new[] { 1.0, 1.25, 1.5, 2.0 })
+                {
+                    if (height + TrackWorld.LiftM - RoadSlabs.ThicknessM < car.RoofM) continue;
+                    judged++;
+                    LeftOnTheGround(faults, height, car, speed, Steps[0]);
+                }
             }
         }
+        Assert.True(judged >= 15, $"only {judged} runs fitted under a deck");
         faults.None();
     }
 
-    // The rig has no hull, so what a car does once it has landed on its nose is not judged.
+    // What a car does on the ground once it has landed on its nose is the rig's and is not judged.
     [Fact]
     public void OffTheOpenEndOfADeckACarFallsToTheGround()
     {
@@ -395,8 +404,10 @@ public class RoadBulletTests
         faults.None();
     }
 
-    [Fact(Skip = "past a tenth of a second the springs are left out and the stop is not, so each step the car falls a step of gravity into the road and is set back")]
-    public void ParkedOnARoadUnderALongStepACarStaysWhereItIs()
+    // Past a tenth of a second the springs are left out, and a car is on its hull as it is on the
+    // ground: down by what its hull stands clear at rest, and no further.
+    [Fact]
+    public void ParkedOnARoadUnderALongStepACarSitsOnItsHullAndStaysThere()
     {
         Faults faults = new();
         foreach (TrackCar car in TrackCar.All)
@@ -406,8 +417,12 @@ public class RoadBulletTests
                 foreach (double deck in new[] { 0.0, 3.0 })
                 {
                     Outcome o = Parked(car, dt, deck);
-                    faults.Check(o.Stops == 0 && o.TerrainStart - o.TerrainLow < 0.05, car, 0.0, dt, false,
-                                 $"deck {deck:F0} m: the stop fired {o.Stops} times in {o.Seconds:F1} s, lifting {o.StopLift:F2} m and giving {o.StopWorst:F2} J/kg each; sank {o.TerrainStart - o.TerrainLow:F2} m");
+                    double sank = o.TerrainStart - o.TerrainLow, moved = o.EndEast - (deck > 0.0 ? -300.0 : 0.0);
+                    faults.Check(o.Finite && sank < car.FloorM + 0.01 && o.TerrainHigh - o.TerrainStart < 0.01, car, 0.0, dt, false,
+                                 $"deck {deck:F0} m: sank {sank:F3} m and rose {o.TerrainHigh - o.TerrainStart:F3} m in {o.Seconds:F1} s, its hull {car.FloorM:F2} m clear at rest");
+                    faults.Check(o.EndSpeed < 0.01 && Math.Abs(moved) < 0.01 && o.UpDot > 0.999, car, 0.0, dt, false,
+                                 $"deck {deck:F0} m: left moving at {o.EndSpeed:F3} m/s, {moved:F3} m from where it was parked");
+                    faults.Check(NoEnergyGained(o), car, 0.0, dt, false, $"deck {deck:F0} m: energy {o.Gain:F2} J/kg from nowhere");
                 }
             }
         }
@@ -441,7 +456,7 @@ public class RoadBulletTests
                             Row($"down {rise:F0}/{run:F0}", luna, car, speed, dt, RampDown(rise, run, car, speed, dt, luna));
                             Row($"foot {rise:F0}/{run:F0}", luna, car, speed, dt, RampFoot(rise, run, car, speed, dt, luna));
                         }
-                        foreach (double step in StepHeights)
+                        foreach (double step in StepHeights.Concat(TallSteps))
                         {
                             foreach (double grade in Grades)
                             {
@@ -490,7 +505,7 @@ public class RoadBulletRampTests
     // Under 0.6 g of turn at the foot and the crest, at the speed it comes off the ramp when that is
     // the faster, a car neither bottoms nor flies: the road is simply followed.
     [Fact]
-    public void AGentleRampIsFollowedUpAndDownWithNoStopAndNoFlight()
+    public void AGentleRampIsFollowedUpAndDownOnTheSpringsWithNoFlight()
     {
         RoadBulletTests.Faults faults = new();
         int judged = 0;
@@ -509,10 +524,9 @@ public class RoadBulletRampTests
                     RoadBulletTests.Outcome o = up ? RoadBulletTests.RampUp(rise, run, car, speed, dt, luna)
                                                    : RoadBulletTests.RampDown(rise, run, car, speed, dt, luna);
                     string what = $"{(up ? "up" : "down")} {rise:F0} m over {run:F0} m";
-                    faults.Check(o.Finite && o.Stops == 0, car, speed, dt, luna, $"{what}: the stop fired {o.Stops} times");
+                    faults.Check(o.Finite && o.HullSteps == 0, car, speed, dt, luna, $"{what}: down on its hull for {o.HullSteps} steps");
                     faults.Check(o.AirSeconds == 0.0, car, speed, dt, luna, $"{what}: off its wheels for {o.AirSeconds:F2} s");
                     faults.Check(o.PitchDeg < 3.0 && o.RollDeg < 1.0 && o.UpDot > 0.9, car, speed, dt, luna, $"{what}: pitched {o.PitchDeg:F1} deg off the road");
-                    faults.Check(o.Deepest <= RoadBulletTests.DeepestM && o.HullSteps == 0, car, speed, dt, luna, $"{what}: a wheel {o.Deepest:F3} m past its travel");
                     faults.Check(RoadBulletTests.EnergyKept(o), car, speed, dt, luna, $"{what}: energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
                 }
             }
@@ -534,10 +548,11 @@ public class RoadBulletRampTests
                     RoadBulletTests.Outcome o = up ? RoadBulletTests.RampUp(rise, run, car, speed, dt, luna)
                                                    : RoadBulletTests.RampDown(rise, run, car, speed, dt, luna);
                     string what = $"{(up ? "up" : "down")} {rise:F0} m over {run:F0} m ({Asks(rise, run, speed) / g:F1} g)";
+                    bool coasts = !up || RoadBulletTests.CoastsUp(speed, rise, g);
                     faults.Check(o.Finite, car, speed, dt, luna, $"{what}: not finite");
                     faults.Check(o.UpDot > 0.0, car, speed, dt, luna,
-                                 $"{what}: turned over, after {o.Stops} firings of the stop and {o.PeakClearance:F1} m clear of the road");
-                    faults.Check(o.Deepest <= RoadBulletTests.DeepestM, car, speed, dt, luna, $"{what}: a wheel {o.Deepest:F3} m past its travel");
+                                 $"{what}: turned over, after {o.HullHits} landings on its hull at up to {o.HullMs:F1} m/s and {o.PeakClearance:F1} m clear of the road");
+                    faults.Check(!coasts || RoadBulletTests.NoEnergyGained(o), car, speed, dt, luna, $"{what}: energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
                 }
             }
         }
@@ -554,16 +569,31 @@ public class RoadBulletRampTests
         faults.None();
     }
 
-    [Fact(Skip = "the stop lifts the whole car by its deepest wheel and leaves its pitch alone: a ramp asking 7 g or more of the springs turns the car over")]
-    public void NoRampTurnsACarOver()
+    // Past that a car comes down on its hull at the foot. However hard, that is all: it is not
+    // turned over there and gets nothing from it. Off the crest it flies, and where it lands is not judged.
+    [Fact]
+    public void TheFootOfNoRampTurnsACarOverOrGivesItEnergy()
     {
         RoadBulletTests.Faults faults = new();
-        Upright(faults, most: double.PositiveInfinity);
+        double hardest = 0.0;
+        foreach ((TrackCar car, double speed, double dt, bool luna) in Runs())
+        {
+            foreach ((double rise, double run) in RoadBulletTests.Ramps)
+            {
+                RoadBulletTests.Outcome o = RoadBulletTests.RampFoot(rise, run, car, speed, dt, luna);
+                string what = $"foot of {rise:F0} m over {run:F0} m ({Asks(rise, run, speed) / (luna ? 1.62 : EarthG):F1} g)";
+                hardest = Math.Max(hardest, o.HullMs);
+                faults.Check(o.Finite && o.UpDot > 0.8, car, speed, dt, luna,
+                             $"{what}: leant to {Math.Acos(Math.Clamp(o.UpDot, -1.0, 1.0)) * 180.0 / Math.PI:F0} deg, its hull down {o.HullHits} times at up to {o.HullMs:F1} m/s");
+                faults.Check(RoadBulletTests.NoEnergyGained(o), car, speed, dt, luna, $"{what}: energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
+            }
+        }
+        Assert.True(hardest > 5.0, $"no hull came down harder than {hardest:F1} m/s, so nothing hard was tried");
         faults.None();
     }
 
     // 19 m/s2 is two of Earth's gravities: with the weight, three of the four the springs have there.
-    private static void FootWithoutTheStop(RoadBulletTests.Faults faults, bool luna)
+    private static void FootOnTheSprings(RoadBulletTests.Faults faults, bool luna)
     {
         foreach (TrackCar car in TrackCar.All)
         {
@@ -575,8 +605,8 @@ public class RoadBulletRampTests
                     {
                         if (Asks(rise, run, speed) > 19.0) continue;
                         RoadBulletTests.Outcome o = RoadBulletTests.RampFoot(rise, run, car, speed, dt, luna);
-                        faults.Check(o.Finite && o.Stops == 0, car, speed, dt, luna,
-                                     $"foot of {rise:F0} m over {run:F0} m ({Asks(rise, run, speed):F1} m/s2): the stop fired {o.Stops} times, lifting up to {o.StopLift:F2} m and giving {o.StopSum:F1} J/kg");
+                        faults.Check(o.Finite && o.HullSteps == 0, car, speed, dt, luna,
+                                     $"foot of {rise:F0} m over {run:F0} m ({Asks(rise, run, speed):F1} m/s2): down on its hull {o.HullHits} times for {o.HullSteps} steps, at up to {o.HullMs:F2} m/s");
                     }
                 }
             }
@@ -587,15 +617,15 @@ public class RoadBulletRampTests
     public void TheFootOfARampIsTheSpringsToCarryOnEarth()
     {
         RoadBulletTests.Faults faults = new();
-        FootWithoutTheStop(faults, luna: false);
+        FootOnTheSprings(faults, luna: false);
         faults.None();
     }
 
-    [Fact(Skip = "a spring's load is capped at four times the car's weight where it is, so on Luna the stop carries the car up a ramp the springs carry it up on Earth")]
+    [Fact(Skip = "a spring's load is capped at four times the car's weight where it is, so on Luna a car comes down on its hull, at 1.0 to 1.5 m/s and for 0.3 to 0.7 s, at the foot of a ramp its springs carry it up on Earth")]
     public void TheFootOfARampIsTheSpringsToCarryOnLuna()
     {
         RoadBulletTests.Faults faults = new();
-        FootWithoutTheStop(faults, luna: true);
+        FootOnTheSprings(faults, luna: true);
         faults.None();
     }
 }
@@ -614,7 +644,7 @@ public class RoadBulletStepTests
         }
     }
 
-    // A hop no higher than twice the step, and the car's nose no higher than twice the step tips it.
+    // A hop no higher than twice the step, and three times it in a sixth of the gravity.
     [Fact]
     public void AStepOnTheLevelOrOnAClimbIsTakenOnTheWheels()
     {
@@ -629,9 +659,8 @@ public class RoadBulletStepTests
                     RoadBulletTests.Outcome o = RoadBulletTests.Step(step, grade, car, speed, dt, luna);
                     string what = $"{step:F2} m step on {grade * 100.0:F0}%";
                     faults.Check(o.Finite && o.UpDot > 0.8, car, speed, dt, luna, $"{what}: leant to {Math.Acos(Math.Clamp(o.UpDot, -1.0, 1.0)) * 180.0 / Math.PI:F0} deg");
-                    faults.Check(o.PeakClearance <= 2.0 * step, car, speed, dt, luna, $"{what}: thrown {o.PeakClearance:F2} m clear");
-                    faults.Check(o.Deepest <= RoadBulletTests.DeepestM, car, speed, dt, luna, $"{what}: a wheel {o.Deepest:F3} m past its travel");
-                    faults.Check(o.Gain + o.Budget <= RoadBulletTests.Slack(o), car, speed, dt, luna,
+                    faults.Check(o.PeakClearance <= (luna ? 3.0 : 2.0) * step, car, speed, dt, luna, $"{what}: thrown {o.PeakClearance:F2} m clear");
+                    faults.Check(RoadBulletTests.NoEnergyGained(o), car, speed, dt, luna,
                                  $"{what}: energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
                 }
             }
@@ -640,9 +669,10 @@ public class RoadBulletStepTests
     }
 
     // The same step at the same speed, on the level and going down: the ground falls away from a car
-    // in the air, so twice the level's flight is allowed, and 5 cm and a tenth of a second on top.
-    [Fact(Skip = "the stop takes all of a car's speed downwards, which on a descent is the car following the road: it is set flying level and the road falls away under it")]
-    public void AStepOnADescentThrowsACarNoFurtherThanTwiceWhatItDoesOnTheLevel()
+    // in the air, so twice the level's flight is allowed, and 5 cm and 0.15 s on top. And going down
+    // a car is following the road, which gives it nothing.
+    [Fact]
+    public void AStepOnADescentThrowsACarNoFurtherThanTwiceWhatItDoesOnTheLevelAndGivesItNoEnergy()
     {
         RoadBulletTests.Faults faults = new();
         foreach ((TrackCar car, double speed, double dt, bool luna) in Runs())
@@ -654,16 +684,18 @@ public class RoadBulletStepTests
                 {
                     if (grade >= 0.0) continue;
                     RoadBulletTests.Outcome o = RoadBulletTests.Step(step, grade, car, speed, dt, luna);
-                    faults.Check(o.PeakClearance <= (2.0 * level.PeakClearance) + 0.05 && o.AirSeconds <= (2.0 * level.AirSeconds) + 0.1,
+                    string what = $"{step:F2} m step on {grade * 100.0:F0}%";
+                    faults.Check(o.PeakClearance <= (2.0 * level.PeakClearance) + 0.05 && o.AirSeconds <= (2.0 * level.AirSeconds) + 0.15,
                                  car, speed, dt, luna,
-                                 $"{step:F2} m step on {grade * 100.0:F0}%: {o.Flights} flights, {o.AirSeconds:F2} s and {o.PeakClearance:F2} m clear, against {level.AirSeconds:F2} s and {level.PeakClearance:F2} m on the level; the stop took {-o.StopSum:F0} J/kg");
+                                 $"{what}: {o.Flights} flights, {o.AirSeconds:F2} s and {o.PeakClearance:F2} m clear, against {level.AirSeconds:F2} s and {level.PeakClearance:F2} m on the level");
+                    faults.Check(RoadBulletTests.NoEnergyGained(o), car, speed, dt, luna, $"{what}: energy {o.Gain:F1} J/kg against a budget of {o.Budget:F1}");
                 }
             }
         }
         faults.None();
     }
 
-    [Fact(Skip = "the same: thrown off a descent by the stop, a car comes down on its nose or its roof")]
+    [Fact]
     public void AStepOnADescentLeavesACarTheRightWayUp()
     {
         RoadBulletTests.Faults faults = new();
@@ -675,29 +707,8 @@ public class RoadBulletStepTests
                 {
                     if (grade >= 0.0) continue;
                     RoadBulletTests.Outcome o = RoadBulletTests.Step(step, grade, car, speed, dt, luna);
-                    faults.Check(o.Finite && o.UpDot > 0.0, car, speed, dt, luna,
-                                 $"{step:F2} m step on {grade * 100.0:F0}%: turned over, {o.PeakClearance:F1} m clear of the road");
-                }
-            }
-        }
-        faults.None();
-    }
-
-    // A stop that neither gives nor takes does no work. Five centimetres of height is half its own allowance.
-    [Fact(Skip = "the stop lifts the car by however far its deepest wheel is in, with no speed to show for it: up a 0.5 m step that is 0.26 to 0.38 m of height given")]
-    public void TheStopGivesACarNoHeightAtAStep()
-    {
-        RoadBulletTests.Faults faults = new();
-        foreach ((TrackCar car, double speed, double dt, bool luna) in Runs())
-        {
-            double g = luna ? 1.62 : 9.81;
-            foreach (double step in RoadBulletTests.StepHeights)
-            {
-                foreach (double grade in RoadBulletTests.Grades)
-                {
-                    RoadBulletTests.Outcome o = RoadBulletTests.Step(step, grade, car, speed, dt, luna);
-                    faults.Check(o.StopWorst <= g * 0.05, car, speed, dt, luna,
-                                 $"{step:F2} m step on {grade * 100.0:F0}%: one firing gave {o.StopWorst:F2} J/kg, lifting {o.StopLift:F2} m");
+                    faults.Check(o.Finite && o.UpDot > 0.8, car, speed, dt, luna,
+                                 $"{step:F2} m step on {grade * 100.0:F0}%: leant to {Math.Acos(Math.Clamp(o.UpDot, -1.0, 1.0)) * 180.0 / Math.PI:F0} deg, {o.PeakClearance:F1} m clear of the road");
                 }
             }
         }

@@ -680,14 +680,9 @@ internal sealed class Buggies
             e.RoadGeneration = Roads.Generation;
         }
 
-        RoadStop stop = WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs, e.Drive.Profile,
-                                         body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
-                                         Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights);
-        if (stop.Fired)
-        {
-            states.Kinematic.PositionPhys += stop.Up.Transform(body2Phys) * stop.LiftM;
-            states.Kinematic.VelocityPhys += stop.Up.Transform(body2Phys) * stop.SpeedMs;
-        }
+        WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs,
+                         body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
+                         Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights);
 
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));

@@ -417,11 +417,11 @@ public class RoadSurfaceTests
         Assert.True(roads.TryHeightOver(At(9.3, 100.0, 0.0), out double onTop));
         Assert.Equal(0.3, onTop, 3);
 
-        // A wheel a metre and a half into the upper road has run into it, not driven under it.
-        Assert.True(roads.TryHeightOver(At(7.5, 100.0, 0.0), out double sunk));
-        Assert.Equal(-1.5, sunk, 3);
-        Assert.True(roads.TryHeightOver(At(6.0, 100.0, 0.0), out double beneath));
-        Assert.Equal(5.8, beneath, 3);
+        // A wheel within a slab's depth of the upper road's top has run into it, and one below that has driven under it.
+        Assert.True(roads.TryHeightOver(At(8.6, 100.0, 0.0), out double sunk));
+        Assert.Equal(-0.4, sunk, 3);
+        Assert.True(roads.TryHeightOver(At(8.4, 100.0, 0.0), out double beneath));
+        Assert.Equal(8.2, beneath, 3);
     }
 
     [Theory]
@@ -451,7 +451,7 @@ public class RoadSurfaceTests
         Assert.Equal(3.8, fresh, 3);
         Assert.True(roads.TryHeightOver(At(4.0, 100.0, 0.0), 0.3, out double still));
         Assert.Equal(3.8, still, 3);
-        Assert.True(roads.TryHeightOver(At(4.0, 100.0, 0.0), -3.5, out double into));
+        Assert.True(roads.TryHeightOver(At(4.0, 100.0, 0.0), -4.6, out double into));
         Assert.Equal(-5.0, into, 3);
 
         // A road moved a long way from under a wheel is not the road it was on: the wheel is over what is under it now.

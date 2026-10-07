@@ -4,17 +4,18 @@ using Xunit;
 namespace KSACars.Tests;
 
 // A car as the engine has it, from KSACarsGameData.xml: its mass, where its centre of mass is, its
-// inertia about that, and how far above the ground its lowest collider ends with the car at rest.
-internal sealed record TrackCar(string Name, BuggyProfile Profile, double3 Com, double MassKg, double3 Inertia, double FloorM)
+// inertia about that, and how far above the ground its lowest collider ends and its highest one tops
+// out with the car at rest.
+internal sealed record TrackCar(string Name, BuggyProfile Profile, double3 Com, double MassKg, double3 Inertia, double FloorM, double RoofM)
 {
     public static readonly TrackCar Manx = new(
-        "Manx", BuggyProfile.Manx, BuggyDriveTests.Rig.Com, 650.0, new double3(1, 1, 1) * (0.4 * 650.0 * 1.1 * 1.1), 0.18);
+        "Manx", BuggyProfile.Manx, BuggyDriveTests.Rig.Com, 650.0, new double3(1, 1, 1) * (0.4 * 650.0 * 1.1 * 1.1), 0.18, 1.10);
 
     public static readonly TrackCar Eldorado = new(
-        "Eldorado", BuggyProfile.Eldorado, BuggyDriveTests.Rig.EldoradoCom, 2336.0, Cuboid(2336.0, 1.0, 5.6, 2.0), 0.25);
+        "Eldorado", BuggyProfile.Eldorado, BuggyDriveTests.Rig.EldoradoCom, 2336.0, Cuboid(2336.0, 1.0, 5.6, 2.0), 0.25, 1.00);
 
     public static readonly TrackCar F2004 = new(
-        "F2004", BuggyProfile.F2004, BuggyDriveTests.Rig.F2004Com, 605.0, Cuboid(605.0, 0.5, 5.6, 2.0), 0.14);
+        "F2004", BuggyProfile.F2004, BuggyDriveTests.Rig.F2004Com, 605.0, Cuboid(605.0, 0.5, 5.6, 2.0), 0.14, 0.70);
 
     public static readonly TrackCar[] All = [Manx, Eldorado, F2004];
 
@@ -87,22 +88,26 @@ internal sealed class TrackWorld(double radiusM, double gravity, double air, Fun
     public RoadSurface Surface(Circuit circuit) => RoadLaying.Surface(Lay(circuit));
 }
 
-// What one step saw and did, taken at the start of the step.
+// What one step saw and did: all of it as the step began, but for the hull, which is met as it ends.
+// HullMs is the speed into the surface the hull was stopped from, or nothing with the hull clear.
 internal readonly record struct TrackSample(
     double Time, double Dt, double East, double North, double Speed, double TerrainUnderM, double Energy, double LossBudget,
-    int Grounded, int OnRoad, double ClearanceM, double DeepestM, double StopLiftM, double StopSpeedMs,
-    double PitchDeg, double RollDeg, double UpDot, bool HullDown)
+    int Grounded, int OnRoad, double ClearanceM, double DeepestM,
+    double PitchDeg, double RollDeg, double UpDot, bool HullDown, double HullMs)
 {
     public bool Airborne => Grounded == 0;
-
-    // What the stop gave the car, per kilogram: the height it lifted it through, less the speed it took.
-    public double StopWork(double gravity) => (gravity * StopLiftM) - (0.5 * StopSpeedMs * StopSpeedMs);
 }
 
 // A free rigid body on a TrackWorld, stepped as Buggies steps a car and integrated the way the flat
-// Rig is: what is under the wheels, the move back onto a road, the drive's impulse, then gravity and
-// the motion over the step. It has no hull: a step in which a collider would have been on the ground
-// is marked HullDown, and what follows it is not what the game would do.
+// Rig is: what is under the wheels, the drive's impulse, then gravity and the motion over the step.
+//
+// The hull is the least that makes a hard landing mean anything: a point under each hub, as low as
+// the car's lowest collider, that is not let into the ground or a road and keeps none of its speed
+// into it. That is a stop and nothing else. It does not rub, so a car down on
+// its hull slides on where the game's would scrape to a halt; it is four points, so a crest under the
+// belly, a nose into a riser and a roof on the ground meet nothing; and a road is its top face alone,
+// with no edge to run into. A run with HullDown in it says the hull came down and how hard, and what
+// the car did afterwards is the rig's and not the game's.
 internal sealed class TrackRig
 {
     public const double LeastStep = 0.004, MostStep = 0.1;
@@ -114,6 +119,10 @@ internal sealed class TrackRig
     private readonly double?[] _roadOver;
     private readonly WheelContact[] _contacts;
     private readonly double[] _hubHeights;
+    private readonly double3[] _hull;
+    private readonly double?[] _hullOver;
+    private readonly WheelContact[] _hullContacts;
+    private readonly double[] _hullHeights;
     private int _tick;
 
     public TrackRig(TrackCar car, TrackWorld world, RoadSurface? road = null)
@@ -126,6 +135,10 @@ internal sealed class TrackRig
         _roadOver = new double?[_hubs.Length];
         _contacts = new WheelContact[_hubs.Length];
         _hubHeights = new double[_hubs.Length];
+        _hull = [.. _hubs.Select(h => new double3(car.FloorM - car.Com.X, h.Y, h.Z))];
+        _hullOver = new double?[_hubs.Length];
+        _hullContacts = new WheelContact[_hubs.Length];
+        _hullHeights = new double[_hubs.Length];
         Place(0.0, 0.0, 0.0);
     }
 
@@ -192,6 +205,7 @@ internal sealed class TrackRig
         for (int i = 0; i < _hubs.Length; i++) spare += (_contacts[i].HubHeight - _car.Profile.Corners[i].Radius) / _hubs.Length;
         Position -= (Attitude * _contacts[0].GroundUp) * spare;
         Array.Clear(_roadOver);
+        Array.Clear(_hullOver);
     }
 
     public void Launch(double speed) => Velocity = Forward * speed;
@@ -202,9 +216,62 @@ internal sealed class TrackRig
         Log.Clear();
     }
 
-    private RoadStop Read(RoadSurface? road) => WheelGround.Read(
-        Position, Attitude, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _hubs, _car.Profile, _world.RadiusM,
+    private void Read(RoadSurface? road) => WheelGround.Read(
+        Position, Attitude, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _hubs, _world.RadiusM,
         _world, null, road, _roadOver, _contacts, _hubHeights);
+
+    // Asked as the wheels are, so a hull point is over the same roads a wheel there would be, and
+    // answered along the one plane through what is under all four: on a ramp, square to the ramp.
+    // Each point is slowed to what brings it to the surface by the end of the step and no further, as
+    // a physics engine holds a contact it sees coming, so a car at rest on its hull does not sink a
+    // step of gravity and get put back. One already under, the surface having risen to it, is put on it.
+    private bool Hull(double dt, out double hardest)
+    {
+        double3 velocity = doubleQuat.Conjugate(Attitude) * Velocity;
+        WheelGround.Read(Position, Attitude, velocity, Spin, _hull, _world.RadiusM, _world, null, _road, _hullOver, _hullContacts, _hullHeights);
+
+        double3 normal = _hullContacts[0].GroundUp, inertia = _car.Inertia;
+        double sunk = 0.0;
+        foreach (WheelContact c in _hullContacts) sunk = Math.Max(sunk, -c.HubHeight);
+
+        // Each point's push so far: one may be eased off as another takes the weight, and none pulls.
+        Span<double> pushed = stackalloc double[_hull.Length];
+        bool down = false;
+        hardest = 0.0;
+        for (int pass = 0; pass < 64; pass++)
+        {
+            double moved = 0.0;
+            for (int i = 0; i < _hull.Length; i++)
+            {
+                double excess = -Vec.Dot(velocity + Vec.Cross(Spin, _hull[i]), normal) - (Math.Max(_hullContacts[i].HubHeight, 0.0) / dt);
+                if (pass == 0) hardest = Math.Max(hardest, excess);
+
+                double3 arm = Vec.Cross(_hull[i], normal);
+                double3 turn = new(arm.X / inertia.X, arm.Y / inertia.Y, arm.Z / inertia.Z);
+                double push = Math.Max(pushed[i] + (excess / ((1.0 / _car.MassKg) + Vec.Dot(normal, Vec.Cross(turn, _hull[i])))), 0.0) - pushed[i];
+                if (push == 0.0) continue;
+
+                pushed[i] += push;
+                velocity += normal * (push / _car.MassKg);
+                Spin += turn * push;
+                moved = Math.Max(moved, Math.Abs(push) / _car.MassKg);
+                down = true;
+            }
+            if (moved < 1e-9) break;
+        }
+        if (!down && !(sunk > 0.0)) return false;
+
+        Velocity = Attitude * velocity;
+        if (sunk > 0.0)
+        {
+            Position += (Attitude * normal) * sunk;
+            for (int i = 0; i < _hullOver.Length; i++)
+            {
+                if (_hullOver[i] is { } over) _hullOver[i] = over + sunk;
+            }
+        }
+        return true;
+    }
 
     private double NextDt() =>
         Jitter is { } random ? LeastStep + ((MostStep - LeastStep) * random.NextDouble())
@@ -219,25 +286,18 @@ internal sealed class TrackRig
         double speed = Vec.Len(Velocity), energy = Energy, terrainUnder = TerrainUnderM;
         (double east, double north) = Where;
 
-        RoadStop stop = Read(_road);
-        if (stop.Fired)
-        {
-            Position += (Attitude * stop.Up) * stop.LiftM;
-            Velocity += (Attitude * stop.Up) * stop.SpeedMs;
-        }
+        Read(_road);
 
         double clearance = double.PositiveInfinity, deepest = double.NegativeInfinity;
-        bool hullDown = false;
         int onRoad = 0;
         for (int i = 0; i < _hubs.Length; i++)
         {
             if (_roadOver[i] is not null) onRoad++;
-            double over = _hubHeights[i] + stop.LiftM;
-            clearance = Math.Min(clearance, over - p.Corners[i].Radius);
-            deepest = Math.Max(deepest, p.Corners[i].Radius - p.BumpTravel - over);
-            hullDown |= over < p.Corners[i].Hub.X - _car.FloorM;
+            clearance = Math.Min(clearance, _hubHeights[i] - p.Corners[i].Radius);
+            deepest = Math.Max(deepest, p.Corners[i].Radius - p.BumpTravel - _hubHeights[i]);
         }
         double3 plane = _contacts[0].GroundUp;
+        double upDot = Vec.Dot(Attitude * up, Up);
 
         // As Buggies does: past a tenth of a second the springs are left out.
         bool warped = dt > 0.1;
@@ -251,21 +311,21 @@ internal sealed class TrackRig
             : ((0.5 * _world.Air * p.DragAreaM2 * speed * speed * speed)
                + (p.RollingResistance * ((_car.MassKg * _world.Gravity) + wings) * speed)) * dt / _car.MassKg;
 
-        TrackSample sample = new(
-            Time, dt, east, north, speed, terrainUnder, energy, lost, grounded, onRoad, clearance, deepest,
-            stop.LiftM, stop.SpeedMs,
-            Math.Asin(Math.Clamp(plane.Y, -1.0, 1.0)) * 180.0 / Math.PI,
-            Math.Asin(Math.Clamp(plane.Z, -1.0, 1.0)) * 180.0 / Math.PI,
-            Vec.Dot(Attitude * up, Up), hullDown);
-        Log.Add(sample);
-
         Velocity += Attitude * (j.Linear / _car.MassKg);
         Spin += new double3(j.Angular.X / _car.Inertia.X, j.Angular.Y / _car.Inertia.Y, j.Angular.Z / _car.Inertia.Z);
 
         Velocity -= Up * (_world.Gravity * dt);
+        bool hullDown = Hull(dt, out double hardest);
         Position += Velocity * dt;
         double rate = Vec.Len(Spin);
         if (rate > 0.0) Attitude *= doubleQuat.CreateFromAxisAngle(Spin / rate, rate * dt);
+
+        TrackSample sample = new(
+            Time, dt, east, north, speed, terrainUnder, energy, lost, grounded, onRoad, clearance, deepest,
+            Math.Asin(Math.Clamp(plane.Y, -1.0, 1.0)) * 180.0 / Math.PI,
+            Math.Asin(Math.Clamp(plane.Z, -1.0, 1.0)) * 180.0 / Math.PI,
+            upDot, hullDown, hardest);
+        Log.Add(sample);
         Time += dt;
         return sample;
     }
@@ -352,7 +412,7 @@ public class TrackRigTests
                         $"{what}: {last.PitchDeg:F2} deg of pitch and {last.RollDeg:F2} of roll off the ground under it");
             Assert.Equal(4, last.Grounded);
             Assert.Equal(road is null ? 0 : 4, last.OnRoad);
-            Assert.DoesNotContain(rig.Log, s => s.StopLiftM > 0.0 || s.HullDown);
+            Assert.DoesNotContain(rig.Log, s => s.HullDown);
         }
     }
 
