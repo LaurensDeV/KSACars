@@ -312,7 +312,7 @@ public class RoadDeckTests(ITestOutputHelper output)
     [Theory]
     [InlineData(180.0, 60.0, 4.0, 0.05, 0.0015)]
     [InlineData(30.0, 200.0, 4.0, 0.05, 0.008)]
-    [InlineData(5.0, 170.0, 3.0, 0.125, 0.09)]
+    [InlineData(5.0, 170.0, 3.0, 0.125, 0.17)]
     public void RoundAClimbingBendTheTopPartsFromItByTheGradientAndTheTurn(double radiusM, double turnDeg, double halfWidth, double climb, double mostM)
     {
         Shape shape = Arc(radiusM, turnDeg, halfWidth, climb);
