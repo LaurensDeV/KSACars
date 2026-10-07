@@ -11,8 +11,8 @@ namespace KSACars;
 /// <see cref="RoadDrawHook"/> is called.</para>
 ///
 /// <para>A hull, a kitten and any other craft meet a road through <see cref="RoadColliders"/>, which is
-/// given a box for each stretch, <see cref="RoadSlabs"/>' and deeper than the one drawn. A wheel is
-/// not a collider and reads the road's height from <see cref="SurfaceOn"/>.</para>
+/// given each road's <see cref="RoadDeck"/>, one surface along it and deeper than the slabs drawn. A
+/// wheel is not a collider and reads the road's height from <see cref="SurfaceOn"/>.</para>
 /// </summary>
 internal static class Roads
 {
@@ -133,7 +133,7 @@ internal static class Roads
     {
         Interlocked.Increment(ref _generation);
         _laid = null;
-        _roadBoxes = null;
+        _roadDecks = null;
         HandColliders();
         _clutterMarginM = null;
         _clutterStale = true;
@@ -244,8 +244,8 @@ internal static class Roads
     /// says how many points they took and the lowest and highest ground under them.
     /// </summary>
     /// <param name="colliders">
-    /// Whether the physics is given these roads as well. Thousands of boxes go into every bubble near
-    /// them, so a road being dragged about is not, and what was there before it moved is left.
+    /// Whether the physics is given these roads as well. Every mesh is built again and put into each
+    /// bubble near it, so a road being dragged about is not, and what was there before it moved is left.
     /// </param>
     public static (int Points, double LowM, double HighM) Lay(Celestial body, Circuit circuit, double liftM, double spacingM, bool colliders)
     {
@@ -270,30 +270,23 @@ internal static class Roads
             : null;
         if (colliders)
         {
-            List<RoadSlab> slabs = [];
-            foreach (RoadLaying.Strip strip in strips) RoadSlabs.Add(slabs, strip.Line, strip.HalfWidth, strip.Closed);
-            _roadBoxes = slabs.Count > 0
-                ? (body, [.. slabs.Select(s => RoadColliders.Place(s.Centre, s.Along, s.Across, s.Normal,
-                                                                  new double3(s.LengthM, s.WidthM, RoadSlabs.ThicknessM)))])
+            _roadDecks = strips.Count > 0
+                ? (body, [.. strips.Select(s => RoadDeck.Build(s.Line, s.HalfWidth, s.Closed, RoadSlabs.ThicknessM))])
                 : null;
             HandColliders();
         }
         return (points, low, high);
     }
 
-    private static (Celestial Body, (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes)? _roadBoxes, _testBox;
+    private static (Celestial Body, RoadDeck.Deck[] Decks)? _roadDecks;
+    private static (Celestial Body, (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes)? _testBox;
 
-    // The physics is given the boxes of one body: the roads', and the experiment's with them if it is there too.
+    // The physics is given the solids of one body: the roads', and the experiment's with them if it is there too.
     private static void HandColliders()
     {
-        if ((_roadBoxes ?? _testBox) is not { } first)
-        {
-            RoadColliders.Want(null, []);
-            return;
-        }
-
-        bool both = _roadBoxes is not null && _testBox is { } test && ReferenceEquals(test.Body, first.Body);
-        RoadColliders.Want(first.Body, both ? [.. first.Boxes, .. _testBox!.Value.Boxes] : first.Boxes);
+        Celestial? body = _roadDecks?.Body ?? _testBox?.Body;
+        bool box = _testBox is { } test && ReferenceEquals(test.Body, body);
+        RoadColliders.Want(body, _roadDecks?.Decks ?? [], box ? _testBox!.Value.Boxes : []);
     }
 
     // Something drawn for an experiment: where its origin is, and its three axes.

@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-226 types and 489 members across 11 assemblies.
+231 types and 499 members across 11 assemblies.
 
 ## BepuPhysics
 
@@ -19,9 +19,21 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `void .ctor(float, float, float)`
 
+### BepuPhysics.Collidables.Mesh
+
+- `BepuUtilities.Memory.Buffer`1<BepuPhysics.Collidables.Triangle> Triangles`
+- `void .ctor(BepuUtilities.Memory.Buffer`1<BepuPhysics.Collidables.Triangle>, System.Numerics.Vector3, BepuUtilities.Memory.BufferPool, BepuUtilities.IThreadDispatcher)`
+- `void Dispose(BepuUtilities.Memory.BufferPool)`
+
 ### BepuPhysics.Collidables.Shapes
 
 - `BepuPhysics.Collidables.TypedIndex Add<1>(ref !!0)`
+- `void Remove(BepuPhysics.Collidables.TypedIndex)`
+- `void RemoveAndDispose(BepuPhysics.Collidables.TypedIndex, BepuUtilities.Memory.BufferPool)`
+
+### BepuPhysics.Collidables.Triangle
+
+- `void .ctor(System.Numerics.Vector3, System.Numerics.Vector3, System.Numerics.Vector3)`
 
 ### BepuPhysics.Collidables.TypedIndex
 
@@ -51,6 +63,21 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void Remove(BepuPhysics.StaticHandle)`
 
 ## BepuUtilities
+
+### BepuUtilities.IThreadDispatcher
+
+*referenced as a type only*
+
+### BepuUtilities.Memory.BufferPool
+
+- `ulong GetTotalAllocatedByteCount()`
+- `void .ctor(int, int)`
+- `void Return<1>(ref BepuUtilities.Memory.Buffer`1<!!0>)`
+- `void Take<1>(int, ref BepuUtilities.Memory.Buffer`1<!!0>)`
+
+### BepuUtilities.Memory.Buffer`1
+
+*referenced as a type only*
 
 ### BepuUtilities.Symmetric3x3
 

@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using BepuPhysics;
 using BepuPhysics.Collidables;
+using BepuUtilities.Memory;
 using HarmonyLib;
 using KSA;
 using double3 = Brutal.Numerics.double3;
@@ -13,58 +14,76 @@ using doubleQuat = Brutal.Numerics.doubleQuat;
 namespace KSACars;
 
 /// <summary>
-/// Boxes of the mod's own in KSA's physics, so a hull, a kitten and another craft meet a road as they
-/// meet the ground.
+/// Solids of the mod's own in KSA's physics, so a hull, a kitten and another craft meet a road as they
+/// meet the ground: a triangle mesh for each chunk of each road's deck, and the experiment's box.
 ///
 /// <para>A static only collides if the engine's narrow phase lets it: its own terrain and launch pad,
-/// terrain blocks, and ground clutter. So each box is registered as clutter with infinite mass, which is
+/// terrain blocks, and ground clutter. So each is registered as clutter with infinite mass, which is
 /// also what makes a kitten's locomotion count it as ground and what stops a hit knocking it loose. The
 /// registration is looked for every pass and made again, because clutter's own bookkeeping clears it.</para>
 ///
-/// <para>One physics simulation belongs to each bubble and steps on a worker thread, so the boxes are
-/// synced from prefixes on its collision passes, against a snapshot swapped in from the main thread.
-/// Shapes live in a registry every simulation shares and that is only writable between vehicle steps, so
-/// they are made there, once a size. When a simulation is recycled the engine clears its statics, and its
-/// state here is dropped.</para>
+/// <para>One physics simulation belongs to each bubble and steps on a worker thread, so the statics are
+/// synced from prefixes on its collision passes, against a laying swapped in whole from the main thread.
+/// A bubble holds the chunks within <see cref="ReachM"/> of its origin and no others.</para>
 ///
-/// <para>A bubble is given every box or none: all of them while it is within <see cref="ReachM"/> of
-/// the ball that holds them, so a circuit kilometres across is whole for whatever is anywhere on it.</para>
+/// <para>Shapes live in a registry every simulation shares and that is only writable between vehicle
+/// steps, when no simulation is stepping. A mesh's triangles and its tree are built when the road is
+/// laid, in a pool of the mod's own, and only entered in the registry there. A laying that has been
+/// replaced is taken out of it there too, and its memory returned, once no simulation still has a
+/// static of it: each simulation counts itself onto the laying it holds and off it again.</para>
 /// </summary>
 internal static class RoadColliders
 {
     private const string HarmonyId = "com.ksacars.roadcolliders";
 
-    // Past this from the nearest box could be, nothing in a bubble can meet one.
+    // Past this from a bubble's origin, nothing in the bubble can meet a solid.
     private const double ReachM = 3000.0;
 
-    // A bubble that has the boxes keeps them this much further out, so one at the edge is not given
-    // and taken thousands of them every pass.
+    // A bubble that has a solid keeps it this much further out, so one at the edge is not given and
+    // taken it every pass.
     private const double KeepM = 300.0;
 
-    private sealed record Box(double3 CentreCcf, Quaternion Orientation, TypedIndex Shape);
+    private sealed record Solid(double3 AtCcf, double RadiusM, Quaternion Orientation, TypedIndex Shape);
 
-    private sealed record Wanted(Celestial Body, (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes, int Version);
+    // Built on the main thread and not yet in the registry.
+    private sealed record Wanted(Celestial? Body, (double3 AtCcf, double RadiusM, Mesh Mesh)[] Meshes,
+                                 (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes);
 
-    // MiddleCcf and RadiusM: a ball with every box inside it.
-    private sealed record Ready(Celestial Body, Box[] Boxes, double3 MiddleCcf, double RadiusM, int Version);
+    private sealed class Laying(Celestial? body, Solid[] solids, TypedIndex[] meshes)
+    {
+        public readonly Celestial? Body = body;
+        public readonly Solid[] Solids = solids;
+        public readonly TypedIndex[] Meshes = meshes;
+
+        // How many simulations have statics of this laying's shapes.
+        public int Holders;
+    }
 
     private sealed class SimState
     {
-        public StaticHandle[] Handles = [];
+        public Laying? Laying;
 
-        // Each handle boxed once, as the engine's own dictionary of clutter is keyed through reflection.
-        public object[] Keys = [];
-        public int Version = -1;
+        // One a solid of the laying: the static it is in this simulation, and that handle boxed once,
+        // as the engine's own dictionary of clutter is keyed through reflection. Null while it is out of reach.
+        public StaticHandle[] Handles = [];
+        public object?[] Keys = [];
         public double3 Bub;
+
+        // A simulation dropped without being recycled takes its statics with it.
+        ~SimState() => Let(this);
     }
 
     private static readonly ConditionalWeakTable<ConstraintSim, SimState> States = new();
     private static readonly Dictionary<(int, int, int), TypedIndex> ShapesBySize = [];
 
+    // The meshes' triangles and trees. The registry's own pool is KSA's, and is only safe in the window.
+    private static readonly BufferPool Pool = new();
+    private static readonly object Gate = new();
+    private static readonly List<Laying> Replaced = [];
+
     private static Harmony? _harmony;
-    private static volatile Wanted? _wanted;
-    private static volatile Ready? _ready;
-    private static int _version;
+    private static Wanted? _wanted;
+    private static volatile Laying? _laying;
     private static bool _complained;
 
     private static FieldInfo? _clutterStatics;
@@ -72,7 +91,7 @@ internal static class RoadColliders
 
     public static bool Installed { get; private set; }
 
-    /// <summary>How many times boxes have been put into a simulation, and how many simulations hold them now.</summary>
+    /// <summary>How many statics have been put into simulations.</summary>
     public static int Adds;
 
     public static void Install()
@@ -86,7 +105,7 @@ internal static class RoadColliders
             ConstructorInfo? make = info?.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).FirstOrDefault(c => c.GetParameters().Length == 2);
             if (_clutterStatics is null || make is null)
             {
-                Log.Warn("roads have no colliders: KSA's ground clutter no longer has the _statics a box registers in");
+                Log.Warn("roads have no colliders: KSA's ground clutter no longer has the _statics a solid registers in");
                 return;
             }
 
@@ -99,7 +118,7 @@ internal static class RoadColliders
             Patch(typeof(ConstraintSim), nameof(ConstraintSim.Simulate), nameof(BeforeCollisions));
             Patch(typeof(ConstraintSim), nameof(ConstraintSim.TryResetForPool), nameof(BeforeRecycle));
             Installed = true;
-            Log.Info("road colliders hooked: boxes go into each physics bubble as clutter statics");
+            Log.Info("road colliders hooked: meshes go into each physics bubble as clutter statics");
         }
         catch (Exception e)
         {
@@ -115,22 +134,75 @@ internal static class RoadColliders
         _harmony!.Patch(target, prefix: new HarmonyMethod(typeof(RoadColliders).GetMethod(prefix, BindingFlags.NonPublic | BindingFlags.Static)));
     }
 
+    // What is in the registry stays there, and in the pool: a simulation may hold a static of it, and
+    // with the prefixes gone nothing takes one out.
     public static void Remove()
     {
         try { _harmony?.UnpatchAll(HarmonyId); } catch { /* Unloading anyway. */ }
         _harmony = null;
         Installed = false;
-        _wanted = null;
-        _ready = null;
+        lock (Gate) Forget(ref _wanted);
+        _laying = null;
     }
 
-    /// <summary>The boxes wanted on a body, from the main thread; null takes them away.</summary>
-    public static void Want(Celestial? body, IEnumerable<(double3 Centre, doubleQuat Orientation, double3 Size)> boxes)
+    /// <summary>
+    /// The solids wanted on a body, from the main thread: every road's deck and the experiment's
+    /// boxes. Nothing of either takes them all away. The meshes are built here.
+    /// </summary>
+    public static void Want(Celestial? body, IReadOnlyList<RoadDeck.Deck> decks, IReadOnlyList<(double3 Centre, doubleQuat Orientation, double3 Size)> boxes)
     {
-        _version++;
-        (double3, doubleQuat, double3)[] list = [.. boxes];
-        _wanted = body is null || list.Length == 0 ? null : new Wanted(body, list, _version);
-        if (_wanted is null) _ready = new Ready(null!, [], default, 0.0, _version);
+        if (!Installed) return;
+
+        lock (Gate)
+        {
+            Forget(ref _wanted);
+            List<(double3, double, Mesh)> meshes = [];
+            try
+            {
+                foreach (RoadDeck.Deck deck in body is null ? [] : decks)
+                {
+                    foreach (RoadDeck.Chunk chunk in deck.Chunks) meshes.Add((chunk.Origin, chunk.RadiusM, MeshOf(deck, chunk)));
+                }
+                _wanted = new Wanted(body, [.. meshes], body is null ? [] : [.. boxes]);
+            }
+            catch (Exception e)
+            {
+                foreach ((_, _, Mesh mesh) in meshes) mesh.Dispose(Pool);
+                _wanted = new Wanted(null, [], []);
+                Log.Warn($"roads have no colliders: their meshes could not be built ({e.GetBaseException().Message})");
+            }
+        }
+    }
+
+    private static void Forget(ref Wanted? wanted)
+    {
+        foreach ((_, _, Mesh mesh) in wanted?.Meshes ?? []) mesh.Dispose(Pool);
+        wanted = null;
+    }
+
+    private static Mesh MeshOf(RoadDeck.Deck deck, RoadDeck.Chunk chunk)
+    {
+        Pool.Take(chunk.Triangles.Length / 3, out Buffer<Triangle> triangles);
+        for (int t = 0; t < triangles.Length; t++)
+        {
+            triangles[t] = new Triangle(Local(deck, chunk, 3 * t), Local(deck, chunk, (3 * t) + 1), Local(deck, chunk, (3 * t) + 2));
+        }
+
+        try
+        {
+            return new Mesh(triangles, Vector3.One, Pool);
+        }
+        catch
+        {
+            Pool.Return(ref triangles);
+            throw;
+        }
+    }
+
+    private static Vector3 Local(RoadDeck.Deck deck, RoadDeck.Chunk chunk, int corner)
+    {
+        double3 at = deck.Corners[chunk.Triangles[corner]] - chunk.Origin;
+        return new Vector3((float)at.X, (float)at.Y, (float)at.Z);
     }
 
     /// <summary>A box as the physics wants it: its centre, and its axes as a body-fixed rotation.</summary>
@@ -138,29 +210,67 @@ internal static class RoadColliders
         => (centreCcf, doubleQuat.CreateFromRotationMatrix(new double4x4(xCcf.X, xCcf.Y, xCcf.Z, 0.0, yCcf.X, yCcf.Y, yCcf.Z, 0.0,
                                                                          zCcf.X, zCcf.Y, zCcf.Z, 0.0, 0.0, 0.0, 0.0, 1.0)), size);
 
-    // Main thread, between vehicle steps: the one moment the shared shape registry can be written.
+    // Main thread, between vehicle steps: the one moment the shared shape registry can be written, and
+    // one in which no simulation is syncing, so a laying nobody holds here is held by nobody.
     private static void BetweenVehicleSteps()
     {
-        if (_wanted is not { } wanted || _ready?.Version == wanted.Version) return;
+        if (Volatile.Read(ref _wanted) is null && Replaced.Count == 0) return;
 
         try
         {
             using ShapesUnlock unlocked = ConstraintSim.UnlockShapes();
-            Box[] boxes = [.. wanted.Boxes.Select(b => new Box(b.Centre, ToBepu(b.Orientation), ShapeOf(unlocked.Shapes, b.Size)))];
-            double3 middle = default;
-            foreach ((double3 centre, _, _) in wanted.Boxes) middle += centre / wanted.Boxes.Length;
-            double radius = 0.0;
-            foreach ((double3 centre, _, double3 size) in wanted.Boxes) radius = Math.Max(radius, (centre - middle).Length() + (0.5 * size.Length()));
-            _ready = new Ready(wanted.Body, boxes, middle, radius, wanted.Version);
-            Log.Info($"road colliders: {boxes.Length} box(es), {ShapesBySize.Count} shape(s) made so far");
+            lock (Gate)
+            {
+                if (_wanted is { } wanted) Enter(unlocked.Shapes, wanted);
+
+                int freed = 0;
+                for (int k = Replaced.Count - 1; k >= 0; k--)
+                {
+                    if (Volatile.Read(ref Replaced[k].Holders) > 0) continue;
+                    foreach (TypedIndex mesh in Replaced[k].Meshes) unlocked.Shapes.RemoveAndDispose(mesh, Pool);
+                    freed += Replaced[k].Meshes.Length;
+                    Replaced.RemoveAt(k);
+                }
+                if (freed > 0) Log.Info($"road colliders: {freed} mesh(es) of a laying no bubble holds freed, {Replaced.Count} laying(s) still held");
+            }
         }
         catch (Exception e)
         {
-            Complain($"could not make the boxes' shapes yet, will try again: {e.GetBaseException().Message}");
+            Complain($"could not change the road colliders' shapes yet, will try again: {e.GetBaseException().Message}");
         }
     }
 
-    // Shapes are shared by every simulation and never freed.
+    private static void Enter(Shapes shapes, Wanted wanted)
+    {
+        List<TypedIndex> meshes = [];
+        try
+        {
+            List<Solid> solids = [];
+            foreach ((double3 at, double radius, Mesh mesh) in wanted.Meshes)
+            {
+                meshes.Add(shapes.Add(mesh));
+                solids.Add(new Solid(at, radius, Quaternion.Identity, meshes[^1]));
+            }
+            foreach ((double3 centre, doubleQuat orientation, double3 size) in wanted.Boxes)
+            {
+                solids.Add(new Solid(centre, 0.5 * size.Length(), ToBepu(orientation), ShapeOf(shapes, size)));
+            }
+
+            if (_laying is { } before) Replaced.Add(before);
+            _laying = new Laying(wanted.Body, [.. solids], [.. meshes]);
+            _wanted = null;
+            Log.Info($"road colliders: {meshes.Count} mesh(es) of {wanted.Meshes.Sum(m => m.Mesh.Triangles.Length)} triangle(s) and {wanted.Boxes.Length} box(es), "
+                   + $"{Pool.GetTotalAllocatedByteCount() / 1024} KiB held for meshes, {Replaced.Count} laying(s) waiting to be freed");
+        }
+        catch
+        {
+            // The meshes stay the wanted's, to be entered again.
+            foreach (TypedIndex mesh in meshes) shapes.Remove(mesh);
+            throw;
+        }
+    }
+
+    // A box's shape is shared by every box of its size and never freed.
     private static TypedIndex ShapeOf(Shapes shapes, double3 size)
     {
         var key = ((int)Math.Round(size.X * 1e4), (int)Math.Round(size.Y * 1e4), (int)Math.Round(size.Z * 1e4));
@@ -188,61 +298,92 @@ internal static class RoadColliders
 
     private static void Sync(ConstraintSim sim)
     {
-        Ready? ready = _ready;
+        Laying? laying = _laying;
         SimState state = States.GetOrCreateValue(sim);
 
-        if (!TryOrigin(sim, out bool ccf, out IParentBody? parent, out double3 bub)) return;
-
-        bool here = ready is { Boxes.Length: > 0 } && ccf && ReferenceEquals(parent, ready.Body)
-                    && (ready.MiddleCcf - bub).Length() < ready.RadiusM + ReachM + (state.Handles.Length > 0 ? KeepM : 0.0);
-        if (!here)
-        {
-            if (state.Handles.Length > 0) Clear(sim, state);
-            return;
-        }
-
-        if (state.Version != ready!.Version)
+        // A simulation with no craft in it has no origin to pose a solid from, and nothing to meet one.
+        bool here = TryOrigin(sim, out bool ccf, out IParentBody? parent, out double3 bub)
+                    && laying is { Solids.Length: > 0 } && ccf && ReferenceEquals(parent, laying.Body);
+        if (!ReferenceEquals(state.Laying, here ? laying : null))
         {
             Clear(sim, state);
-            state.Handles = [.. ready.Boxes.Select(b => sim.Simulation.Statics.Add(Describe(b, bub), ref KSA.StaticsShouldntAwakenBodies.Shared))];
-            state.Keys = [.. state.Handles.Select(h => (object)h)];
-            state.Version = ready.Version;
-            state.Bub = bub;
-            Interlocked.Increment(ref Adds);
+            if (here)
+            {
+                state.Laying = laying;
+                state.Handles = new StaticHandle[laying!.Solids.Length];
+                state.Keys = new object?[laying.Solids.Length];
+                Interlocked.Increment(ref laying.Holders);
+            }
         }
-        else if (state.Bub != bub)
+        if (!here) return;
+
+        IDictionary? registered = sim.ClutterStatics is { } clutter ? _clutterStatics?.GetValue(clutter) as IDictionary : null;
+        bool moved = state.Bub != bub;
+        int first = -1, last = -1;
+        for (int k = 0; k < laying!.Solids.Length; k++)
         {
-            for (int k = 0; k < state.Handles.Length; k++) sim.Simulation.Statics.ApplyDescription(state.Handles[k], Describe(ready.Boxes[k], bub), ref KSA.StaticsShouldntAwakenBodies.Shared);
-            state.Bub = bub;
+            Solid solid = laying.Solids[k];
+            bool held = state.Keys[k] is not null;
+            bool near = (solid.AtCcf - bub).Length() < solid.RadiusM + ReachM + (held ? KeepM : 0.0);
+            if (near && !held)
+            {
+                state.Handles[k] = sim.Simulation.Statics.Add(Describe(solid, bub), ref KSA.StaticsShouldntAwakenBodies.Shared);
+                state.Keys[k] = state.Handles[k];
+                if (registered is not null) registered[state.Keys[k]!] = _solidClutter;
+                Interlocked.Increment(ref Adds);
+            }
+            else if (!near && held)
+            {
+                registered?.Remove(state.Keys[k]!);
+                sim.Simulation.Statics.Remove(state.Handles[k]);
+                state.Keys[k] = null;
+            }
+            else if (held && moved)
+            {
+                sim.Simulation.Statics.ApplyDescription(state.Handles[k], Describe(solid, bub), ref KSA.StaticsShouldntAwakenBodies.Shared);
+            }
+
+            if (!near) continue;
+            if (first < 0) first = k;
+            last = k;
         }
+        state.Bub = bub;
 
         // The engine takes its own clutter out of that dictionary one at a time and everything out
         // at once, so with the first and the last of these still in it, all of them are.
-        if (sim.ClutterStatics is { } clutter && _clutterStatics?.GetValue(clutter) is IDictionary registered
-            && !(registered.Contains(state.Keys[0]) && registered.Contains(state.Keys[^1])))
+        if (registered is not null && first >= 0 && !(registered.Contains(state.Keys[first]!) && registered.Contains(state.Keys[last]!)))
         {
-            foreach (object key in state.Keys) registered[key] = _solidClutter;
+            foreach (object? key in state.Keys)
+            {
+                if (key is not null) registered[key] = _solidClutter;
+            }
         }
     }
 
-    private static StaticDescription Describe(Box box, double3 bub)
+    private static StaticDescription Describe(Solid solid, double3 bub)
     {
-        double3 at = box.CentreCcf - bub;
-        return new StaticDescription { Pose = new RigidPose(new Vector3((float)at.X, (float)at.Y, (float)at.Z), box.Orientation), Shape = box.Shape };
+        double3 at = solid.AtCcf - bub;
+        return new StaticDescription { Pose = new RigidPose(new Vector3((float)at.X, (float)at.Y, (float)at.Z), solid.Orientation), Shape = solid.Shape };
     }
 
     private static void Clear(ConstraintSim sim, SimState state)
     {
         IDictionary? registered = sim.ClutterStatics is { } clutter ? _clutterStatics?.GetValue(clutter) as IDictionary : null;
-        for (int k = 0; k < state.Handles.Length; k++)
+        for (int k = 0; k < state.Keys.Length; k++)
         {
-            registered?.Remove(state.Keys[k]);
+            if (state.Keys[k] is not { } key) continue;
+            registered?.Remove(key);
             sim.Simulation.Statics.Remove(state.Handles[k]);
         }
+        Let(state);
+    }
 
+    // Counts a simulation off the laying it held, whose statics are out of it or gone with it.
+    private static void Let(SimState state)
+    {
+        if (Interlocked.Exchange(ref state.Laying, null) is { } laying) Interlocked.Decrement(ref laying.Holders);
         state.Handles = [];
         state.Keys = [];
-        state.Version = -1;
     }
 
     private static bool TryOrigin(ConstraintSim sim, out bool ccf, out IParentBody? parent, out double3 bub)
@@ -261,7 +402,12 @@ internal static class RoadColliders
     }
 
     // The engine clears a recycled simulation's statics itself; what was held for it here goes with them.
-    private static void BeforeRecycle(ConstraintSim __instance) => States.Remove(__instance);
+    private static void BeforeRecycle(ConstraintSim __instance)
+    {
+        if (!States.TryGetValue(__instance, out SimState? state)) return;
+        Let(state);
+        States.Remove(__instance);
+    }
 
     private static Quaternion ToBepu(doubleQuat q) => new((float)q.X, (float)q.Y, (float)q.Z, (float)q.W);
 

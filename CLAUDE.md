@@ -202,7 +202,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
 | `Sim/RoadLaying.cs` | a circuit put on the ground: each run as a line of points on the road's surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
 | `Sim/RoadSurface.cs` | the tops of the roads as something a wheel can be over: its height above the strip under it, **a road more than its collider's half metre overhead being a bridge**, so the road beneath is the one answered, and falling away past its edge as a shoulder that is not drawn |
-| `Sim/RoadSlabs.cs` | a laid road as the boxes KSA's physics is given for it: one a stretch, its top on the road's line and half a metre deep, reaching round the outside of a turn, **its size rounded up to a step**, because the physics keeps a shape for every size it has seen |
+| `Sim/RoadSlabs.cs` | how deep a road's collider is, and a laid road as a box for each stretch, its top on the road's line, **which the tests check and nothing in the game uses**: the physics is given `RoadDeck`'s meshes |
+| `Sim/RoadDeck.cs` | a laid road as the solid KSA's physics is given for it: **one cross-section at each point of its line, shared by the stretches either side**, so the top is one surface, with an underside, sides and end caps, cut into closed chunks of about 200 m that each run on inside the next as a sinking tongue, and every triangle listed so that it is solid from outside |
 | `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
@@ -222,10 +223,10 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
 | `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
-| `Ksa/RoadColliders.cs` | **on a developer's install**: boxes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Every laid road's boxes go into each bubble within three kilometres of any of them; the bridge's `road` with `box_top` puts one more under the flown craft |
+| `Ksa/RoadColliders.cs` | **on a developer's install**: triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each chunk of a laid road's deck goes into the bubbles within three kilometres of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
 | `Ksa/RoadMesh.cs` | the box a road is drawn with as a `StaticMeshRenderable`, its glTF and material asked of KSA's asset managers by reflection |
 | `Ksa/RuntimeMesh.cs` | **an experiment, not yet seen in game**: a mesh made while the game runs, in room taken once in the three buffers KSA's static meshes share and written over in place, drawn by KSA's own renderer as a `StaticMeshRenderable`; the bridge's `road` with `mesh_test` draws one over the flown craft |
-| `Ksa/Roads.cs` | a circuit laid on a body: every road sampled onto the ground, drawn as a slab for each stretch between two points, handed to the physics as a deeper box for each, answered to a wheel asking what is under it, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
+| `Ksa/Roads.cs` | a circuit laid on a body: every road sampled onto the ground, drawn as a slab for each stretch between two points, handed to the physics as a deeper deck of triangles, answered to a wheel asking what is under it, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and their colliders when a drag ends |
 | `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
@@ -262,7 +263,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 489 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 499 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -496,26 +497,33 @@ ground between the planes that halve the turn at its two ends, so the outside of
 the inside no two heights; that holds while the bend's radius is more than the road's half width, and
 tighter than that the highest answer is given. Where roads are over one another a wheel is on the highest
 one no more than half a metre above its hub, which is how deep a road's collider is: a hub further down
-than that is below the box, under a deck. A wheel that was in a road last step, which
+than that is below it, under a deck. A wheel that was in a road last step, which
 `Buggies.Entry.RoadOver` remembers for as long as the roads are not laid again, is still on that road
 however deep, and is never put on one more than half a metre above the surface it was in.
 `RoadSurfaceSweepTests` lays bends, junctions and bridges as the game does and asks what a wheel would.
 **The lookup has not been driven in game.**
 
-**Everything but a wheel meets a road through KSA's own physics.** `Sim/RoadSlabs.cs` turns each stretch
-of a laid road into a box with its top on the road's line, half a metre deep where the road is drawn 0.3,
-so that what falls onto one is not through it within a step and a car still fits under a deck.
-`Ksa/RoadColliders.cs` puts them in every physics bubble near the roads as ground clutter of infinite
+**Everything but a wheel meets a road through KSA's own physics.** `Sim/RoadDeck.cs` turns a laid road
+into a closed deck of triangles with its top on the road's line, half a metre deep where the road is drawn
+0.3, so that what falls onto one is not through it within a step and a car still fits under a deck.
+`Ksa/RoadColliders.cs` puts its meshes in every physics bubble near them as ground clutter of infinite
 mass, which is what KSA lets a craft and a kitten collide with and count as ground. So a car that meets
 a ramp harder than its springs can carry comes down on its hull, as it does on the ground, and under
-time warp, where the springs are left out, it rests on its hull on the road. A box is flat across and
-ends square: on a bend each reaches on to where the outside edges of two meet, and on a climbing bend its
-top stands off the surface a wheel is told by the gradient's share of that reach, 7 cm on a 6 m road
-climbing 1 in 8 round a 5 m radius. A box's length is rounded up to a quarter of a metre and its width to
-a half, because KSA's physics keeps a shape for every size it is given and never frees one. The editor
-lays a road's boxes when a drag ends, not while it lasts: thousands of them go into each bubble at once,
-and until then the ones from before stay where they were. **A laid road's boxes have not been seen in
-game**; one box under a parked car has. `docs/KSA-MODDING-NOTES.md` has how a box is made to collide,
+time warp, where the springs are left out, it rests on its hull on the road.
+
+**The deck is one surface along the road, because a hull sliding over a row of boxes is thrown at every
+seam.** Each point of the line has one cross-section that the stretches either side both end on, cut on
+the line that halves the turn as the wheels' surface is, so on a straight and a level bend the deck's top
+is that surface to a hundredth of a millimetre. Round a climbing bend its two triangles a stretch part
+from it by the gradient times the half width times the tangent of half the turn: 1 mm on an 8 m road
+climbing 1 in 20 round a 180 m radius, 6 mm round a 30 m radius, and 7 cm on a 6 m road climbing 1 in 8
+round a 5 m radius. KSA's physics smooths the edges inside one mesh and not those between two, so a road
+is not one mesh a stretch; and where it is cut, every 200 m or so, each chunk runs 20 m on inside the next
+as a tongue sinking to a tenth of a metre, since two meshes that only met stopped a sliding hull dead in
+a test of the physics alone. A road laid again has its meshes built again; the ones from before leave the
+physics once no bubble holds one. The editor lays a road's meshes when a drag ends, not while it lasts,
+and until then the ones from before stay where they were. **A laid road's meshes have not been seen in
+game**; one box under a parked car has. `docs/KSA-MODDING-NOTES.md` has how a solid is made to collide,
 how the tube is drawn and how the clutter mask is addressed.
 
 **A circuit is a graph of points, and a road is a curve between two.** `Sim/Circuit.cs` keeps a point as a
@@ -671,7 +679,9 @@ step from 1/60 to a tenth of a second, and the F2004's times to speed, its braki
 driver reaches the rim of each car's wheel. `RoadSurfaceSweepTests` sweeps laid roads over legs, turns, corner
 strengths, spacings, widths and heights: every point of a road finds it, a level road is level round every
 bend, a climbing bend has no step, a junction onto a climbing road and a deck over a road answer the
-right one, and every point of a road has a collider box under it with its top where the wheel is told.
+right one. `RoadDeckTests` builds the physics' deck over straights, bends, rings and laid roads: every
+triangle solid from outside, every chunk closed, its top where the wheel is told, and a tongue inside the
+road it runs on into.
 
 `TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
 steps it: `WheelGround`, `BuggyDrive.Step`, then gravity. On a bare sphere it

@@ -860,21 +860,39 @@ it cannot make anything flat and thin.
 **A collider of a mod's own**: KSA's physics is BepuPhysics, one `Simulation` a physics bubble
 (`PhysicsBubble.ConstraintSim.Simulation`), stepped on a worker. A static added to it collides with
 nothing unless the narrow phase lets it (`NarrowPhaseCallbacks.AllowContactGeneration`): a vehicle's own
-terrain patch and launch pad, terrain blocks, and ground clutter. So a box is added with
+terrain patch and launch pad, terrain blocks, and ground clutter. So a static is added with
 `Simulation.Statics.Add`, posed in the bubble's frame (its planet-fixed position less
 `Origin.PositionBub`), and its handle written into the private `BubbleClutterStatics._statics` with
 infinite mass, and again whenever a pass finds it gone, because clutter's own sync clears that dictionary. Shapes go in a registry all
 simulations share, writable only between vehicle steps (`ConstraintSim.UnlockShapes`, from a prefix on
 `Universe.ExecuteNextVehicleSolvers`); the statics are synced from prefixes on
 `ConstraintSim.DetectCollisions` and `Simulate`, re-posed when the bubble's origin moves, and forgotten on
-`TryResetForPool`, which clears them. `Ksa/RoadColliders.cs` is this. A contact with such a box counts
+`TryResetForPool`, which clears them. `Ksa/RoadColliders.cs` is this. A contact with such a static counts
 as terrain contact (`ConstraintSim.IsGroundSurfaceFor`), so a craft resting on one is landed, and is
 reported to clutter as a hit, which infinite mass never lets displace or destroy it.
 **Seen in game on 2026.10.10.5554**: a 12 m box put under a parked F2004 with its top half a metre up
 lifted the car onto it by its hull, where it came to rest as landed, and taking the box away set the car
 back on the ground; a box half a metre deep with the car inside it pushed the car down instead, the
-shorter way out. Not seen: a laid road's thousands of boxes, a kitten on one, a craft driven onto one,
-a craft railed on one, an origin shift, a save loaded.
+shorter way out.
+
+**A road's collider is a triangle mesh, not boxes**: KSA's simulations are made with BepuPhysics' default
+collision tasks, which pair a `Mesh` with a vehicle's `Compound` or `BigCompound`, a kitten and displaced
+clutter. A `Mesh` is built as KSA builds a parachute's terrain (`ChuteBepuClothState.BuildTerrainMesh`):
+`BufferPool.Take<Triangle>` and `new Mesh(buffer, Vector3.One, pool)`, which builds its tree in that pool.
+The pool is the mod's own, so the building is done when the road is laid and not in the unlock window, and
+`Shapes.Add` there only copies the struct in. `Shapes.RemoveAndDispose(index, pool)` gives the slot back to
+the registry and the triangles and tree to that pool; the slot is given out again by the next `Add`, so a
+shape is only removed once no simulation has a static of it, which each simulation counts. `UnlockShapes`
+succeeds only while no vehicle update is running, and the collision passes run only inside one, so in the
+window that count is not moving.
+**A triangle is solid from one side**, the side `(C - A) x (B - A)` points to: a box dropped on the other
+side falls through. Inside one mesh Bepu smooths a contact at an edge two triangles share
+(`MeshReduction`); between two meshes it does not, and a box sliding at 35 m/s off one closed deck onto
+another that shares its end section stops dead there. `Sim/RoadDeck.cs` has what is done about it. A
+mesh has no bounding radius to `ClutterEcotypePhysicalData.ComputeBoundingRadius`, so a parachute's cloth,
+which gathers clutter by it, does not drape over a road. All of this was measured in BepuPhysics alone
+with KSA's contact settings. **Not seen in game**: a laid road's meshes, a kitten on one, a craft driven
+onto one, a craft railed on one, an origin shift, a save loaded, a road laid again.
 
 **Switching ground clutter off under something**: grass, shrubs, trees and rocks are ecotypes of one
 system. Each is laid on a grid over the six faces of a cube round the body (`CubeCellGrid.DirectionToQscUv`),
