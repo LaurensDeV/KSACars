@@ -483,8 +483,15 @@ window takes a hub's height as the least of its height over the terrain, a pad a
 the ground, so past its edge and its ends the surface falls away at 1 in 15 instead of as a step, which
 threw a car coming onto it, but only where the road is within half a metre of the ground: beside a
 raised road that fall would be a ledge in the air, and lifted a car parked next to it; and a road counts as under a wheel up to two metres into it, because at speed
-a car is a metre into a ramp within one step; a wheel that was over a road last step is still over that
-road however deep, which `Buggies.Entry.RoadOver` remembers, for as long as the roads are not laid again. Nothing of KSA's stands where a road is, and
+a car is a metre into a ramp within one step. Each stretch of a road between two points answers for the
+ground between the planes that halve the turn at its two ends, so the outside of a bend has no hole and
+the inside no two heights; that holds while the bend's radius is more than the road's half width, and
+tighter than that the highest answer is given. Where roads are over one another a wheel is on the highest
+one no more than two metres above it; a wheel that was in a road last step, which
+`Buggies.Entry.RoadOver` remembers for as long as the roads are not laid again, is still on that road
+however deep, and is never put on one more than two metres above the surface it was in.
+`RoadSurfaceSweepTests` lays bends, junctions and bridges as the game does and asks what a wheel would.
+**The lookup has not been driven in game.** Nothing of KSA's stands where a road is, and
 the springs push only so hard, so a car a tenth of a metre past its bump stops into a road is set back on
 the surface and loses its speed downwards. Only the mod's
 own wheels know: the car's colliders, a kitten on foot and every other craft pass through a raised road.
@@ -619,7 +626,10 @@ source of truth and `check-docs.sh` fails on any prose file that disagrees with 
 engine's own mass and inertia for each car. `BuggyDriveTests` covers settling, pulling away, turning,
 braking, a yaw kick dying away, the steering lock held to the grip, no car rocking on its springs at any
 step from 1/60 to a tenth of a second, and the F2004's times to speed, its braking and its cornering; `SteeringGripTests` that the
-driver reaches the rim of each car's wheel.
+driver reaches the rim of each car's wheel. `RoadSurfaceSweepTests` sweeps laid roads over legs, turns, corner
+strengths, spacings, widths and heights: every point of a road finds it, a level road is level round every
+bend, a climbing bend has no step, and a junction onto a climbing road and a deck over a road answer the
+right one.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

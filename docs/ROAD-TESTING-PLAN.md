@@ -21,21 +21,26 @@ real terrain, so they show mechanisms and not what the game does.
 
 ### The road surface (`Sim/RoadSurface.cs`)
 
-1. **Holes on the outside of every bend.** A point past the end of one piece and before the start of
+1. ~~**Holes on the outside of every bend.**~~ Fixed, unseen in game. A point past the end of one piece and before the start of
    the next finds no road: about 10% of the outer edge at a 30 m radius, 2% at 100 m, a quarter-disc at
    a kink.
-2. **A wheel follows the road it was on while another rises through it.** Leaving a junction onto a
+2. ~~**A wheel follows the road it was on while another rises through it.**~~ Fixed, unseen in game. Leaving a junction onto a
    climbing road, it stays on the first road's shoulder, then is moved up to the second in one step:
    0.4 to 1.1 m in the cases tried.
-3. **The same rule has no bound, so it can put a car on a bridge.** A wheel leaving the side of a
+3. ~~**The same rule has no bound, so it can put a car on a bridge.**~~ Fixed, unseen in game. A wheel leaving the side of a
    ground road under a deck 12 m up is told it is 11.7 m inside the deck, and the car is lifted 12 m.
-4. **A bend hole on a bridge sticks the wheel to the road below**, and the corner falls through the
+4. ~~**A bend hole on a bridge sticks the wheel to the road below**~~ (fixed, unseen in game), and the corner falls through the
    deck.
 5. ~~**A low deck grabs a car beside it.**~~ Fixed, unseen in game: a raised road has no shoulder. The undrawn shoulder reaches 7.5 m from a road at any height,
    so a car on the grass beside a deck 1 to 2.8 m up is lifted onto it. Every ramp passes through that
    band.
-6. **On a climbing bend the inside of the road is a sawtooth** of 4 to 16 cm, each piece being flat
+6. ~~**On a climbing bend the inside of the road is a sawtooth**~~ (fixed, unseen in game, and
+   still there where the bend's radius is under the half width, which fault 13's limit removes) of 4 to 16 cm, each piece being flat
    across its own up.
+
+A fault found while fixing those: **the shoulder is decided by the centre line's height above the
+ground**, so on a side slope the downhill shoulder is a ledge in the air, up to 1.75 m at 30%, and can lie
+over a lower road within 7.5 m.
 
 ### The hard stop (`Ksa/Buggies.cs`)
 
@@ -138,7 +143,11 @@ Judged on, each with a number:
 
 ### Step 4. Fix, in this order
 
-1. **Rewrite the surface lookup once.** Within a run, each piece owns the ground between the planes
+1. **Done, unseen in game** (`RoadSurfaceSweepTests`, of which 11 of 22 cases failed before). Two
+   changes from the prototype: a wheel above its road is asked as one new to it, since admitting only
+   what is within a step of the surface it was on would drop it through a deck it flew in over; and the
+   outside of a turn carries on only a half width past its stretch, as the slab is drawn. The plan was:
+   **Rewrite the surface lookup once.** Within a run, each piece owns the ground between the planes
    bisecting its two joints, so there are no holes outside a bend and no overlaps inside; a prototype
    had no misses and steps under a millimetre at 2 m spacing. Between levels, admit surfaces no more
    than a step above where the wheel's surface was and take the highest. That replaces "nearest to
