@@ -199,3 +199,12 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [ ] The eight circuits of `tools/roads/extreme-circuits.py` lapped by all three cars: the F2004 finishes
       six of eight cleanly; the driver stops the Eldorado and the buggy short of the end, and takes the
       buggy round the figure of eight fast enough to roll it
+- [x] Roads drawn as the smooth surface's own triangles (2026.10.10.5554, bridge `road`): the raised test
+      circuit as one ribbon climbing to a deck, asphalt on top and earth on its verges and banks, four
+      meshes in four of eight slots, no box anywhere; and one collider mesh of 6,679 triangles for the run
+- [x] On triangle-mesh colliders no car flips or rolls on the eight extreme circuits, where four did on a
+      box a stretch: the Eldorado laps the 3.3 km oval and the buggy the figure of eight and the grid
+- [x] "Stuck short of a road's end" was the lap runner leaving each car standing where the next one
+      finishes; with each car parked clear, all three finish the hairpins and the kinks
+- [ ] The smooth roads driven: all eight circuits lapped by all three cars; a climb with nothing to feel;
+      a car on a bank; the editor dragging a point with the mesh following; a kitten on a road

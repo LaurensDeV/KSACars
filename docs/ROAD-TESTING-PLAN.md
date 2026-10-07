@@ -64,8 +64,8 @@ over a lower road within 7.5 m.
     19 m/s2 fires it 24 to 48 times on Luna and never on Earth), their load being capped at four
     times the car's weight there.
 
-**Faults 7 to 10 went with the stop, unseen in game.** `Sim/RoadSlabs` gives every laid road collider
-boxes through `Ksa/RoadColliders`, and the stop is removed. In the rig a 0.25 m step at 30 to 60 m/s on a
+**Faults 7 to 10 went with the stop, unseen in game.** every laid road was given collider boxes through `Ksa/RoadColliders`, since replaced by the
+road's own triangles as one mesh a run, and the stop is removed. In the rig a 0.25 m step at 30 to 60 m/s on a
 10% or 20% descent is now one to four flights of at most 0.73 s and 0.26 m, as on the level, where it was
 up to ten flights, 4.9 s and 5.9 m; a car parked under a 0.15 or 0.4 s step sits on its hull and stays;
 no ramp's foot turns a car over. What is left of fault 10: on Luna the hull comes down at a ramp's foot
@@ -141,7 +141,6 @@ The owner decides, because the fixes depend on it:
   state read and its writes.
 - `RoadSurface.TryLocate`: which piece answered, its own normal, and how far out on the shoulder.
 
-Not `RoadSlabs`, unless a test that a slab's corners lie on the surface comes with it.
 
 ### Step 2. A rig that can leave the ground: `TrackRig`
 

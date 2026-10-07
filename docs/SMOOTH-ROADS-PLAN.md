@@ -78,14 +78,27 @@ Each step leaves the game working. Only steps 5 and 6 need the game.
 0. **Proof: done, seen in game.** A crowned, waved 10 m patch made at runtime (`Sim/MeshPatch`,
    `Ksa/RuntimeMesh`, the bridge's `road` with `mesh_test`) is lit, textured, smoothly shaded and casts
    its shadow, and is replaced in place without taking more of KSA's buffers.
-1. The chart and the centre line by its own length.
-2. Height, bank and width profiles and the smoothed ground. Circuit format 2, old files still loading.
-3. The surface evaluated and inverted, behind the lookup the wheels use now. Boxes still drawn.
-4. Tessellation: ribbons, verge, embankment, deck.
-5. Colliders as meshes.
-6. The mesh drawn. The slab and its maths go.
-7. Junctions.
-8. The editor: bank, width at each end, junction radius, warnings, and only the changed chunks rebuilt.
+1. **Done.** The chart and the centre line by its own length (`Sim/RoadChart`, `Sim/RoadLine`).
+2. **Done.** Height, bank and width profiles, the smoothed ground, circuit format 2 (`Sim/RoadProfile`,
+   `Sim/RoadGround`). The ground is the mean of the samples plus the smoothed amount the ground stands
+   above that mean, not a smoothed running maximum, which stood a road half a window's climb above a
+   steady slope. A steady 5% climb at 80 m/s went from 19 m/s2 at every point to nothing.
+3. **Done.** The surface evaluated and inverted, answering the wheels (`Sim/RoadRibbon`, `Sim/RoadSurface`).
+   The wheels are not given the surface's own normal: with it the F2004 left the coaster's crests for up
+   to 0.44 s, and why is not known, so they keep the plane through the four wheels.
+4. **Done.** Tessellation (`Sim/RoadTessellation`): within 3 mm of the surface, a degree a row. More rows
+   than a point every 2 m on tight circuits and fewer on fast ones; 5 km is about 15,000 vertices.
+5. **Done, seen in game.** The collider is the drawn triangles, one mesh a run and not a chunk: two meshes
+   that only meet stop a sliding hull dead or throw it, and an F2004 left the oval at the first 200 m join
+   of a collider cut that way.
+6. **Done, seen in game.** The mesh drawn, from a pool of slots in KSA's buffers, asphalt and earth as
+   two materials; the slab, its boxes and their maths are gone.
+7. Junctions. Runs still overlap where they meet, the joining one sunk a centimetre.
+8. The editor: bank, width at each end, junction radius, warnings. Only the runs through a dragged point
+   are meshed again while it is dragged.
+
+Still open: a road's bank lies across another road below it on a hillside; nothing enforces the least
+radius, which `RoadRibbon.TooTight` reports; no editor control sets a bank or a width at one end.
 
 ## Not to be built
 
