@@ -521,6 +521,13 @@ latitude, a longitude and a height above the ground, so a road follows whatever 
 handle, as a vector shape's has: worked out by `Sim/RoadLayout.cs` from the roads meeting at the point and
 scaled by the point's corner strength, or set by hand as another place on the body.
 
+**A driver follows a route round a circuit, the same one in the tests and in the game.** `Sim/Route.cs`
+is a line along the roads with progress along it, never the nearest road, so a junction or a crossing
+cannot put it on the wrong one; `Sim/Autopilot.cs` steers by pure pursuit through the lock
+`BuggyDrive.SteerLock` gives, holds a speed the bends allow, and ends itself with a reason. `Ksa/Laps.cs`
+steps it in the physics window for the bridge's `lap`, which stands the car at the route's start first
+and files a summary of the run.
+
 **A road is drawn as slabs: one box, scaled, for each stretch between two points.**
 `tools/model/road-slab.py` writes the box and its asphalt; `Roads.Draw` gives it the road's width,
 `Roads.ThicknessM` of depth and the stretch's length, with its top on the road's line, so a raised road is
@@ -658,7 +665,9 @@ down, and what a car does after that is the rig's and not the game's. `RoadBulle
 undriven, at a level road, ramps, a step in a road, a road's edge, a deck alongside and overhead and a
 deck's end, at Earth's gravity and Luna's and at three step lengths, and parks it under a step too long
 for the springs. One is skipped: on Luna a car comes down on its hull at the foot of a ramp its springs
-carry it up on Earth. `KSACARS_BULLETS=<file> ./tools/test.sh` writes every run out as a table.
+carry it up on Earth. `KSACARS_BULLETS=<file> ./tools/test.sh` writes every run out as a table. `AutopilotTests` drives each car
+with the route driver round rings at five step lengths, along a bend's edges, through a junction, over a
+ramp and a bridge and to a road's end.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

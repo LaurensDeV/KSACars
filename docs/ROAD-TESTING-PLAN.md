@@ -108,6 +108,10 @@ One test is skipped, the ramp's foot on Luna.
   below Monza's 2004 speeds and above what a high-downforce circuit saw.
 - **A parked car creeps down a slope** at g times the grade times the step over 0.7: 4.6 cm/s on 20%
   at 60 Hz, in the rig. In game KSA may rail it first.
+- **At a 0.05 s step the F2004 at full lock holds a 100 m ring 2.9 m wide at 42 m/s**, its hubs moving
+  7 to 9 cm on 2 cm of travel; at 1/30 s it is 0.34 m wide. In the rig.
+- **A brake in a bend gets what the side grip leaves**, so a driver that assumes its brakes into a
+  corner runs off; the Eldorado left a figure of eight that way.
 - **A negative throttle is full brakes whatever its size**, and reverse below half a metre a second.
 
 ## The plan
@@ -228,6 +232,14 @@ Before any automatic driver in game:
 - The first in-game runs are bullets over a laid ramp, with the hold the bridge already has.
 
 ### Step 6. A driver that follows a route
+
+**Done, and run in game with the F2004.** `Sim/Route` and `Sim/Autopilot`, run by `Ksa/Laps` and the
+bridge's `lap`. Pure pursuit with 0.4 s of look-ahead, a curvature profile at 85% of the lesser of grip
+and lock, braked for with 70% of the brakes and no more than the bend leaves of the grip, and no forward
+pass. A kink over 30 degrees is rounded in the route, because a T-junction's centre line turns on the
+spot. In game it took a ramp at up to 65 m/s and both test circuits at up to 58 m/s, the junction both
+ways and 2 m off the centre line, without a wheel off the asphalt. The telemetry of step 5 is partly
+there: a row a step, but not what each hub was told by terrain, pad and road, nor the replay.
 
 Only now.
 

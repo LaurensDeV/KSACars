@@ -178,3 +178,14 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       a ramp at speed, a bump on a descent, time warp on a road and on a deck
 - [ ] A road counts as under a wheel up to half a metre into it, so a car under any deck it fits under
       stays on the ground
+- [x] A driver follows a route round a laid circuit (bridge `lap`, 2026.10.10.5554, the F2004): stood on
+      the road at the route's start 0.000 m from where it was asked and facing along it, it drove and
+      stopped itself at the end, the summary filed under `Logs/bridge/KSACars/laps/`
+- [x] A straight road with a ramp up 8 m over 100 m and down again, driven so at 15, 30 and 50 m/s: on
+      its line to 4 mm, no flight, hubs within 3 cm of rest, body never on the collider. At 65 m/s it
+      leaves the crest for a second, lands 14 cm into its travel, pitches 6.5 degrees and carries on
+- [x] The test circuit and the one with its junction 8 m up, driven so at up to 58 m/s: the lap, the turn
+      at the junction both ways, and 2 m either side of the centre line: all finished, no wheel off the
+      asphalt, no flight, within 0.85 m of the line, roll under a degree
+- [ ] The driver on the buggy and the Eldorado, on a closed lap of several kilometres, and at the edge of
+      a road with less than a metre to spare
