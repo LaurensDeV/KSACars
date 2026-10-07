@@ -25,23 +25,35 @@ public sealed class RoadSurface
     private const double CellM = 32.0;
 
     // OpenA and OpenB: the road ends there, with nothing carrying on from it.
-    private readonly record struct Piece(double3 A, double3 B, double HalfWidth, bool OpenA, bool OpenB);
+    // Shouldered: near enough the ground that the fall past its edge reaches it.
+    private readonly record struct Piece(double3 A, double3 B, double HalfWidth, bool OpenA, bool OpenB, bool Shouldered);
 
     private readonly Dictionary<(int, int, int), List<Piece>> _cells = [];
     private readonly int _reach;
 
     /// <param name="roads">Each road's centre line on its surface, from the body's centre, half its width, and whether it is a ring.</param>
     public RoadSurface(IEnumerable<(double3[] Line, double HalfWidth, bool Closed)> roads)
+        : this(roads.Select(r => (r.Line, r.HalfWidth, r.Closed, (double[]?)null)))
+    {
+    }
+
+    /// <param name="roads">
+    /// As above, with how far each point of the line is above the ground. A stretch more than
+    /// <see cref="ShoulderDropM"/> up has no shoulder: one that could not reach the ground would be a
+    /// ledge in the air beside a raised road, lifting whatever drove under it.
+    /// </param>
+    public RoadSurface(IEnumerable<(double3[] Line, double HalfWidth, bool Closed, double[]? AboveGroundM)> roads)
     {
         double widest = 0.0;
-        foreach ((double3[] line, double halfWidth, bool closed) in roads)
+        foreach ((double3[] line, double halfWidth, bool closed, double[]? above) in roads)
         {
             widest = Math.Max(widest, halfWidth);
             for (int i = 1; i < line.Length; i++)
             {
                 (int, int, int) cell = Cell(line[i - 1]);
                 if (!_cells.TryGetValue(cell, out List<Piece>? pieces)) _cells[cell] = pieces = [];
-                pieces.Add(new Piece(line[i - 1], line[i], halfWidth, !closed && i == 1, !closed && i == line.Length - 1));
+                bool low = above is null || (above[i - 1] <= ShoulderDropM && above[i] <= ShoulderDropM);
+                pieces.Add(new Piece(line[i - 1], line[i], halfWidth, !closed && i == 1, !closed && i == line.Length - 1, low));
             }
         }
         // A piece is filed under where it starts, so the search goes a piece's length and a half width past its own cell.
@@ -105,7 +117,7 @@ public sealed class RoadSurface
                         double height = Vec.Dot(off, up);
                         double3 beside = at - (piece.A + (flat * t));
                         double out_ = Math.Max(Vec.Len(beside - (up * Vec.Dot(beside, up))) - piece.HalfWidth, 0.0) + past;
-                        if (out_ * ShoulderSlope > ShoulderDropM) continue;
+                        if (out_ * ShoulderSlope > ShoulderDropM || (out_ > 0.02 && !piece.Shouldered)) continue;
 
                         double over = height + (out_ * ShoulderSlope);
                         if (last is { } was)

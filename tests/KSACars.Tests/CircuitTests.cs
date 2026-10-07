@@ -386,7 +386,7 @@ public class RoadSurfaceTests
         Assert.False(road.TryHeightOver(At(3.4, 101.0, 12.0), out _));
         Assert.False(road.TryHeightOver(At(3.4, 209.0, 0.0), out _));
         Assert.False(road.TryHeightOver(At(3.4, -9.0, 0.0), out _));
-        Assert.False(new RoadSurface([]).TryHeightOver(At(3.4, 10.0, 0.0), out _));
+        Assert.False(new RoadSurface(Array.Empty<(double3[], double, bool)>()).TryHeightOver(At(3.4, 10.0, 0.0), out _));
     }
 
     [Fact]
@@ -461,6 +461,28 @@ public class RoadSurfaceTests
         // On the lower road under the bridge, a wheel stays on the lower road.
         Assert.True(roads.TryHeightOver(At(0.5, 100.0, 0.0), 0.33, out double under));
         Assert.Equal(0.3, under, 3);
+    }
+
+    [Fact]
+    public void ARaisedRoadHasNoShoulderSoNothingBesideItIsToldItIsUnderIt()
+    {
+        double3[] line = Line(1.5, 0.0, 200.0);
+        double[] up = [.. line.Select(_ => 1.5)], down = [.. line.Select(_ => 0.07)];
+        RoadSurface raised = new([(line, 4.0, false, (double[]?)up)]);
+        RoadSurface onTheGround = new([(Line(0.07, 0.0, 200.0), 4.0, false, (double[]?)down)]);
+
+        // A hub a third of a metre over the grass, walked in from the side and from past the end.
+        for (double across = 12.0; across > 4.1; across -= 0.25)
+        {
+            Assert.False(raised.TryHeightOver(At(0.33, 100.0, across), out _), $"caught {across} m out");
+            Assert.False(raised.TryHeightOver(At(0.33, 100.0, across), 0.3, out _), $"caught {across} m out, remembered");
+        }
+        Assert.False(raised.TryHeightOver(At(0.33, 203.0, 0.0), out _));
+        Assert.True(raised.TryHeightOver(At(1.83, 100.0, 3.9), out double on));
+        Assert.Equal(0.33, on, 3);
+
+        Assert.True(onTheGround.TryHeightOver(At(0.33, 100.0, 6.0), out double shoulder));
+        Assert.Equal(0.26 + (2.0 * RoadSurface.ShoulderSlope), shoulder, 2);
     }
 
     [Fact]

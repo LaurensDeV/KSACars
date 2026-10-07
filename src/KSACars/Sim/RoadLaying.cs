@@ -45,5 +45,5 @@ internal static class RoadLaying
     }
 
     /// <summary>The surface a wheel is asked about, over what was laid.</summary>
-    public static RoadSurface Surface(IEnumerable<Strip> strips) => new(strips.Select(s => (s.Line, s.HalfWidth, s.Closed)));
+    public static RoadSurface Surface(IEnumerable<Strip> strips) => new(strips.Select(s => (s.Line, s.HalfWidth, s.Closed, (double[]?)s.AboveGroundM)));
 }

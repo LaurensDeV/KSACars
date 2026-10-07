@@ -37,6 +37,9 @@ internal sealed class Buggies
 
         /// <summary>How far each hub was above the road under it last step, or null with no road under it.</summary>
         public double?[] RoadOver { get; } = new double?[profile.Corners.Length];
+
+        /// <summary>Which laying of the roads <see cref="RoadOver"/> is of.</summary>
+        public int RoadGeneration { get; set; }
         public double Level { get; set; } = 1.0;
         public double SinceLog { get; set; }
         public KittenRenderable? HandsOn { get; set; }
@@ -666,6 +669,12 @@ internal sealed class Buggies
             if (railed) craft.TakeOffRails();
             Log.Info($"{KsaWorld.DisplayName(craft)} {(tip ? "tipped onto its roof" : "set back on its wheels")}, lifted {move.Lift:F2} m");
             return;
+        }
+
+        if (e.RoadGeneration != Roads.Generation)
+        {
+            Array.Clear(e.RoadOver);
+            e.RoadGeneration = Roads.Generation;
         }
 
         // How far the deepest wheel is into a road past the end of its travel and its bump stop's.

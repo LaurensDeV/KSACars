@@ -30,6 +30,14 @@ internal static class Roads
     /// How far a point in <paramref name="body"/>'s own frame is above the road under it (m). Asked
     /// from the physics window, where nothing may throw: what is laid is swapped whole, never changed.
     /// </summary>
+    private static int _generation;
+
+    /// <summary>
+    /// Counts the times roads have been laid. What a wheel remembers of the road under it is of one
+    /// laying: carried to the next, a road moved in the editor would take a car beside it along.
+    /// </summary>
+    public static int Generation => _generation;
+
     public static bool TryHeightOver(Celestial body, double3 atCcf, double? last, out double metres)
     {
         metres = 0.0;
@@ -86,6 +94,7 @@ internal static class Roads
 
     public static void Clear()
     {
+        Interlocked.Increment(ref _generation);
         _laid = null;
         _clutterMarginM = null;
         _clutterStale = true;
@@ -210,6 +219,7 @@ internal static class Roads
             return ground;
         }
 
+        Interlocked.Increment(ref _generation);
         List<RoadLaying.Strip> strips = RoadLaying.Lay(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
         _laid = strips.Count > 0
             ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips))
@@ -286,11 +296,18 @@ internal static class Roads
                 // wedge that would open on the outside between it and the next. Only for a turn seen
                 // from above: over a crest or into a dip two boxes already share the edge between them,
                 // and one reaching on along its own slope would stand proud of the next.
+                // A ring's last box is followed by its first, and its first is reached back by the same.
                 double reachAfter = 0.0;
-                if (i + 2 < line.Length)
+                int after = i + 2 < line.Length ? i + 2 : road.Closed ? 1 : -1;
+                if (after >= 0)
                 {
-                    double3 next = Vec.Unit(_ego[i + 2] - _ego[i + 1]);
+                    double3 next = Vec.Unit(_ego[after] - _ego[after - 1]);
                     reachAfter = road.HalfWidth * Math.Abs(Vec.Dot(Vec.Cross(ahead, next), up));
+                }
+                if (i == 0 && road.Closed)
+                {
+                    double3 before = Vec.Unit(_ego[line.Length - 1] - _ego[line.Length - 2]);
+                    reachBefore = road.HalfWidth * Math.Abs(Vec.Dot(Vec.Cross(before, ahead), up));
                 }
 
                 if (Vec.Len(_ego[i]) <= DrawWithinM)
