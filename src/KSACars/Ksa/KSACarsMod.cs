@@ -71,6 +71,9 @@ public sealed class KSACarsMod
 
             // After the step, so a command sees this frame's world.
             _bridge?.Update(dtPlayer, KsaWorld.InFlightScene && !KsaWorld.IsPaused ? KsaWorld.SimStepSeconds : 0.0);
+
+            // Here and not from the render hook: writing a mesh waits for the graphics card.
+            Roads.Update();
         }
         catch (Exception e)
         {

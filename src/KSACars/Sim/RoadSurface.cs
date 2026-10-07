@@ -19,12 +19,13 @@ namespace KSACars;
 public sealed class RoadSurface
 {
     /// <summary>
-    /// As deep as a road's collider is. A hub nearer the top than that is inside the box, where no
-    /// car can be driven and one is only on its way back out; a hub further down is below the box, and
-    /// under a deck. A hull on the box keeps a hub well above its top, so no more is needed for a car
-    /// that has come down hard.
+    /// As deep as a deck is. A hub nearer the top than that is inside the deck, where no car can be
+    /// driven and one is only on its way back out; a hub further down is below it, under a bridge. A
+    /// hull on the road keeps a hub well above its top, so no more is needed for a car that has come
+    /// down hard. A road on the ground is a sheet over its fill, shut at the sides by its banks, so
+    /// nothing comes to be that far under one.
     /// </summary>
-    public const double StepM = RoadSlabs.ThicknessM;
+    public const double StepM = RoadRibbon.DeckThickM;
 
     /// <summary>How far out past the asphalt's edge still counts as on it.</summary>
     public const double EdgeM = 0.02;

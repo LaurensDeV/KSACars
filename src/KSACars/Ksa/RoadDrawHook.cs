@@ -68,7 +68,7 @@ internal static class RoadDrawHook
     // Inside the engine's render: nothing here may throw.
     private static void AfterClearBuckets(IViewport viewport)
     {
-        if (!Roads.Any) return;
+        if (!Roads.AnyDrawn) return;
 
         try
         {
@@ -76,7 +76,8 @@ internal static class RoadDrawHook
         }
         catch (Exception e)
         {
-            Roads.Clear();
+            // Only the drawing: the surface under a car's wheels and its colliders stay where they are.
+            Roads.StopDrawing($"{e.GetBaseException().GetType().Name}: {e.GetBaseException().Message}");
             if (_complained) return;
             _complained = true;
             Log.Error("drawing a road failed; it is no longer drawn", e);

@@ -10,15 +10,18 @@
 -->
 <Assets>
 
-  <!-- A road: one box, drawn by the mod once for each stretch of a road and scaled to it. A <GltfFile>
-       and not a part's mesh, so it carries a material slot. tools/model/road-slab.py writes all four. -->
-  <GltfFile Id="KSACars_RoadSlab_Glb">
-    <Source Path="Meshes/KSACars_RoadSlab.glb" />
-  </GltfFile>
+  <!-- A road has no mesh here: the mod makes one while the game runs and draws it in these two, the
+       asphalt and a deck's sides in the first and its verges and embankments in the second.
+       tools/model/road-textures.py writes all six textures. -->
   <PbrMaterial Id="KSACars_Road_Material">
     <Diffuse      Path="Textures/KSACars_Road_Diffuse.png" Category="Default" />
     <Normal       Path="Textures/KSACars_Road_Normal.png"  Category="Default" />
     <AoRoughMetal Path="Textures/KSACars_Road_PBR.png"     Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RoadEarth_Material">
+    <Diffuse      Path="Textures/KSACars_RoadEarth_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadEarth_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadEarth_PBR.png"     Category="Default" />
   </PbrMaterial>
 
   <!--

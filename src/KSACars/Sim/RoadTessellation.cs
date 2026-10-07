@@ -16,10 +16,11 @@ namespace KSACars;
 /// <param name="RadiusM">The furthest any vertex is from the origin.</param>
 /// <param name="Folded">How many triangles were left out for facing away from their own vertices: the inside of a bend tighter than the road is wide.</param>
 /// <param name="StartRow">The left edge, the centre and the right edge of the asphalt where the stretch starts, from the body's centre, as they were before they were narrowed to floats.</param>
+/// <param name="Places">Every vertex from the body's centre, before it was narrowed: two meshes' vertices on the row they share are the same here to the last bit.</param>
 internal sealed record RoadMeshData(
     double3 Origin, float3[] Positions, float3[] Normals, float2[] Uvs, int[] Indices,
     int AsphaltIndices, int EarthIndices, int DeckIndices, double RadiusM, double FromS, double ToS,
-    double3[] StartRow, double3[] EndRow, int Folded);
+    double3[] StartRow, double3[] EndRow, int Folded, double3[] Places);
 
 /// <summary>
 /// A <see cref="RoadRibbon"/> as triangles: rows of vertices across the road at stations along it,
@@ -362,7 +363,24 @@ internal static class RoadTessellation
     /// <summary>A ribbon as meshes, each of about <see cref="ChunkM"/> of it.</summary>
     public static List<RoadMeshData> Mesh(RoadRibbon ribbon) => Mesh(ribbon, Stations(ribbon));
 
-    public static List<RoadMeshData> Mesh(RoadRibbon ribbon, Layout layout)
+    /// <summary>
+    /// The most one mesh may be: what the room kept for it holds, and how long a stretch of road,
+    /// which keeps a float exact and a mesh worth leaving out on its own when it is far off.
+    /// </summary>
+    public readonly record struct Fit(int Vertices, int Indices, double LengthM);
+
+    /// <summary>
+    /// A ribbon as meshes none of which is more than <paramref name="fit"/>, each as much of the road
+    /// as that holds: few where it runs straight and many where it winds. The same triangles as the
+    /// meshes by length, shared out differently.
+    /// </summary>
+    public static List<RoadMeshData> Mesh(RoadRibbon ribbon, Fit fit) => Mesh(ribbon, Stations(ribbon), fit);
+
+    // The most a stretch can add to a mesh: its far row, and its near one where it is the mesh's
+    // first or the road changes kind there; and at an end a cap's corners or, past a run's end, four rows of fall.
+    private const int RowVertices = 11, RowIndices = 36, EndVertices = 4 * RowVertices, EndIndices = 2 * RowIndices;
+
+    public static List<RoadMeshData> Mesh(RoadRibbon ribbon, Layout layout, Fit? fit = null)
     {
         Station[] stations = layout.Stations;
         int count = layout.Stretches.Length, chunks = Math.Max(1, (int)Math.Round(ribbon.LengthM / ChunkM));
@@ -387,6 +405,31 @@ internal static class RoadTessellation
             double middle = 0.5 * (stations[from].S + end);
             deck[k] = ribbon.DeckOver(Math.Min((int)(middle / ribbon.SideStepM), ribbon.SideStretches - 1));
             chunkOf[k] = Math.Clamp((int)(middle / ribbon.LengthM * chunks), 0, chunks - 1);
+        }
+
+        if (fit is { } most)
+        {
+            int vertices = 0, indices = 0;
+            double startS = 0.0;
+            chunks = 1;
+            for (int k = 0; k < count; k++)
+            {
+                (int from, int to) = layout.Stretches[k];
+                double end = to == 0 && k == count - 1 ? ribbon.LengthM : stations[to].S;
+                int ends = (k == 0 && !ribbon.Closed) || deck[(k + count - 1) % count] != deck[k] ? 1 : 0;
+                if ((k == count - 1 && !ribbon.Closed) || deck[(k + 1) % count] != deck[k]) ends++;
+                int v = RowVertices + (ends * EndVertices), i = RowIndices + (ends * EndIndices);
+                bool joined = vertices > 0 && deck[k - 1] == deck[k];
+
+                if (vertices > 0 && (vertices + v + (joined ? 0 : RowVertices) > most.Vertices || indices + i > most.Indices || end - startS > most.LengthM))
+                {
+                    chunks++;
+                    (vertices, indices, startS, joined) = (0, 0, stations[from].S, false);
+                }
+                vertices += v + (joined ? 0 : RowVertices);
+                indices += i;
+                chunkOf[k] = chunks - 1;
+            }
         }
 
         List<RoadMeshData> meshes = [];
@@ -480,6 +523,6 @@ internal static class RoadTessellation
         return new RoadMeshData(origin, positions, normals, [.. chunk.Uv],
                                 [.. chunk.Triangles[0], .. chunk.Triangles[1], .. chunk.Triangles[2]],
                                 chunk.Triangles[0].Count, chunk.Triangles[1].Count, chunk.Triangles[2].Count,
-                                radius, fromS, toS, start, end, chunk.Folded);
+                                radius, fromS, toS, start, end, chunk.Folded, [.. chunk.At]);
     }
 }

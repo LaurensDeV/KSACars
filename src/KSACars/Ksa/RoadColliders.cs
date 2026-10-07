@@ -15,7 +15,8 @@ namespace KSACars;
 
 /// <summary>
 /// Solids of the mod's own in KSA's physics, so a hull, a kitten and another craft meet a road as they
-/// meet the ground: a triangle mesh for each chunk of each road's deck, and the experiment's box.
+/// meet the ground: one triangle mesh for each run of roads, of the triangles it is drawn with, and
+/// the experiment's box.
 ///
 /// <para>A static only collides if the engine's narrow phase lets it: its own terrain and launch pad,
 /// terrain blocks, and ground clutter. So each is registered as clutter with infinite mass, which is
@@ -24,7 +25,7 @@ namespace KSACars;
 ///
 /// <para>One physics simulation belongs to each bubble and steps on a worker thread, so the statics are
 /// synced from prefixes on its collision passes, against a laying swapped in whole from the main thread.
-/// A bubble holds the chunks within <see cref="ReachM"/> of its origin and no others.</para>
+/// A bubble holds the runs any of which is within <see cref="ReachM"/> of its origin and no others.</para>
 ///
 /// <para>Shapes live in a registry every simulation shares and that is only writable between vehicle
 /// steps, when no simulation is stepping. A mesh's triangles and its tree are built when the road is
@@ -146,10 +147,10 @@ internal static class RoadColliders
     }
 
     /// <summary>
-    /// The solids wanted on a body, from the main thread: every road's deck and the experiment's
+    /// The solids wanted on a body, from the main thread: every run of roads and the experiment's
     /// boxes. Nothing of either takes them all away. The meshes are built here.
     /// </summary>
-    public static void Want(Celestial? body, IReadOnlyList<RoadDeck.Deck> decks, IReadOnlyList<(double3 Centre, doubleQuat Orientation, double3 Size)> boxes)
+    public static void Want(Celestial? body, IReadOnlyList<RoadCollider> roads, IReadOnlyList<(double3 Centre, doubleQuat Orientation, double3 Size)> boxes)
     {
         if (!Installed) return;
 
@@ -159,10 +160,7 @@ internal static class RoadColliders
             List<(double3, double, Mesh)> meshes = [];
             try
             {
-                foreach (RoadDeck.Deck deck in body is null ? [] : decks)
-                {
-                    foreach (RoadDeck.Chunk chunk in deck.Chunks) meshes.Add((chunk.Origin, chunk.RadiusM, MeshOf(deck, chunk)));
-                }
+                foreach (RoadCollider road in body is null ? [] : roads) meshes.Add((road.Origin, road.RadiusM, MeshOf(road)));
                 _wanted = new Wanted(body, [.. meshes], body is null ? [] : [.. boxes]);
             }
             catch (Exception e)
@@ -180,12 +178,12 @@ internal static class RoadColliders
         wanted = null;
     }
 
-    private static Mesh MeshOf(RoadDeck.Deck deck, RoadDeck.Chunk chunk)
+    private static Mesh MeshOf(RoadCollider road)
     {
-        Pool.Take(chunk.Triangles.Length / 3, out Buffer<Triangle> triangles);
-        for (int t = 0; t < triangles.Length; t++)
+        Pool.Take(road.Triangles, out Buffer<Triangle> triangles);
+        for (int t = 0; t < road.Triangles; t++)
         {
-            triangles[t] = new Triangle(Local(deck, chunk, 3 * t), Local(deck, chunk, (3 * t) + 1), Local(deck, chunk, (3 * t) + 2));
+            triangles[t] = new Triangle(Corner(road, 3 * t), Corner(road, (3 * t) + 1), Corner(road, (3 * t) + 2));
         }
 
         try
@@ -199,11 +197,7 @@ internal static class RoadColliders
         }
     }
 
-    private static Vector3 Local(RoadDeck.Deck deck, RoadDeck.Chunk chunk, int corner)
-    {
-        double3 at = deck.Corners[chunk.Triangles[corner]] - chunk.Origin;
-        return new Vector3((float)at.X, (float)at.Y, (float)at.Z);
-    }
+    private static Vector3 Corner(RoadCollider road, int corner) => new(road.Corners[corner].X, road.Corners[corner].Y, road.Corners[corner].Z);
 
     /// <summary>A box as the physics wants it: its centre, and its axes as a body-fixed rotation.</summary>
     public static (double3 Centre, doubleQuat Orientation, double3 Size) Place(double3 centreCcf, double3 xCcf, double3 yCcf, double3 zCcf, double3 size)

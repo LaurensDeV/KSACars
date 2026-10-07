@@ -365,7 +365,7 @@ internal sealed class Bridge
             double size = command.Number("box_size", 12.0);
             double3 over = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
             Roads.TestBox(body, over, size, command.Number("box_thick", 0.5), command.Number("box_top", 0.6));
-            return Done(new() { ["box_m"] = size, ["adds_so_far"] = RoadColliders.Adds });
+            return Done(new() { ["box_m"] = size, ["drawn"] = false, ["adds_so_far"] = RoadColliders.Adds });
         }
         if (command.Has("mesh_test") || command.Has("mesh_size") || command.Has("mesh_bend"))
         {
@@ -377,7 +377,6 @@ internal sealed class Bridge
             return report.TryGetValue("error", out object? error) ? new Reply(false, error?.ToString() ?? "failed", report) : Done(report);
         }
         if (command.Flag("probe_clutter", false)) return Done(Roads.ProbeClutter(body).ToDictionary(k => k.Key, k => (object?)k.Value));
-        if (!RoadDrawHook.Installed) return Failed("the road hook is not installed");
 
         Circuit circuit;
         if (command.String("circuit") is { Length: > 0 } name)
@@ -407,15 +406,17 @@ internal sealed class Bridge
         }
 
         (int points, double low, double high) = Roads.Lay(body, circuit, command.Number("lift", 0.07),
-            Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0), colliders: true);
+            Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0), whole: true);
         KsaWorld.TrySeaLevel(body, out double sea);
         if (command.Flag("clutter", true)) Roads.ClearClutter(command.Number("margin", 1.5));
-        return Done(new()
+        Dictionary<string, object?> reply = new()
         {
             ["laid"] = Roads.Any, ["roads"] = circuit.Roads.Count, ["points"] = points, ["cleared_before"] = Roads.ClutterTaken,
             ["lowest_ground_m"] = Math.Round(low - sea, 2), ["highest_ground_m"] = Math.Round(high - sea, 2),
             ["library"] = CircuitLibrary.Names(),
-        });
+        };
+        foreach ((string key, object? value) in Roads.Status()) reply[key] = value;
+        return Done(reply);
     }
 
     // A through road with a bend in it, a side road off its middle and a road closing the two into a

@@ -828,12 +828,13 @@ Handy Core subparts: `CoreStructuralA_Subpart_TubeA` (0.854 × 0.101 tube),
 asset draws wherever its `Transform` says each time `Draw` is called, and one renderable can be drawn any
 number of times a frame with a different transform each time. The transform's rows are the mesh's X, Y and
 Z axes and then its origin, camera-relative, and the axes may be scaled each on its own.
-`Ksa/RoadMesh.cs` builds one; the asset managers take a `Core.AssetName`, which is in `Planet.Core.dll`, and it
-builds that by reflection. The draw has to be made from a postfix on `SuperMeshRenderSystem.ClearBuckets(IViewport)`:
-anything submitted earlier in the frame is cleared by that call. The `.glb` needs a material slot, which
-a part's mesh does not have.
+The asset managers take a `Core.AssetName`, which is in `Planet.Core.dll`. The draw has to be made from a
+postfix on `SuperMeshRenderSystem.ClearBuckets(IViewport)`: anything submitted earlier in the frame is
+cleared by that call. The `.glb` needs a material slot, which a part's mesh does not have. Nothing in the
+mod draws a `<GltfFile>`; `Ksa/RuntimeMesh.cs` builds the same renderable over a mesh of its own.
 
-**Drawing a mesh made at runtime** (`Ksa/RuntimeMesh.cs`; **not yet seen in game**): every static mesh is a
+**Drawing a mesh made at runtime** (`Ksa/RuntimeMesh.cs`; **one patch seen in game**, lit, textured, smoothly
+shaded and casting a shadow, and written over in place; a road's meshes not yet): every static mesh is a
 stretch of three buffers owned by `SuperMeshRenderSystem.MeshIndirectSystem`: normals and UVs
 (`InterleavedVertex`, 20 bytes) in 10 MB, positions (`float3`) in 5 MB, which is 436,000 vertices for the
 whole game, and `int` indices in 10 MB. `AddMesh(AssetName, MeshAsset)` takes room from the end of each,
@@ -852,6 +853,20 @@ have to be right-handed or every face is turned away. `AssetManager.TryGet` remo
 for and returns null: use `IsLoaded` and `GetOrLoad`. The free room is `FreeSpace` on the private
 `_vertexAllocator`, `_vertexPosAllocator` and `_indexAllocator`. `docs/KSA-API-SURFACE.md` does not record
 the `Planet.*` assemblies or members of a generic type, which is most of what this binds to.
+
+**One reserved stretch can hold many meshes, and one mesh many draws.** `MeshPassBucketSystem` files a
+draw under the `IMeshDrawStorage` object a renderable was built over, not under a name or a handle, and
+reads that object's `IndexCount`, `IndexOffset` and `VertexOffset` as it writes each frame's draw commands.
+`MeshIndirectRef` has a public constructor, so one made by hand over any part of a stretch that was
+reserved, with no source to free, is drawn as a loaded mesh is; two over the same vertices with different
+runs of the indices are two draws of one mesh, each in the material of its own `GltfPbrAssetRef`.
+`Ksa/RuntimeMesh.cs` reserves a block with one `AddMesh` and cuts it so. **Every such object that has an
+instance in a view is one of that view's 256 draw commands a pass, and every `Draw` one of its 1024
+instances**; KSA throws past either from inside its render, which closes the game. A renderable whose
+mesh has `IndexCount` 0 still takes a draw command if it is drawn, so one with nothing to draw is not.
+`StaticMeshRenderable.Draw` also files a shadow caster about the transform's translation, of the mesh's
+`BoundingRadius` times the longest of the transform's axes. Any number of copies can go through one
+`StagingPool` and one command buffer, which is one wait for the graphics card for all of them.
 
 `SplineRenderer.AddTube`, called from inside `Universe.UpdateRenderData`, sweeps a lit tube along
 camera-relative samples, but its section is a regular polygon of one radius and its normals are radial, so
@@ -888,7 +903,8 @@ window that count is not moving.
 **A triangle is solid from one side**, the side `(C - A) x (B - A)` points to: a box dropped on the other
 side falls through. Inside one mesh Bepu smooths a contact at an edge two triangles share
 (`MeshReduction`); between two meshes it does not, and a box sliding at 35 m/s off one closed deck onto
-another that shares its end section stops dead there. `Sim/RoadDeck.cs` has what is done about it. A
+another that shares its end section stops dead there. So `Sim/RoadCollider.cs` makes one mesh of a whole
+run of roads, of the triangles it is drawn with. A
 mesh has no bounding radius to `ClutterEcotypePhysicalData.ComputeBoundingRadius`, so a parachute's cloth,
 which gathers clutter by it, does not drape over a road. All of this was measured in BepuPhysics alone
 with KSA's contact settings. **Not seen in game**: a laid road's meshes, a kitten on one, a craft driven

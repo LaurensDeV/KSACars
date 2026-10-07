@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-231 types and 499 members across 11 assemblies.
+231 types and 503 members across 11 assemblies.
 
 ## BepuPhysics
 
@@ -744,6 +744,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `float get_IvaAudio()`
 - `void SetCameraMode(KSA.CameraMode)`
 
+### KSA.IHandleManager`1
+
+*referenced as a type only*
+
 ### KSA.IMeshAsset
 
 *referenced as a type only*
@@ -845,10 +849,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `bool IsLaunchPad`
 
-### KSA.LoadedAssetRef
-
-*referenced as a type only*
-
 ### KSA.LocationReference
 
 - `KSA.StaticObject GetStaticObject()`
@@ -871,8 +871,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.MeshIndirectRef
 
 - `KSA.MeshOffsetData Data`
+- `int get_IndexCount()`
 - `int get_IndexOffset()`
 - `int get_VertexOffset()`
+- `void .ctor(Core.AssetName, KSA.MeshOffsetData, int, KSA.IHandleManager`1<int>)`
 - `void set_BoundingRadius(float)`
 
 ### KSA.MeshIndirectSystem`1
@@ -882,7 +884,9 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.MeshOffsetData
 
 - `Brutal.ElementCount IndexCount`
+- `Brutal.ElementCount IndexOffset`
 - `Brutal.ElementCount VertexCount`
+- `Brutal.ElementCount VertexOffset`
 
 ### KSA.MeshRenderTechnique
 

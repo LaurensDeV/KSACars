@@ -384,7 +384,7 @@ public class RoadBulletTests
         faults.None();
     }
 
-    // A deck is a collider RoadSlabs.ThicknessM deep, so a car is under one only where its own
+    // A deck is RoadRibbon.DeckThickM deep, so a car is under one only where its own
     // colliders end below that. Under any such deck its wheels are on the ground.
     [Fact]
     public void UnderAnyDeckACarFitsUnderItIsLeftOnTheGround()
@@ -397,7 +397,7 @@ public class RoadBulletTests
             {
                 foreach (double height in new[] { 1.0, 1.25, 1.5, 2.0 })
                 {
-                    if (height + TrackWorld.LiftM - RoadSlabs.ThicknessM < car.RoofM) continue;
+                    if (height + TrackWorld.LiftM - RoadRibbon.DeckThickM < car.RoofM) continue;
                     judged++;
                     LeftOnTheGround(faults, height, car, speed, Steps[0]);
                 }

@@ -4,38 +4,35 @@ using KSA;
 namespace KSACars;
 
 /// <summary>
-/// A circuit's roads on the ground, drawn as slabs: one box for each stretch between two points of a
-/// road, as wide as the road, <see cref="ThicknessM"/> deep and with its top on the road's line.
+/// A circuit's roads on the ground: laid as one surface a run, which a wheel asks through
+/// <see cref="SurfaceOn"/>, and that surface as triangles, which <see cref="RoadDrawing"/> draws and
+/// <see cref="RoadColliders"/> gives the physics, so a hull, a kitten and any other craft meet what
+/// is drawn.
 ///
-/// <para>The roads are held in the body's own frame and handed over each frame from the camera, as
-/// <see cref="RoadDrawHook"/> is called.</para>
-///
-/// <para>A hull, a kitten and any other craft meet a road through <see cref="RoadColliders"/>, which is
-/// given each road's <see cref="RoadDeck"/>, one surface along it and deeper than the slabs drawn. A
-/// wheel is not a collider and reads the road's height from <see cref="SurfaceOn"/>.</para>
+/// <para>The surface is swapped whole on every laying. The triangles are made again when a laying is
+/// whole; while a road is being dragged only the runs the drag touches are, a few times a second, and
+/// the physics keeps what it had.</para>
 /// </summary>
 internal static class Roads
 {
-    /// <summary>How deep a road's slab is. Laid on the ground most of it is under it; raised, it is the deck's edge.</summary>
-    public const double ThicknessM = 0.3;
+    // How often at most the meshes of a road being dragged are made and written again, and how much of
+    // the time that may take: a long run is 60 ms to make, and each writing waits for the graphics card.
+    private const double DragRedrawSeconds = 0.1, DragRedrawShare = 0.25;
 
-    private const double DrawWithinM = 8_000.0;
-
-    // Within NearM a box a stretch, to MiddleM a box for four, beyond it a box for sixteen; and never
-    // more boxes than leaves KSA's 1024 instances a view room for everything else it draws so.
-    private const double NearM = 200.0, MiddleM = 600.0;
-    private const int InstanceBudget = 800;
-
-    private static bool _overBudget;
+    // How often the meshes with a place in the pool are chosen again, where there are more meshes than places.
+    private const double RestockSeconds = 2.0;
 
     private sealed record Ribbon(double3[] SurfaceCcf, double HalfWidth, double LengthM, bool Closed);
 
     private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM);
 
     private static volatile Laid? _laid;
-    private static double3[] _ego = [];
 
-    public static bool Any => _laid is not null || _marker is not null || _patch is not null;
+    /// <summary>Whether a road is laid: one that is driven on, drawn or not.</summary>
+    public static bool Any => _laid is not null;
+
+    /// <summary>Whether the render hook has anything to hand over.</summary>
+    public static bool AnyDrawn => RoadDrawing.Any || _patch is not null;
 
     private static int _generation;
 
@@ -133,8 +130,11 @@ internal static class Roads
     {
         Interlocked.Increment(ref _generation);
         _laid = null;
-        _roadDecks = null;
+        _roadSolids = null;
+        _pending = null;
+        _status = [];
         HandColliders();
+        RoadDrawing.Clear();
         _clutterMarginM = null;
         _clutterStale = true;
     }
@@ -241,13 +241,18 @@ internal static class Roads
 
     /// <summary>
     /// Lays a circuit's roads on <paramref name="body"/>, each on the ground along its whole length, and
-    /// says how many points they took and the lowest and highest ground under them.
+    /// says how many points they took and the lowest and highest ground under them. For the frame
+    /// hook: laid whole, it waits for the graphics card.
     /// </summary>
-    /// <param name="colliders">
-    /// Whether the physics is given these roads as well. Every mesh is built again and put into each
-    /// bubble near it, so a road being dragged about is not, and what was there before it moved is left.
+    /// <param name="whole">
+    /// Whether everything is made again: every mesh drawn, and the physics' solids, which go into each
+    /// bubble near them. A road being dragged about is laid without, every frame: the wheels' surface
+    /// is new each time, the solids stay where they were, and of the meshes only those of the runs
+    /// through <paramref name="touched"/> are made again, when <see cref="Update"/> next finds it time.
     /// </param>
-    public static (int Points, double LowM, double HighM) Lay(Celestial body, Circuit circuit, double liftM, double spacingM, bool colliders)
+    /// <param name="touched">The circuit's points a drag has moved the roads at.</param>
+    public static (int Points, double LowM, double HighM) Lay(Celestial body, Circuit circuit, double liftM, double spacingM, bool whole,
+                                                               IReadOnlyCollection<int>? touched = null)
     {
         _clutterMarginM = null;
         _clutterStale = true;
@@ -268,41 +273,150 @@ internal static class Roads
             ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips),
                        circuit, liftM, spacingM)
             : null;
-        if (colliders)
+
+        List<RoadRibbon> ribbons = [.. strips.Where(s => s.Ribbon is not null).Select(s => s.Ribbon!)];
+        if (whole)
         {
-            _roadDecks = strips.Count > 0
-                ? (body, [.. strips.Select(s => RoadDeck.Build(s.Line, s.HalfWidth, s.Closed, RoadSlabs.ThicknessM))])
-                : null;
-            HandColliders();
+            _pending = null;
+            Mesh(body, ribbons, null);
+        }
+        else
+        {
+            _pending = (body, ribbons, [.. touched ?? []]);
         }
         return (points, low, high);
     }
 
-    private static (Celestial Body, RoadDeck.Deck[] Decks)? _roadDecks;
+    private static (Celestial Body, List<RoadRibbon> Ribbons, HashSet<int> Touched)? _pending;
+    private static readonly System.Diagnostics.Stopwatch SinceRedraw = System.Diagnostics.Stopwatch.StartNew();
+    private static readonly System.Diagnostics.Stopwatch SinceRestock = System.Diagnostics.Stopwatch.StartNew();
+    private static Dictionary<string, object?> _status = [];
+    private static double _redrawTook;
+
+    /// <summary>
+    /// What the roads last laid whole came to: runs, meshes, vertices, the pool's places, what KSA's
+    /// buffers have left, the physics' solids, and what went wrong with any of it.
+    /// </summary>
+    public static Dictionary<string, object?> Status()
+    {
+        Dictionary<string, object?> status = new(_status);
+        foreach ((string key, object? value) in RoadDrawing.Report()) status[key] = value;
+        return status;
+    }
+
+    /// <summary>
+    /// Once a frame, from the frame hook and never from KSA's render: writes the meshes of a road
+    /// being dragged when it is time to, and looks again at which meshes are drawn where the pool
+    /// cannot hold them all. Never throws.
+    /// </summary>
+    public static void Update()
+    {
+        if (_pending is { } pending && SinceRedraw.Elapsed.TotalSeconds >= Math.Max(DragRedrawSeconds, _redrawTook / DragRedrawShare))
+        {
+            _pending = null;
+            Mesh(pending.Body, pending.Ribbons, pending.Touched);
+            _redrawTook = SinceRedraw.Elapsed.TotalSeconds;
+        }
+
+        if (SinceRestock.Elapsed.TotalSeconds >= RestockSeconds && _laid is { } laid)
+        {
+            SinceRestock.Restart();
+            if (EyeCcf(laid.Body) is { } eye) RoadDrawing.Restock(eye);
+        }
+    }
+
+    // A run is told from the others by the points it goes through, which a drag does not change.
+    private static string KeyOf(RoadRibbon ribbon) => string.Join(",", ribbon.Spans.Select(s => $"{s.From}-{s.To}"));
+
+    // The ribbons as triangles, drawn and given to the physics; or, with the points a drag touched,
+    // only the runs through those, drawn in place of the same runs before and the physics left as it
+    // was. A road whose triangles cannot be made or drawn is still a surface under a wheel.
+    private static void Mesh(Celestial body, List<RoadRibbon> ribbons, HashSet<int>? touched)
+    {
+        SinceRedraw.Restart();
+        bool whole = touched is null;
+        List<RoadDrawing.Run> runs = [];
+        List<RoadCollider> colliders = [];
+        string? failed = null;
+        foreach (RoadRibbon ribbon in ribbons)
+        {
+            if (touched is not null && !ribbon.Spans.Any(s => touched.Contains(s.From) || touched.Contains(s.To))) continue;
+            try
+            {
+                List<RoadMeshData> meshes = RoadTessellation.Mesh(ribbon, RoadDrawList.Fit);
+                runs.Add(new RoadDrawing.Run(KeyOf(ribbon), meshes));
+                if (whole && RoadCollider.Of(meshes) is { } solid) colliders.Add(solid);
+            }
+            catch (Exception e)
+            {
+                failed = $"the run through {KeyOf(ribbon)} could not be made into a mesh and is neither drawn nor solid: {e.GetBaseException().Message}";
+                Log.Warn(failed);
+            }
+        }
+
+        if (whole)
+        {
+            _roadSolids = colliders.Count > 0 ? (body, [.. colliders]) : null;
+            HandColliders();
+        }
+        RoadDrawing.Show(body, runs, others: !whole, EyeCcf(body));
+        if (!whole) return;
+
+        bool hooked = RoadColliders.Installed;
+        _status = new()
+        {
+            ["collider_meshes"] = hooked ? colliders.Count : 0, ["collider_triangles"] = hooked ? colliders.Sum(c => c.Triangles) : 0,
+            ["collider_reach_m"] = colliders.Count > 0 ? Math.Round(colliders.Max(c => c.RadiusM)) : 0.0,
+        };
+        if (!hooked) _status["collider_warning"] = "the road colliders are not hooked: only wheels meet a road";
+        if (!RoadDrawHook.Installed) _status["hook_warning"] = "the render hook is not installed: no road is drawn";
+        if (failed is not null) _status["mesh_warning"] = failed;
+        Log.Info("roads laid: " + string.Join(", ", Status().Select(kv => $"{kv.Key} {kv.Value}")));
+    }
+
+    // Where the player's eye is in a body's own frame, or the flown craft with no camera to ask.
+    private static double3? EyeCcf(Celestial body)
+    {
+        try
+        {
+            double3? ecl = Program.GetMainCamera()?.PositionEcl ?? (KsaWorld.ControlledVehicle is { } craft ? KsaWorld.PositionEcl(craft) : null);
+            return ecl is { } at ? (at - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse()) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Has no road drawn until roads are next laid whole, and leaves them laid: a car on one is still on it.</summary>
+    public static void StopDrawing(string why)
+    {
+        _patch = null;
+        RoadDrawing.Stop(why);
+    }
+
+    private static (Celestial Body, RoadCollider[] Solids)? _roadSolids;
     private static (Celestial Body, (double3 Centre, doubleQuat Orientation, double3 Size)[] Boxes)? _testBox;
 
     // The physics is given the solids of one body: the roads', and the experiment's with them if it is there too.
     private static void HandColliders()
     {
-        Celestial? body = _roadDecks?.Body ?? _testBox?.Body;
+        Celestial? body = _roadSolids?.Body ?? _testBox?.Body;
         bool box = _testBox is { } test && ReferenceEquals(test.Body, body);
-        RoadColliders.Want(body, _roadDecks?.Decks ?? [], box ? _testBox!.Value.Boxes : []);
+        RoadColliders.Want(body, _roadSolids?.Solids ?? [], box ? _testBox!.Value.Boxes : []);
     }
 
     // Something drawn for an experiment: where its origin is, and its three axes.
     private sealed record Marker(Celestial Body, double3 AtCcf, double3 X, double3 Y, double3 Z);
 
-    private static volatile Marker? _marker;
-
     /// <summary>
-    /// The collider experiment's one box: put into KSA's physics and drawn, centred over a place on the
-    /// ground with its top <paramref name="topM"/> above it. A size of nothing takes it away.
+    /// The collider experiment's one box, put into KSA's physics centred over a place on the ground
+    /// with its top <paramref name="topM"/> above it. Nothing draws it. A size of nothing takes it away.
     /// </summary>
     public static void TestBox(Celestial body, double3 overCcf, double sizeM, double thickM, double topM)
     {
         if (!(sizeM > 0.0))
         {
-            _marker = null;
             _testBox = null;
             HandColliders();
             return;
@@ -314,8 +428,9 @@ internal static class Roads
         double3 centre = up * (top - (0.5 * thickM));
         _testBox = (body, [RoadColliders.Place(centre, east, north, up, new double3(sizeM, sizeM, thickM))]);
         HandColliders();
-        _marker = new Marker(body, (up * top) - (north * (0.5 * sizeM)), east * sizeM, up * thickM, north * sizeM);
     }
+
+    private const string PatchMaterial = "KSACars_Road_Material";
 
     private static volatile Marker? _patch;
     private static RuntimeMesh? _patchMesh;
@@ -342,8 +457,11 @@ internal static class Roads
         // Reserved once, and a refusal kept: KSA never gives back room that was taken on the way to one.
         if (_patchMesh is null && _patchRefused is null)
         {
-            _patchMesh = RuntimeMesh.Reserve("KSACars_RuntimePatch", MeshPatch.VerticesFor(MeshPatch.MaxCells),
-                                             MeshPatch.IndicesFor(MeshPatch.MaxCells), out string refused);
+            const string name = "KSACars_RuntimePatch";
+            int vertices = MeshPatch.VerticesFor(MeshPatch.MaxCells), indices = MeshPatch.IndicesFor(MeshPatch.MaxCells);
+            _patchMesh = RuntimeMesh.Reserve(name, vertices, indices, out string refused) is { } room
+                ? RuntimeMesh.Over(room, name, 0, vertices, 0, indices, [PatchMaterial], out refused)
+                : null;
             if (_patchMesh is null)
             {
                 _patchRefused = refused;
@@ -358,7 +476,8 @@ internal static class Roads
         }
 
         MeshPatch patch = MeshPatch.Build(sizeM, cells, bendM);
-        bool uploaded = mesh.Upload(patch.Positions, patch.Normals, patch.Uvs, patch.Indices, patch.Radius(), out string why);
+        bool uploaded = mesh.Upload(new RuntimeMesh.Content(patch.Positions, patch.Normals, patch.Uvs, patch.Indices, [patch.Indices.Length],
+                                                            patch.Radius()), out string why);
         report["reserved_vertices"] = mesh.VertexCapacity;
         report["reserved_indices"] = mesh.IndexCapacity;
         report["vertex_offset"] = mesh.VertexOffset;
@@ -398,99 +517,7 @@ internal static class Roads
     // Inside the engine's render: called through a hook that catches whatever this throws.
     public static void Draw(IViewport viewport)
     {
-        if (_marker is { } marker && RoadMesh.Slab is { } box) DrawAt(box, marker, viewport);
-
-        if (_patch is { } patch && _patchMesh is { } runtime)
-        {
-            try
-            {
-                DrawAt(runtime.Renderable, patch, viewport);
-            }
-            catch (Exception e)
-            {
-                _patch = null;
-                Log.Error("drawing the runtime mesh failed; it is no longer drawn", e);
-            }
-        }
-
-        if (_laid is not { } laid || RoadMesh.Slab is not { } slab) return;
-
-        Camera camera = viewport.GetCamera();
-        doubleQuat ccf2Cce = laid.Body.GetCcf2Cce();
-        double3 bodyEgo = laid.Body.GetPositionEcl() - camera.PositionEcl;
-        var view = Program.Instance.SuperMeshRenderSystem.ViewForViewport(viewport);
-
-        int drawn = 0;
-        foreach (Ribbon road in laid.Ribbons)
-        {
-            double3[] line = road.SurfaceCcf;
-            if (Vec.Len(bodyEgo + line[line.Length / 2].Transform(ccf2Cce)) > DrawWithinM + road.LengthM) continue;
-
-            if (_ego.Length < line.Length) _ego = new double3[line.Length];
-            for (int i = 0; i < line.Length; i++) _ego[i] = bodyEgo + line[i].Transform(ccf2Cce);
-
-            double width = 2.0 * road.HalfWidth;
-            double reachBefore = 0.0;
-            int last = line.Length - 1;
-            for (int i = 0; i < last;)
-            {
-                // Further off, several stretches are drawn as one box: KSA holds 1024 mesh instances a
-                // view and throws past that, mid-frame, which ends the game.
-                double range = Vec.Len(_ego[i]);
-                int end = Math.Min(i + (range < NearM ? 1 : range < MiddleM ? 4 : 16), last);
-
-                double3 along = _ego[end] - _ego[i];
-                double length = Vec.Len(along);
-                if (!(length > 1e-6))
-                {
-                    i = end;
-                    continue;
-                }
-                double3 ahead = along / length;
-
-                double3 up = Vec.Unit(line[i]).Transform(ccf2Cce);
-
-                // Boxes end square, so on a bend each reaches past its end far enough to close the
-                // wedge that would open on the outside between it and the next. Only for a turn seen
-                // from above: over a crest or into a dip two boxes already share the edge between them,
-                // and one reaching on along its own slope would stand proud of the next.
-                // A ring's last box is followed by its first, and its first is reached back by the same.
-                double reachAfter = 0.0;
-                int after = end + 1 <= last ? end + 1 : road.Closed ? 1 : -1;
-                if (after >= 0)
-                {
-                    double3 next = Vec.Unit(_ego[after] - _ego[after - 1]);
-                    reachAfter = road.HalfWidth * Math.Abs(Vec.Dot(Vec.Cross(ahead, next), up));
-                }
-                if (i == 0 && road.Closed)
-                {
-                    double3 before = Vec.Unit(_ego[last] - _ego[last - 1]);
-                    reachBefore = road.HalfWidth * Math.Abs(Vec.Dot(Vec.Cross(before, ahead), up));
-                }
-
-                if (range <= DrawWithinM && drawn < InstanceBudget)
-                {
-                    drawn++;
-                    double3 across = Vec.Unit(Vec.Cross(up, ahead));
-                    double3 x = across * width;
-                    double3 y = Vec.Cross(ahead, across) * ThicknessM;
-                    double3 z = ahead * (length + reachBefore + reachAfter);
-                    double3 at = _ego[i] - (ahead * reachBefore);
-                    slab.Transform = new float4x4((float)x.X, (float)x.Y, (float)x.Z, 0f,
-                                                  (float)y.X, (float)y.Y, (float)y.Z, 0f,
-                                                  (float)z.X, (float)z.Y, (float)z.Z, 0f,
-                                                  (float)at.X, (float)at.Y, (float)at.Z, 1f);
-                    slab.Draw(view);
-                }
-                reachBefore = reachAfter;
-                i = end;
-            }
-        }
-
-        if (drawn >= InstanceBudget && !_overBudget)
-        {
-            _overBudget = true;
-            Log.Warn($"more road in view than can be drawn: {InstanceBudget} boxes drawn and the rest left out");
-        }
+        if (_patch is { } patch && _patchMesh is { } runtime) DrawAt(runtime.Renderable, patch, viewport);
+        RoadDrawing.Draw(viewport);
     }
 }

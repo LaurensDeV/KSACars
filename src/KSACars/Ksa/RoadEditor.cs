@@ -551,7 +551,7 @@ internal sealed class RoadEditor
         if (ReferenceEquals(_laidFor, Now) && (_laidFine || !fine)) return;
 
         Celestial body = _body!;
-        Roads.Lay(body, Now, LiftM, fine ? FineSpacingM : CoarseSpacingM, colliders: fine);
+        Roads.Lay(body, Now, LiftM, fine ? FineSpacingM : CoarseSpacingM, whole: fine, touched: fine ? null : Touched());
         if (fine) Roads.ClearClutter(ClutterMarginM);
         _laidFor = Now;
         _laidFine = fine;
@@ -562,6 +562,19 @@ internal sealed class RoadEditor
         {
             for (int i = 1; i < s.Line.Length; i++) _lengthM += Vec.Len(s.Line[i] - s.Line[i - 1]) * body.MeanRadius;
         }
+    }
+
+    // The point being dragged and every point a road joins it to: a point's handle is worked out from
+    // its neighbours, so the roads at those turn with it.
+    private HashSet<int> Touched()
+    {
+        HashSet<int> touched = [_grabNode];
+        foreach (Circuit.Road road in Now.Roads.Where(r => r.Touches(_grabNode)))
+        {
+            touched.Add(road.From);
+            touched.Add(road.To);
+        }
+        return touched;
     }
 
     // ---- what is drawn over the world -------------------------------------------------------

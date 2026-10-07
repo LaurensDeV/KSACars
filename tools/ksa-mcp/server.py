@@ -243,11 +243,15 @@ TOOLS = {
                  "editor instead, with its free camera at view_yaw and view_pitch (deg) and view_distance (m). "
                  "probe_clutter=true lays nothing and measures the mod's clutter positions against the game's. "
                  "box_top puts one collider box (box_size square, box_thick deep) under the flown craft with its "
-                 "top that far above the ground, drawn where it is; box_size=0 takes it away. mesh_test draws a "
+                 "top that far above the ground, which nothing draws; box_size=0 takes it away. mesh_test draws a "
                  "curved patch made at runtime that far above the ground under the flown craft (default 3), mesh_size "
                  "across (default 10); mesh_bend carries its far end that many metres aside and, unless mesh_cells says "
                  "otherwise, makes it of 12 cells a side instead of 32, written over the same room; mesh_size=0 stops "
-                 "it being drawn. The reply has what was reserved, what KSA's mesh buffers have free and any error.",
+                 "it being drawn. The reply has what was reserved, what KSA's mesh buffers have free and any error. "
+                 "A laying's reply has the runs and meshes drawn and any left out, the vertices and indices "
+                 "uploaded, the pool's places used, had and allowed, what KSA's buffers have free, the collider "
+                 "meshes and their triangles, and a *_warning for whatever of that failed: a road that is not "
+                 "drawn is still laid.",
                  {"circuit": {"type": "string"}, "save_as": {"type": "string"}, "lat": _num("deg"), "lon": _num("deg"),
                   "heading": _num("deg"), "length": _num("m"), "width": _num("m"), "lift": _num("m"), "spacing": _num("m"),
                   "margin": _num("m"), "clutter": {"type": "boolean"}, "clear": {"type": "boolean"},

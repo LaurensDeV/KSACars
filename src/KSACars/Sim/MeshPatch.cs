@@ -7,7 +7,7 @@ namespace KSACars;
 /// one made while the game runs: crowned across, waved along and bent sideways, so that a normal for
 /// each vertex shades it differently from a flat one for each triangle.
 ///
-/// <para>In a right-handed frame of its own, as the road's slab is: X across, Y up and Z along, with
+/// <para>In a right-handed frame of its own: X across, Y up and Z along, with
 /// X from minus half the size to plus half and Z from nothing to the size. A triangle's corners go
 /// round anticlockwise seen from above, which is the side KSA draws.</para>
 /// </summary>
