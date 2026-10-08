@@ -4,10 +4,12 @@
     ./tools/roads/club-motorsports.py            # 'Club Motorsports' and 'Club Motorsports Flat'
     ./tools/roads/club-motorsports.py --print    # the turns and the heights, and nothing written
 
-The line and its heights are club-motorsports.csv, which says where each is from. A circuit's points are
-taken from it closer together where it bends, and each is as high above the ground as the real track is
-above its lowest place, since KSA's ground cannot be shaped: on level ground the lap climbs and falls as
-the real one does, on fill and on decks. The flat one is the same line on the ground.
+The line, its heights and how far its asphalt reaches either side are club-motorsports.csv, which says
+where each is from. A circuit's points are taken from it closer together where it bends, each in the
+middle of the asphalt there and the road as wide as the asphalt is, its paved runoff at a bend counted
+in; and each is as high above the ground as the real track is above its lowest place, since KSA's ground
+cannot be shaped: on level ground the lap climbs and falls as the real one does, on fill and on decks.
+The flat one is the same line on the ground.
 """
 import argparse
 import csv
@@ -21,14 +23,24 @@ REPO = HERE.parent.parent
 
 # Level ground south of the short course: 1.2 m of fall across the whole lap.
 AT = {"lat_deg": -24.0445, "lon_deg": -62.4905}
-WIDTH_M = 12.2          # 40 ft
+WIDTH_M = 12.2          # 40 ft, where the csv does not say
 STEP_M = 10.0           # the csv's spacing
-LEAST_M, MOST_M = 20.0, 60.0
+LEAST_M, MOST_M = 20.0, 40.0
 
 
 def line():
+    """The middle of the asphalt every 10 m, its height and its width: the mapped line moved to halfway between its edges."""
     rows = [r for r in csv.reader(l for l in (HERE / "club-motorsports.csv").read_text().splitlines() if not l.startswith("#"))][1:]
-    return [(float(e), float(n), float(z)) for e, n, z in rows]
+    mapped = [tuple(float(v) for v in r) for r in rows]
+    n, out = len(mapped), []
+    for i, (e, north, z, left, right) in enumerate(mapped):
+        (ax, ay), (bx, by) = mapped[i - 1][:2], mapped[(i + 1) % n][:2]
+        along = math.hypot(bx - ax, by - ay)
+        # To the left of the way it is driven.
+        lx, ly = -(by - ay) / along, (bx - ax) / along
+        off = 0.5 * (left - right)
+        out.append((e + lx * off, north + ly * off, z, left + right))
+    return out
 
 
 def radius(pts, i):
@@ -36,7 +48,7 @@ def radius(pts, i):
     n = len(pts)
 
     def heading(k):
-        (ax, ay, _), (bx, by, _) = pts[(k - 2) % n], pts[(k + 2) % n]
+        (ax, ay), (bx, by) = pts[(k - 2) % n][:2], pts[(k + 2) % n][:2]
         return math.atan2(by - ay, bx - ax)
 
     turn = (heading(i + 3) - heading(i - 3) + math.pi) % (2.0 * math.pi) - math.pi
@@ -75,7 +87,8 @@ def circuit(name, raised):
             node["height_m"] = round(high[i], 3)
         nodes.append(node)
     count = len(nodes)
-    roads = [{"from": k + 1, "to": (k + 1) % count + 1} for k in range(count)]
+    wide = [round(min(max(pts[i][3], 2.0), 40.0), 1) for i in picked]
+    roads = [{"from": k + 1, "to": (k + 1) % count + 1, "from_width_m": wide[k], "to_width_m": wide[(k + 1) % count]} for k in range(count)]
     return {"version": 3, "name": name, "body": "Earth", "radius_m": 6371000, "at": AT, "width_m": WIDTH_M,
             "route": [k + 1 for k in range(count)] + [1], "nodes": nodes, "roads": roads}
 
@@ -98,12 +111,13 @@ def main():
     picked = points(pts)
     climb = sum(max(high[(i + 1) % len(high)] - high[i], 0.0) for i in range(len(high)))
     steep = max((high[(i + 3) % len(high)] - high[i]) / (3.0 * STEP_M) for i in range(len(high)))
+    wide = sorted(p[3] for p in pts)
     print(f"{len(pts) * STEP_M:.0f} m, {len(picked)} points, {max(high):.1f} m from lowest to highest, "
-          f"{climb:.0f} m climbed a lap, {100.0 * steep:.1f}% at the steepest")
+          f"{climb:.0f} m climbed a lap, {100.0 * steep:.1f}% at the steepest, {wide[0]:.1f} to {wide[-1]:.1f} m wide and {wide[len(wide) // 2]:.1f} mostly")
     if args.print:
         for i in range(0, len(pts), 5):
             r, turn = radius(pts, i)
-            print(f"  {i * STEP_M:5.0f} m  {high[i]:5.1f} m up  " + ("straight" if r > 600.0 else f"{'left' if turn > 0 else 'right'} {r:.0f} m"))
+            print(f"  {i * STEP_M:5.0f} m  {high[i]:5.1f} m up  {pts[i][3]:4.1f} m wide  " + ("straight" if r > 600.0 else f"{'left' if turn > 0 else 'right'} {r:.0f} m"))
         return
 
     user = subprocess.run([str(REPO / "tools" / "ksa-user-dir.sh")], capture_output=True, text=True, check=True).stdout.strip()
