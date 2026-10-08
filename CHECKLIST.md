@@ -289,6 +289,9 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       quarter through the bridge, saved as a file of version 3 in 1,981 bytes for 3,661, and lapped clean
       by the F2004 in 47.8 s; the driver that leaves the original at 724 m leaves this one at 710
 - [ ] The editor's Load at the craft and its turn, by hand; a circuit laid on another body
+- [x] A real course (2026.10.10.5554): Club Motorsports laid raised, 3,595 m in 25 meshes and one solid of
+      37,162 triangles, lapped clean by the F2004 on the racing line at push 0.3 in 92.65 s. Not looked
+      at: it was dusk, and the overview the bridge took showed trees
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
