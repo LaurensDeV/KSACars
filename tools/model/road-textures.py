@@ -61,7 +61,39 @@ def main():
     grit = rng.normal(0.0, 5.0, (SIZE, SIZE, 1))
     write("KSACars_RoadEarth", np.array([64.0, 54.0, 38.0]) * (1.0 + 0.22 * patches) + grit, np.full((SIZE, SIZE), 245.0))
     lined(rng)
-    print("wrote KSACars_Road_*.png, KSACars_RoadLined_*.png and KSACars_RoadEarth_*.png")
+    trim(rng)
+    print("wrote KSACars_Road_*.png, KSACars_RoadLined_*.png, KSACars_RoadEarth_*.png and KSACars_RoadTrim_*.png")
+
+
+def trim(rng):
+    """What stands beside a road: down the picture is 1.5 m along it (RoadTessellation.TrimRepeatM).
+
+    The left half is a kerb, red for half its length and white for the other. The right half is a
+    barrier, pale concrete with a darker joint once a panel and a red band along its top, which is where
+    across the picture its top face falls."""
+    wide, high = 256, 128
+    across = (np.arange(wide) + 0.5) / wide
+    along = (np.arange(high) + 0.5) / high
+    grain = rng.normal(0.0, 5.0, (high, wide))
+    colour = np.zeros((high, wide, 3))
+
+    red, white = np.array([176.0, 22.0, 20.0]), np.array([226.0, 224.0, 216.0])
+    stripe = (along < 0.5)[:, None]
+    kerb = np.where(stripe[..., None], red[None, None, :], white[None, None, :])
+    concrete = np.full((high, wide, 3), (150.0, 150.0, 146.0))
+    joint = np.clip(1.0 - np.abs(along - 0.02) / 0.02, 0.0, 1.0)[:, None]
+    concrete = concrete * (1.0 - 0.45 * joint[..., None])
+
+    # A barrier is laid out across its half as it is walked round: up its face, over its top and down its back.
+    faces = 2.0 * 0.9 + 0.2 + 0.5
+    over = (across - 0.53) / 0.44 * faces
+    band = ((over > 0.9 - 0.18) & (over < 0.9 + 0.2 + 0.18))[None, :]
+    concrete = np.where(band[..., None], np.where(stripe[..., None], red[None, None, :], white[None, None, :]), concrete)
+
+    kerbside = (across < 0.5)[None, :, None]
+    colour = np.where(kerbside, kerb, concrete) + grain[..., None]
+    rough = np.where(across[None, :] < 0.5, 170.0, 215.0) + grain
+    write("KSACars_RoadTrim", colour, rough)
 
 
 def lined(rng):

@@ -38,6 +38,9 @@ internal static class RoadDrawList
         Array.Copy(mesh.Indices, 0, indices, 0, mesh.AsphaltIndices);
         Array.Copy(mesh.Indices, mesh.AsphaltIndices + mesh.EarthIndices, indices, mesh.AsphaltIndices, mesh.DeckIndices);
         Array.Copy(mesh.Indices, mesh.AsphaltIndices, indices, road, mesh.EarthIndices);
+
+        // And last the kerbs and barriers, which are last in the mesh too.
+        Array.Copy(mesh.Indices, road + earth, indices, road + earth, mesh.TrimIndices);
         return indices;
     }
 

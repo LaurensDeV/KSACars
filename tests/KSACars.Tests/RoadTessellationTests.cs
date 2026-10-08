@@ -127,7 +127,8 @@ public class RoadTessellationTests
 
     private static IEnumerable<(int A, int B, int C, int Kind)> Triangles(RoadMeshData mesh)
     {
-        for (int t = 0; t < mesh.Indices.Length; t += 3)
+        // The road's own: its kerbs and barriers are last and are not the surface, nor part of what is closed.
+        for (int t = 0; t < mesh.Indices.Length - mesh.TrimIndices; t += 3)
         {
             int kind = t < mesh.AsphaltIndices ? 0 : t < mesh.AsphaltIndices + mesh.EarthIndices ? 1 : 2;
             yield return (mesh.Indices[t], mesh.Indices[t + 1], mesh.Indices[t + 2], kind);
@@ -150,7 +151,7 @@ public class RoadTessellationTests
             {
                 Assert.Equal(mesh.Positions.Length, mesh.Normals.Length);
                 Assert.Equal(mesh.Positions.Length, mesh.Uvs.Length);
-                Assert.Equal(mesh.Indices.Length, mesh.AsphaltIndices + mesh.EarthIndices + mesh.DeckIndices);
+                Assert.Equal(mesh.Indices.Length, mesh.AsphaltIndices + mesh.EarthIndices + mesh.DeckIndices + mesh.TrimIndices);
                 Assert.True(mesh.AsphaltIndices > 0 && mesh.Indices.Length % 3 == 0);
                 Assert.All(mesh.Indices, i => Assert.InRange(i, 0, mesh.Positions.Length - 1));
 
@@ -383,7 +384,8 @@ public class RoadTessellationTests
             }
         }
 
-        Assert.True(asked > 5000 && earth > 2000 && pastFoot < earth / 10, $"{asked} places on the asphalt, {earth} off it and {pastFoot} past the bank's foot");
+        // Fewer of the earth than there were: round a bend the verge is a kerb, which is not asked here.
+        Assert.True(asked > 5000 && earth > 1500 && pastFoot < earth / 10, $"{asked} places on the asphalt, {earth} off it and {pastFoot} past the bank's foot");
         Assert.True(worstHeight <= RoadTessellation.HeightToleranceM, $"{name}: the asphalt's triangles are {worstHeight * 1000.0:F2} mm off the surface, at {worstAt}");
         Assert.True(worstEarth <= allowed, $"{name}: the verge's and the bank's triangles are {worstEarth * 1000.0:F2} mm off the surface, at {worstEarthAt}");
     }
@@ -585,7 +587,7 @@ public class RoadTessellationTests
         {
             foreach (RoadMeshData mesh in RoadTessellation.Mesh(ribbon, RoadDrawList.Fit))
             {
-                for (int t = 0; t + 2 < mesh.Indices.Length; t += 3)
+                for (int t = 0; t + 2 < mesh.Indices.Length - mesh.TrimIndices; t += 3)
                 {
                     double3 a = mesh.Places[mesh.Indices[t]], b = mesh.Places[mesh.Indices[t + 1]], d = mesh.Places[mesh.Indices[t + 2]];
                     double3 normal = Vec.Cross(b - a, d - a);
@@ -603,5 +605,57 @@ public class RoadTessellationTests
             }
         }
         Assert.True(walls > 0, "the ring has no wall under its asphalt: it does not change from a deck to a bank");
+    }
+
+    private static (TrackWorld World, List<(RoadRibbon Ribbon, List<RoadMeshData> Meshes)> Runs) Meshed(Func<TrackWorld, Circuit> draw)
+    {
+        TrackWorld world = TrackWorld.Earth();
+        RoadLaying.Network net = RoadLaying.Laid(draw(world), TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM);
+        return (world, [.. net.Ribbons.Select(r => (r, RoadTessellation.Mesh(r, RoadDrawList.Fit)))]);
+    }
+
+    [Fact]
+    public void ABendHasKerbsAndAStraightHasNone()
+    {
+        (_, var straight) = Meshed(w => AutopilotTests.Through(w, false, (0.0, 0.0, 0.0), (300.0, 0.0, 0.0)));
+        Assert.All(straight.SelectMany(r => r.Meshes), m => Assert.Equal(0, m.TrimIndices));
+
+        // A ring of 60 m is all bend, and each stretch of it has a kerb either side: two triangles each.
+        (_, var ring) = Meshed(w => AutopilotTests.Ring(60.0).Circuit);
+        int kerbs = ring.SelectMany(r => r.Meshes).Sum(m => m.TrimIndices), asphalt = ring.SelectMany(r => r.Meshes).Sum(m => m.AsphaltIndices);
+        Assert.Equal(asphalt, kerbs);
+
+        // And one of 300 m is no bend to slow for.
+        (_, var wide) = Meshed(w => AutopilotTests.Ring(300.0).Circuit);
+        Assert.All(wide.SelectMany(r => r.Meshes), m => Assert.Equal(0, m.TrimIndices));
+    }
+
+    [Fact]
+    public void ADeckHasABarrierOutsideEachEdgeAndTheGroundHasNone()
+    {
+        (TrackWorld world, var runs) = Meshed(w => AutopilotTests.Through(w, false,
+            (0.0, 0.0, 0.0), (100.0, 0.0, 12.0), (300.0, 0.0, 12.0), (400.0, 0.0, 0.0)));
+        (RoadRibbon ribbon, List<RoadMeshData> meshes) = Assert.Single(runs);
+        RoadSurface surface = new([ribbon]);
+
+        int corners = 0;
+        double highest = 0.0;
+        foreach (RoadMeshData mesh in meshes)
+        {
+            for (int t = mesh.Indices.Length - mesh.TrimIndices; t < mesh.Indices.Length; t++)
+            {
+                // No corner of it is over the asphalt, where a wheel would be: the road is as wide as it was.
+                double3 at = mesh.Places[mesh.Indices[t]];
+                bool over = surface.TryLocate(at + (Vec.Unit(at) * 2.0), null, out double above, out double outM);
+                Assert.False(over && outM <= 0.0 && Math.Abs(world.Flatten(at).North) < (0.5 * AutopilotTests.Width) - 0.01, $"a barrier's corner is over the road, {world.Flatten(at)}");
+                corners++;
+                highest = Math.Max(highest, Vec.Len(at) - world.RadiusM);
+            }
+        }
+        Assert.True(corners > 200, $"{corners}");
+        Assert.InRange(highest, 12.0 + RoadTessellation.BarrierHighM - 0.1, 12.0 + RoadTessellation.BarrierHighM + 0.2);
+
+        // And it is in what the physics is given, so it stops a car.
+        Assert.Equal(meshes.Sum(m => m.Indices.Length / 3), RoadCollider.Of(meshes)!.Triangles);
     }
 }

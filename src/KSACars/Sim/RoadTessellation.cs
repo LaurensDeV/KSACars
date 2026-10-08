@@ -20,7 +20,7 @@ namespace KSACars;
 internal sealed record RoadMeshData(
     double3 Origin, float3[] Positions, float3[] Normals, float2[] Uvs, int[] Indices,
     int AsphaltIndices, int EarthIndices, int DeckIndices, double RadiusM, double FromS, double ToS,
-    double3[] StartRow, double3[] EndRow, int Folded, double3[] Places);
+    double3[] StartRow, double3[] EndRow, int Folded, double3[] Places, int TrimIndices = 0);
 
 /// <summary>
 /// A <see cref="RoadRibbon"/> as triangles: rows of vertices across the road at stations along it,
@@ -216,6 +216,9 @@ internal static class RoadTessellation
         Asphalt,
         Earth,
         Deck,
+
+        /// <summary>What is put beside a road for the eye and for a car that has left it: a kerb round a bend, a barrier along a deck. Last of a mesh's triangles.</summary>
+        Trim,
     }
 
     private sealed record Row(double3[] At, double3[] Normal, float2[] Uv);
@@ -224,6 +227,25 @@ internal static class RoadTessellation
     // the asphalt's edge, centre and other edge, and the same going down the right. Each crease twice.
     private static readonly (int Left, Kind Kind)[] GroundStrips =
         [(0, Kind.Earth), (2, Kind.Earth), (4, Kind.Asphalt), (5, Kind.Asphalt), (7, Kind.Earth), (9, Kind.Earth)];
+
+    // The same round a bend, where each verge is a kerb.
+    private static readonly (int Left, Kind Kind)[] KerbedStrips =
+        [(0, Kind.Earth), (2, Kind.Trim), (4, Kind.Asphalt), (5, Kind.Asphalt), (7, Kind.Trim), (9, Kind.Earth)];
+
+    /// <summary>A bend tighter than this has kerbs: one a racing car has to slow for.</summary>
+    public const double KerbRadiusM = 150.0;
+
+    /// <summary>A deck's barrier: how high it stands over the road's edge and how thick it is, outside that edge.</summary>
+    public const double BarrierHighM = 0.9, BarrierThickM = 0.2;
+
+    /// <summary>The least length of a barrier's panel, which is straight: a row a panel would be nine times the triangles round a tight bend.</summary>
+    public const double BarrierStepM = 3.0;
+
+    /// <summary>How far along a road a kerb's two colours and a barrier's panel repeat.</summary>
+    public const double TrimRepeatM = 1.5;
+
+    // Where in the trim's picture a kerb is, across it, and where a barrier is: its left half is the kerb's stripes.
+    private const double KerbFrom = 0.03, KerbTo = 0.47, BarrierFrom = 0.53, BarrierTo = 0.97;
 
     // Round a deck: over the top left to right, down the right side, back under it and up the left.
     private static readonly (int Left, Kind Kind)[] DeckStrips =
@@ -265,8 +287,11 @@ internal static class RoadTessellation
             row.Normal[i] = ribbon.Normal(at, d, height, alongRise, acrossRise);
 
             // Past a run's end the rows are all of one place along it, and earth: only a row of the run itself is lined.
+            // A verge runs with the road too, edge to edge of the trim's kerb, so a bend can have it for a kerb.
             bool run = beyond == 0.0 && alongFall == 0.0;
-            row.Uv[i] = run && i is >= 4 and <= 6 ? Lined(ribbon, section, 0.5 * (i - 4)) : Tile(at.At + (at.Left * d));
+            row.Uv[i] = run && i is >= 4 and <= 6 ? Lined(ribbon, section, 0.5 * (i - 4))
+                      : run && i is 2 or 3 or 7 or 8 ? new float2((float)(i is 3 or 7 ? KerbFrom : KerbTo), (float)(Drawn(ribbon, section, out _) / TrimRepeatM))
+                      : Tile(at.At + (at.Left * d));
         }
         return row;
     }
@@ -306,11 +331,20 @@ internal static class RoadTessellation
     // dashes down its middle follow it. Round a closed run the dashes are stretched to come out whole.
     private static float2 Lined(RoadRibbon ribbon, in RoadRibbon.Section at, double across)
     {
-        // Round a kink the rows are all at one distance along, each turned a little further, and a picture
-        // laid by that distance alone would have no length there: the kink is taken to be as long as its
-        // outside edge is, and every row after it that much further on.
+        double drawn = Drawn(ribbon, at, out double whole);
+        double repeat = ribbon.Closed ? whole / Math.Max(1.0, Math.Round(whole / MarkingsM)) : MarkingsM;
+        return new float2((float)across, (float)(drawn / repeat));
+    }
+
+    // How far along a run a row is for what is drawn along it, and how long the whole run is by that measure.
+    // Round a kink the rows are all at one distance along, each turned a little further, and a picture
+    // laid by that distance alone would have no length there: the kink is taken to be as long as its
+    // outside edge is, and every row after it that much further on.
+    private static double Drawn(RoadRibbon ribbon, in RoadRibbon.Section at, out double whole)
+    {
         RoadLine line = ribbon.Line;
-        double drawn = at.S, whole = line.LengthM;
+        double drawn = at.S;
+        whole = line.LengthM;
         for (int arc = line.Closed ? 0 : 1; arc < line.Count; arc++)
         {
             double turn = Math.Abs(line.TurnAt(arc));
@@ -326,16 +360,60 @@ internal static class RoadTessellation
                 drawn += at.HalfWidth * (turn - Math.Min(left, turn));
             }
         }
-        double repeat = line.Closed ? whole / Math.Max(1.0, Math.Round(whole / MarkingsM)) : MarkingsM;
-        return new float2((float)across, (float)(drawn / repeat));
+        return drawn;
     }
+
+    // A wall along each edge of a deck between two rows, outside the edge: its face to the road, its top
+    // and its back down to the deck's underside. Vertices of its own, since each face is flat.
+    private static void Barrier(Chunk chunk, RoadRibbon ribbon, in RoadRibbon.Section from, in RoadRibbon.Section to)
+    {
+        double vFrom = Drawn(ribbon, from, out _) / TrimRepeatM, vTo = Drawn(ribbon, to, out _) / TrimRepeatM;
+        if (Math.Abs(vTo - vFrom) < 1e-6) return;
+
+        for (int side = -1; side <= 1; side += 2)
+        {
+            // Up the face from the road's edge, over the top and down the back: four places across, at each row.
+            ReadOnlySpan<(double Out, double Up)> across =
+                [(0.0, 0.0), (0.0, BarrierHighM), (BarrierThickM, BarrierHighM), (BarrierThickM, -RoadRibbon.DeckThickM)];
+            Span<double3> a = stackalloc double3[4], b = stackalloc double3[4];
+            Span<double> u = stackalloc double[4];
+            double span = (2.0 * BarrierHighM) + BarrierThickM + RoadRibbon.DeckThickM, gone = 0.0;
+            for (int k = 0; k < 4; k++)
+            {
+                if (k > 0) gone += Math.Abs(across[k].Out - across[k - 1].Out) + Math.Abs(across[k].Up - across[k - 1].Up);
+                u[k] = BarrierFrom + ((BarrierTo - BarrierFrom) * gone / span);
+                a[k] = At(ribbon, from, side, across[k].Out, across[k].Up);
+                b[k] = At(ribbon, to, side, across[k].Out, across[k].Up);
+            }
+            for (int k = 0; k < 3; k++)
+            {
+                double3 along = b[k] - a[k], up = a[k + 1] - a[k];
+                double3 facing = Vec.Unit(Vec.Cross(along, up) * -side);
+                int first = chunk.Add(a[k], facing, new float2((float)u[k], (float)vFrom));
+                chunk.Add(a[k + 1], facing, new float2((float)u[k + 1], (float)vFrom));
+                chunk.Add(b[k + 1], facing, new float2((float)u[k + 1], (float)vTo));
+                chunk.Add(b[k], facing, new float2((float)u[k], (float)vTo));
+                chunk.Triangle(first, first + 1, first + 2, Kind.Trim, turn: true);
+                chunk.Triangle(first, first + 2, first + 3, Kind.Trim, turn: true);
+            }
+        }
+
+        static double3 At(RoadRibbon ribbon, in RoadRibbon.Section at, int side, double beyond, double over)
+        {
+            double d = side * (at.HalfWidth + beyond);
+            return ribbon.Point(at, d, at.Height + (side * at.HalfWidth * at.BankTan) + over);
+        }
+    }
+
+    // The most a deck's barrier adds to a stretch: three faces a side, each with four vertices of its own.
+    private const int BarrierVertices = 24, BarrierIndices = 36;
 
     // One mesh as it is put together: vertices from the body's centre, and the triangles of each kind.
     private sealed class Chunk
     {
         public readonly List<double3> At = [], Normal = [];
         public readonly List<float2> Uv = [];
-        public readonly List<int>[] Triangles = [[], [], []];
+        public readonly List<int>[] Triangles = [[], [], [], []];
         public readonly Dictionary<Row, int> Rows = new(ReferenceEqualityComparer.Instance);
         public int Folded;
 
@@ -464,7 +542,7 @@ internal static class RoadTessellation
         if (fit is { } most)
         {
             int vertices = 0, indices = 0;
-            double startS = 0.0;
+            double startS = 0.0, panelFrom = double.NaN;
             chunks = 1;
             for (int k = 0; k < count; k++)
             {
@@ -472,14 +550,25 @@ internal static class RoadTessellation
                 double end = to == 0 && k == count - 1 ? ribbon.LengthM : stations[to].S;
                 int ends = (k == 0 && !ribbon.Closed) || deck[(k + count - 1) % count] != deck[k] ? 1 : 0;
                 if ((k == count - 1 && !ribbon.Closed) || deck[(k + 1) % count] != deck[k]) ends++;
-                int v = RowVertices + (ends * EndVertices), i = RowIndices + (ends * EndIndices);
+
+                // A barrier's panel ends where it is long enough, where the deck does, and where the mesh does: room is kept
+                // for that last one, which is only known of once the mesh is full.
+                if (deck[k] && double.IsNaN(panelFrom)) panelFrom = stations[from].S;
+                bool panel = deck[k] && (end - panelFrom >= BarrierStepM || k == count - 1 || !deck[k + 1]);
+                int kept = deck[k] ? BarrierVertices : 0, keptIndices = deck[k] ? BarrierIndices : 0;
+                int v = RowVertices + (ends * EndVertices) + (panel ? BarrierVertices : 0), i = RowIndices + (ends * EndIndices) + (panel ? BarrierIndices : 0);
                 bool joined = vertices > 0 && deck[k - 1] == deck[k];
 
-                if (vertices > 0 && (vertices + v + (joined ? 0 : RowVertices) > most.Vertices || indices + i > most.Indices || end - startS > most.LengthM))
+                if (vertices > 0 && (vertices + v + kept + (joined ? 0 : RowVertices) > most.Vertices || indices + i + keptIndices > most.Indices || end - startS > most.LengthM))
                 {
                     chunks++;
                     (vertices, indices, startS, joined) = (0, 0, stations[from].S, false);
+                    if (deck[k]) panelFrom = stations[from].S;
+                    panel = deck[k] && (end - panelFrom >= BarrierStepM || k == count - 1 || !deck[k + 1]);
+                    v = RowVertices + (ends * EndVertices) + (panel ? BarrierVertices : 0);
+                    i = RowIndices + (ends * EndIndices) + (panel ? BarrierIndices : 0);
                 }
+                if (panel || !deck[k]) panelFrom = double.NaN;
                 vertices += v + (joined ? 0 : RowVertices);
                 indices += i;
                 chunkOf[k] = chunks - 1;
@@ -491,6 +580,7 @@ internal static class RoadTessellation
         {
             Chunk chunk = new();
             int first = -1, last = -1;
+            RoadRibbon.Section? panelFrom = null;
             for (int k = 0; k < count; k++)
             {
                 if (chunkOf[k] != c) continue;
@@ -498,7 +588,19 @@ internal static class RoadTessellation
                 last = k;
 
                 (int from, int to) = layout.Stretches[k];
-                chunk.Between(RowAt(from, deck[k]), RowAt(to, deck[k]), deck[k] ? DeckStrips : GroundStrips);
+                bool bend = Math.Max(Math.Abs(stations[from].At.Curvature), Math.Abs(stations[to].At.Curvature)) > 1.0 / KerbRadiusM;
+                chunk.Between(RowAt(from, deck[k]), RowAt(to, deck[k]), deck[k] ? DeckStrips : bend ? KerbedStrips : GroundStrips);
+                if (deck[k])
+                {
+                    // A barrier in panels longer than the rows are apart: it is straight where the road's edge bends a hand's width.
+                    panelFrom ??= stations[from].At;
+                    double upTo = to == 0 && k == count - 1 ? ribbon.LengthM : stations[to].S;
+                    if (upTo - panelFrom.Value.S >= BarrierStepM || k == count - 1 || !deck[k + 1] || chunkOf[k + 1] != c)
+                    {
+                        Barrier(chunk, ribbon, panelFrom.Value, stations[to].At);
+                        panelFrom = null;
+                    }
+                }
 
                 // What is before this stretch, and what is after it: nothing at an open run's end, and the other kind at a change.
                 // Nor is anything put at a junction's mouth, where the junction's own triangles carry on from the row.
@@ -785,8 +887,8 @@ internal static class RoadTessellation
             radius = Math.Max(radius, Vec.Len(from));
         }
         return new RoadMeshData(origin, positions, normals, [.. chunk.Uv],
-                                [.. chunk.Triangles[0], .. chunk.Triangles[1], .. chunk.Triangles[2]],
+                                [.. chunk.Triangles[0], .. chunk.Triangles[1], .. chunk.Triangles[2], .. chunk.Triangles[3]],
                                 chunk.Triangles[0].Count, chunk.Triangles[1].Count, chunk.Triangles[2].Count,
-                                radius, fromS, toS, start, end, chunk.Folded, [.. chunk.At]);
+                                radius, fromS, toS, start, end, chunk.Folded, [.. chunk.At], chunk.Triangles[3].Count);
     }
 }

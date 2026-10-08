@@ -10,10 +10,11 @@
 -->
 <Assets>
 
-  <!-- A road has no mesh here: the mod makes one while the game runs and draws it in these three: plain
+  <!-- A road has no mesh here: the mod makes one while the game runs and draws it in these four: plain
        asphalt for a junction and a deck's sides, lined asphalt for a run's own surface, which runs with
-       the road and carries its markings, and earth for its verges and embankments.
-       tools/model/road-textures.py writes all nine textures. -->
+       the road and carries its markings, earth for its verges and embankments, and the trim, which is
+       a kerb's red and white on its left half and a barrier's concrete on its right.
+       tools/model/road-textures.py writes all twelve textures. -->
   <PbrMaterial Id="KSACars_Road_Material">
     <Diffuse      Path="Textures/KSACars_Road_Diffuse.png" Category="Default" />
     <Normal       Path="Textures/KSACars_Road_Normal.png"  Category="Default" />
@@ -23,6 +24,11 @@
     <Diffuse      Path="Textures/KSACars_RoadLined_Diffuse.png" Category="Default" />
     <Normal       Path="Textures/KSACars_RoadLined_Normal.png"  Category="Default" />
     <AoRoughMetal Path="Textures/KSACars_RoadLined_PBR.png"     Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RoadTrim_Material">
+    <Diffuse      Path="Textures/KSACars_RoadTrim_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadTrim_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadTrim_PBR.png"     Category="Default" />
   </PbrMaterial>
   <PbrMaterial Id="KSACars_RoadEarth_Material">
     <Diffuse      Path="Textures/KSACars_RoadEarth_Diffuse.png" Category="Default" />

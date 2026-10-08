@@ -174,6 +174,10 @@ public class RoadJunctionTests
         return worst;
     }
 
+    // Meshes without their kerbs and barriers: the road's own solid, which is what is closed or one sheet.
+    internal static List<RoadMeshData> Bare(IEnumerable<RoadMeshData> meshes) =>
+        [.. meshes.Select(m => m with { Indices = m.Indices[..(m.Indices.Length - m.TrimIndices)], TrimIndices = 0 })];
+
     internal static List<RoadMeshData> Meshes(RoadLaying.Component component, Dictionary<RoadRibbon, List<RoadMeshData>>? runs = null)
     {
         List<RoadMeshData> meshes = [];
@@ -454,7 +458,7 @@ public class RoadJunctionTests
 
         // Every edge of the one solid is two triangles', going opposite ways: nothing is open at a mouth, a side or underneath.
         RoadLaying.Component component = Assert.Single(RoadLaying.Components(built.Net.Ribbons));
-        var edges = Edges(RoadCollider.Of(Meshes(component))!);
+        var edges = Edges(RoadCollider.Of(Bare(Meshes(component)))!);
         Assert.True(edges.Count > 500);
         Assert.All(edges, e => Assert.True(e.Value == (1, 1), $"an edge of the deck's solid is {e.Value.Forward} triangle(s) one way and {e.Value.Back} the other"));
 
@@ -478,7 +482,7 @@ public class RoadJunctionTests
         Assert.True(mesh.EarthIndices > 0 && mesh.DeckIndices == 0);
 
         // The sheet's only open edges are its feet, which go once round the whole of it.
-        var edges = Edges(RoadCollider.Of(Meshes(component))!);
+        var edges = Edges(RoadCollider.Of(Bare(Meshes(component)))!);
         Assert.All(edges, e => Assert.True(e.Value is (1, 1) or (1, 0) or (0, 1), $"an edge of the sheet is {e.Value.Forward} triangle(s) one way and {e.Value.Back} the other"));
         Dictionary<(float, float, float), List<(float, float, float)>> open = [];
         foreach (var edge in edges.Where(e => e.Value != (1, 1)).Select(e => e.Key))
@@ -610,7 +614,7 @@ public class RoadJunctionTests
         Assert.Equal(each.Sum(e => e.Item2.AsphaltIndices), all.AsphaltIndices);
         Assert.Equal(each.Sum(e => e.Item2.EarthIndices), all.EarthIndices);
         Assert.Equal(each.Sum(e => e.Item2.DeckIndices), all.DeckIndices);
-        Assert.Equal(all.Indices.Length, all.AsphaltIndices + all.EarthIndices + all.DeckIndices);
+        Assert.Equal(all.Indices.Length, all.AsphaltIndices + all.EarthIndices + all.DeckIndices + all.TrimIndices);
 
         // The same triangles, each still of its own kind, about the one origin.
         HashSet<(double3, double3, double3, int)> Triangles(RoadMeshData mesh)

@@ -132,10 +132,11 @@ public class RoadDrawListTests(ITestOutputHelper output)
                 int[] drawn = RoadDrawList.ByMaterial(mesh, out int road, out int earth);
                 Assert.Equal(mesh.AsphaltIndices + mesh.DeckIndices, road);
                 Assert.Equal(mesh.EarthIndices, earth);
-                Assert.Equal(mesh.Indices.Length, road + earth);
+                Assert.Equal(mesh.Indices.Length, road + earth + mesh.TrimIndices);
                 Assert.Equal(mesh.Indices.AsSpan(0, mesh.AsphaltIndices).ToArray(), drawn.AsSpan(0, mesh.AsphaltIndices).ToArray());
-                Assert.Equal(mesh.Indices.AsSpan(mesh.AsphaltIndices + mesh.EarthIndices).ToArray(), drawn.AsSpan(mesh.AsphaltIndices, mesh.DeckIndices).ToArray());
-                Assert.Equal(mesh.Indices.AsSpan(mesh.AsphaltIndices, mesh.EarthIndices).ToArray(), drawn.AsSpan(road).ToArray());
+                Assert.Equal(mesh.Indices.AsSpan(mesh.AsphaltIndices + mesh.EarthIndices, mesh.DeckIndices).ToArray(), drawn.AsSpan(mesh.AsphaltIndices, mesh.DeckIndices).ToArray());
+                Assert.Equal(mesh.Indices.AsSpan(mesh.AsphaltIndices, mesh.EarthIndices).ToArray(), drawn.AsSpan(road, earth).ToArray());
+                Assert.Equal(mesh.Indices.AsSpan(road + earth).ToArray(), drawn.AsSpan(road + earth).ToArray());
             }
         }
         if (name == "ramp") Assert.Contains(Of(name).Runs.SelectMany(r => r.Fitted), m => m.DeckIndices > 0 && m.EarthIndices > 0);
@@ -275,14 +276,14 @@ public class RoadDrawListTests(ITestOutputHelper output)
         // open where one mesh ends and the next begins.
         (_, _, List<RoadMeshData> deck) = Assert.Single(Of("deck").Runs);
         Assert.True(deck.Count > 1);
-        Dictionary<((float, float, float), (float, float, float)), int> edges = Edges(RoadCollider.Of(deck)!);
+        Dictionary<((float, float, float), (float, float, float)), int> edges = Edges(RoadCollider.Of(RoadJunctionTests.Bare(deck))!);
         Assert.True(edges.Count > 300);
         Assert.All(edges, e => Assert.True(e.Value == 2, $"an edge of the deck's solid is {e.Value} triangle(s)'"));
 
         // On the ground the sheet's only open edges are its two feet: where the meshes meet there are none.
         (_, _, List<RoadMeshData> ring) = Assert.Single(Of("five").Runs);
         Assert.True(ring.Count > 10);
-        RoadCollider solid = RoadCollider.Of(ring)!;
+        RoadCollider solid = RoadCollider.Of(RoadJunctionTests.Bare(ring))!;
         int open = Edges(solid).Count(e => e.Value == 1), stretches = ring.Sum(m => m.AsphaltIndices) / 12;
         Assert.InRange(open, 2 * stretches, (2 * stretches) + 4);
     }

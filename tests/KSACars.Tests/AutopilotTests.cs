@@ -11,7 +11,7 @@ namespace KSACars.Tests;
 // asks it.
 public class AutopilotTests
 {
-    private const double Width = 10.0;
+    internal const double Width = 10.0;
 
     public static readonly double[] Steps = [1.0 / 120.0, 1.0 / 60.0, 0.02, 1.0 / 30.0, 0.05];
 

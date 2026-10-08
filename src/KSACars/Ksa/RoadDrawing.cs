@@ -18,7 +18,8 @@ namespace KSACars;
 /// </summary>
 internal static class RoadDrawing
 {
-    private const string LinedMaterial = "KSACars_RoadLined_Material", AsphaltMaterial = "KSACars_Road_Material", EarthMaterial = "KSACars_RoadEarth_Material";
+    private const string LinedMaterial = "KSACars_RoadLined_Material", AsphaltMaterial = "KSACars_Road_Material", EarthMaterial = "KSACars_RoadEarth_Material",
+                         TrimMaterial = "KSACars_RoadTrim_Material";
 
     private const double DrawWithinM = 8_000.0;
 
@@ -122,12 +123,12 @@ internal static class RoadDrawing
     }
 
     // A run's asphalt is drawn with its markings, a deck's sides and a junction's asphalt in plain asphalt, which
-    // has no way along it, and the verges and banks in earth: three draws a mesh at most.
+    // has no way along it, the verges and banks in earth, and kerbs and barriers in their own: four draws a mesh at most.
     private static RuntimeMesh.Content ContentOf(RoadMeshData mesh, bool lined)
     {
         int[] indices = RoadDrawList.ByMaterial(mesh, out int road, out int earth);
         int marked = lined ? mesh.AsphaltIndices : 0;
-        return new RuntimeMesh.Content(mesh.Positions, mesh.Normals, mesh.Uvs, indices, [marked, road - marked, earth], mesh.RadiusM);
+        return new RuntimeMesh.Content(mesh.Positions, mesh.Normals, mesh.Uvs, indices, [marked, road - marked, earth, mesh.TrimIndices], mesh.RadiusM);
     }
 
     private static double Range(RoadMeshData mesh, double3 eyeCcf) => RoadDrawList.Range(Vec.Len(mesh.Origin - eyeCcf), mesh.RadiusM);
@@ -149,7 +150,7 @@ internal static class RoadDrawing
         for (int i = 0; i < count; i++)
         {
             if (RuntimeMesh.Over(block, $"{name}_{i}", i * RoadDrawList.SlotVertices, RoadDrawList.SlotVertices, i * RoadDrawList.SlotIndices,
-                                 RoadDrawList.SlotIndices, [LinedMaterial, AsphaltMaterial, EarthMaterial], out why) is not { } mesh)
+                                 RoadDrawList.SlotIndices, [LinedMaterial, AsphaltMaterial, EarthMaterial, TrimMaterial], out why) is not { } mesh)
             {
                 _noMoreRoom = why;
                 Log.Warn($"no more places for road meshes: {why}");
