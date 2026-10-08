@@ -611,6 +611,18 @@ spare, of grip, brakes, crests and dips, from their cautious values towards near
 `JumpZones` are stretches of the route where a crest is not slowed for, for a jump that is meant; in the
 air the wheels are held straight. The bridge's `lap` takes `racing`, `push` and `jump_zones`, and
 `run-laps.py --racing --push 0.4 --crew` reads a circuit's zones from its file's `jumps`.
+**A lap time is searched for, not tuned by hand.** Every share and margin the driver has is a setting of
+`Autopilot.Tuning`, each at the constant of its name unless a lap is given another, with a `Pace` beside
+them: a multiplier on what each bend allows, at 24 places round the lap, so the lap is learnt corner by
+corner and not held all round to what its hardest corner bears; and the racing line can be nudged
+to the left or the right at 24 places (`Route.Along`'s `nudgesM`, the bridge's `line`), still on the road. `tools/roads/personal-best.py <circuit>`
+tries 28 ways of driving a round in the rig (`LapSearchTests`), near the best so far, and keeps a way
+only if its flying lap is clean at four kinds of step and again with 6% less grip than the driver takes
+there to be, since a lap that needs all the grip is not one the game gives twice; the best and every
+round are in `tools/roads/pb/`. `run-laps.py --best` drives it in the game through the bridge's `lap`
+with `tune` and `inside`. The brake is pressed as hard as the throttle is negative, which a key makes
+all of it.
+
 `tools/roads/extreme-circuits.py` writes `Insane`, a 6 km lap drawn with its `Lap` class by driving it:
 straights, arcs and climbs, each point with its height, lean and width.
 

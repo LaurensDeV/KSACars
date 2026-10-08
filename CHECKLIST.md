@@ -252,6 +252,11 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       jump and on round the lap, no wheel off the asphalt. The landing takes 20 m/s off it in three hits
 - [x] The wedge a car hit in a banked bend: where the bend's bank ended under a deck its end wall stood
       23 cm over the asphalt at the low edge, on the racing line; hung from the road's outline, the lap is finished
+- [x] A personal best searched for (2026.10.10.5554, `Sprint`, the F2004's flying lap in game): 41.67 s on
+      the racing line with the driver's own settings; 35.9 s with settings searched in the rig, but two
+      wheels off on one run in three; 35.15 s, clean six runs of six, once a way had also to be clean
+      on 6% less grip and each stretch of the lap had a pace of its own; 35.05 s with the line nudged,
+      one run of three with a wheel off for 0.3 s. The rig's times are within 0.2 s of the game's
 - [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits
 - [ ] The helmet with the driver looking about and the wheel turned; gone when the driver gets out;
       on a car that is not the one flown; and in the vehicle editor, where there is no driver
