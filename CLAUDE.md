@@ -147,6 +147,7 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
 ./tools/run.sh                             # build, deploy, launch, show the mod's output
 ./tools/run.sh --attach                    # follow a game that's already running
 python3 tools/ksa-mcp/server.py cli status # drive a running game through the bridge
+./tools/roads/rig-laps.sh "Z "             # every car round the circuit files starting so, headless, in seconds
 ./tools/buggy-sounds.py                    # re-cut the buggy's engine from its recordings
 ./tools/eldorado-sounds.py                 # ...and the Eldorado's
 ./tools/f2004-sounds.py                    # ...and the F2004's, from the one recording that needs a credit
@@ -262,6 +263,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `tools/audio/` | the recordings the engine sounds are cut from, and the provenance of each |
 | `tools/model/` | the checkers over an exported mesh, and a previewer |
 | `tools/ksa-mcp/server.py` | **an MCP server over the bridge**, registered in `.mcp.json`, returning captures inline; `cli <tool>` runs one from a shell. It launches a game only if none is running and closes only one it launched |
+| `tools/bepurig/` | **KSA's physics engine on its own**: a hull's box flown along a circuit's road mesh, counting the contacts that change its speed with nothing touching |
+| `tools/roads/` | the circuits the roads are pushed with, `run-laps.py` that laps the cars round them in the game three at a time, and `rig-laps.sh` that does it in the headless rig in seconds |
 | `tools/vis/vis.py` | what the bridge's pictures are judged with: same-instant diffs, the temporal-noise map, contact sheets and animations |
 | `tools/install-testcraft.sh` | writes both cars into the vehicle library as ready-to-drive craft |
 | `tools/validate-parts.py` | checks asset Ids and texture, mesh and sound paths against the files and against Core |
@@ -270,7 +273,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 503 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 507 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -325,7 +328,7 @@ own loop.
 on the ground along the ground's up, and pushes along it. With straight up, a car going down a slope at
 speed was closing on the ground at the slope's share of its speed, its dampers lifted it off, and it
 bounced until it turned over. `Sim/GroundPlane.cs` fits a plane through the four points under the wheels,
-terrain, pad or road alike, and every wheel takes its up; with a wheel over nothing or a lean past 45
+terrain, pad or road alike, and every wheel takes its up; with a wheel over nothing or a lean past 60
 degrees they keep straight up. **Not yet seen in game**, and it changes every car on every slope.
 
 **The ground is read in the planet-fixed frame, off the physics state.** `PhysicsStates.GetStatesCcf`
@@ -537,6 +540,15 @@ craft and a kitten collide with and count as ground. So a car that meets a ramp 
 can carry comes down on its hull, as it does on the ground, and under time warp, where the springs are
 left out, it rests on its hull on the road.
 
+**A car with a wheel on a road has the physics engine's look-ahead held short.** KSA gives a vehicle a
+speculative margin as long as its step, and at speed over a mesh the engine takes a triangle ahead of the
+hull for a wall and cuts the car's speed to the gap over the step: 10 m/s off 25, in one step, with the
+hull 14 cm clear. `Buggies.Physics` works out a margin for each car, 5 cm and what it closes on the road
+with while a wheel is on a road and the engine's own otherwise, and `RoadColliders` writes it onto the
+car's body from its prefix on the collision pass. `tools/bepurig` flies a hull's box along a circuit in
+the engine alone and counts them, and `Buggies` logs a `jolt` whenever the engine or the drive changes a
+car's speed by 3 m/s in a step, saying which. `docs/KSA-MODDING-NOTES.md` has the mechanism.
+
 **One solid for all that is joined, because a hull sliding from one mesh onto the next is stopped or thrown.** KSA's
 physics smooths a contact at an edge inside one mesh and not where two meet: in a test of the physics
 alone two meshes that only abutted stopped a sliding hull dead, and in game an F2004 left the road at
@@ -565,8 +577,12 @@ is a line along the roads with progress along it, never the nearest road, so a j
 cannot put it on the wrong one, and across a junction a curve from the middle of one mouth to the middle of
 another that reaches in only as far as keeps it 2.5 m clear of the corners; `Sim/Autopilot.cs` steers by pure pursuit through the lock
 `BuggyDrive.SteerLock` gives, holds a speed the bends allow, and ends itself with a reason. `Ksa/Laps.cs`
-steps it in the physics window for the bridge's `lap`, which stands the car at the route's start first
-and files a summary of the run.
+steps it in the physics window for the bridge's `lap`, which stands the car at the route's start first,
+square on the asphalt's own face so a banked start does not tip it, and files a summary of the run.
+A route's sample carries the road's slope as a tangent, the bend of its climb and its lean across; a bend
+that leans out of the turn is taken with the grip the lean leaves, and one that leans in with no more
+than the springs carry of what the turn presses on them. Pitch, roll and a wheel's clearance are
+measured against the asphalt's face, so a slope or a bank is not read as a car in the air.
 
 **The driver keeps a car on its springs, because the game's colliders are what a hard landing meets.** Over
 a crest it holds the speed at which `Autopilot.CrestShare` of the weight is thrown off, and through a dip
@@ -796,6 +812,10 @@ ramp and a bridge and to a road's end. `ExtremeLapTests` laps every car round th
 the game's uneven steps: finished, on the asphalt, on its wheels and no spring within 2 cm of where a
 collider would touch; and round the grid by its junctions, turning left and right at four and twice straight
 over the raised crossroads. `KSACARS_EXTREME_LAPS=<file> ./tools/test.sh` writes them out as a table.
+`./tools/roads/rig-laps.sh "Z "` laps every car round the circuit files the game reads, in seconds and
+with a CSV of every step for a car named, which is where a circuit is driven before the game is; it
+asks nothing of a lap, because a wall no car climbs is a fair thing to draw. `tools/bepurig` is the
+game's physics engine alone, for what the rig's stand-in hull cannot show.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

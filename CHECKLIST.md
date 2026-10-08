@@ -220,3 +220,19 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       stood level on a road that is not; the F2004 was thrown on four circuits at speed, once losing
       37 m/s in a third of a second 74 m up a descent with nothing there to hit; the Eldorado and the
       buggy drove the 5 m road 300 m up and the 20 km lap
+- [x] The F2004 thrown at speed (2026.10.10.5554): it was the physics engine and not the drive, logged as
+      a `jolt` each time, 10 m/s off 25 in one step two or three times a lap of the wall course; with a
+      car's speculative margin held to 5 cm while a wheel is on a road, none in a lap of that, the 6 km
+      road in the sky, the tower or the helix, and its hull is reported down for 0.0 s of the 95 s in the
+      sky where it was 55
+- [x] The eleven harder circuits again, three cars at a time, with a car stood on the asphalt's own face,
+      the driver given a road's lean and its true slope, and the wheels' plane let lean to 60 degrees:
+      28 of 33 laps finished clean. All three lap the ring banked 30 degrees and the one that leans 20
+      the wrong way; the F2004 climbs 80% and comes down 100% with no flight. Not finished: the Eldorado
+      stops on a 60% wall and at once on a 45% one from rest, the buggy on 60% and 65%, which is their
+      pull; the F2004 puts wheels off a 4.5 m street's right angles; and one lap ended because the roads
+      were taken up under it
+- [ ] The F2004 6.3 m off the centre of the 12 m road once in the 20 km lap at 96 m/s, where it had
+      held 0.5 m twice before: not explained, and no jolt logged
+- [ ] A car standing on a wall it cannot climb, with its hull on the road; the buggy's hull at the foot
+      of a wall, where the engine still takes 4 m/s off it in a step
