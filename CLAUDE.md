@@ -615,7 +615,10 @@ submission**, because each submission waits for the graphics card. While a road 
 surface is laid again every frame, its ground read between the points of a 2 m lattice of heights kept for
 the drag and not from KSA each time: a circuit of a kilometre or two is 3,900 accurate reads a laying,
 40 ms of every frame, and off the lattice it is 4. The bridge's `road` with `drag_node` times it. The
-roads laid when the drag ends are read from KSA's own. Made again while it lasts are the meshes of the runs through the dragged point and the points
+roads laid when the drag ends are read from KSA's own. A drag at a point where several roads meet can
+change which of them carry on through it, and so which runs there are: a run that is new is made
+whoever's point was dragged, and the mesh of one that is a run no longer is taken away, where it used to
+stay drawn beside the new ones until the drag ended. **Not seen in game.** Made again while it lasts are the meshes of the runs through the dragged point and the points
 its roads go to, and of the junctions those runs stop at, ten times a second at most and for no more than a quarter of the time, a long run taking
 60 ms to make; the rest, and the physics, when the drag ends, when everything is made again. A road that cannot be drawn is still driven on and still solid: if the render
 hook throws, drawing stops until roads are next laid whole and nothing else is touched. The bridge's
