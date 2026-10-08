@@ -481,7 +481,8 @@ nothing extra.
 ## Roads
 
 **Unfinished: no save remembers which circuits are laid, and a road grips as the ground does.** A circuit is drawn
-with `Ksa/RoadEditor.cs`, switched on from the car's panel on a developer's install, or laid from the bridge. A player's install has no way to lay a road.
+with `Ksa/RoadEditor.cs`, switched on from the car's panel on a developer's install, or laid from the bridge. A player's install has no way to lay a road. Switched on over roads
+that are already laid, the editor edits that circuit: starting an empty one would take them up.
 `docs/ROAD-TESTING-PLAN.md` lists the faults known in it and the order they are to be fixed in. **The editor's clicks and drags have not
 been tried in game**; its camera and a raised road have, through the bridge.
 

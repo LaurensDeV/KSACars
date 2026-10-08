@@ -232,7 +232,10 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       stops on a 60% wall and at once on a 45% one from rest, the buggy on 60% and 65%, which is their
       pull; the F2004 puts wheels off a 4.5 m street's right angles; and one lap ended because the roads
       were taken up under it
-- [ ] The F2004 6.3 m off the centre of the 12 m road once in the 20 km lap at 96 m/s, where it had
-      held 0.5 m twice before: not explained, and no jolt logged
+- [ ] The F2004 wide in the weave of the 20 km lap at 88 m/s, by how long the game's step is there: 0.4 m
+      off the centre at 19 ms, 1.2 m at 23 ms with a wheel light for 15% of it, and off the 12 m road at
+      27 to 30 ms. Its springs are softened past 19 ms and the driver's speeds take no account of the
+      step. With the margin left as the engine's it held 0.4 m at 22 ms, so the hold costs a little there
+- [ ] The editor opened on roads the bridge laid edits those, and does not take them up
 - [ ] A car standing on a wall it cannot climb, with its hull on the road; the buggy's hull at the foot
       of a wall, where the engine still takes 4 m/s off it in a step
