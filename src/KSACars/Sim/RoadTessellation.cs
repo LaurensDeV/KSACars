@@ -352,6 +352,25 @@ internal static class RoadTessellation
         }
 
         // A flat end: a fan from the first of its corners, facing along the road one way or the other.
+        // A wall hung from a line of points down to the straight line between its two ends: each
+        // stretch of the line a strip under it, so nothing of the wall is above the line anywhere.
+        public void Curtain(double3[] line, float2[] uvs, double3 facing, Kind kind)
+        {
+            int first = At.Count, last = line.Length - 1;
+            for (int i = 0; i <= last; i++) Add(line[i], facing, uvs[i]);
+            for (int i = 0; i <= last; i++)
+            {
+                double t = Math.Abs(uvs[last].X - uvs[0].X) > 1e-9 ? (uvs[i].X - uvs[0].X) / (uvs[last].X - uvs[0].X) : (double)i / last;
+                Add(line[0] + ((line[last] - line[0]) * t), facing, new float2(uvs[i].X, (float)(uvs[0].Y + ((uvs[last].Y - uvs[0].Y) * t))));
+            }
+            int feet = first + line.Length;
+            for (int i = 0; i < last; i++)
+            {
+                if (i > 0) Triangle(first + i + 1, first + i, feet + i, kind, turn: true);
+                if (i + 1 < last) Triangle(first + i + 1, feet + i, feet + i + 1, kind, turn: true);
+            }
+        }
+
         public void Cap(double3[] corners, float2[] uvs, double3 facing, Kind kind)
         {
             int first = At.Count;
@@ -690,10 +709,14 @@ internal static class RoadTessellation
         {
             Row ground = GroundRow(ribbon, at);
             double half = at.HalfWidth, vergeLeft = Math.Min(at.ToeLeft, RoadRibbon.VergeM), vergeRight = Math.Min(at.ToeRight, RoadRibbon.VergeM);
-            double[] across = [0.0, half, half + vergeLeft, half + at.ToeLeft, -half - at.ToeRight, -half - vergeRight, -half];
+
+            // From the left foot over the road to the right one. A fan from the centre will not do: where
+            // the road leans, its low edge is a hollow in this outline and the fan's triangle bridges it,
+            // a wedge of wall a hand above the asphalt at the edge a car cuts closest to.
+            double[] across = [half + at.ToeLeft, half + vergeLeft, half, 0.0, -half, -half - vergeRight, -half - at.ToeRight];
             RoadRibbon.Section here = at;
-            chunk.Cap([ground.At[5], ground.At[4], ground.At[2], ground.At[0], ground.At[10], ground.At[8], ground.At[6]],
-                      [.. across.Select(d => Flat(d, Lateral(here, d)))], facing, Kind.Earth);
+            chunk.Curtain([ground.At[0], ground.At[2], ground.At[4], ground.At[5], ground.At[6], ground.At[8], ground.At[10]],
+                          [.. across.Select(d => Flat(d, Lateral(here, d)))], facing, Kind.Earth);
             return;
         }
 

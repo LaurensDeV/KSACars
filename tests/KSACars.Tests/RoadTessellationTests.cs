@@ -564,4 +564,44 @@ public class RoadTessellationTests
         }
         Assert.True(past >= 20, $"{past} triangles past the ends");
     }
+
+    // A ring that leans 25 degrees over half of itself and not at all over the rest, wide enough that
+    // its high edge is a deck where it leans: so the road changes from a deck to a bank on the ground
+    // while it is still leaning, and the bank's end under the deck is closed by a wall across the road.
+    [Fact]
+    public void NoWallOfABankedRoadsMeshStandsAboveTheRoad()
+    {
+        TrackWorld world = TrackWorld.Earth();
+        Circuit c = AutopilotTests.Ring(120.0).Circuit with { WidthM = 14.0 };
+        foreach (Circuit.Road road in c.Roads)
+        {
+            c = c.SetBank(road.From, road.To, road.From <= 6 ? -25.0 : 0.0).SetBank(road.To, road.From, road.To <= 6 ? -25.0 : 0.0);
+        }
+        RoadLaying.Network net = RoadLaying.Laid(c, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM);
+        RoadSurface surface = new(net.Ribbons);
+
+        int walls = 0;
+        foreach (RoadRibbon ribbon in net.Ribbons)
+        {
+            foreach (RoadMeshData mesh in RoadTessellation.Mesh(ribbon, RoadDrawList.Fit))
+            {
+                for (int t = 0; t + 2 < mesh.Indices.Length; t += 3)
+                {
+                    double3 a = mesh.Places[mesh.Indices[t]], b = mesh.Places[mesh.Indices[t + 1]], d = mesh.Places[mesh.Indices[t + 2]];
+                    double3 normal = Vec.Cross(b - a, d - a);
+                    if (Vec.Len(normal) < 0.5 || Math.Abs(Vec.Dot(Vec.Unit(normal), Vec.Unit(a))) > 0.3) continue;
+
+                    // Its middle and the middle of each side: none over the road it is under.
+                    foreach (double3 at in new[] { (a + b + d) / 3.0, (a + b) * 0.5, (b + d) * 0.5, (d + a) * 0.5 })
+                    {
+                        if (!surface.TryLocate(at + (Vec.Unit(at) * 3.0), null, out double over, out double outM) || outM > 0.0) continue;
+                        walls++;
+                        Assert.True(over - 3.0 < 0.01, $"a wall's triangle stands {over - 3.0:F3} m above the asphalt: corners {Vec.Len(a) - world.RadiusM:F2}, "
+                                                       + $"{Vec.Len(b) - world.RadiusM:F2} and {Vec.Len(d) - world.RadiusM:F2} m up, {Vec.Len(b - a):F2}, {Vec.Len(d - b):F2} and {Vec.Len(a - d):F2} m apart");
+                    }
+                }
+            }
+        }
+        Assert.True(walls > 0, "the ring has no wall under its asphalt: it does not change from a deck to a bank");
+    }
 }
