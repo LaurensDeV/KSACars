@@ -8,8 +8,8 @@ Writes the circuits the roads are pushed with into the circuit library.
 Each is laid out in metres east and north of its own place on Earth, 2.5 km from the next, on the flat
 ground west of -24, -62. They are meant to be driven by the bridge's `lap`, not to be pleasant.
 
-tests/KSACars.Tests/ExtremeCircuits.cs lays the same circuits for the headless laps, point for point: a
-change to a circuit here has to be made there too.
+tests/KSACars.Tests/ExtremeCircuits.cs lays the first eight for the headless laps, point for point: a
+change to one of those here has to be made there too. tools/roads/rig-laps.sh drives the files themselves.
 """
 
 import argparse
@@ -251,20 +251,52 @@ def marathon():
     return c
 
 
+def ramp(run, grade, ease=30.0, every=40.0):
+    """Stations along a ramp and the height gained at each: the grade held for all but an ease at each end.
+
+    Heights between points are a monotone cubic, which between two level points alone peaks at half as
+    steep again as the ramp is on average; points along the ramp hold it to the grade asked for.
+    """
+    rise = grade * (run - ease)
+    held = run - 2.0 * ease
+    inner = [ease + held * k / max(1, round(held / every)) for k in range(max(1, round(held / every)) + 1)]
+    return [(0.0, 0.0)] + [(d, grade * (d - 0.5 * ease)) for d in inner] + [(run, rise)]
+
+
 def vertical():
-    c = Course("Z Vertical", "four walls in a row: 50%, 60%, 67% and 100% up, and 60% to 100% back down, with a short flat on each", 16)
-    for e, h in ((0, 0), (150, 0), (270, 60), (330, 60), (430, 0), (500, 0), (650, 100), (720, 100), (840, 0),
-                 (920, 0), (1000, 80), (1060, 80), (1140, 0), (1220, 0), (1340, 120), (1400, 120), (1500, 0), (1650, 0)):
-        c.point(float(e), 0.0, float(h))
+    c = Course("Z Vertical", "four walls in a row, each steeper: 30%, 45%, 60% and 80% up, and 45%, 60%, 80% and 100% back down, a short flat on each", 16)
+    east = 0.0
+    c.point(east, 0.0, 0.0)
+    east += 150.0
+    for up, down in ((0.30, 0.45), (0.45, 0.60), (0.60, 0.80), (0.80, 1.00)):
+        top = up * (130.0 - 30.0)
+        for d, h in ramp(130.0, up):
+            c.point(east + d, 0.0, h)
+        east += 130.0 + 60.0
+        back = 30.0 + top / down
+        for d, h in ramp(back, down):
+            c.point(east + d, 0.0, top - h)
+        east += back + 80.0
+    c.point(east + 70.0, 0.0, 0.0)
     return c
 
 
 def cliffs():
-    c = Course("Z Cliffs", "a lap that is never level: 70 m up and down six times round a 150 m ring, 45% to 75%", 17, closed=True)
-    r, points = 150.0, 24
-    for i in range(points):
-        a = 2.0 * math.pi * i / points
-        c.point(r * math.cos(a), r * math.sin(a), 70.0 if i % 4 in (1, 2) else 0.0)
+    c = Course("Z Cliffs", "a lap that is never level for long: six climbs and six drops round a 300 m ring, 45% to 75%", 17, closed=True)
+    r, grades = 300.0, (0.45, 0.55, 0.65, 0.75, 0.55, 0.45)
+    cycle = 2.0 * math.pi * r / len(grades)
+
+    def at(arc, height):
+        a = arc / r
+        c.point(r * math.cos(a), r * math.sin(a), height)
+
+    for k, grade in enumerate(grades):
+        start, run = k * cycle, 0.5 * (cycle - 90.0)
+        top = grade * (run - 30.0)
+        for d, h in ramp(run, grade):
+            at(start + d, h)
+        for d, h in ramp(run, grade):
+            at(start + run + 45.0 + d, top - h)
     return c
 
 

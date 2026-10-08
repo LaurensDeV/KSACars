@@ -62,6 +62,7 @@ def main():
     ap.add_argument("--offset", type=float, default=0.0, help="metres left of the centre line")
     ap.add_argument("--route", help="point ids to pass through, comma separated")
     ap.add_argument("--laps", type=int, default=1)
+    ap.add_argument("--rows", action="store_true", help="file every step of each lap as a CSV beside its summary")
     ap.add_argument("--wait", type=float, default=300.0, help="wall seconds to give a run")
     args = ap.parse_args()
 
@@ -77,7 +78,7 @@ def main():
         print(f"== {circuit}", flush=True)
         for i, car in enumerate(cars):
             craft = f"Lap {car}"
-            lat, lon = first["lat_deg"] - 0.0006 - 0.0003 * i, first["lon_deg"]
+            lat, lon = first["lat_deg"] - 0.0006 - 0.0003 * list(CARS).index(car), first["lon_deg"]
             if craft not in present:
                 bridge("spawn", craft=CARS[car], name=craft, lat=lat, lon=lon)
                 present.add(craft)
@@ -108,7 +109,7 @@ def main():
             clear = all((bridge("lap", craft=f"Lap {c}").get("progress_m") or 0) > args.gap for c in running[-1:])
             if waiting and clear:
                 car = waiting.pop(0)
-                started = bridge("lap", start=True, craft=f"Lap {car}", laps=args.laps, offset=args.offset, timeout=args.timeout, **extra)
+                started = bridge("lap", start=True, craft=f"Lap {car}", laps=args.laps, offset=args.offset, timeout=args.timeout, rows=args.rows, **extra)
                 if "running" in started:
                     running.append(car)
                 else:
@@ -119,7 +120,7 @@ def main():
                 if status.get("running") is False:
                     ended[car] = status
                     running.remove(car)
-                    k = cars.index(car)
+                    k = list(CARS).index(car)
                     bridge("site", craft=f"Lap {car}", lat=first["lat_deg"] - 0.003 - 0.0004 * k, lon=first["lon_deg"], timeout=90)
         for car in running:
             bridge("lap", stop=True, craft=f"Lap {car}")
