@@ -612,7 +612,10 @@ game; 56 places are 112 at most, and `Sim/RoadDrawList.cs` holds a view to 200 w
 
 **A mesh is written from the frame hook, never from the render hook, and all of a laying in one
 submission**, because each submission waits for the graphics card. While a road is dragged the wheels'
-surface is laid again every frame, and the meshes of the runs through the dragged point and the points
+surface is laid again every frame, its ground read between the points of a 2 m lattice of heights kept for
+the drag and not from KSA each time: a circuit of a kilometre or two is 3,900 accurate reads a laying,
+40 ms of every frame, and off the lattice it is 4. The bridge's `road` with `drag_node` times it. The
+roads laid when the drag ends are read from KSA's own. Made again while it lasts are the meshes of the runs through the dragged point and the points
 its roads go to, and of the junctions those runs stop at, ten times a second at most and for no more than a quarter of the time, a long run taking
 60 ms to make; the rest, and the physics, when the drag ends, when everything is made again. A road that cannot be drawn is still driven on and still solid: if the render
 hook throws, drawing stops until roads are next laid whole and nothing else is touched. The bridge's

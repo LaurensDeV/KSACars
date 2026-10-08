@@ -237,5 +237,9 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       27 to 30 ms. Its springs are softened past 19 ms and the driver's speeds take no account of the
       step. With the margin left as the engine's it held 0.4 m at 22 ms, so the hold costs a little there
 - [ ] The editor opened on roads the bridge laid edits those, and does not take them up
+- [x] A drag's cost (2026.10.10.5554, bridge `road` with `drag_node`): laying the grid, the knot and the
+      Stelvio again each took 35 to 42 ms a frame, 3,300 to 4,000 terrain reads; with the ground read off
+      a lattice kept for the drag, 4 to 5 ms, and a dragged road's meshes 4 to 9 ms ten times a second
+- [ ] A point with several roads dragged by hand since: does it still lag
 - [ ] A car standing on a wall it cannot climb, with its hull on the road; the buggy's hull at the foot
       of a wall, where the engine still takes 4 m/s off it in a step
