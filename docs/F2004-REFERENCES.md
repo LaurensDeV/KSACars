@@ -120,6 +120,31 @@ The head is wider than the tub (0.56 m) and a third again as wide as the cockpit
 cannot go down into the cockpit as a driver's helmet does. The seat is raised until the head sits
 over the rim, and set forward of a driver's so the back of the head clears the roll hoop.
 
+## The driver's helmet
+
+Modelled on the Schuberth RF1 Michael Schumacher wore in 2004: a full-face shell with a forward chin
+bar, a wide visor on a pivot each side, and a livery of red with a white brow band, a black panel
+running back from the visor and seven gold stars on the crown. **None of its sponsors' marks are
+painted.** The shell is not a scaled helmet: it is grown from the kitten's own head mesh with 2.8 cm
+of clearance, so the ears, which stand 14 cm past where a plain shell would be, are under two fairings
+moulded into it, and the opening underneath is as wide as the suit's collar and 6 cm more.
+
+The photographs are beside the `.blend` in `Helmet_refs/`, all from Wikimedia Commons, and were
+looked at, not copied: nothing of them is in a texture.
+
+| File | Author, licence | Page |
+| --- | --- | --- |
+| `helmet_Ferrari_helmet_of_Michael_Schumacher_2001.jpg` | Cyberwolf, CC BY 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Ferrari_helmet_of_Michael_Schumacher,_2001.jpg) |
+| `helmet_Michael_Schumacher_2004_Italian_GP_helmet_front_right_2019_Michael_Sch.jpg` | Morio, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_2004_Italian_GP_helmet_front-right_2019_Michael_Schumacher_Private_Collection.jpg) |
+| `helmet_Michael_Schumacher_2004_Italian_GP_helmet_top_2019_Michael_Schumacher_.jpg` | Morio, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_2004_Italian_GP_helmet_top_2019_Michael_Schumacher_Private_Collection.jpg) |
+| `helmet_Michael_Schumacher_Integralhelm_2000.jpg` | Auge=mit, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_Integralhelm_2000.jpg) |
+| `helmet_Michael_Schumacher_Integralhelm_2001.jpg` | Auge=mit, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_Integralhelm_2001.jpg) |
+| `helmet_Michael_Schumacher_Integralhelm_2002.jpg` | Auge=mit, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_Integralhelm_2002.jpg) |
+| `helmet_Michael_Schumacher_Integralhelm_2003.jpg` | Auge=mit, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_Integralhelm_2003.jpg) |
+| `helmet_Michael_Schumacher_Integralhelm_2004.jpg` | Auge=mit, CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_Integralhelm_2004.jpg) |
+| `helmet_Michael_Schumacher_helmet_Museo_Ferrari.jpg` | Morio, CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_helmet_Museo_Ferrari.jpg) |
+| `helmet_Michael_Schumacher_helmet.jpg` | pelican-actor, CC BY 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:Michael_Schumacher_helmet.jpg) |
+
 ## Photographs
 
 All from Wikimedia Commons.

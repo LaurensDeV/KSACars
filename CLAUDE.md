@@ -181,6 +181,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/GroundPlane.cs` | the ground under a car as one plane through what is under its four wheels, **whose up is what the dampers measure closing speed along**: straight up, a car running down a slope is closing on the ground as far as they know |
 | `Sim/WheelGround.cs` | what is under each wheel this step — the nearest of the terrain, a launch pad and a road below its hub — as the contacts the drive is stepped against, **the wheels' alone**: a hull on a road is the road's colliders' to stop |
 | `Sim/SteeringGrip.cs` | where a seated driver's hands hold the wheel, in the kitten's own model space — **anchored to its seat**, so where the car is in the world never enters it — and the two-bone elbow that puts a wrist there; past 20 deg of wheel the rim slides through the hands, which a seated kitten's 14.5 cm reach needs |
+| `Sim/HeadGear.cs` | where a thing worn on the driver's head is as a subpart of the car, from the matrix KSA carries the kitten's unposed mesh to its head by — **the mesh is in the kitten's own model space, in metres, and that matrix is in centimetres** |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof; and the turn that stands a car on a road facing along it |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
 | `Sim/Boost.cs` | two rockets on the tail as one push along the car's own forward, through its centre of mass — a fixed acceleration whatever the gravity, which is what moves a rock where the tyres have nothing to push against |
@@ -238,7 +239,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
 | `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
-| `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap |
+| `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap; it also reads where the head bone has the head, for the helmet |
 | `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
@@ -273,7 +274,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 507 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 519 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -471,6 +472,17 @@ back dipped. It draws almost nothing, because nothing on a car charges the batte
 `<EVADoor>` on a mesh-less subpart beside each front seat; a kitten boards and leaves through those
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
+
+**The F2004's driver wears a helmet, which is two subparts of the car put on its head each frame.** A
+kitten is KSA's character and not the car's, so nothing can be parented to its head: the shell and its
+visor are subparts ending `Helmet` and `HelmetVisor`, the last two in the part's list, and
+`Buggies.Pose` places them with `Sim/HeadGear.cs` from the head bone's inverse bind matrix times its
+pose, which `DriverHands` reads off the skeleton after the seated animation. Their mesh is in the
+kitten's own model space with the head as it was bound, X to its left, Y up and Z ahead, in metres,
+where KSA's matrix is in centimetres: a hundred times the identity with the head unmoved. With nobody
+at the wheel both are shrunk to nothing in the seat. The visor is a `PartModelGlass`, one skin facing
+out, and the driver's eyes show through it. A car has a helmet if its part has those subparts;
+`docs/F2004-REFERENCES.md` has what it was modelled on and how it is fitted.
 
 **Ten patches; eight are on public methods and pinned.** Each of those has a `PinTheSignature` that is
 never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
