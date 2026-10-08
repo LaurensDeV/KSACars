@@ -157,6 +157,12 @@ internal sealed class TrackRig
     // Asked for each step's input where Buggies asks it: after the ground is read, before the drive.
     public Autopilot? Driver;
 
+    /// <summary>Loops standing on the ground, which a wheel is sprung against where it is on one.</summary>
+    public List<RoadLoop> Loops { get; } = [];
+
+    public ReadOnlySpan<double3> Hubs => _hubs;
+    public ReadOnlySpan<double> HubHeights => _hubHeights;
+
     public double3 Up => Vec.Unit(Position);
     public double3 Forward => Attitude * new double3(0, 1, 0);
     public double TerrainUnderM => Vec.Len(Position) - _world.RadiusM - _world.HeightAt(Up);
@@ -221,7 +227,7 @@ internal sealed class TrackRig
 
     private void Read(RoadSurface? road) => WheelGround.Read(
         Position, Attitude, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _hubs, _world.RadiusM,
-        _world, null, road, _roadOver, _contacts, _hubHeights);
+        _world, null, road, _roadOver, _contacts, _hubHeights, Loops);
 
     // Asked as the wheels are, so a hull point is over the same roads a wheel there would be, and
     // answered along the one plane through what is under all four: on a ramp, square to the ramp.
@@ -317,6 +323,16 @@ internal sealed class TrackRig
 
         Velocity += Attitude * (j.Linear / _car.MassKg);
         Spin += new double3(j.Angular.X / _car.Inertia.X, j.Angular.Y / _car.Inertia.Y, j.Angular.Z / _car.Inertia.Z);
+
+        // Where there is a loop a wheel has its bump stop, which is what carries the car round one.
+        if (Loops.Count > 0 && !warped)
+        {
+            double3 inertia = _car.Inertia;
+            DriveImpulse stop = Drive.BumpStops(_contacts, _hubs, up, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _car.MassKg,
+                (new double3(1.0 / inertia.X, 0, 0), new double3(0, 1.0 / inertia.Y, 0), new double3(0, 0, 1.0 / inertia.Z)), dt);
+            Velocity += Attitude * (stop.Linear / _car.MassKg);
+            Spin += new double3(stop.Angular.X / inertia.X, stop.Angular.Y / inertia.Y, stop.Angular.Z / inertia.Z);
+        }
 
         Velocity -= Up * (_world.Gravity * dt);
         bool hullDown = Hull(dt, out double hardest);

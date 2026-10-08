@@ -46,8 +46,10 @@ public static class Barrier
     /// <param name="outward">At each, the way out of the road through the wall there, level; nothing where there is no wall.</param>
     /// <param name="pastM">At each, how far it is past where the wall holds it: under nothing, and it is clear.</param>
     /// <param name="inverseInertia">The three rows of the inverse of the car's inertia.</param>
+    /// <param name="friction">The share of the push that rubs: a rail's unless it is said, and nothing for what does not rub at all.</param>
     public static DriveImpulse Hold(ReadOnlySpan<double3> points, ReadOnlySpan<double3> outward, ReadOnlySpan<double> pastM,
-                                    double3 velocity, double3 spin, double mass, (double3 X, double3 Y, double3 Z) inverseInertia, double dt)
+                                    double3 velocity, double3 spin, double mass, (double3 X, double3 Y, double3 Z) inverseInertia, double dt,
+                                    double friction = Friction)
     {
         if (!(mass > 0.0) || !(dt > 0.0)) return default;
 
@@ -81,7 +83,7 @@ public static class Barrier
                 {
                     double3 t = slide / sliding, rt = Vec.Cross(r, t);
                     double giveAlong = (1.0 / mass) + Vec.Dot(t, Vec.Cross(Turned(rt), r));
-                    rub = t * -Math.Min(Friction * push, giveAlong > 0.0 ? sliding / giveAlong : 0.0);
+                    rub = t * -Math.Min(friction * push, giveAlong > 0.0 ? sliding / giveAlong : 0.0);
                 }
 
                 double3 impulse = (n * -push) + rub;

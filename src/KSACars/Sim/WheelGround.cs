@@ -12,7 +12,7 @@ public delegate bool PadHeight(double3 atCcf, out double metres);
 /// <para>Only the wheels are answered for. A hull that comes down on a road is stopped by the road's
 /// own colliders, as the ground's stop it there.</para>
 /// </summary>
-public static class WheelGround
+internal static class WheelGround
 {
     /// <param name="positionCcf">The centre of mass, from the body's centre, in the body's own frame.</param>
     /// <param name="velocityBody">Its velocity over the ground, in the car's body frame.</param>
@@ -24,9 +24,10 @@ public static class WheelGround
         double3 positionCcf, doubleQuat body2Ccf, double3 velocityBody, double3 spinBody,
         ReadOnlySpan<double3> hubs, double meanRadius,
         ITerrainHeights terrain, PadHeight? pad, RoadSurface? road,
-        Span<double?> roadOver, Span<WheelContact> contacts, Span<double> hubHeights)
+        Span<double?> roadOver, Span<WheelContact> contacts, Span<double> hubHeights, IReadOnlyList<RoadLoop>? loops = null)
     {
         doubleQuat ccf2Body = doubleQuat.Inverse(body2Ccf);
+        bool looped = false;
 
         for (int i = 0; i < hubs.Length; i++)
         {
@@ -45,14 +46,25 @@ public static class WheelGround
             roadOver[i] = onRoad ? overRoad : null;
             if (onRoad) hubHeight = Math.Min(hubHeight, overRoad);
 
+            // A loop's asphalt faces its own way, and a wheel on it is sprung along that.
+            double3 groundUp = dirCcf;
+            foreach (RoadLoop loop in loops ?? [])
+            {
+                if (!loop.TryLocate(atCcf, out _, out _, out double overLoop, out double3 facing) || overLoop >= hubHeight) continue;
+                (hubHeight, groundUp) = (overLoop, facing);
+                looped = true;
+            }
+
             hubHeights[i] = hubHeight;
             contacts[i] = new WheelContact(
                 Valid: true,
                 HubHeight: hubHeight,
-                GroundUp: ccf2Body * dirCcf,
+                GroundUp: ccf2Body * groundUp,
                 HubVelocity: velocityBody + Vec.Cross(spinBody, hub));
         }
 
-        GroundPlane.Tilt(contacts, hubs);
+        // One plane through what is under all four is the road's own where the road is nearly flat under a car. A loop
+        // turns a seventh of a radian between a car's axles, and the nose closes on it at that share of the car's speed.
+        if (!looped) GroundPlane.Tilt(contacts, hubs);
     }
 }

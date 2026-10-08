@@ -71,6 +71,37 @@ public sealed class BuggyDrive(BuggyProfile profile)
     public int Gear { get; private set; }
 
     /// <summary>
+    /// What stops a wheel going further up into the car than its travel: the push at each hub that
+    /// takes away what speed it still closes on the ground with once it is on its bump stop, after the
+    /// springs have had theirs. Round a loop a car is pressed at four times its weight and more, which
+    /// no spring that rides a road carries inside its travel.
+    /// </summary>
+    /// <param name="velocity">The car's velocity and spin with this step's springs already in them, body frame.</param>
+    /// <param name="inverseInertia">The three rows of the inverse of the car's inertia.</param>
+    public DriveImpulse BumpStops(ReadOnlySpan<WheelContact> contacts, ReadOnlySpan<double3> hubs, double3 up, double3 velocity, double3 spin,
+                                  double mass, (double3 X, double3 Y, double3 Z) inverseInertia, double dt)
+    {
+        int n = Profile.Corners.Length;
+        if (contacts.Length != n || hubs.Length != n) return default;
+
+        Span<double3> into = stackalloc double3[n];
+        Span<double> past = stackalloc double[n];
+        bool any = false;
+        for (int i = 0; i < n; i++)
+        {
+            WheelContact c = contacts[i];
+            double tilt = c.Valid ? Vec.Dot(up, c.GroundUp) : 0.0;
+            past[i] = double.NegativeInfinity;
+            if (tilt <= 0.2) continue;
+
+            // Past the stop by what the hub is nearer the ground than its travel lets it be.
+            (into[i], past[i]) = (-c.GroundUp, Profile.Corners[i].Radius - Profile.BumpTravel - (c.HubHeight / tilt));
+            any |= past[i] > 0.0;
+        }
+        return any ? Barrier.Hold(hubs, into, past, velocity, spin, mass, inverseInertia, dt, friction: 0.0) : default;
+    }
+
+    /// <summary>
     /// Advances one step and returns the impulse the ground and the engine put into the car.
     /// </summary>
     /// <param name="hubs">Each corner's hub at rest, relative to the centre of mass, body frame.</param>
