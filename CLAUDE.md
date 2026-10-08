@@ -716,7 +716,13 @@ The editor does not yet show it.
 
 **Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances
-within the road's width and a margin and `Roads.ClearClutter` clears their bits. A cleared bit stops a
+near a road, `RoadSurface.Over` says which of them the roads' own outline covers, as wide as each road is
+there, the shape each junction is and out to a bank's foot, and `Roads.ClearClutter` clears their bits.
+Under a deck the ground is still ground: only trees go, which would stand up through it. Where an
+instance is reckoned to stand is KSA's generation shader worked again by hand, so once a body
+`Roads.CheckPlacement` compares that with KSA's own instances and warns in the log if they have parted.
+**All of this is to be replaced by KSA's own exclusion the day it has one**, which its developers are
+considering: `docs/BLOCKED-ON-KSA.md` has what goes. A cleared bit stops a
 collider being built but leaves one already standing, unseen, so every change has KSA build its clutter
 colliders again, by the setting held off for a moment as a change of rock weight does. **The masks are
 only written from the physics window**, by `Roads.SyncClutter`: KSA's physics workers read them while they

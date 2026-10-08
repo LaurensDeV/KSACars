@@ -12,6 +12,8 @@ after every update, recheck this list:
 - [ ] Is a kitten's animator reachable without reflection?
 - [ ] Is terrain friction still one number for every collider?
 - [ ] Can Fill Seats still seat a kitten that is already out on EVA?
+- [ ] Has KSA a way of its own to keep ground clutter off a structure, a footprint or a mesh it is given?
+      **If it has, hand it the roads' outline and take this mod's own masking out**: see the section below.
 
 ## No wheels
 
@@ -58,3 +60,30 @@ registering a duplicate id -- and control jumps to the other copy. Not this mod'
 kittens who are not already out, which the bridge's `seat_kittens` lets a test do by name.
 
 **Would unblock it:** Fill Seats skipping kittens already on EVA.
+
+## Clutter under a road is cleared by working KSA's placement shader again by hand
+
+KSA has no way to be told "nothing grows here". It keeps a bit per clutter instance in each cell of
+its grid (`GroundClutterPlacementData`), which a mod can write, but not where each instance is: that
+is worked out on the graphics card by `Generate.comp`. So `Sim/ClutterGrid.cs` is that shader's
+arithmetic done again, `Roads.TakeClutter` clears the bit of every instance the roads' own outline
+covers (`RoadSurface.Over`), and because a cleared bit leaves a collider that is already built
+standing, `KsaWorld.RebuildClutterColliders` has KSA build them all again by holding its clutter
+collisions setting off for a moment. The masks are written into a save, so a save keeps the clearing
+of a road it does not keep.
+
+Three things in that can break without a word: a change to `Generate.comp` moves every instance
+(`Roads.CheckPlacement` compares with KSA's own once a body and warns in the log), a cell over the
+edge of a cube face is left alone, and the settings toggle is nobody's interface.
+
+**KSA's own developers are looking at this.** On 2026-10-08 Linx, a graphics programmer at
+RocketWerkz, asked how the roads do it: their launch sites skip an instance by how far it is from the
+site, which they said does not scale, and they are thinking of a coarse collision mesh or bounding
+geometry whose cells are excluded.
+
+**Would unblock it:** an exclusion a mod can register, by footprint, polygon or mesh, that also takes
+away the colliders already built. **When KSA has one, use it and delete this mod's**: the roads have
+an exact outline to give it (`RoadSurface.Over`, or the meshes `RoadTessellation` makes), and
+`Sim/ClutterGrid.cs`, the mask writing and its restore in `Ksa/Roads.cs`, the placement check and
+`KsaWorld.RebuildClutterColliders`' use for roads all go. It may also write the same masks this
+does, in which case the two would fight: check that first.

@@ -257,6 +257,10 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       wheels off on one run in three; 35.15 s, clean six runs of six, once a way had also to be clean
       on 6% less grip and each stretch of the lap had a pace of its own; 35.05 s with the line nudged,
       one run of three with a wheel off for 0.3 s. The rig's times are within 0.2 s of the game's
+- [x] Clutter cleared by the roads' outline (2026.10.10.5554): the F2004 stood on grass 18 m off the
+      crossroads on the diagonal and on grass under the road 160 m up, both of which the old reach would
+      have cleared; and the log's check of where clutter stands, 228 instances against KSA's, the worst 0.00 m
+- [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
 - [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits
 - [ ] The helmet with the driver looking about and the wheel turned; gone when the driver gets out;
       on a car that is not the one flown; and in the vehicle editor, where there is no driver
