@@ -263,7 +263,10 @@ internal static class RoadTessellation
 
             row.At[i] = ribbon.Point(at, d, height);
             row.Normal[i] = ribbon.Normal(at, d, height, alongRise, acrossRise);
-            row.Uv[i] = Tile(at.At + (at.Left * d));
+
+            // Past a run's end the rows are all of one place along it, and earth: only a row of the run itself is lined.
+            bool run = beyond == 0.0 && alongFall == 0.0;
+            row.Uv[i] = run && i is >= 4 and <= 6 ? Lined(ribbon, section, 0.5 * (i - 4)) : Tile(at.At + (at.Left * d));
         }
         return row;
     }
@@ -287,13 +290,45 @@ internal static class RoadTessellation
             row.Normal[i] = i <= 2 ? facing : i <= 4 ? -left : i <= 6 ? -facing : left;
 
             // A side is upright, so the chart has no width of it: along whichever of east and north it runs nearer, and up.
-            row.Uv[i] = i is <= 2 or 5 or 6 ? Tile(place)
+            row.Uv[i] = i <= 2 ? Lined(ribbon, at, 0.5 * i) : i is 5 or 6 ? Tile(place)
                       : new float2((float)((Math.Abs(at.Heading.E) >= Math.Abs(at.Heading.N) ? place.E : place.N) / TileM), (float)(height / TileM));
         }
         return row;
     }
 
     private static float2 Tile(Plan place) => new((float)(place.E / TileM), (float)(place.N / TileM));
+
+    /// <summary>How far along a road its markings repeat: a dash and the gap after it.</summary>
+    public const double MarkingsM = 12.0;
+
+    // A run's asphalt is drawn in a picture that knows which way the road goes: across it from its left
+    // edge to its right, whatever its width, and along it by its own length, so its edge lines and the
+    // dashes down its middle follow it. Round a closed run the dashes are stretched to come out whole.
+    private static float2 Lined(RoadRibbon ribbon, in RoadRibbon.Section at, double across)
+    {
+        // Round a kink the rows are all at one distance along, each turned a little further, and a picture
+        // laid by that distance alone would have no length there: the kink is taken to be as long as its
+        // outside edge is, and every row after it that much further on.
+        RoadLine line = ribbon.Line;
+        double drawn = at.S, whole = line.LengthM;
+        for (int arc = line.Closed ? 0 : 1; arc < line.Count; arc++)
+        {
+            double turn = Math.Abs(line.TurnAt(arc));
+            if (turn <= RoadLine.KinkRad) continue;
+
+            double outside = at.HalfWidth * turn, kinkAt = arc == 0 ? line.LengthM : line.StartOf(arc);
+            whole += outside;
+            if (at.S > kinkAt + 1e-9) drawn += outside;
+            else if (Math.Abs(at.S - kinkAt) <= 1e-9)
+            {
+                Plan after = ribbon.At(arc, line.StartOf(arc)).Heading;
+                double left = Math.Abs(Math.Atan2(Plan.Cross(at.Heading, after), Plan.Dot(at.Heading, after)));
+                drawn += at.HalfWidth * (turn - Math.Min(left, turn));
+            }
+        }
+        double repeat = line.Closed ? whole / Math.Max(1.0, Math.Round(whole / MarkingsM)) : MarkingsM;
+        return new float2((float)across, (float)(drawn / repeat));
+    }
 
     // One mesh as it is put together: vertices from the body's centre, and the triangles of each kind.
     private sealed class Chunk
