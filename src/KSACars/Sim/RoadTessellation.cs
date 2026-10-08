@@ -589,7 +589,12 @@ internal static class RoadTessellation
 
                 (int from, int to) = layout.Stretches[k];
                 bool bend = Math.Max(Math.Abs(stations[from].At.Curvature), Math.Abs(stations[to].At.Curvature)) > 1.0 / KerbRadiusM;
-                chunk.Between(RowAt(from, deck[k]), RowAt(to, deck[k]), deck[k] ? DeckStrips : bend ? KerbedStrips : GroundStrips);
+                // A closed run's last stretch ends on its first row, which for what is drawn along the road is the whole run on
+                // and not its start: a row of its own there, or the lines of a whole lap are drawn in the one stretch.
+                bool round = ribbon.Closed && to == 0 && k == count - 1;
+                RoadRibbon.Section ending = round ? stations[to].At with { S = ribbon.LengthM } : stations[to].At;
+                Row endRow = !round ? RowAt(to, deck[k]) : deck[k] ? DeckRow(ribbon, ending) : GroundRow(ribbon, ending);
+                chunk.Between(RowAt(from, deck[k]), endRow, deck[k] ? DeckStrips : bend ? KerbedStrips : GroundStrips);
                 if (deck[k])
                 {
                     // A barrier in panels longer than the rows are apart: it is straight where the road's edge bends a hand's width.
@@ -597,7 +602,7 @@ internal static class RoadTessellation
                     double upTo = to == 0 && k == count - 1 ? ribbon.LengthM : stations[to].S;
                     if (upTo - panelFrom.Value.S >= BarrierStepM || k == count - 1 || !deck[k + 1] || chunkOf[k + 1] != c)
                     {
-                        Barrier(chunk, ribbon, panelFrom.Value, stations[to].At);
+                        Barrier(chunk, ribbon, panelFrom.Value, ending);
                         panelFrom = null;
                     }
                 }

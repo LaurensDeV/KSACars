@@ -631,6 +631,33 @@ public class RoadTessellationTests
     }
 
     [Fact]
+    public void RoundAClosedRunNoStretchIsDrawnWithTheLinesOfTheWholeLap()
+    {
+        // On the ground, with kerbs, and raised, with barriers: every triangle that is drawn along the road
+        // takes no more of the picture along it than it is long, the last stretch round to the first row too.
+        foreach (Func<TrackWorld, Circuit> draw in new Func<TrackWorld, Circuit>[]
+                 {
+                     w => AutopilotTests.Ring(60.0).Circuit,
+                     w => AutopilotTests.Through(w, true, (0.0, 0.0, 9.0), (200.0, 0.0, 9.0), (200.0, 200.0, 9.0), (0.0, 200.0, 9.0)),
+                 })
+        {
+            (_, var runs) = Meshed(draw);
+            foreach (RoadMeshData mesh in runs.SelectMany(r => r.Meshes))
+            {
+                for (int t = 0; t < mesh.Indices.Length; t += 3)
+                {
+                    if (t >= mesh.AsphaltIndices && t < mesh.Indices.Length - mesh.TrimIndices) continue;
+                    int a = mesh.Indices[t], b = mesh.Indices[t + 1], c = mesh.Indices[t + 2];
+                    double along = Math.Max(mesh.Uvs[a].Y, Math.Max(mesh.Uvs[b].Y, mesh.Uvs[c].Y)) - Math.Min(mesh.Uvs[a].Y, Math.Min(mesh.Uvs[b].Y, mesh.Uvs[c].Y));
+                    double longM = Math.Max(Vec.Len(mesh.Places[a] - mesh.Places[b]), Math.Max(Vec.Len(mesh.Places[b] - mesh.Places[c]), Vec.Len(mesh.Places[c] - mesh.Places[a])));
+                    // By half as much again and a bit: a bend's inside edge is shorter than the middle the picture is measured along.
+                    Assert.True(along <= (1.5 * longM / RoadTessellation.TrimRepeatM) + 0.5, $"a triangle {longM:F1} m long is drawn with {along:F1} lengths of its picture");
+                }
+            }
+        }
+    }
+
+    [Fact]
     public void ADeckHasABarrierOutsideEachEdgeAndTheGroundHasNone()
     {
         (TrackWorld world, var runs) = Meshed(w => AutopilotTests.Through(w, false,
