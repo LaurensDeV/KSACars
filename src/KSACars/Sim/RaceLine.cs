@@ -24,7 +24,7 @@ internal static class RaceLine
     public const double HalfWideM = 0.7, HalfLongM = 0.6, NotchM = 0.55;
 
     /// <summary>How far over the asphalt it is drawn, which is what keeps it from flickering in it.</summary>
-    public const double LiftM = 0.04;
+    public const double LiftM = 0.04, LoopLiftM = 0.03;
 
     /// <summary>The most arrowheads drawn at once, and what each is made of.</summary>
     public const int Most = (int)(AheadM / EveryM), Vertices = 4, Indices = 6;
@@ -74,6 +74,19 @@ internal static class RaceLine
             double3 On(double left, double ahead)
             {
                 double3 p = at + (here.Across * left) + (here.Tangent * ahead);
+                if (here.LoopM > 0.0)
+                {
+                    // A loop bends up under a straight line along it, so each corner is put by the route's own run there,
+                    // facing as the loop does, and a little higher for what bend is left between two of its places.
+                    double to = Math.Clamp(s + ahead, 0.0, route.LengthM - 1e-6);
+                    int there = route.IndexAt(to);
+                    Route.Sample by = route.Samples[there];
+                    if (by.LoopM > 0.0)
+                    {
+                        facing = Vec.Cross(by.Tangent, by.Across);
+                        return route.Ahead(there, by.S, to - by.S) + (by.Across * left) + (facing * (LiftM + LoopLiftM));
+                    }
+                }
                 double3 radial = Vec.Unit(p);
                 if (road is null || !road.TryLocate(p + radial, null, out double over, out _, out double3? face)) return p + (radial * LiftM);
                 if (face is { } f) facing = f;

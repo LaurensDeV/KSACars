@@ -343,6 +343,16 @@ internal sealed class Autopilot
         Why = why;
     }
 
+    /// <summary>
+    /// The speed a loop is gone into at: by <see cref="LoopPace"/> over the least that still presses a
+    /// car to the road at its top, which is that of a fall from 0.62 of the loop's length.
+    /// </summary>
+    public static double LoopSpeed(double loopM, double gravity) => LoopPace * Math.Sqrt(0.62 * gravity * loopM);
+
+    public const double LoopPace = 1.12;
+
+    private const int LoopNearSamples = 6;
+
     // What the road allows at each sample, and then back along the route what the brakes can get down
     // to it from. A bend: v^2 kappa = share x grip x what presses the tyres, which is g cos(slope), the
     // wings' press at v and, over a crest, less what the crest throws off.
@@ -381,7 +391,9 @@ internal sealed class Autopilot
                 allowed = Math.Min(allowed, Under(crestShare * _gravity * level, crest - (crestShare * wings)));
                 allowed = Math.Min(allowed, Under(dip, Math.Max(s.Vertical, 0.0)));
             }
-            if (allowed < CruiseMs) allowed = Math.Min(allowed * Tune.PaceAt(s.S / _route.LengthM), CruiseMs);
+            // A loop is gone into at what carries the car over its top and no faster: it presses by the square of the speed.
+            if (s.LoopM > 0.0) allowed = Math.Min(CruiseMs, LoopSpeed(s.LoopM, _gravity));
+            else if (allowed < CruiseMs) allowed = Math.Min(allowed * Tune.PaceAt(s.S / _route.LengthM), CruiseMs);
             limit[i] = s.S >= _stopAt - ArriveOverM ? ArriveMs : Math.Max(allowed, CrawlMs);
         }
 
@@ -551,8 +563,10 @@ internal sealed class Autopilot
 
         // Off the road it comes back slowly and does not charge across the grass; turned away from the
         // route it is turning round.
+        // On a loop the car is steered by the loop, and which way it faces against the horizon says nothing.
+        bool looping = here.LoopM > 0.0;
         bool wide = Math.Abs(cross - here.CentreM) > here.HalfWidth;
-        if (wide || Math.Abs(bearing) > Math.PI / 4.0) wanted = Math.Min(wanted, RecoverMs);
+        if (!looping && (wide || Math.Abs(bearing) > Math.PI / 4.0)) wanted = Math.Min(wanted, RecoverMs);
 
         bool arrived = !_route.Closed && s >= _stopAt;
         bool stopped = arrived && rolling <= StoppedMs;
@@ -572,13 +586,24 @@ internal sealed class Autopilot
         // With a band, the brake is pressed by how far over the speed wanted the car is, and all of it only that far over.
         double pressed = Tune.BrakeBandMs > 0.0 ? Math.Clamp((rolling - wanted) / Tune.BrakeBandMs, Tune.LeastBrake, 1.0) : 1.0;
         double throttle = _braking ? -pressed : Math.Clamp((wanted - rolling) / Tune.FullThrottleUnderMs, 0.0, 1.0);
+        // Nor is it braked there: the speed it has is what holds it on.
+        if (looping) throttle = Math.Clamp((wanted - rolling) / Tune.FullThrottleUnderMs, 0.0, 1.0);
+
+        // A car's length either side of a loop some of its wheels are on it, which is no road's asphalt and leans as no road does.
+        bool byLoop = looping;
+        for (int k = -LoopNearSamples; k <= LoopNearSamples && !byLoop; k++)
+        {
+            int near = _index + k;
+            if (_route.Closed) near = ((near % limit.Length) + limit.Length) % limit.Length;
+            byLoop = near >= 0 && near < limit.Length && _route.Samples[near].LoopM > 0.0;
+        }
 
         int grounded = 0, onGround = 0, offAsphalt = 0, off = 0;
         for (int i = 0; i < corners.Length && i < hubs.Length && i < hubHeights.Length; i++)
         {
             // Straight up a hub on a slope or a bank is further from the road than its tyre is.
             double lean = Vec.Dot(top, radial);
-            double over = (hubHeights[i] * (lean > 0.5 ? lean : 1.0)) - corners[i].Radius;
+            double over = (hubHeights[i] * (lean > 0.5 && !byLoop ? lean : 1.0)) - corners[i].Radius;
             _summary.MinHubM = Math.Min(_summary.MinHubM, over);
             _summary.MaxHubM = Math.Max(_summary.MaxHubM, over);
             if (over <= _profile.DroopTravel)
@@ -586,7 +611,7 @@ internal sealed class Autopilot
                 onGround++;
                 grounded |= 1 << i;
             }
-            if (_road is not null && (!_road.TryLocate(position + (body2Ccf * hubs[i]), null, out _, out double outM) || outM > 0.02))
+            if (!byLoop && _road is not null && (!_road.TryLocate(position + (body2Ccf * hubs[i]), null, out _, out double outM) || outM > 0.02))
             {
                 offAsphalt++;
                 off |= 1 << i;
@@ -598,6 +623,8 @@ internal sealed class Autopilot
         double pitch = Deg(Math.Asin(Math.Clamp(Vec.Dot(ahead, radial), -1.0, 1.0)) - Math.Atan(here.Slope * facing));
         double roll = Deg(Math.Asin(Math.Clamp(Vec.Dot(left, radial), -1.0, 1.0))
                           - Math.Atan(here.Slope * Vec.Dot(Vec.Cross(radial, nose), here.Tangent)));
+
+        if (looping) (pitch, roll) = (0.0, 0.0);
 
         // Against the asphalt's own face where the car is over it, which a banked road leans.
         if (_road is not null && _road.TryLocate(position, null, out _, out _, out double3? face) && face is { } faces)
@@ -633,7 +660,7 @@ internal sealed class Autopilot
         _summary.LongestFlightSeconds = Math.Max(_summary.LongestFlightSeconds, _flight);
 
         _offFor = _road is not null && offAsphalt >= corners.Length ? _offFor + dt : 0.0;
-        _flippedFor = Vec.Dot(top, radial) < 0.3 ? _flippedFor + dt : 0.0;
+        _flippedFor = !looping && Vec.Dot(top, radial) < 0.3 ? _flippedFor + dt : 0.0;
         if (progress > _markProgress + 1.0) (_markProgress, _markTime) = (progress, _summary.Seconds);
 
         if (stopped || (_route.Closed && _summary.Laps >= _lapsWanted)) Finish(LapEnd.Finished);

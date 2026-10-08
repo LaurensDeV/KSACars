@@ -293,6 +293,115 @@ public class RoadLoopTests
         return new doubleQuat((z.X + x.Z) / r, (z.Y + y.Z) / r, 0.25 * r, (x.Y - y.X) / r);
     }
 
+    // A lap with a loop in it: east along a straight, round the loop, on and back round by the north.
+    private static (AutopilotTests.Track Track, RoadLoop Loop, int[] Path) LoopedLap(bool closed)
+    {
+        TrackWorld world = TrackWorld.Earth();
+        double on = 300.0 + RoadLoop.Reach(110.0);
+        Circuit c = new Circuit { WidthM = 8.0, RadiusM = world.RadiusM }
+            .AddNode(0.0, 0.0, out int start).Extend(start, 0.0, world.Deg(300.0), out int foot)
+            .AddNode(world.Deg(12.0), world.Deg(on), out int down).Extend(down, world.Deg(12.0), world.Deg(on + 200.0), out int east)
+            .AddLoop(foot, down, 110.0);
+        int[] path = [start, foot, down, east];
+        if (closed)
+        {
+            c = c.Extend(east, world.Deg(110.0), world.Deg(on + 290.0), out int a).Extend(a, world.Deg(220.0), world.Deg(on + 200.0), out int b)
+                 .Extend(b, world.Deg(220.0), world.Deg(-150.0), out int d).Extend(d, world.Deg(110.0), world.Deg(-240.0), out int e)
+                 .Extend(e, 0.0, world.Deg(-150.0), out int f).Connect(f, start);
+            path = [start, foot, down, east, a, b, d, e, f, start];
+        }
+        RoadLaying.Network net = RoadLaying.Laid(c, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM);
+        return (new AutopilotTests.Track(world, c, world.Surface(c)), RoadLoop.Of(c.Loops![0], net.Ribbons, out _)!, path);
+    }
+
+    [Fact]
+    public void ARouteGoesRoundALoopAndOnByTheRoadItComesDownOn()
+    {
+        (AutopilotTests.Track track, RoadLoop loop, int[] path) = LoopedLap(closed: false);
+        Route named = AutopilotTests.RouteOn(track, path), followed = AutopilotTests.RouteOn(track);
+
+        // The road to it, all of it, and the road on; and found without being told the way.
+        Assert.Equal(300.0 + 110.0 + 200.0, named.LengthM, 0);
+        Assert.Equal(named.LengthM, followed.LengthM, 6);
+        Assert.InRange(named.Samples.ToArray().Count(x => x.LoopM > 0.0), 105, 115);
+
+        double last = -1.0;
+        double3 before = named.Samples[0].At;
+        foreach (Route.Sample sample in named.Samples)
+        {
+            Assert.True(sample.S > last, "the route goes back on itself");
+            Assert.True(Vec.Len(sample.At - before) < 1.6, $"a step of {Vec.Len(sample.At - before):F2} m in the route at {sample.S:F0} m");
+            (last, before) = (sample.S, sample.At);
+        }
+
+        // Over its top the route is upside down where the loop is, and a car there is found on it and not on the road below.
+        int index = named.IndexAt(300.0 + 55.0);
+        Route.Sample top = named.Samples[index];
+        Assert.True(Vec.Dot(top.Tangent, named.Samples[0].Tangent) < -0.99);
+        Assert.True(Vec.Len(top.At - loop.Point(top.S - 300.0, 0.0, out _, out _)) < 0.6);
+        int near = index - 3;
+        named.Locate(top.At + (loop.Left * 1.5), ref near, 20.0, out double s, out double cross);
+        Assert.Equal(top.S, s, 0);
+        Assert.Equal(1.5, cross, 1);
+
+        (double3 at, double3 up, double3 ahead) = named.Standing(300.0 + 55.0);
+        Assert.True(Vec.Dot(up, Vec.Unit(at)) < -0.99 && Vec.Dot(ahead, top.Tangent) > 0.99);
+    }
+
+    [Theory]
+    [InlineData("F2004", false, 1.0 / 60.0)]
+    [InlineData("F2004", true, 0.02)]
+    [InlineData("Eldorado", true, 1.0 / 60.0)]
+    [InlineData("Eldorado", false, 0.02)]
+    public void TheDriverTakesACarRoundALoopInALap(string name, bool closed, double dt)
+    {
+        (AutopilotTests.Track track, RoadLoop loop, int[] path) = LoopedLap(closed);
+        TrackCar car = TrackCar.Of(name);
+        Route route = AutopilotTests.RouteOn(track, path, car: car);
+
+        int fewest = 4, steps = 0;
+        double deepest = double.NegativeInfinity;
+        double slowest = double.PositiveInfinity, fastest = 0.0;
+        AutopilotTests.Lap lap = AutopilotTests.Drive(car, track, route, dt, laps: 1, each: (rig, pilot) =>
+        {
+            if (rig.Loops.Count == 0) rig.Loops.Add(loop);
+            if (!loop.TryLocate(rig.Position, out _, out _, out _, out _)) return;
+            steps++;
+            fewest = Math.Min(fewest, rig.Drive.Grounded.Count(g => g));
+            for (int i = 0; i < 4; i++) deepest = Math.Max(deepest, car.Profile.Corners[i].Radius - car.Profile.BumpTravel - rig.HubHeights[i]);
+            double speed = Vec.Len(rig.Velocity);
+            (slowest, fastest) = (Math.Min(slowest, speed), Math.Max(fastest, speed));
+        });
+
+        Assert.True(lap.End == LapEnd.Finished, lap.Told);
+        Assert.True(steps > 100 && fewest == 4 && deepest < 0.04, $"on the loop for {steps} steps, fewest wheels down {fewest}, {deepest * 100.0:F1} cm past the stops; {lap.Told}");
+        Assert.True(lap.Summary.OffAsphaltSeconds == 0.0 && lap.HullSteps == 0, lap.Told);
+
+        // In at the speed that carries it over, whatever it could have been doing on the straight.
+        double into = Autopilot.LoopSpeed(110.0, track.World.Gravity);
+        Assert.True(fastest < into + 6.0 && slowest > 12.0, $"{slowest:F1} to {fastest:F1} m/s on a loop gone into at {into:F1}; {lap.Told}");
+    }
+
+    [Fact]
+    public void TheLineToDriveGoesRoundTheLoopOnItsAsphalt()
+    {
+        (AutopilotTests.Track track, RoadLoop loop, int[] path) = LoopedLap(closed: false);
+        Route route = AutopilotTests.RouteOn(track, path);
+        int on = 0;
+        foreach (RaceLine.Arrow arrow in RaceLine.Lay(route, track.Road))
+        {
+            if (!(route.Samples[arrow.Sample].LoopM > 0.0) || arrow.S < 303.0) continue;
+            on++;
+            foreach (double3 corner in new[] { arrow.Tip, arrow.Left, arrow.Notch, arrow.Right })
+            {
+                Assert.True(loop.TryLocate(corner, out _, out _, out double over, out double3 facing), $"an arrowhead at {arrow.S:F0} m is not on the loop");
+                Assert.InRange(over, 0.02, RaceLine.LiftM + RaceLine.LoopLiftM + 0.02);
+                Assert.True(Vec.Dot(facing, arrow.Facing) > 0.99);
+            }
+        }
+        Assert.InRange(on, 32, 37);
+    }
+
     [Fact]
     public void Probe()
     {

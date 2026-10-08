@@ -25,8 +25,9 @@ internal sealed class Route
     /// <param name="Bank">The tangent of the road's lean across, the left of the route up positive.</param>
     /// <param name="Vertical">How the climb itself bends, 1/m: positive through a dip, negative over a crest.</param>
     /// <param name="CentreM">How far to the left of this the road's centre is, m.</param>
+    /// <param name="LoopM">On a loop, how long the loop is: there the place is on the loop itself, the tangent is the way it really runs, up and over, and nothing of a road's slope or bend is said.</param>
     public readonly record struct Sample(double3 At, double S, double3 Tangent, double3 Across, double Curvature,
-                                         double Slope, double Vertical, double HalfWidth, double CentreM, double Bank = 0.0);
+                                         double Slope, double Vertical, double HalfWidth, double CentreM, double Bank = 0.0, double LoopM = 0.0);
 
     public const double SpacingM = 1.0;
 
@@ -87,6 +88,20 @@ internal sealed class Route
         List<double3> line = [];
         List<double> halfWidths = [], banks = [];
 
+        // A loop is no road: the roads before it are one stretch, it is another, and the roads after it a third.
+        List<Sample[]> stretches = [];
+        bool looped = false;
+        bool Stretch()
+        {
+            if (line.Count < 2) return line.Count == 0;
+            if (Along([.. line], [.. halfWidths], false, offsetM, turnRadiusM, [.. banks], raceInsideM) is not { } part) return false;
+            stretches.Add(part._samples);
+            line.Clear();
+            halfWidths.Clear();
+            banks.Clear();
+            return true;
+        }
+
         // From the road just driven across the junction at `at` to the road on to `next`.
         void Cross(int from, int at, int next)
         {
@@ -104,7 +119,7 @@ internal sealed class Route
         for (int k = 1; k < path.Count; k++)
         {
             int a = path[k - 1], b = path[k];
-            if (k > 1) Cross(path[k - 2], a, b);
+            if (k > 1 && line.Count > 0) Cross(path[k - 2], a, b);
             RoadRibbon? on = null;
             RoadRibbon.Span span = default;
             foreach (RoadRibbon ribbon in ribbons)
@@ -113,6 +128,26 @@ internal sealed class Route
                 {
                     if ((s.From == a && s.To == b) || (s.From == b && s.To == a)) (on, span) = (ribbon, s);
                 }
+            }
+            if (on is null && circuit.Loops?.FirstOrDefault(l => l.From == a && l.To == b) is { } over)
+            {
+                if (RoadLoop.Of(over, ribbons, out why) is not { } loop) return null;
+                if (!Stretch())
+                {
+                    why = "the road to a loop has no length";
+                    return null;
+                }
+                int rows = Math.Max(2, (int)Math.Round(loop.LengthM / SpacingM));
+                Sample[] round = new Sample[rows + 1];
+                for (int i = 0; i <= rows; i++)
+                {
+                    double s = loop.LengthM * i / rows;
+                    double3 place = loop.Point(s, 0.0, out double3 along, out _);
+                    round[i] = new Sample(place, s, along, loop.Left, 0.0, 0.0, 0.0, loop.HalfWidthM, 0.0, 0.0, loop.LengthM);
+                }
+                stretches.Add(round);
+                looped = true;
+                continue;
             }
             if (on is null)
             {
@@ -134,6 +169,22 @@ internal sealed class Route
         }
 
         bool closed = path.Count > 2 && path[0] == path[^1];
+        if (looped)
+        {
+            // The last point of a lap is its first come round again.
+            if (closed && line.Count > 1)
+            {
+                line.RemoveAt(line.Count - 1);
+                halfWidths.RemoveAt(halfWidths.Count - 1);
+                banks.RemoveAt(banks.Count - 1);
+            }
+            if (!Stretch() || stretches.Count == 0)
+            {
+                why = "the route has no length";
+                return null;
+            }
+            return Joined(stretches, closed);
+        }
         if (closed)
         {
             Cross(path[^2], path[0], path[1]);
@@ -149,6 +200,29 @@ internal sealed class Route
         return route;
     }
 
+    // Stretches one after another as one route, each measured on from where the one before ended.
+    private static Route Joined(List<Sample[]> stretches, bool closed)
+    {
+        List<Sample> all = [];
+        double gone = 0.0;
+        foreach (Sample[] stretch in stretches)
+        {
+            if (stretch.Length == 0) continue;
+            if (all.Count > 0)
+            {
+                // A stretch starts where the last ended, give or take what a float makes of it: that place is said once.
+                double gap = Vec.Len(stretch[0].At - all[^1].At);
+                if (gap < 0.5 * SpacingM) all.RemoveAt(all.Count - 1);
+                else gone += gap;
+            }
+            double from = all.Count > 0 ? gone : 0.0, first = stretch[0].S;
+            foreach (Sample sample in stretch) all.Add(sample with { S = from + (sample.S - first) });
+            gone = all[^1].S;
+        }
+        double length = gone + (closed ? Vec.Len(all[0].At - all[^1].At) : 0.0);
+        return new Route([.. all], length, closed);
+    }
+
     // From the first road on, along the road that goes through each point.
     private static List<int> Following(Circuit circuit, Func<double, double, double3> dirOf, double radiusM)
     {
@@ -161,9 +235,22 @@ internal sealed class Route
         path.Add(first.From);
         path.Add(first.To);
         HashSet<(int, int)> driven = [(first.From, first.To)];
-        while (RoadLayout.Through(circuit, at, path[^1], path[^2]) is { } onward && driven.Add((path[^1], onward)))
+        for (int guard = 0; guard < 4 * (circuit.Roads.Count + 1); guard++)
         {
-            path.Add(onward);
+            if (RoadLayout.Through(circuit, at, path[^1], path[^2]) is { } onward)
+            {
+                if (!driven.Add((path[^1], onward))) break;
+                path.Add(onward);
+                continue;
+            }
+
+            // Where the road ends at a loop, round the loop and on by the road it comes down on.
+            if (circuit.Loops?.FirstOrDefault(l => l.From == path[^1]) is not { } loop || !driven.Add((loop.From, loop.To))) break;
+            if (circuit.Roads.FirstOrDefault(r => r.Touches(loop.To)) is not { } after) break;
+            path.Add(loop.To);
+            int next = after.From == loop.To ? after.To : after.From;
+            if (!driven.Add((loop.To, next))) break;
+            path.Add(next);
         }
         return path;
     }
@@ -444,9 +531,12 @@ internal sealed class Route
         double3 b = _samples[(i + 1) % Count].At;
         double3 run = b - a.At;
         double length = Vec.Len(run);
-        double3 from = Vec.RejectFrom(point - a.At, a.At);
+        // A loop is upright, and seen from above half of it is no length at all: there, as it is.
+        bool loop = a.LoopM > 0.0;
+        double3 from = loop ? point - a.At : Vec.RejectFrom(point - a.At, a.At);
         along = length > 0.0 ? Math.Clamp(Vec.Dot(from, run) / length, 0.0, length) : 0.0;
-        double3 off = Vec.RejectFrom(from - (run * (length > 0.0 ? along / length : 0.0)), a.At);
+        double3 away = from - (run * (length > 0.0 ? along / length : 0.0));
+        double3 off = loop ? away : Vec.RejectFrom(away, a.At);
         beside = Vec.Dot(off, a.Across);
         return Vec.Len2(off);
     }
@@ -496,6 +586,7 @@ internal sealed class Route
         Sample a = _samples[i];
         double3 at = Ahead(i, s, 0.0);
         double3 up = Vec.Unit(a.At);
+        if (a.LoopM > 0.0) return (at, Vec.Cross(a.Tangent, a.Across), a.Tangent);
         return (at, Vec.Unit(up - (a.Tangent * a.Slope)), Vec.Unit(a.Tangent + (up * a.Slope)));
     }
 }

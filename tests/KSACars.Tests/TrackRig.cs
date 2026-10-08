@@ -225,7 +225,7 @@ internal sealed class TrackRig
         Log.Clear();
     }
 
-    private void Read(RoadSurface? road) => WheelGround.Read(
+    private bool Read(RoadSurface? road) => WheelGround.Read(
         Position, Attitude, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _hubs, _world.RadiusM,
         _world, null, road, _roadOver, _contacts, _hubHeights, Loops);
 
@@ -295,8 +295,17 @@ internal sealed class TrackRig
         double speed = Vec.Len(Velocity), energy = Energy, terrainUnder = TerrainUnderM;
         (double east, double north) = Where;
 
-        Read(_road);
+        bool looped = Read(_road);
         if (Driver is { } driver) input = driver.Step(Position, Attitude, Velocity, up, forward, _hubs, _hubHeights, dt, Log.Count > 0 && Log[^1].HullDown);
+
+        // As Buggies does: on a loop the loop has the wheel.
+        foreach (RoadLoop loop in looped ? Loops : [])
+        {
+            if (loop.Steer(Position, Attitude, speed, BuggyDrive.Wheelbase(p)) is not { } angle) continue;
+            double lockRad = BuggyDrive.SteerLock(p, speed, _world.Gravity, BuggyDrive.WingLoad(p, speed, _world.Air, _car.MassKg));
+            input = input with { Steer = lockRad > 0.0 ? Math.Clamp(angle / lockRad, -1.0, 1.0) : 0.0 };
+            break;
+        }
 
         double clearance = double.PositiveInfinity, deepest = double.NegativeInfinity;
         int onRoad = 0;
@@ -325,7 +334,7 @@ internal sealed class TrackRig
         Spin += new double3(j.Angular.X / _car.Inertia.X, j.Angular.Y / _car.Inertia.Y, j.Angular.Z / _car.Inertia.Z);
 
         // Where there is a loop a wheel has its bump stop, which is what carries the car round one.
-        if (Loops.Count > 0 && !warped)
+        if (looped && !warped)
         {
             double3 inertia = _car.Inertia;
             DriveImpulse stop = Drive.BumpStops(_contacts, _hubs, up, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _car.MassKg,
