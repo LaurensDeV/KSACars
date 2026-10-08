@@ -72,7 +72,7 @@ internal sealed class Route
     /// <param name="raceInsideM">More than nothing, and the route is the racing line that keeps this far inside each edge: see <see cref="RacingLine"/>.</param>
     public static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, Func<double3, double> groundAt,
                             double liftM, double spacingM, IReadOnlyList<int>? through, double offsetM, out string why,
-                            double turnRadiusM = 0.0, double raceInsideM = 0.0)
+                            double turnRadiusM = 0.0, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null)
     {
         why = "";
         List<int> path = through is { Count: > 0 } ? [.. through] : Following(circuit, dirOf, radiusM);
@@ -141,7 +141,7 @@ internal sealed class Route
             halfWidths.RemoveAt(halfWidths.Count - 1);
             banks.RemoveAt(banks.Count - 1);
         }
-        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM) is not { } route)
+        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM, nudgesM) is not { } route)
         {
             why = "the route has no length";
             return null;
@@ -178,7 +178,7 @@ internal sealed class Route
     /// before the kink and back after it, which is the only other room there is.</para>
     /// </summary>
     public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0,
-                               double[]? banks = null, double raceInsideM = 0.0)
+                               double[]? banks = null, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null)
     {
         int pieces = closed ? line.Length : line.Length - 1;
         if (pieces < 1 || halfWidths.Length != line.Length) return null;
@@ -267,7 +267,23 @@ internal sealed class Route
 
         double[] left = new double[count];
         Array.Fill(left, offsetM);
-        if (raceInsideM > 0.0) left = RacingLine(at, half, closed, raceInsideM);
+        if (raceInsideM > 0.0)
+        {
+            left = RacingLine(at, half, closed, raceInsideM);
+
+            // Moved to the left by as much as is asked at each of as many places evenly along it, and between
+            // them in proportion: a line learnt, where the one that turns least is not the quickest. Still on the road.
+            if (nudgesM is { Count: > 0 })
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    double place = (double)i / count * nudgesM.Count;
+                    int k = (int)place % nudgesM.Count, next = closed ? (k + 1) % nudgesM.Count : Math.Min(k + 1, nudgesM.Count - 1);
+                    double most = Math.Max(half[i] - raceInsideM, 0.0);
+                    left[i] = Math.Clamp(left[i] + nudgesM[k] + ((nudgesM[next] - nudgesM[k]) * (place - Math.Floor(place))), -most, most);
+                }
+            }
+        }
         if (offsetM != 0.0 || raceInsideM > 0.0)
         {
             double3[] moved = new double3[count];

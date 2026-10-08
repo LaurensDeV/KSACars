@@ -62,6 +62,7 @@ def main():
     ap.add_argument("--offset", type=float, default=0.0, help="metres left of the centre line")
     ap.add_argument("--route", help="point ids to pass through, comma separated")
     ap.add_argument("--laps", type=int, default=1)
+    ap.add_argument("--best", action="store_true", help="drive as personal-best.py's best so far for this circuit and car does")
     ap.add_argument("--crew", action="store_true", help="fill each car's seats first, so it has a driver to film")
     ap.add_argument("--racing", action="store_true", help="drive the racing line and not the middle of the road")
     ap.add_argument("--push", type=float, default=0.0, help="how hard the lap is driven, 0 to 1")
@@ -104,6 +105,17 @@ def main():
         time.sleep(1.5)
 
         extra = {k: v for k, v in (("speed", args.speed), ("route", args.route)) if v is not None}
+        best = REPO / "tools" / "roads" / "pb" / f"{circuit}-{cars[0]}.json"
+        if args.best and best.exists():
+            way = json.loads(best.read_text())["best"]
+            paces = sorted(k for k in way if k.startswith("pace_"))
+            tune = ",".join(f"{k}={v:.5g}" for k, v in way.items() if k != "inside_m" and not k.startswith(("pace_", "nudge_")))
+            nudges = sorted(k for k in way if k.startswith("nudge_"))
+            if nudges:
+                extra["line"] = ";".join(f"{way[k]:.3f}" for k in nudges)
+            if paces:
+                tune += ",pace=" + ";".join(f"{way[k]:.4g}" for k in paces)
+            extra.update(racing=True, inside=way["inside_m"], tune=tune)
         if args.racing:
             extra["racing"] = True
         if args.push:
@@ -150,6 +162,7 @@ def main():
                 (f"pitch {s.get('max_pitch_deg')}", (s.get("max_pitch_deg") or 0) > 20),
                 (f"cross {s.get('max_cross_m')} m", (s.get("max_cross_m") or 0) > 2.5)) if hit]
             print(f"   {car:9} {s.get('end','?'):10} {s.get('progress_m',0):7.0f}/{s.get('route_m',0):5.0f} m in {s.get('seconds',0):6.1f} s"
+                  f"  last lap {s.get('last_lap_s',0):7.3f} s"
                   f"  vmax {s.get('max_speed_ms',0):5.1f}  cross {s.get('max_cross_m',0):5.2f}  off {s.get('off_asphalt_s',0):5.2f}"
                   f"  air {s.get('air_s',0):5.2f}/{s.get('longest_flight_s',0):4.2f}  hub {s.get('hub_low_m')}..{s.get('hub_high_m')}"
                   f"  roll {s.get('max_roll_deg',0):4.1f} pitch {s.get('max_pitch_deg',0):4.1f}  hull {s.get('hull_down_s',0)}"

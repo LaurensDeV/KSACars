@@ -187,6 +187,104 @@ internal sealed class Autopilot
 
     public double CruiseMs { get; }
 
+    /// <summary>
+    /// The driver's own settings, each at what the constant of its name says unless a lap is given
+    /// another: what a search for a faster lap turns.
+    /// </summary>
+    public sealed record Tuning
+    {
+        public double GripShare { get; init; } = Autopilot.GripShare;
+        public double BrakeShare { get; init; } = Autopilot.BrakeShare;
+        public double TipShare { get; init; } = Autopilot.TipShare;
+        public double CrestShare { get; init; } = Autopilot.CrestShare;
+        public double DipShare { get; init; } = Autopilot.DipShare;
+        public double LookAheadSeconds { get; init; } = Autopilot.LookAheadSeconds;
+        public double LeastLookAheadM { get; init; } = Autopilot.LeastLookAheadM;
+        public double MostLookAheadM { get; init; } = Autopilot.MostLookAheadM;
+        public double BrakeOnMs { get; init; } = Autopilot.BrakeOnMs;
+        public double BrakeOnShare { get; init; } = Autopilot.BrakeOnShare;
+        public double BrakeOffMs { get; init; } = Autopilot.BrakeOffMs;
+        public double BrakeLeadSeconds { get; init; } = Autopilot.BrakeLeadSeconds;
+        public double FullThrottleUnderMs { get; init; } = Autopilot.FullThrottleUnderMs;
+        public double DipBrakeShare { get; init; } = Autopilot.DipBrakeShare;
+
+        /// <summary>How far over the speed wanted the brake is pressed all the way, m/s, and the least it is pressed while on; no band, and it is all or nothing.</summary>
+        public double BrakeBandMs { get; init; }
+
+        public double LeastBrake { get; init; } = 0.1;
+
+        /// <summary>
+        /// What the speed each bend allows is multiplied by, at as many places evenly round the route as
+        /// there are numbers here and between them in proportion: a lap learnt corner by corner, where
+        /// one share of the grip for all of it is held to what its hardest corner bears. None, and it is 1.
+        /// </summary>
+        public IReadOnlyList<double> Pace { get; init; } = [];
+
+        public double PaceAt(double share)
+        {
+            if (Pace.Count == 0) return 1.0;
+            double at = (share - Math.Floor(share)) * Pace.Count;
+            int i = (int)at % Pace.Count;
+            return Pace[i] + ((Pace[(i + 1) % Pace.Count] - Pace[i]) * (at - Math.Floor(at)));
+        }
+
+        /// <summary>The settings named in "grip_share=0.95,brake_lead_seconds=0.05", the rest as they are here; null with the name that is not one.</summary>
+        public Tuning? With(string settings, out string why)
+        {
+            why = "";
+            Tuning tuned = this;
+            foreach (string setting in settings.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] sides = setting.Split('=');
+                if (sides.Length == 2 && sides[0].Trim().ToLowerInvariant() == "pace")
+                {
+                    List<double> pace = [];
+                    foreach (string one in sides[1].Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (!double.TryParse(one, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double p) || !(p > 0.0))
+                        {
+                            why = $"pace: '{one}' is not a number over nothing";
+                            return null;
+                        }
+                        pace.Add(p);
+                    }
+                    tuned = tuned with { Pace = pace };
+                    continue;
+                }
+                if (sides.Length != 2 || !double.TryParse(sides[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v))
+                {
+                    why = $"'{setting}' is not name=number";
+                    return null;
+                }
+                switch (sides[0].Trim().Replace("_", "").ToLowerInvariant())
+                {
+                    case "gripshare": tuned = tuned with { GripShare = v }; break;
+                    case "brakeshare": tuned = tuned with { BrakeShare = v }; break;
+                    case "tipshare": tuned = tuned with { TipShare = v }; break;
+                    case "crestshare": tuned = tuned with { CrestShare = v }; break;
+                    case "dipshare": tuned = tuned with { DipShare = v }; break;
+                    case "lookaheadseconds": tuned = tuned with { LookAheadSeconds = v }; break;
+                    case "leastlookaheadm": tuned = tuned with { LeastLookAheadM = v }; break;
+                    case "mostlookaheadm": tuned = tuned with { MostLookAheadM = v }; break;
+                    case "brakeonms": tuned = tuned with { BrakeOnMs = v }; break;
+                    case "brakeonshare": tuned = tuned with { BrakeOnShare = v }; break;
+                    case "brakeoffms": tuned = tuned with { BrakeOffMs = v }; break;
+                    case "brakeleadseconds": tuned = tuned with { BrakeLeadSeconds = v }; break;
+                    case "fullthrottleunderms": tuned = tuned with { FullThrottleUnderMs = v }; break;
+                    case "dipbrakeshare": tuned = tuned with { DipBrakeShare = v }; break;
+                    case "brakebandms": tuned = tuned with { BrakeBandMs = v }; break;
+                    case "leastbrake": tuned = tuned with { LeastBrake = v }; break;
+                    default:
+                        why = $"'{sides[0]}' is not one of the driver's settings";
+                        return null;
+                }
+            }
+            return tuned;
+        }
+    }
+
+    public Tuning Tune { get; init; } = new();
+
     /// <summary>Whether crests and dips are taken at whatever the bends allow, to see what a car does in the air.</summary>
     public bool Jumps { get; init; }
 
@@ -246,14 +344,14 @@ internal sealed class Autopilot
     {
         ReadOnlySpan<Route.Sample> samples = _route.Samples;
         double[] limit = new double[samples.Length];
-        double grip = Pushed(GripShare, 1.0) * Math.Min(_profile.FrontGrip, _profile.FrontGrip * _profile.SteerOverGrip);
-        if (comHeightM > 0.0) grip = Math.Min(grip, Pushed(TipShare, 0.85) * halfTrackM / comHeightM);
-        double crestShare = Pushed(CrestShare, 0.92);
+        double grip = Pushed(Tune.GripShare, 1.0) * Math.Min(_profile.FrontGrip, _profile.FrontGrip * _profile.SteerOverGrip);
+        if (comHeightM > 0.0) grip = Math.Min(grip, Pushed(Tune.TipShare, 0.85) * halfTrackM / comHeightM);
+        double crestShare = Pushed(Tune.CrestShare, 0.92);
         double wings = _mass > 0.0 ? 0.5 * _air * _profile.DownforceAreaM2 / _mass : 0.0;
 
         // What a spring carries over its share of the weight at a compression is that times its rate.
         double spring = 2.0 * Math.PI * _profile.SpringHz;
-        double dip = Pushed(DipShare, 0.8) * _profile.BumpTravel * spring * spring;
+        double dip = Pushed(Tune.DipShare, 0.8) * _profile.BumpTravel * spring * spring;
         for (int i = 0; i < limit.Length; i++)
         {
             Route.Sample s = samples[i];
@@ -277,6 +375,7 @@ internal sealed class Autopilot
                 allowed = Math.Min(allowed, Under(crestShare * _gravity * level, crest - (crestShare * wings)));
                 allowed = Math.Min(allowed, Under(dip, Math.Max(s.Vertical, 0.0)));
             }
+            if (allowed < CruiseMs) allowed = Math.Min(allowed * Tune.PaceAt(s.S / _route.LengthM), CruiseMs);
             limit[i] = s.S >= _stopAt - ArriveOverM ? ArriveMs : Math.Max(allowed, CrawlMs);
         }
 
@@ -284,7 +383,7 @@ internal sealed class Autopilot
         // have: into a bend the braking is done before the turn is. The car is taken to be the brake's
         // gap over the speed it is braked to. Twice round a closed route, so the bend after the line
         // slows the straight before it.
-        double brakes = Pushed(BrakeShare, 0.92) * _profile.BrakeG * _gravity;
+        double brakes = Pushed(Tune.BrakeShare, 0.92) * _profile.BrakeG * _gravity;
         int last = limit.Length - 1;
         for (int pass = 0; pass < (_route.Closed ? 2 : 1); pass++)
         {
@@ -297,12 +396,12 @@ internal sealed class Autopilot
                 bool jumps = JumpsAt(s.S);
                 double crest = jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
                 // Through a dip too: the brakes' dive and the dip push the same front springs.
-                bool gently = s.S >= _stopAt - ArriveBrakeOverM || (!jumps && s.Vertical * limit[next] * limit[next] > DipBrakeShare * dip);
+                bool gently = s.S >= _stopAt - ArriveBrakeOverM || (!jumps && s.Vertical * limit[next] * limit[next] > Tune.DipBrakeShare * dip);
                 double most = gently ? Math.Min(brakes, GentleBrakeG * _gravity) : brakes;
                 double from = limit[next];
                 for (int again = 0; again < 2; again++)
                 {
-                    double over = from * (1.0 + BrakeOnShare);
+                    double over = from * (1.0 + Tune.BrakeOnShare);
                     double held = Banked(grip, s) * Math.Max((_gravity * level) + ((wings - crest) * over * over), 0.0);
                     double turning = over * over * Math.Abs(s.Curvature);
                     double spare = Math.Sqrt(Math.Max((held * held) - (turning * turning), 0.0));
@@ -410,7 +509,7 @@ internal sealed class Autopilot
         Route.Sample here = _route.Samples[_index];
         double progress = (_summary.Laps * _route.LengthM) + s;
 
-        double reach = Math.Clamp(LookAheadSeconds * rolling, Math.Max(1.5 * _wheelbase, LeastLookAheadM), MostLookAheadM);
+        double reach = Math.Clamp(Tune.LookAheadSeconds * rolling, Math.Max(1.5 * _wheelbase, Tune.LeastLookAheadM), Tune.MostLookAheadM);
         reach = Math.Max(reach, 3.0 * rolling * dt);
         double3 to = Vec.RejectFrom(_route.Ahead(_index, s, reach) - rear, radial);
         double3 nose = Vec.Unit(Vec.RejectFrom(ahead, radial));
@@ -429,7 +528,7 @@ internal sealed class Autopilot
         // a sample at a time the last few metres of a stop are steps of a metre a second and more,
         // each of them the brake held on until the nose is down.
         double wanted = Between(limit, _index, s - here.S);
-        double toGo = (s - here.S) + (Math.Abs(rolling) * (dt + BrakeLeadSeconds));
+        double toGo = (s - here.S) + (Math.Abs(rolling) * (dt + Tune.BrakeLeadSeconds));
         for (int i = _index, guard = 0; guard < limit.Length; guard++)
         {
             int next = i + 1 < limit.Length ? i + 1 : _route.Closed ? 0 : i;
@@ -458,13 +557,15 @@ internal sealed class Autopilot
         }
         else if (_braking)
         {
-            if (rolling <= wanted + BrakeOffMs || rolling < LeastBrakeMs) Brake(false);
+            if (rolling <= wanted + Tune.BrakeOffMs || rolling < LeastBrakeMs) Brake(false);
         }
-        else if (rolling > wanted + Math.Max(BrakeOnMs, BrakeOnShare * wanted) && rolling > LeastBrakeMs)
+        else if (rolling > wanted + Math.Max(Tune.BrakeOnMs, Tune.BrakeOnShare * wanted) && rolling > LeastBrakeMs)
         {
             Brake(true);
         }
-        double throttle = _braking ? -1.0 : Math.Clamp((wanted - rolling) / FullThrottleUnderMs, 0.0, 1.0);
+        // With a band, the brake is pressed by how far over the speed wanted the car is, and all of it only that far over.
+        double pressed = Tune.BrakeBandMs > 0.0 ? Math.Clamp((rolling - wanted) / Tune.BrakeBandMs, Tune.LeastBrake, 1.0) : 1.0;
+        double throttle = _braking ? -pressed : Math.Clamp((wanted - rolling) / Tune.FullThrottleUnderMs, 0.0, 1.0);
 
         int grounded = 0, onGround = 0, offAsphalt = 0, off = 0;
         for (int i = 0; i < corners.Length && i < hubs.Length && i < hubHeights.Length; i++)

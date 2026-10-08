@@ -1,0 +1,3852 @@
+{
+ "best": {
+  "grip_share": 1.151223727953603,
+  "brake_share": 1.0845513990078781,
+  "tip_share": 0.8911386500692855,
+  "crest_share": 0.7846651169000063,
+  "dip_share": 0.27640492617598156,
+  "look_ahead_seconds": 0.4658985106789071,
+  "least_look_ahead_m": 8.485568680930319,
+  "brake_on_ms": 0.7681548606848033,
+  "brake_on_share": 0.052253915387826796,
+  "brake_off_ms": 0.475435480570155,
+  "brake_lead_seconds": 0.07592865401030229,
+  "full_throttle_under_ms": 0.2,
+  "dip_brake_share": 0.36001314771487997,
+  "inside_m": 1.0031125674964128,
+  "brake_band_ms": 0.0,
+  "least_brake": 0.14253616972304609,
+  "pace_00": 1.2886083057524242,
+  "pace_01": 1.0488885720853922,
+  "pace_02": 0.8969396604527056,
+  "pace_03": 0.989082649553069,
+  "pace_04": 1.0961440899857446,
+  "pace_05": 1.0563986906156126,
+  "pace_06": 1.112346339031081,
+  "pace_07": 1.1774119785198582,
+  "pace_08": 0.9072161960164418,
+  "pace_09": 0.9751459949054392,
+  "pace_10": 0.9944377039322951,
+  "pace_11": 1.0406090415968094,
+  "pace_12": 1.0899597656764868,
+  "pace_13": 0.9949203850157752,
+  "pace_14": 1.0469107189559412,
+  "pace_15": 0.986774542623548,
+  "pace_16": 0.9831772367136561,
+  "pace_17": 1.2364877648160246,
+  "pace_18": 1.169380326300378,
+  "pace_19": 1.020101562937927,
+  "pace_20": 1.339426731088851,
+  "pace_21": 1.1135093031485646,
+  "pace_22": 1.0708542064054667,
+  "pace_23": 1.0388798031558302,
+  "nudge_00": -0.003802774762152407,
+  "nudge_01": 0.0,
+  "nudge_02": 0.0,
+  "nudge_03": 0.0,
+  "nudge_04": -0.1887173763080947,
+  "nudge_05": -0.05770303593937927,
+  "nudge_06": 0.10785251331067887,
+  "nudge_07": 0.0,
+  "nudge_08": 0.0,
+  "nudge_09": 0.0,
+  "nudge_10": 0.0,
+  "nudge_11": -0.004716748759971859,
+  "nudge_12": 0.0,
+  "nudge_13": 0.0,
+  "nudge_14": -0.21878533148424528,
+  "nudge_15": 0.0,
+  "nudge_16": 0.0,
+  "nudge_17": 0.0,
+  "nudge_18": -0.021823329659304933,
+  "nudge_19": 0.0,
+  "nudge_20": 0.0,
+  "nudge_21": 0.0,
+  "nudge_22": 0.0,
+  "nudge_23": 0.0
+ },
+ "time": 35.242,
+ "rounds": [
+  {
+   "round": 1,
+   "best_of_round": 38.925,
+   "faults": 1,
+   "time": 38.925,
+   "spread": 0.12
+  },
+  {
+   "round": 2,
+   "best_of_round": 38.604,
+   "faults": 3,
+   "time": 38.604,
+   "spread": 0.04568136734450974
+  },
+  {
+   "round": 3,
+   "best_of_round": 38.338,
+   "faults": 5,
+   "time": 38.338,
+   "spread": 0.2173736794233376
+  },
+  {
+   "round": 4,
+   "best_of_round": 38.188,
+   "faults": 4,
+   "time": 38.188,
+   "spread": 0.04137469541985493
+  },
+  {
+   "round": 5,
+   "best_of_round": 36.953,
+   "faults": 2,
+   "time": 36.953,
+   "spread": 0.09844024272091655
+  },
+  {
+   "round": 6,
+   "best_of_round": 36.653,
+   "faults": 14,
+   "time": 36.653,
+   "spread": 0.0936851018586852
+  },
+  {
+   "round": 7,
+   "best_of_round": 36.595,
+   "faults": 11,
+   "time": 36.595,
+   "spread": 0.0891596573482169
+  },
+  {
+   "round": 8,
+   "best_of_round": 36.492,
+   "faults": 14,
+   "time": 36.492,
+   "spread": 0.08485281374238571
+  },
+  {
+   "round": 9,
+   "best_of_round": 36.336,
+   "faults": 16,
+   "time": 36.336,
+   "spread": 0.03230160462317654
+  },
+  {
+   "round": 10,
+   "best_of_round": 36.257,
+   "faults": 10,
+   "time": 36.257,
+   "spread": 0.07685320138585636
+  },
+  {
+   "round": 11,
+   "best_of_round": 36.257,
+   "faults": 17,
+   "time": 36.257,
+   "spread": 0.07314081925226852
+  },
+  {
+   "round": 12,
+   "best_of_round": 36.116,
+   "faults": 17,
+   "time": 36.116,
+   "spread": 0.06960776316960976
+  },
+  {
+   "round": 13,
+   "best_of_round": 36.163,
+   "faults": 17,
+   "time": 36.116,
+   "spread": 0.06624537082042875
+  },
+  {
+   "round": 14,
+   "best_of_round": 36.195,
+   "faults": 21,
+   "time": 36.116,
+   "spread": 0.06304539831919316
+  },
+  {
+   "round": 15,
+   "best_of_round": 36.104,
+   "faults": 15,
+   "time": 36.104,
+   "spread": 0.06
+  },
+  {
+   "round": 16,
+   "best_of_round": 36.096,
+   "faults": 11,
+   "time": 36.096,
+   "spread": 0.02284068367225487
+  },
+  {
+   "round": 17,
+   "best_of_round": 36.057,
+   "faults": 15,
+   "time": 36.057,
+   "spread": 0.0543434198558344
+  },
+  {
+   "round": 18,
+   "best_of_round": 36.045,
+   "faults": 20,
+   "time": 36.045,
+   "spread": 0.10343673854963734
+  },
+  {
+   "round": 19,
+   "best_of_round": 36.045,
+   "faults": 18,
+   "time": 36.045,
+   "spread": 0.049220121360458266
+  },
+  {
+   "round": 20,
+   "best_of_round": 36.057,
+   "faults": 18,
+   "time": 36.045,
+   "spread": 0.01873702037173704
+  },
+  {
+   "round": 21,
+   "best_of_round": 36.028,
+   "faults": 22,
+   "time": 36.028,
+   "spread": 0.04457982867410845
+  },
+  {
+   "round": 22,
+   "best_of_round": 36.028,
+   "faults": 13,
+   "time": 36.028,
+   "spread": 0.08485281374238571
+  },
+  {
+   "round": 23,
+   "best_of_round": 36.028,
+   "faults": 16,
+   "time": 36.028,
+   "spread": 0.04037700577897068
+  },
+  {
+   "round": 24,
+   "best_of_round": 36.107,
+   "faults": 18,
+   "time": 36.028,
+   "spread": 0.07685320138585636
+  },
+  {
+   "round": 25,
+   "best_of_round": 36.028,
+   "faults": 11,
+   "time": 36.028,
+   "spread": 0.014628163850453707
+  },
+  {
+   "round": 26,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.03480388158480488
+  },
+  {
+   "round": 27,
+   "best_of_round": 36.026,
+   "faults": 18,
+   "time": 36.026,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 28,
+   "best_of_round": 36.026,
+   "faults": 10,
+   "time": 36.026,
+   "spread": 0.012609079663838632
+  },
+  {
+   "round": 29,
+   "best_of_round": 36.026,
+   "faults": 12,
+   "time": 36.026,
+   "spread": 0.012
+  },
+  {
+   "round": 30,
+   "best_of_round": 36.026,
+   "faults": 10,
+   "time": 36.026,
+   "spread": 0.011420341836127433
+  },
+  {
+   "round": 31,
+   "best_of_round": 36.026,
+   "faults": 16,
+   "time": 36.026,
+   "spread": 0.0271717099279172
+  },
+  {
+   "round": 32,
+   "best_of_round": 36.026,
+   "faults": 12,
+   "time": 36.026,
+   "spread": 0.010343673854963731
+  },
+  {
+   "round": 33,
+   "best_of_round": 36.057,
+   "faults": 15,
+   "time": 36.026,
+   "spread": 0.024610060680229136
+  },
+  {
+   "round": 34,
+   "best_of_round": 36.026,
+   "faults": 15,
+   "time": 36.026,
+   "spread": 0.0468425509293426
+  },
+  {
+   "round": 35,
+   "best_of_round": 36.026,
+   "faults": 11,
+   "time": 36.026,
+   "spread": 0.02228991433705423
+  },
+  {
+   "round": 36,
+   "best_of_round": 36.026,
+   "faults": 18,
+   "time": 36.026,
+   "spread": 0.042426406871192854
+  },
+  {
+   "round": 37,
+   "best_of_round": 36.026,
+   "faults": 18,
+   "time": 36.026,
+   "spread": 0.02018850288948534
+  },
+  {
+   "round": 38,
+   "best_of_round": 36.026,
+   "faults": 17,
+   "time": 36.026,
+   "spread": 0.01921330034646409
+  },
+  {
+   "round": 39,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.01828520481306713
+  },
+  {
+   "round": 40,
+   "best_of_round": 36.026,
+   "faults": 13,
+   "time": 36.026,
+   "spread": 0.017401940792402443
+  },
+  {
+   "round": 41,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 42,
+   "best_of_round": 36.026,
+   "faults": 11,
+   "time": 36.026,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 43,
+   "best_of_round": 36.026,
+   "faults": 6,
+   "time": 36.026,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 44,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 45,
+   "best_of_round": 36.026,
+   "faults": 9,
+   "time": 36.026,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 46,
+   "best_of_round": 36.026,
+   "faults": 13,
+   "time": 36.026,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 47,
+   "best_of_round": 36.026,
+   "faults": 17,
+   "time": 36.026,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 48,
+   "best_of_round": 36.026,
+   "faults": 10,
+   "time": 36.026,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 49,
+   "best_of_round": 36.026,
+   "faults": 10,
+   "time": 36.026,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 50,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 51,
+   "best_of_round": 36.006,
+   "faults": 13,
+   "time": 36.006,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 52,
+   "best_of_round": 35.974,
+   "faults": 16,
+   "time": 35.974,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 53,
+   "best_of_round": 35.974,
+   "faults": 18,
+   "time": 35.974,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 54,
+   "best_of_round": 35.974,
+   "faults": 9,
+   "time": 35.974,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 55,
+   "best_of_round": 36.075,
+   "faults": 15,
+   "time": 35.974,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 56,
+   "best_of_round": 35.974,
+   "faults": 14,
+   "time": 35.974,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 57,
+   "best_of_round": 35.974,
+   "faults": 12,
+   "time": 35.974,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 58,
+   "best_of_round": 35.974,
+   "faults": 16,
+   "time": 35.974,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 59,
+   "best_of_round": 35.974,
+   "faults": 13,
+   "time": 35.974,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 60,
+   "best_of_round": 35.974,
+   "faults": 7,
+   "time": 35.974,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 61,
+   "best_of_round": 35.974,
+   "faults": 13,
+   "time": 35.974,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 62,
+   "best_of_round": 35.974,
+   "faults": 9,
+   "time": 35.974,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 63,
+   "best_of_round": 35.974,
+   "faults": 10,
+   "time": 35.974,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 64,
+   "best_of_round": 36.637,
+   "faults": 8,
+   "time": 36.637,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 65,
+   "best_of_round": 36.614,
+   "faults": 20,
+   "time": 36.614,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 66,
+   "best_of_round": 36.582,
+   "faults": 15,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 67,
+   "best_of_round": 36.604,
+   "faults": 18,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 68,
+   "best_of_round": 36.627,
+   "faults": 15,
+   "time": 36.582,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 69,
+   "best_of_round": 36.614,
+   "faults": 20,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 70,
+   "best_of_round": 36.582,
+   "faults": 14,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 71,
+   "best_of_round": 36.582,
+   "faults": 21,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 72,
+   "best_of_round": 36.582,
+   "faults": 18,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 73,
+   "best_of_round": 36.582,
+   "faults": 10,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 74,
+   "best_of_round": 36.582,
+   "faults": 14,
+   "time": 36.582,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 75,
+   "best_of_round": 36.582,
+   "faults": 19,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 76,
+   "best_of_round": 36.582,
+   "faults": 17,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 77,
+   "best_of_round": 36.582,
+   "faults": 20,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 78,
+   "best_of_round": 36.582,
+   "faults": 18,
+   "time": 36.582,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 79,
+   "best_of_round": 36.582,
+   "faults": 14,
+   "time": 36.582,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 80,
+   "best_of_round": 36.6,
+   "faults": 19,
+   "time": 36.582,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 81,
+   "best_of_round": 36.582,
+   "faults": 17,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 82,
+   "best_of_round": 36.582,
+   "faults": 20,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 83,
+   "best_of_round": 36.582,
+   "faults": 15,
+   "time": 36.582,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 84,
+   "best_of_round": 36.582,
+   "faults": 17,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 85,
+   "best_of_round": 36.582,
+   "faults": 17,
+   "time": 36.582,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 86,
+   "best_of_round": 36.572,
+   "faults": 13,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 87,
+   "best_of_round": 36.572,
+   "faults": 18,
+   "time": 36.572,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 88,
+   "best_of_round": 36.572,
+   "faults": 19,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 89,
+   "best_of_round": 36.572,
+   "faults": 13,
+   "time": 36.572,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 90,
+   "best_of_round": 36.572,
+   "faults": 12,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 91,
+   "best_of_round": 36.572,
+   "faults": 20,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 92,
+   "best_of_round": 36.572,
+   "faults": 16,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 93,
+   "best_of_round": 36.572,
+   "faults": 15,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 94,
+   "best_of_round": 36.572,
+   "faults": 11,
+   "time": 36.572,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 95,
+   "best_of_round": 36.572,
+   "faults": 17,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 96,
+   "best_of_round": 36.572,
+   "faults": 15,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 97,
+   "best_of_round": 36.572,
+   "faults": 14,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 98,
+   "best_of_round": 36.572,
+   "faults": 16,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 99,
+   "best_of_round": 36.572,
+   "faults": 12,
+   "time": 36.572,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 100,
+   "best_of_round": 36.572,
+   "faults": 16,
+   "time": 36.572,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 101,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 102,
+   "best_of_round": 36.549,
+   "faults": 14,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 103,
+   "best_of_round": 36.549,
+   "faults": 13,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 104,
+   "best_of_round": 36.549,
+   "faults": 20,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 105,
+   "best_of_round": 36.549,
+   "faults": 15,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 106,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 107,
+   "best_of_round": 36.549,
+   "faults": 20,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 108,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 109,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 110,
+   "best_of_round": 36.549,
+   "faults": 14,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 111,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 112,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 113,
+   "best_of_round": 36.549,
+   "faults": 14,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 114,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 115,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 116,
+   "best_of_round": 36.614,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 117,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 118,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 119,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 120,
+   "best_of_round": 36.549,
+   "faults": 18,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 121,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 122,
+   "best_of_round": 36.549,
+   "faults": 18,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 123,
+   "best_of_round": 36.549,
+   "faults": 15,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 124,
+   "best_of_round": 36.549,
+   "faults": 18,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 125,
+   "best_of_round": 36.549,
+   "faults": 13,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 126,
+   "best_of_round": 36.549,
+   "faults": 13,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 127,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 128,
+   "best_of_round": 36.549,
+   "faults": 16,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 129,
+   "best_of_round": 36.549,
+   "faults": 18,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 130,
+   "best_of_round": 36.549,
+   "faults": 11,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 131,
+   "best_of_round": 36.549,
+   "faults": 12,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 132,
+   "best_of_round": 36.549,
+   "faults": 18,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 133,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 134,
+   "best_of_round": 36.549,
+   "faults": 13,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 135,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 136,
+   "best_of_round": 36.549,
+   "faults": 22,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 137,
+   "best_of_round": 36.549,
+   "faults": 18,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 138,
+   "best_of_round": 36.549,
+   "faults": 14,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 139,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 140,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 141,
+   "best_of_round": 36.549,
+   "faults": 12,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 142,
+   "best_of_round": 36.549,
+   "faults": 17,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 143,
+   "best_of_round": 36.549,
+   "faults": 11,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 144,
+   "best_of_round": 36.549,
+   "faults": 12,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 145,
+   "best_of_round": 36.549,
+   "faults": 21,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 146,
+   "best_of_round": 36.549,
+   "faults": 14,
+   "time": 36.549,
+   "spread": 0.006624537082042874
+  },
+  {
+   "round": 147,
+   "best_of_round": 36.549,
+   "faults": 21,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 148,
+   "best_of_round": 36.549,
+   "faults": 15,
+   "time": 36.549,
+   "spread": 0.016561342705107184
+  },
+  {
+   "round": 149,
+   "best_of_round": 36.582,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 150,
+   "best_of_round": 36.572,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 151,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 152,
+   "best_of_round": 36.549,
+   "faults": 19,
+   "time": 36.549,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 153,
+   "best_of_round": 36.522,
+   "faults": 19,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 154,
+   "best_of_round": 36.522,
+   "faults": 23,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 155,
+   "best_of_round": 36.522,
+   "faults": 19,
+   "time": 36.522,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 156,
+   "best_of_round": 36.522,
+   "faults": 22,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 157,
+   "best_of_round": 36.522,
+   "faults": 24,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 158,
+   "best_of_round": 36.522,
+   "faults": 22,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 159,
+   "best_of_round": 36.522,
+   "faults": 16,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 160,
+   "best_of_round": 36.522,
+   "faults": 22,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 161,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 162,
+   "best_of_round": 36.522,
+   "faults": 22,
+   "time": 36.522,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 163,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 164,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 165,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 166,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 167,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 168,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 169,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 170,
+   "best_of_round": 36.522,
+   "faults": 19,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 171,
+   "best_of_round": 36.522,
+   "faults": 23,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 172,
+   "best_of_round": 36.522,
+   "faults": 24,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 173,
+   "best_of_round": 36.522,
+   "faults": 24,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 174,
+   "best_of_round": 36.522,
+   "faults": 26,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 175,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 176,
+   "best_of_round": 36.522,
+   "faults": 24,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 177,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 178,
+   "best_of_round": 36.522,
+   "faults": 24,
+   "time": 36.522,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 179,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 180,
+   "best_of_round": 36.522,
+   "faults": 24,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 181,
+   "best_of_round": 36.522,
+   "faults": 23,
+   "time": 36.522,
+   "spread": 0.03312268541021437
+  },
+  {
+   "round": 182,
+   "best_of_round": 36.522,
+   "faults": 18,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 183,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 184,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.16561342705107182
+  },
+  {
+   "round": 185,
+   "best_of_round": 36.522,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 186,
+   "best_of_round": 36.522,
+   "faults": 18,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 187,
+   "best_of_round": 36.522,
+   "faults": 19,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 188,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.08280671352553591
+  },
+  {
+   "round": 189,
+   "best_of_round": 36.522,
+   "faults": 21,
+   "time": 36.522,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 190,
+   "best_of_round": 36.571,
+   "faults": 25,
+   "time": 36.522,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 191,
+   "best_of_round": 36.522,
+   "faults": 23,
+   "time": 36.522,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 192,
+   "best_of_round": 36.571,
+   "faults": 20,
+   "time": 36.522,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 193,
+   "best_of_round": 36.522,
+   "faults": 18,
+   "time": 36.522,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 194,
+   "best_of_round": 36.509,
+   "faults": 19,
+   "time": 36.509,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 195,
+   "best_of_round": 36.439,
+   "faults": 24,
+   "time": 36.439,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 196,
+   "best_of_round": 36.439,
+   "faults": 23,
+   "time": 36.439,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 197,
+   "best_of_round": 36.359,
+   "faults": 20,
+   "time": 36.359,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 198,
+   "best_of_round": 36.251,
+   "faults": 16,
+   "time": 36.251,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 199,
+   "best_of_round": 36.251,
+   "faults": 16,
+   "time": 36.251,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 200,
+   "best_of_round": 36.251,
+   "faults": 16,
+   "time": 36.251,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 201,
+   "best_of_round": 36.225,
+   "faults": 18,
+   "time": 36.225,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 202,
+   "best_of_round": 36.225,
+   "faults": 21,
+   "time": 36.225,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 203,
+   "best_of_round": 36.225,
+   "faults": 16,
+   "time": 36.225,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 204,
+   "best_of_round": 36.208,
+   "faults": 15,
+   "time": 36.208,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 205,
+   "best_of_round": 36.189,
+   "faults": 15,
+   "time": 36.189,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 206,
+   "best_of_round": 36.189,
+   "faults": 9,
+   "time": 36.189,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 207,
+   "best_of_round": 36.16,
+   "faults": 9,
+   "time": 36.16,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 208,
+   "best_of_round": 36.16,
+   "faults": 12,
+   "time": 36.16,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 209,
+   "best_of_round": 36.16,
+   "faults": 14,
+   "time": 36.16,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 210,
+   "best_of_round": 36.16,
+   "faults": 13,
+   "time": 36.16,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 211,
+   "best_of_round": 36.075,
+   "faults": 8,
+   "time": 36.075,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 212,
+   "best_of_round": 36.075,
+   "faults": 16,
+   "time": 36.075,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 213,
+   "best_of_round": 36.026,
+   "faults": 17,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 214,
+   "best_of_round": 36.028,
+   "faults": 18,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 215,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 216,
+   "best_of_round": 36.026,
+   "faults": 17,
+   "time": 36.026,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 217,
+   "best_of_round": 36.026,
+   "faults": 20,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 218,
+   "best_of_round": 36.026,
+   "faults": 18,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 219,
+   "best_of_round": 36.026,
+   "faults": 13,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 220,
+   "best_of_round": 36.026,
+   "faults": 17,
+   "time": 36.026,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 221,
+   "best_of_round": 36.026,
+   "faults": 14,
+   "time": 36.026,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 222,
+   "best_of_round": 35.991,
+   "faults": 18,
+   "time": 35.991,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 223,
+   "best_of_round": 35.991,
+   "faults": 17,
+   "time": 35.991,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 224,
+   "best_of_round": 35.899,
+   "faults": 20,
+   "time": 35.899,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 225,
+   "best_of_round": 35.867,
+   "faults": 14,
+   "time": 35.867,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 226,
+   "best_of_round": 35.867,
+   "faults": 18,
+   "time": 35.867,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 227,
+   "best_of_round": 35.867,
+   "faults": 14,
+   "time": 35.867,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 228,
+   "best_of_round": 35.867,
+   "faults": 17,
+   "time": 35.867,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 229,
+   "best_of_round": 35.867,
+   "faults": 15,
+   "time": 35.867,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 230,
+   "best_of_round": 35.857,
+   "faults": 20,
+   "time": 35.857,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 231,
+   "best_of_round": 35.801,
+   "faults": 22,
+   "time": 35.801,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 232,
+   "best_of_round": 35.801,
+   "faults": 23,
+   "time": 35.801,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 233,
+   "best_of_round": 35.781,
+   "faults": 18,
+   "time": 35.781,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 234,
+   "best_of_round": 35.781,
+   "faults": 20,
+   "time": 35.781,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 235,
+   "best_of_round": 35.781,
+   "faults": 18,
+   "time": 35.781,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 236,
+   "best_of_round": 35.781,
+   "faults": 22,
+   "time": 35.781,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 237,
+   "best_of_round": 35.774,
+   "faults": 15,
+   "time": 35.774,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 238,
+   "best_of_round": 35.698,
+   "faults": 20,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 239,
+   "best_of_round": 35.698,
+   "faults": 20,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 240,
+   "best_of_round": 35.698,
+   "faults": 20,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 241,
+   "best_of_round": 35.698,
+   "faults": 19,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 242,
+   "best_of_round": 35.698,
+   "faults": 22,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 243,
+   "best_of_round": 35.698,
+   "faults": 19,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 244,
+   "best_of_round": 35.823,
+   "faults": 25,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 245,
+   "best_of_round": 35.698,
+   "faults": 16,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 246,
+   "best_of_round": 35.698,
+   "faults": 18,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 247,
+   "best_of_round": 35.825,
+   "faults": 26,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 248,
+   "best_of_round": 35.698,
+   "faults": 21,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 249,
+   "best_of_round": 35.698,
+   "faults": 20,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 250,
+   "best_of_round": 35.698,
+   "faults": 23,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 251,
+   "best_of_round": 35.698,
+   "faults": 22,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 252,
+   "best_of_round": 35.698,
+   "faults": 21,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 253,
+   "best_of_round": 35.698,
+   "faults": 24,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 254,
+   "best_of_round": 35.698,
+   "faults": 23,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 255,
+   "best_of_round": 35.698,
+   "faults": 18,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 256,
+   "best_of_round": 35.698,
+   "faults": 22,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 257,
+   "best_of_round": 35.789,
+   "faults": 19,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 258,
+   "best_of_round": 35.698,
+   "faults": 22,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 259,
+   "best_of_round": 35.698,
+   "faults": 24,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 260,
+   "best_of_round": 35.698,
+   "faults": 18,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 261,
+   "best_of_round": 35.698,
+   "faults": 20,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 262,
+   "best_of_round": 35.698,
+   "faults": 19,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 263,
+   "best_of_round": 35.698,
+   "faults": 19,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 264,
+   "best_of_round": 35.698,
+   "faults": 20,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 265,
+   "best_of_round": 35.698,
+   "faults": 17,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 266,
+   "best_of_round": 35.698,
+   "faults": 23,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 267,
+   "best_of_round": 35.698,
+   "faults": 22,
+   "time": 35.698,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 268,
+   "best_of_round": 35.698,
+   "faults": 21,
+   "time": 35.698,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 269,
+   "best_of_round": 35.698,
+   "faults": 21,
+   "time": 35.698,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 270,
+   "best_of_round": 35.559,
+   "faults": 20,
+   "time": 35.559,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 271,
+   "best_of_round": 35.559,
+   "faults": 18,
+   "time": 35.559,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 272,
+   "best_of_round": 35.504,
+   "faults": 13,
+   "time": 35.504,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 273,
+   "best_of_round": 35.504,
+   "faults": 12,
+   "time": 35.504,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 274,
+   "best_of_round": 35.504,
+   "faults": 18,
+   "time": 35.504,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 275,
+   "best_of_round": 35.504,
+   "faults": 11,
+   "time": 35.504,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 276,
+   "best_of_round": 35.504,
+   "faults": 17,
+   "time": 35.504,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 277,
+   "best_of_round": 35.504,
+   "faults": 17,
+   "time": 35.504,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 278,
+   "best_of_round": 35.504,
+   "faults": 17,
+   "time": 35.504,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 279,
+   "best_of_round": 35.504,
+   "faults": 17,
+   "time": 35.504,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 280,
+   "best_of_round": 35.504,
+   "faults": 16,
+   "time": 35.504,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 281,
+   "best_of_round": 35.504,
+   "faults": 17,
+   "time": 35.504,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 282,
+   "best_of_round": 35.504,
+   "faults": 16,
+   "time": 35.504,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 283,
+   "best_of_round": 35.504,
+   "faults": 14,
+   "time": 35.504,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 284,
+   "best_of_round": 35.482,
+   "faults": 18,
+   "time": 35.482,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 285,
+   "best_of_round": 35.482,
+   "faults": 17,
+   "time": 35.482,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 286,
+   "best_of_round": 35.436,
+   "faults": 15,
+   "time": 35.436,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 287,
+   "best_of_round": 35.436,
+   "faults": 16,
+   "time": 35.436,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 288,
+   "best_of_round": 35.436,
+   "faults": 15,
+   "time": 35.436,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 289,
+   "best_of_round": 35.436,
+   "faults": 20,
+   "time": 35.436,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 290,
+   "best_of_round": 35.436,
+   "faults": 19,
+   "time": 35.436,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 291,
+   "best_of_round": 35.436,
+   "faults": 20,
+   "time": 35.436,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 292,
+   "best_of_round": 35.436,
+   "faults": 23,
+   "time": 35.436,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 293,
+   "best_of_round": 35.436,
+   "faults": 14,
+   "time": 35.436,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 294,
+   "best_of_round": 35.436,
+   "faults": 14,
+   "time": 35.436,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 295,
+   "best_of_round": 35.436,
+   "faults": 18,
+   "time": 35.436,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 296,
+   "best_of_round": 35.436,
+   "faults": 19,
+   "time": 35.436,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 297,
+   "best_of_round": 35.436,
+   "faults": 20,
+   "time": 35.436,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 298,
+   "best_of_round": 35.418,
+   "faults": 14,
+   "time": 35.418,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 299,
+   "best_of_round": 35.418,
+   "faults": 16,
+   "time": 35.418,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 300,
+   "best_of_round": 35.418,
+   "faults": 17,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 301,
+   "best_of_round": 35.418,
+   "faults": 17,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 302,
+   "best_of_round": 35.418,
+   "faults": 14,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 303,
+   "best_of_round": 35.418,
+   "faults": 14,
+   "time": 35.418,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 304,
+   "best_of_round": 35.418,
+   "faults": 22,
+   "time": 35.418,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 305,
+   "best_of_round": 35.418,
+   "faults": 12,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 306,
+   "best_of_round": 35.418,
+   "faults": 23,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 307,
+   "best_of_round": 35.418,
+   "faults": 16,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 308,
+   "best_of_round": 35.432,
+   "faults": 22,
+   "time": 35.418,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 309,
+   "best_of_round": 35.418,
+   "faults": 22,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 310,
+   "best_of_round": 35.418,
+   "faults": 20,
+   "time": 35.418,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 311,
+   "best_of_round": 35.418,
+   "faults": 18,
+   "time": 35.418,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 312,
+   "best_of_round": 35.418,
+   "faults": 18,
+   "time": 35.418,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 313,
+   "best_of_round": 35.418,
+   "faults": 16,
+   "time": 35.418,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 314,
+   "best_of_round": 35.418,
+   "faults": 18,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 315,
+   "best_of_round": 35.418,
+   "faults": 24,
+   "time": 35.418,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 316,
+   "best_of_round": 35.402,
+   "faults": 19,
+   "time": 35.402,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 317,
+   "best_of_round": 35.371,
+   "faults": 19,
+   "time": 35.371,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 318,
+   "best_of_round": 35.371,
+   "faults": 25,
+   "time": 35.371,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 319,
+   "best_of_round": 35.371,
+   "faults": 21,
+   "time": 35.371,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 320,
+   "best_of_round": 35.371,
+   "faults": 20,
+   "time": 35.371,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 321,
+   "best_of_round": 35.4,
+   "faults": 24,
+   "time": 35.371,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 322,
+   "best_of_round": 35.371,
+   "faults": 16,
+   "time": 35.371,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 323,
+   "best_of_round": 35.371,
+   "faults": 18,
+   "time": 35.371,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 324,
+   "best_of_round": 35.348,
+   "faults": 21,
+   "time": 35.348,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 325,
+   "best_of_round": 35.348,
+   "faults": 23,
+   "time": 35.348,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 326,
+   "best_of_round": 35.348,
+   "faults": 25,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 327,
+   "best_of_round": 35.348,
+   "faults": 20,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 328,
+   "best_of_round": 35.348,
+   "faults": 21,
+   "time": 35.348,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 329,
+   "best_of_round": 35.348,
+   "faults": 21,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 330,
+   "best_of_round": 35.348,
+   "faults": 22,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 331,
+   "best_of_round": 35.348,
+   "faults": 18,
+   "time": 35.348,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 332,
+   "best_of_round": null,
+   "faults": 28,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 333,
+   "best_of_round": 35.348,
+   "faults": 24,
+   "time": 35.348,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 334,
+   "best_of_round": 35.348,
+   "faults": 24,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 335,
+   "best_of_round": 35.348,
+   "faults": 21,
+   "time": 35.348,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 336,
+   "best_of_round": 35.348,
+   "faults": 25,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 337,
+   "best_of_round": 35.348,
+   "faults": 17,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 338,
+   "best_of_round": 35.348,
+   "faults": 21,
+   "time": 35.348,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 339,
+   "best_of_round": 35.348,
+   "faults": 24,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 340,
+   "best_of_round": 35.348,
+   "faults": 19,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 341,
+   "best_of_round": 35.348,
+   "faults": 25,
+   "time": 35.348,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 342,
+   "best_of_round": 35.348,
+   "faults": 19,
+   "time": 35.348,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 343,
+   "best_of_round": 35.348,
+   "faults": 24,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 344,
+   "best_of_round": 35.348,
+   "faults": 21,
+   "time": 35.348,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 345,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 346,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 347,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 348,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 349,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 350,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 351,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 352,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 353,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 354,
+   "best_of_round": 35.377,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 355,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 356,
+   "best_of_round": 35.347,
+   "faults": 27,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 357,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 358,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 359,
+   "best_of_round": 35.347,
+   "faults": 18,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 360,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 361,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 362,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 363,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 364,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 365,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 366,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 367,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 368,
+   "best_of_round": 35.347,
+   "faults": 19,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 369,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 370,
+   "best_of_round": 35.347,
+   "faults": 19,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 371,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 372,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 373,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 374,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 375,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 376,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 377,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 378,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 379,
+   "best_of_round": 35.347,
+   "faults": 26,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 380,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 381,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 382,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 383,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 384,
+   "best_of_round": 35.347,
+   "faults": 18,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 385,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 386,
+   "best_of_round": 35.347,
+   "faults": 19,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 387,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 388,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 389,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 390,
+   "best_of_round": 35.347,
+   "faults": 20,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 391,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 392,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 393,
+   "best_of_round": 35.347,
+   "faults": 25,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 394,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 395,
+   "best_of_round": 35.347,
+   "faults": 26,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 396,
+   "best_of_round": 35.347,
+   "faults": 25,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 397,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 398,
+   "best_of_round": 35.427,
+   "faults": 25,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 399,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 400,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 401,
+   "best_of_round": 35.347,
+   "faults": 26,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 402,
+   "best_of_round": 35.347,
+   "faults": 24,
+   "time": 35.347,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 403,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 404,
+   "best_of_round": 35.347,
+   "faults": 22,
+   "time": 35.347,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 405,
+   "best_of_round": 35.347,
+   "faults": 21,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 406,
+   "best_of_round": 35.347,
+   "faults": 23,
+   "time": 35.347,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 407,
+   "best_of_round": 35.277,
+   "faults": 19,
+   "time": 35.277,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 408,
+   "best_of_round": 35.277,
+   "faults": 17,
+   "time": 35.277,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 409,
+   "best_of_round": 35.277,
+   "faults": 18,
+   "time": 35.277,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 410,
+   "best_of_round": 35.277,
+   "faults": 20,
+   "time": 35.277,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 411,
+   "best_of_round": 35.277,
+   "faults": 24,
+   "time": 35.277,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 412,
+   "best_of_round": 35.277,
+   "faults": 20,
+   "time": 35.277,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 413,
+   "best_of_round": 35.269,
+   "faults": 21,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 414,
+   "best_of_round": 35.269,
+   "faults": 18,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 415,
+   "best_of_round": 35.269,
+   "faults": 19,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 416,
+   "best_of_round": 35.269,
+   "faults": 22,
+   "time": 35.269,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 417,
+   "best_of_round": 35.269,
+   "faults": 18,
+   "time": 35.269,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 418,
+   "best_of_round": 35.269,
+   "faults": 18,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 419,
+   "best_of_round": 35.269,
+   "faults": 24,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 420,
+   "best_of_round": 35.269,
+   "faults": 21,
+   "time": 35.269,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 421,
+   "best_of_round": 35.269,
+   "faults": 23,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 422,
+   "best_of_round": 35.325,
+   "faults": 22,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 423,
+   "best_of_round": 35.269,
+   "faults": 18,
+   "time": 35.269,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 424,
+   "best_of_round": 35.269,
+   "faults": 17,
+   "time": 35.269,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 425,
+   "best_of_round": 35.269,
+   "faults": 23,
+   "time": 35.269,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 426,
+   "best_of_round": 35.269,
+   "faults": 20,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 427,
+   "best_of_round": 35.269,
+   "faults": 21,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 428,
+   "best_of_round": 35.269,
+   "faults": 22,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 429,
+   "best_of_round": 35.299,
+   "faults": 22,
+   "time": 35.269,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 430,
+   "best_of_round": 35.269,
+   "faults": 19,
+   "time": 35.269,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 431,
+   "best_of_round": 35.269,
+   "faults": 23,
+   "time": 35.269,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 432,
+   "best_of_round": 35.267,
+   "faults": 23,
+   "time": 35.267,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 433,
+   "best_of_round": 35.267,
+   "faults": 16,
+   "time": 35.267,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 434,
+   "best_of_round": 35.25,
+   "faults": 13,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 435,
+   "best_of_round": 35.25,
+   "faults": 15,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 436,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 437,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 438,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 439,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 440,
+   "best_of_round": 35.298,
+   "faults": 21,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 441,
+   "best_of_round": 35.25,
+   "faults": 20,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 442,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 443,
+   "best_of_round": 35.25,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 444,
+   "best_of_round": 35.25,
+   "faults": 22,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 445,
+   "best_of_round": 35.294,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 446,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 447,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 448,
+   "best_of_round": 35.25,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 449,
+   "best_of_round": 35.25,
+   "faults": 15,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 450,
+   "best_of_round": 35.25,
+   "faults": 12,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 451,
+   "best_of_round": 35.25,
+   "faults": 14,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 452,
+   "best_of_round": 35.25,
+   "faults": 26,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 453,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 454,
+   "best_of_round": 35.25,
+   "faults": 14,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 455,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 456,
+   "best_of_round": 35.267,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 457,
+   "best_of_round": 35.298,
+   "faults": 21,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 458,
+   "best_of_round": 35.25,
+   "faults": 23,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 459,
+   "best_of_round": 35.25,
+   "faults": 20,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 460,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 461,
+   "best_of_round": 35.25,
+   "faults": 15,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 462,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 463,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 464,
+   "best_of_round": 35.325,
+   "faults": 22,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 465,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 466,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 467,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 468,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 469,
+   "best_of_round": 35.25,
+   "faults": 22,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 470,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 471,
+   "best_of_round": 35.277,
+   "faults": 20,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 472,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 473,
+   "best_of_round": 35.25,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 474,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 475,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 476,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 477,
+   "best_of_round": 35.298,
+   "faults": 24,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 478,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 479,
+   "best_of_round": 35.25,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 480,
+   "best_of_round": 35.25,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 481,
+   "best_of_round": 35.347,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 482,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 483,
+   "best_of_round": 35.25,
+   "faults": 16,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 484,
+   "best_of_round": 35.25,
+   "faults": 20,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 485,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 486,
+   "best_of_round": 35.267,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 487,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 488,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 489,
+   "best_of_round": 35.25,
+   "faults": 21,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 490,
+   "best_of_round": 35.25,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 491,
+   "best_of_round": 35.267,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 492,
+   "best_of_round": 35.325,
+   "faults": 18,
+   "time": 35.25,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 493,
+   "best_of_round": 35.25,
+   "faults": 17,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 494,
+   "best_of_round": 35.25,
+   "faults": 22,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 495,
+   "best_of_round": 35.25,
+   "faults": 22,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 496,
+   "best_of_round": 35.294,
+   "faults": 21,
+   "time": 35.25,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 497,
+   "best_of_round": 35.25,
+   "faults": 19,
+   "time": 35.25,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 498,
+   "best_of_round": 35.242,
+   "faults": 21,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 499,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 500,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 501,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 502,
+   "best_of_round": 35.242,
+   "faults": 18,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 503,
+   "best_of_round": 35.242,
+   "faults": 19,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 504,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 505,
+   "best_of_round": 35.536,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 506,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 507,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 508,
+   "best_of_round": 35.242,
+   "faults": 23,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 509,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 510,
+   "best_of_round": 35.242,
+   "faults": 23,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 511,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 512,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 513,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 514,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 515,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 516,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 517,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 518,
+   "best_of_round": 35.242,
+   "faults": 21,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 519,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 520,
+   "best_of_round": 35.266,
+   "faults": 23,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 521,
+   "best_of_round": 35.242,
+   "faults": 26,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 522,
+   "best_of_round": 35.242,
+   "faults": 21,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 523,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 524,
+   "best_of_round": 35.314,
+   "faults": 26,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 525,
+   "best_of_round": 35.297,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 526,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 527,
+   "best_of_round": 35.242,
+   "faults": 23,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 528,
+   "best_of_round": 35.242,
+   "faults": 21,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 529,
+   "best_of_round": 35.242,
+   "faults": 25,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 530,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 531,
+   "best_of_round": 35.242,
+   "faults": 23,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 532,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 533,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 534,
+   "best_of_round": 35.242,
+   "faults": 25,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 535,
+   "best_of_round": 35.242,
+   "faults": 22,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 536,
+   "best_of_round": 35.283,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 537,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.0993680562306431
+  },
+  {
+   "round": 538,
+   "best_of_round": 35.283,
+   "faults": 23,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  },
+  {
+   "round": 539,
+   "best_of_round": 35.242,
+   "faults": 24,
+   "time": 35.242,
+   "spread": 0.04968402811532155
+  },
+  {
+   "round": 540,
+   "best_of_round": 35.242,
+   "faults": 20,
+   "time": 35.242,
+   "spread": 0.01987361124612862
+  }
+ ],
+ "first": 41.595
+}

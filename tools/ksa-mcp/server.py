@@ -277,7 +277,7 @@ TOOLS = {
                 {"craft": {"type": "string"}, "start": {"type": "boolean"}, "status": {"type": "boolean"},
                  "stop": {"type": "boolean"}, "route": {"type": "string"}, "laps": _num("count"), "speed": _num("m/s"),
                  "offset": _num("m left"), "timeout": _num("sim seconds"), "place": {"type": "boolean"},
-                 "rows": {"type": "boolean"}, "jump": {"type": "boolean"}, "racing": {"type": "boolean"}, "push": _num("0..1"), "jump_zones": {"type": "string"}}, [],
+                 "rows": {"type": "boolean"}, "jump": {"type": "boolean"}, "racing": {"type": "boolean"}, "push": _num("0..1"), "jump_zones": {"type": "string"}, "tune": {"type": "string"}, "inside": _num("m")}, [],
                 lambda a: [_text(json.dumps(send("lap", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),

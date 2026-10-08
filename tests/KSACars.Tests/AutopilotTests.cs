@@ -119,7 +119,7 @@ public class AutopilotTests
     internal static Lap Drive(TrackCar car, Track track, Route route, double dt, int laps = 1, double cruise = 0.0,
                               double timeout = 300.0, double after = 0.0, Action<TrackRig, Autopilot>? each = null,
                               double[]? pattern = null, LapRow[]? rows = null, bool jumps = false, double push = 0.0,
-                              IReadOnlyList<(double, double)>? jumpZones = null)
+                              IReadOnlyList<(double, double)>? jumpZones = null, Autopilot.Tuning? tune = null)
     {
         TrackRig rig = new(car, track.World, track.Road);
         (double3 at, _, double3 ahead) = route.Standing(1.5 * BuggyDrive.Wheelbase(car.Profile));
@@ -130,7 +130,7 @@ public class AutopilotTests
         rig.Dt = dt;
         rig.Pattern = pattern;
 
-        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [] };
+        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new() };
         rig.Driver = pilot;
         for (int guard = 0; pilot.End == LapEnd.Running && guard < 2_000_000 && rig.Finite; guard++)
         {

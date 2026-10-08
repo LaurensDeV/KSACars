@@ -98,9 +98,12 @@ internal static class Laps
     /// <param name="racing">Whether the route is the racing line through the roads and not their middle.</param>
     /// <param name="push">How hard it is driven, 0 to 1: <see cref="Autopilot.Push"/>.</param>
     /// <param name="jumpZones">Stretches of the route where a crest is not slowed for.</param>
+    /// <param name="tune">The driver's settings, where they are not its own.</param>
+    /// <param name="insideM">How far inside each edge the racing line keeps, where not the car's own.</param>
     public static bool Start(Vehicle craft, IReadOnlyList<int>? through, int laps, double speedMs, double offsetM, double timeoutSeconds,
                              bool place, bool keepRows, bool jumps, out string why, bool racing = false, double push = 0.0,
-                             IReadOnlyList<(double From, double To)>? jumpZones = null)
+                             IReadOnlyList<(double From, double To)>? jumpZones = null, Autopilot.Tuning? tune = null, double insideM = 0.0,
+                             IReadOnlyList<double>? nudgesM = null)
     {
         if (Buggies.Of(craft) is not { } car)
         {
@@ -109,7 +112,7 @@ internal static class Laps
         }
         BuggyProfile profile = car.Drive.Profile;
         if (Roads.RouteOver(through, offsetM, Autopilot.TurnRadius(profile), out Celestial? body, out RoadSurface? surface, out why,
-                            racing ? Autopilot.RaceInside(profile) : 0.0) is not { } route)
+                            racing ? (insideM > 0.0 ? insideM : Autopilot.RaceInside(profile)) : 0.0, nudgesM) is not { } route)
         {
             return false;
         }
@@ -125,7 +128,7 @@ internal static class Laps
 
         LapRow[]? rows = keepRows ? new LapRow[MostRows] : null;
         Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air, laps, speedMs,
-                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [] };
+                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new() };
 
         if (place)
         {
@@ -284,7 +287,7 @@ internal static class Laps
             ["laps_wanted"] = lap.LapsWanted,
             ["laps"] = s.Laps,
             ["seconds"] = Math.Round(s.Seconds, 2),
-            ["last_lap_s"] = Math.Round(s.LastLapSeconds, 2),
+            ["last_lap_s"] = Math.Round(s.LastLapSeconds, 3),
             ["progress_m"] = Math.Round(s.ProgressM, 1),
             ["distance_m"] = Math.Round(s.DistanceM, 1),
             ["steps"] = s.Steps,

@@ -345,10 +345,18 @@ internal sealed class Bridge
                 }
                 zones.Add((from, to));
             }
+            List<double> nudges = [];
+            foreach (string nudge in (command.String("line") ?? "").Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!double.TryParse(nudge, NumberStyles.Float, CultureInfo.InvariantCulture, out double metres)) return Failed($"line: '{nudge}' is not metres");
+                nudges.Add(metres);
+            }
+            Autopilot.Tuning? tune = new Autopilot.Tuning().With(command.String("tune") ?? "", out string badTune);
+            if (tune is null) return Failed($"tune: {badTune}");
             if (!Laps.Start(craft, through, (int)command.Number("laps", 1.0), command.Number("speed", 0.0), command.Number("offset", 0.0),
                             command.Number("timeout", 600.0), command.Flag("place", true), command.Flag("rows", false),
                             command.Flag("jump", false), out string why, command.Flag("racing", false),
-                            Math.Clamp(command.Number("push", 0.0), 0.0, 1.0), zones))
+                            Math.Clamp(command.Number("push", 0.0), 0.0, 1.0), zones, tune, command.Number("inside", 0.0), nudges))
             {
                 return Failed(why);
             }

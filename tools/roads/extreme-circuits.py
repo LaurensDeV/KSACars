@@ -447,6 +447,19 @@ def insane():
     return c
 
 
+def sprint():
+    c = Lap("Sprint", "short and hard: 1.3 km of a heavy stop, a climbing left over a crest, a downhill run to esses, "
+            "a banked hairpin, a chicane and a tightening last corner, on a road 10 m wide", 19, width=10.0)
+    for x, y, h, bank in ((0, 0, 0, 0), (140, 0, 0, 0), (200, -10, 0, 0), (225, -45, 1, 0), (215, -85, 3, 0), (245, -120, 6, 0),
+                          (300, -130, 9, 0), (345, -105, 8, 0), (360, -60, 5, 0), (340, -10, 2, 0), (360, 35, 0, 0), (335, 75, 0, -8),
+                          (290, 90, 0, -12), (250, 70, 0, -8), (200, 45, 0, 0), (150, 70, 2, 0), (100, 50, 3, 0), (50, 75, 2, 0),
+                          (-10, 60, 0, 0), (-45, 25, 0, 0)):
+        c.x, c.y, c.h, c.bank = float(x), float(y), float(h), float(bank)
+        c._point()
+    c.close()
+    return c
+
+
 BRUTAL = [stelvio, tower, corkscrew, bowl, offcamber, sky, alley, knot, marathon, vertical, cliffs]
 
 COURSES = [hairpins, spiral, coaster, eight, speedway, chicane, kinks, grid] + BRUTAL
@@ -456,7 +469,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--list", action="store_true", help="say what each circuit is for and write nothing")
     args = ap.parse_args()
-    courses = [make() for make in COURSES] + [insane()]
+    courses = [make() for make in COURSES] + [insane(), sprint()]
     if args.list:
         for c in courses:
             print(f"{c.name:12} {len(c.nodes):3} points  {c.what}")
