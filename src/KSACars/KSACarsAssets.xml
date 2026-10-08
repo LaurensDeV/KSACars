@@ -967,6 +967,36 @@
       <Mesh Id="KSACars_Subpart_F1UprightRearR_VM" />
     </MeshView>
   </SubPart>
+  <!--
+    The driver's helmet, in an atlas and a material of its own. Its mesh is in the kitten's own model
+    space with the head as it was bound, so the head bone's matrix places it: Sim/HeadGear.cs.
+  -->
+  <MeshAtlas Path="Meshes/KSACars_F1Helmet.glb" />
+
+  <PbrMaterial Id="KSACars_F1Helmet_Material">
+    <Diffuse Path="Textures/KSACars_F1Helmet_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_F1Helmet_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_F1Helmet_PBR.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <SubPart Id="KSACars_F1Helmet_SubPart">
+    <PartModel Id="KSACars_Subpart_F1Helmet_Model">
+      <Mesh Id="KSACars_Subpart_F1Helmet" />
+      <Material Id="KSACars_F1Helmet_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1Helmet_VM" />
+    </MeshView>
+  </SubPart>
+
+  <!-- Drawn in KSA's glass pass, so the driver's eyes show through the tint. -->
+  <SubPart Id="KSACars_F1HelmetVisor_SubPart">
+    <PartModelGlass Id="KSACars_Subpart_F1HelmetVisor_Model">
+      <Mesh Id="KSACars_Subpart_F1HelmetVisor" />
+      <Material Id="KSACars_F1Helmet_Material" />
+    </PartModelGlass>
+  </SubPart>
+
   <SubPart Id="KSACars_F1Steering_SubPart">
     <PartModel Id="KSACars_Subpart_F1Steering_Model">
       <Mesh Id="KSACars_Subpart_F1Steering" />
@@ -1052,6 +1082,13 @@
         <Position X="0.50000" Y="0.20000" Z="0.80000" />
       </Transform>
     </SubPart>
+
+    <!--
+      The driver's helmet and its visor, which the mod puts on the driver's head each frame. Last in
+      the list: a save pairs a part's subparts with these by their place in it.
+    -->
+    <SubPart Id="KSACars_F1_Helmet" InstanceOf="KSACars_F1Helmet_SubPart" />
+    <SubPart Id="KSACars_F1_HelmetVisor" InstanceOf="KSACars_F1HelmetVisor_SubPart" />
 
     <Connector Id="_f1ConnectorAft">
       <Transform>

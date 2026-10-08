@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-234 types and 507 members across 11 assemblies.
+235 types and 519 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -102,6 +102,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `float ZY`
 - `float ZZ`
 
+## Brutal.Core.Collections
+
+### Brutal.Collections.NativeList`1
+
+*referenced as a type only*
+
 ## Brutal.Core.Common
 
 ### Brutal.ByteSize
@@ -186,6 +192,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double X`
 - `double Y`
 - `double Z`
+- `void .ctor(double, double, double, double)`
 
 ### Brutal.Numerics.float2
 
@@ -217,6 +224,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.float4x4 CreateFromQuaternion(Brutal.Numerics.floatQuat)`
 - `Brutal.Numerics.float4x4 CreateTranslation(Brutal.Numerics.float3)`
 - `Brutal.Numerics.float4x4 op_Multiply(Brutal.Numerics.float4x4, Brutal.Numerics.float4x4)`
+- `float get_M11()`
+- `float get_M12()`
+- `float get_M13()`
+- `float get_M21()`
+- `float get_M22()`
+- `float get_M23()`
+- `float get_M31()`
+- `float get_M32()`
+- `float get_M33()`
 - `void .ctor(float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float)`
 
 ### Brutal.Numerics.floatQuat
@@ -942,7 +958,9 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.Part
 
+- `Brutal.Numerics.double3 get_PositionParentAsmb()`
 - `Brutal.Numerics.double3 get_PositionVehicleAsmb()`
+- `Brutal.Numerics.double3 get_Scale()`
 - `Brutal.Numerics.doubleQuat get_Asmb2VehicleAsmb()`
 - `KSA.ModuleList SubtreeModules`
 - `KSA.Part get_FullPart()`

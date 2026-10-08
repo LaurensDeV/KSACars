@@ -64,6 +64,9 @@ internal sealed class Buggies
         public bool Pressed { get; set; }
         public bool Boosting { get; set; }
         public Part?[] ScoopBlades { get; } = new Part?[profile.Scoops.Length];
+
+        /// <summary>What the driver wears on its head, where the car has it: a shell and its visor.</summary>
+        public Part?[] HeadGear { get; } = new Part?[HeadGearSuffixes.Length];
         public Part?[] HatchCups { get; } = new Part?[profile.Hatches.Length];
         public Part?[] HatchBlades { get; } = new Part?[profile.Hatches.Length * Hatch.Blades];
 
@@ -425,6 +428,11 @@ internal sealed class Buggies
             ["orbit_off_m"] = OrbitOffPhysics(craft, out double orbitOffMs) is double off ? Math.Round(off, 2) : -1.0,
             ["orbit_off_ms"] = Math.Round(orbitOffMs, 3),
             ["hands_miss_cm"] = e.Hands is { } h2 ? Math.Round(h2.MissCm, 2) : -1.0,
+            ["head_gear_found"] = e.HeadGear.Count(g => g is not null),
+            ["head_gear_at"] = e.HeadGear.FirstOrDefault(g => g is not null) is { } gear
+                ? $"{gear.PositionParentAsmb.X:F3} {gear.PositionParentAsmb.Y:F3} {gear.PositionParentAsmb.Z:F3} scale {gear.Scale.X:F3}" : "",
+            ["head_bone"] = e.Hands?.Head is { } hp
+                ? $"x {hp.RowX.X:F3} {hp.RowX.Y:F3} {hp.RowX.Z:F3} y {hp.RowY.X:F3} {hp.RowY.Y:F3} {hp.RowY.Z:F3} z {hp.RowZ.X:F3} {hp.RowZ.Y:F3} {hp.RowZ.Z:F3} t {hp.TranslationCm.X:F1} {hp.TranslationCm.Y:F1} {hp.TranslationCm.Z:F1}" : "",
         };
     }
 
@@ -523,6 +531,7 @@ internal sealed class Buggies
             e.Uprights[i] = SubPart(e.Part, p.SubpartPrefix + "Upright" + p.Corners[i].Key);
         }
         e.Steering = SubPart(e.Part, p.SubpartPrefix + "Steering");
+        for (int k = 0; k < HeadGearSuffixes.Length; k++) e.HeadGear[k] = SubPart(e.Part, p.SubpartPrefix + HeadGearSuffixes[k]);
         for (int k = 0; k < p.Scoops.Length; k++) e.ScoopBlades[k] = SubPart(e.Part, p.SubpartPrefix + p.Scoops[k].SubpartSuffix);
         for (int k = 0; k < p.Hatches.Length; k++)
         {
@@ -822,6 +831,9 @@ internal sealed class Buggies
     // far from the middle a hull's corner is, which is what a turning car closes on the ground with.
     private const double HullMarginM = 0.05, HullReachM = 2.5;
 
+    // The subparts a car may have for its driver's head, by what their Ids end in after the car's prefix.
+    private static readonly string[] HeadGearSuffixes = ["Helmet", "HelmetVisor"];
+
     // A change of speed in one step that no spring, tyre or brake makes.
     private const double JoltMs = 3.0;
 
@@ -964,6 +976,20 @@ internal sealed class Buggies
                 (double3 at, doubleQuat turned, double3 size) = Hatch.Blade(hatches[k], b, e.HatchOpen[(int)hatches[k].Group]);
                 Place(e.HatchBlades[(k * Hatch.Blades) + b], at, turned, size);
             }
+        }
+
+        // On the driver's head while there is one at the wheel, by its head bone as it was last posed;
+        // shrunk to nothing in the seat with nobody in it.
+        DriverHands.HeadPose? head = DriverSeat(e) is { Renderable: { } seated } && ReferenceEquals(seated, e.HandsOn) ? e.Hands?.Head : null;
+        foreach (Part? gear in e.HeadGear)
+        {
+            if (head is null)
+            {
+                Place(gear, d.Profile.DriverEye - new double3(SteeringGrip.SeatedDrop, 0, 0), doubleQuat.Identity, new double3(0.001, 0.001, 0.001));
+                continue;
+            }
+            (double3 at, doubleQuat turn, double scale) = HeadGear.Pose(d.Profile, head.RowX, head.RowY, head.RowZ, head.TranslationCm);
+            Place(gear, at, turn, new double3(scale, scale, scale));
         }
 
         // Hidden by being shrunk to nothing inside the hull: a subpart has no switch for being drawn.
