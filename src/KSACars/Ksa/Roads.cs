@@ -320,6 +320,12 @@ internal static class Roads
     /// <summary>Whether a drag reads the ground off a lattice of heights kept for it. The bridge clears it to compare.</summary>
     public static bool CachesDragGround { get; set; } = true;
 
+    /// <summary>Whether a drag takes away the meshes of runs that are no longer runs. The bridge clears it to compare.</summary>
+    public static bool TakesGoneRuns { get; set; } = true;
+
+    /// <summary>How many runs have a mesh drawn that the roads last made into meshes do not have.</summary>
+    public static int StaleRuns { get; private set; }
+
     private static GroundLattice? _lattice;
 
     /// <summary>Makes the meshes a drag has waiting now, whatever the time since the last: for the bridge to time.</summary>
@@ -426,7 +432,7 @@ internal static class Roads
         }
     }
 
-    // A run is told from the others by the points it goes through, which a drag does not change.
+    // A run is told from the others by the points it goes through, in order.
     private static string KeyOf(RoadRibbon ribbon) => string.Join(",", ribbon.Spans.Select(s => $"{s.From}-{s.To}"));
 
     // The runs and the junctions as triangles, drawn and given to the physics; or, with the points a
@@ -440,9 +446,15 @@ internal static class Roads
         List<RoadDrawing.Run> runs = [];
         Dictionary<RoadRibbon, List<RoadMeshData>> made = new(ReferenceEqualityComparer.Instance);
         string? failed = null;
+
+        // A drag can change which roads carry on through a point, and so which runs there are: a run
+        // that was not drawn before is made whoever's it is, and one that is no longer a run is taken away.
+        HashSet<string> shown = whole ? [] : RoadDrawing.ShownKeys();
+        HashSet<string> gone = [.. shown.Where(k => !k.StartsWith(JunctionKey, StringComparison.Ordinal))];
         foreach (RoadRibbon ribbon in network.Ribbons)
         {
-            if (touched is not null && !ribbon.Spans.Any(s => touched.Contains(s.From) || touched.Contains(s.To))) continue;
+            gone.Remove(KeyOf(ribbon));
+            if (touched is not null && shown.Contains(KeyOf(ribbon)) && !ribbon.Spans.Any(s => touched.Contains(s.From) || touched.Contains(s.To))) continue;
             try
             {
                 List<RoadMeshData> meshes = RoadTessellation.Mesh(ribbon, RoadDrawList.Fit);
@@ -524,7 +536,9 @@ internal static class Roads
             _roadSolids = colliders.Count > 0 ? (body, [.. colliders]) : null;
             HandColliders();
         }
-        RoadDrawing.Show(body, runs, others: !whole, EyeCcf(body));
+        RoadDrawing.Show(body, runs, others: !whole, EyeCcf(body), TakesGoneRuns ? gone : null);
+        HashSet<string> now = [.. network.Ribbons.Select(KeyOf)];
+        StaleRuns = RoadDrawing.ShownKeys().Count(k => !k.StartsWith(JunctionKey, StringComparison.Ordinal) && !now.Contains(k));
         if (!whole) return;
 
         bool hooked = RoadColliders.Installed;

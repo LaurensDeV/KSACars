@@ -45,13 +45,17 @@ internal static class RoadDrawing
 
     public static bool Any => _shown is not null;
 
+    /// <summary>The keys of the runs that have a mesh drawn.</summary>
+    public static HashSet<string> ShownKeys() => [.. (_shown?.Pieces ?? []).Select(p => p.Key)];
+
     /// <summary>
     /// Has these runs drawn on <paramref name="body"/>: in place of everything drawn, or with
     /// <paramref name="others"/> in place of only the runs before that had the same keys. For the
     /// frame hook, since it waits for the graphics card. Never throws.
     /// </summary>
     /// <param name="eyeCcf">Where the nearest meshes are reckoned from when there are more than places, in the body's own frame.</param>
-    public static void Show(Celestial body, IReadOnlyList<Run> runs, bool others, double3? eyeCcf)
+    /// <param name="gone">Keys whose meshes are taken away though nothing replaces them: runs that are runs no longer.</param>
+    public static void Show(Celestial body, IReadOnlyList<Run> runs, bool others, double3? eyeCcf, IReadOnlySet<string>? gone = null)
     {
         try
         {
@@ -63,7 +67,7 @@ internal static class RoadDrawing
             List<Piece> pieces = [];
             foreach (Piece piece in _shown?.Pieces ?? [])
             {
-                if (others && before is not null && !replaced.Contains(piece.Key)) pieces.Add(piece);
+                if (others && before is not null && !replaced.Contains(piece.Key) && gone?.Contains(piece.Key) != true) pieces.Add(piece);
                 else Ledger.Give(piece.Slot);
             }
             int kept = pieces.Count;
