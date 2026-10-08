@@ -76,4 +76,27 @@ public class RoadCoverTests
         double3 north = Vec.Unit(world.Dir(0.0, 100.0) - world.Dir(0.0, 0.0));
         Assert.InRange(Taken(at => Vec.Dot(at - line[0], north) > 0.0), all / 3, 2 * all / 3);
     }
+
+    // Level, up to a deck 12 m over the ground along the equator, and down: its barriers are 5 m north and south of its middle.
+    [Fact]
+    public void ADecksBarrierIsFoundFromEitherSideOfItsEdgeAndTheGroundHasNone()
+    {
+        (TrackWorld world, RoadSurface surface) = Laid(w => AutopilotTests.Through(w, false,
+            (0.0, 0.0, 0.0), (100.0, 0.0, 12.0), (300.0, 0.0, 12.0), (400.0, 0.0, 0.0)));
+        double3 At(double east, double north, double up) => world.Dir(east, north) * (world.RadiusM + TrackWorld.LiftM + up);
+        double3 northward = Vec.Unit(world.Dir(200.0, 10.0) - world.Dir(200.0, 0.0));
+
+        Assert.True(surface.TryBarrier(At(200.0, 4.6, 12.3), out double inside, out double3 outward));
+        Assert.InRange(inside, -0.45, -0.35);
+        Assert.True(Vec.Dot(outward, northward) > 0.99);
+
+        Assert.True(surface.TryBarrier(At(200.0, -5.1, 12.3), out double past, out outward));
+        Assert.InRange(past, 0.05, 0.15);
+        Assert.True(Vec.Dot(outward, northward) < -0.99);
+
+        // Under the deck, far over it, and on the road before it leaves the ground, there is no wall.
+        Assert.False(surface.TryBarrier(At(200.0, 4.6, 3.0), out _, out _));
+        Assert.False(surface.TryBarrier(At(200.0, 4.6, 20.0), out _, out _));
+        Assert.False(surface.TryBarrier(At(5.0, 4.6, 0.3), out _, out _));
+    }
 }

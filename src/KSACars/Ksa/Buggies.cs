@@ -786,6 +786,39 @@ internal sealed class Buggies
                          (inverse.YX * l.X) + (inverse.YY * l.Y) + (inverse.ZY * l.Z),
                          (inverse.ZX * l.X) + (inverse.ZY * l.Y) + (inverse.ZZ * l.Z));
 
+        // A deck's barrier, where a side of the car is at one: the mod's own push, which rubs as a rail does and not as KSA's ground.
+        if (!warped && Roads.SurfaceOn(body) is { } roads)
+        {
+            double3 left = Vec.Cross(up, forward);
+            Span<double3> sides = stackalloc double3[corners.Length], outward = stackalloc double3[corners.Length];
+            Span<double> past = stackalloc double[corners.Length];
+            bool any = false;
+            for (int i = 0; i < corners.Length; i++)
+            {
+                double reach = Vec.Dot(hubs[i], left);
+                sides[i] = hubs[i] + (left * (Math.Sign(reach) * (e.Drive.Profile.Side - Math.Abs(corners[i].Hub.Z))));
+                past[i] = double.NegativeInfinity;
+                // The wall is plumb and a car on a banked deck is not, so its side is asked low and high, where a collider's edge leads.
+                if (!roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] - (up * SideLowM))), out double pastM, out double3 outCcf)) continue;
+                if (roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] + (up * SideHighM))), out double high, out _)) pastM = Math.Max(pastM, high);
+                // Across the car's own floor: on a banked deck the level way out has a share of the car's up, along which the springs push every step.
+                double3 across = Barrier.Across(outCcf.Transform(ccf2Body), up);
+                if (Vec.Len(across) < 0.5) continue;
+                (past[i], outward[i]) = (pastM + Barrier.ClearM, across);
+                any |= past[i] > 0.0;
+            }
+            if (any)
+            {
+                DriveImpulse wall = Barrier.Hold(sides, outward, past, velocityBody + dv, spinBody + dw, mass,
+                    (new double3(inverse.XX, inverse.YX, inverse.ZX), new double3(inverse.YX, inverse.YY, inverse.ZY), new double3(inverse.ZX, inverse.ZY, inverse.ZZ)), dt);
+                dv += wall.Linear / mass;
+                double3 w = wall.Angular;
+                dw += new double3((inverse.XX * w.X) + (inverse.YX * w.Y) + (inverse.ZX * w.Z),
+                                  (inverse.YX * w.X) + (inverse.YY * w.Y) + (inverse.ZY * w.Z),
+                                  (inverse.ZX * w.X) + (inverse.ZY * w.Y) + (inverse.ZZ * w.Z));
+            }
+        }
+
         // The wheels are off the ground, so the keys that drove them fly the car instead.
         // Under warp the wheels are not stepped, so the hull's own contact says whether it is down.
         bool airborne = warped ? !e.Scraping : !e.Drive.Grounded.Any(g => g);
@@ -830,6 +863,9 @@ internal sealed class Buggies
     // The margin a car on a road is held to, under the least any hull stands over its wheels; and how
     // far from the middle a hull's corner is, which is what a turning car closes on the ground with.
     private const double HullMarginM = 0.05, HullReachM = 2.5;
+
+    // How far under a hub and over it a wheel's collider reaches, which on a banked deck is what meets a plumb wall first.
+    private const double SideLowM = 0.2, SideHighM = 0.25;
 
     // The subparts a car may have for its driver's head, by what their Ids end in after the car's prefix.
     private static readonly string[] HeadGearSuffixes = ["Helmet", "HelmetVisor"];

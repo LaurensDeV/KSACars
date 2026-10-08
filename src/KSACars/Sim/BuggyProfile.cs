@@ -52,6 +52,14 @@ public sealed record BuggyProfile
     /// <summary>What the part's subpart Ids end in before the body's name: <c>Buggy_WheelFL</c>, <c>Eldo_Wheel</c>.</summary>
     public required string SubpartPrefix { get; init; }
 
+    /// <summary>
+    /// How far to either side of its middle the car's colliders reach, m: where its side is, for a wall.
+    /// Nothing, and it is taken to be a tyre's half width past its widest hub.
+    /// </summary>
+    public double SideM { get; init; }
+
+    public double Side => SideM > 0.0 ? SideM : Corners.Max(c => Math.Abs(c.Hub.Z)) + 0.18;
+
     public required BuggyCorner[] Corners { get; init; }
 
     /// <summary>The engine's sounds: <c>{SoundPrefix}Start</c>, <c>Idle</c>, <c>Load</c> and <c>Stop</c>.</summary>
@@ -215,6 +223,7 @@ public sealed record BuggyProfile
         PartId = "KSACars_Prefab_Buggy",
         DisplayName = "Beach Buggy",
         SubpartPrefix = "Buggy_",
+        SideM = 1.04,
         SoundPrefix = "KSACarsBuggy",
         Corners =
         [
@@ -241,6 +250,7 @@ public sealed record BuggyProfile
         PartId = "KSACars_Prefab_Eldorado",
         DisplayName = "Cadillac Eldorado",
         SubpartPrefix = "Eldo_",
+        SideM = 0.98,
         SoundPrefix = "KSACarsEldo",
         Corners =
         [
@@ -348,6 +358,7 @@ public sealed record BuggyProfile
         PartId = "KSACars_Prefab_F1",
         DisplayName = "Ferrari F2004",
         SubpartPrefix = "F1_",
+        SideM = 0.885,
         SoundPrefix = "KSACarsF1",
         // the recording's note is 641 Hz, one bank's firing: two and a half to a turn
         LoadRecordedRpm = 15380.0,

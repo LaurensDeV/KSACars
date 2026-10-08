@@ -289,6 +289,47 @@ public sealed class RoadSurface
         return cover;
     }
 
+    /// <summary>
+    /// Whether a place is at a deck's barrier: within the deck's length and level with its edge on that
+    /// side, whichever side of the edge it is on.
+    /// </summary>
+    /// <param name="at">The place, from the body's centre in its own frame.</param>
+    /// <param name="pastM">How far past the asphalt's edge the place is: under nothing, and it is short of the wall.</param>
+    /// <param name="outward">The level way out of the road through the wall there.</param>
+    public bool TryBarrier(double3 at, out double pastM, out double3 outward)
+    {
+        pastM = double.NegativeInfinity;
+        outward = default;
+        double radius = Vec.Len(at);
+        if (_chart is null || !(radius > 0.0)) return false;
+
+        Plan place = _chart.Of(at);
+        if (!_cells.TryGetValue(Cell(place), out (int Ribbon, int Place)[]? places)) return false;
+
+        double height = radius - _chart.RadiusM, nearest = double.PositiveInfinity;
+        foreach ((int r, int i) in places)
+        {
+            RoadRibbon ribbon = _ribbons[r];
+            double here = Off(ribbon, i, place);
+            if (Off(ribbon, i - 1, place) < here || Off(ribbon, i + 1, place) <= here) continue;
+            if (!ribbon.Locate(place, i, out RoadRibbon.Section section, out double d, out double beyond) || !section.Deck || beyond > 0.0) continue;
+
+            // Level with the deck's edge on that side, give or take what a car's side stands over it and a barrier's height.
+            double side = d < 0.0 ? -1.0 : 1.0;
+            double over = height - (section.Height + (side * section.HalfWidth * section.BankTan));
+            if (over < -BarrierUnderM || over > BarrierOverM || Math.Abs(over) >= nearest) continue;
+
+            nearest = Math.Abs(over);
+            pastM = Math.Abs(d) - section.HalfWidth;
+            ribbon.Chart.Compass(section.At, out _, out double3 east, out double3 north);
+            outward = Vec.Unit((east * section.Left.E) + (north * section.Left.N)) * side;
+        }
+        return !double.IsInfinity(nearest);
+    }
+
+    // How far under a deck's edge and over it a car's side is still at its barrier.
+    private const double BarrierUnderM = 1.0, BarrierOverM = 2.0;
+
     // How far a point is from one of a ribbon's lookup places, squared; no distance at all past the end of an open one.
     private static double Off(RoadRibbon ribbon, int index, Plan place)
     {
