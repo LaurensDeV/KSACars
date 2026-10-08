@@ -69,9 +69,10 @@ internal sealed class Route
     /// <param name="groundAt">The ground's height over the body's mean radius, in a direction from its centre.</param>
     /// <param name="offsetM">How far to the left of the roads' centre line the route runs.</param>
     /// <param name="turnRadiusM">The tightest turn the car that drives it makes, or nothing for any car: see <see cref="Along"/>.</param>
+    /// <param name="raceInsideM">More than nothing, and the route is the racing line that keeps this far inside each edge: see <see cref="RacingLine"/>.</param>
     public static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, Func<double3, double> groundAt,
                             double liftM, double spacingM, IReadOnlyList<int>? through, double offsetM, out string why,
-                            double turnRadiusM = 0.0)
+                            double turnRadiusM = 0.0, double raceInsideM = 0.0)
     {
         why = "";
         List<int> path = through is { Count: > 0 } ? [.. through] : Following(circuit, dirOf, radiusM);
@@ -140,7 +141,7 @@ internal sealed class Route
             halfWidths.RemoveAt(halfWidths.Count - 1);
             banks.RemoveAt(banks.Count - 1);
         }
-        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks]) is not { } route)
+        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM) is not { } route)
         {
             why = "the route has no length";
             return null;
@@ -177,7 +178,7 @@ internal sealed class Route
     /// before the kink and back after it, which is the only other room there is.</para>
     /// </summary>
     public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0,
-                               double[]? banks = null)
+                               double[]? banks = null, double raceInsideM = 0.0)
     {
         int pieces = closed ? line.Length : line.Length - 1;
         if (pieces < 1 || halfWidths.Length != line.Length) return null;
@@ -264,10 +265,13 @@ internal sealed class Route
             }
         }
 
-        if (offsetM != 0.0)
+        double[] left = new double[count];
+        Array.Fill(left, offsetM);
+        if (raceInsideM > 0.0) left = RacingLine(at, half, closed, raceInsideM);
+        if (offsetM != 0.0 || raceInsideM > 0.0)
         {
             double3[] moved = new double3[count];
-            for (int i = 0; i < count; i++) moved[i] = at[i] + (Vec.Cross(Vec.Unit(at[i]), Heading(at, i, 1, closed)) * offsetM);
+            for (int i = 0; i < count; i++) moved[i] = at[i] + (Vec.Cross(Vec.Unit(at[i]), Heading(at, i, 1, closed)) * left[i]);
             at = moved;
         }
 
@@ -309,10 +313,60 @@ internal sealed class Route
                 vertical = bends / level;
             }
             samples[i] = new Sample(at[i], along[i], heading[i], Vec.Cross(up, heading[i]),
-                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], -offsetM, bank[i]);
+                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], -left[i], bank[i]);
         }
         return new Route(samples, total, closed);
     }
+
+    /// <summary>
+    /// How far to the left of the centre line a car runs at each point to turn as little as it can
+    /// with <paramref name="insideM"/> of road kept between it and either edge: out to the edge
+    /// before a bend, across its inside and out again, which is what lets a bend be taken faster
+    /// than its own radius allows.
+    ///
+    /// <para>The line whose points, a step apart, are nearest to lying straight: each is moved across
+    /// the road to where the bend at it and at the two either side of it is least, over and over,
+    /// first with the points far apart, where a whole bend is a few of them, and then closer.</para>
+    /// </summary>
+    public static double[] RacingLine(double3[] centre, double[] half, bool closed, double insideM)
+    {
+        int count = centre.Length;
+        double3[] across = new double3[count];
+        for (int i = 0; i < count; i++) across[i] = Vec.Cross(Vec.Unit(centre[i]), Heading(centre, i, 1, closed));
+
+        double[] left = new double[count];
+        for (int stride = 16; stride >= 1; stride /= 2)
+        {
+            int n = closed ? count / stride : ((count - 1) / stride) + 1;
+            if (n < 6) continue;
+            int At(int k) => closed ? ((k % n) + n) % n * stride : Math.Clamp(k, 0, n - 1) * stride;
+            double3 Point(int k) => centre[At(k)] + (across[At(k)] * left[At(k)]);
+
+            for (int sweep = 0; sweep < RaceSweeps; sweep++)
+            {
+                for (int k = closed ? 0 : 2; k < (closed ? n : n - 2); k++)
+                {
+                    int i = At(k);
+                    double3 before = Point(k - 2) - (Point(k - 1) * 2.0) + centre[i];
+                    double3 here = Point(k - 1) + Point(k + 1) - (centre[i] * 2.0);
+                    double3 after = centre[i] - (Point(k + 1) * 2.0) + Point(k + 2);
+                    double most = Math.Max(half[i] - insideM, 0.0);
+                    left[i] = Math.Clamp(((2.0 * Vec.Dot(here, across[i])) - Vec.Dot(before, across[i]) - Vec.Dot(after, across[i])) / 6.0, -most, most);
+                }
+            }
+
+            // The points between, for the next pass to start from.
+            if (stride == 1) break;
+            for (int k = 0; k < (closed ? n : n - 1); k++)
+            {
+                int a = At(k), b = At(k + 1);
+                for (int j = 1; j < stride && a + j < count; j++) left[a + j] = left[a] + ((left[b] - left[a]) * j / stride);
+            }
+        }
+        return left;
+    }
+
+    private const int RaceSweeps = 200;
 
     // The way the line runs at a point, level there: from the point before it to the one after.
     private static double3 Heading(double3[] at, int i, int reach, bool closed)

@@ -333,9 +333,22 @@ internal sealed class Bridge
                     through.Add(node);
                 }
             }
+            // Stretches where a crest is a jump that is meant: "3651-4091,5000-5100", metres along the route.
+            List<(double, double)> zones = [];
+            foreach (string zone in (command.String("jump_zones") ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] ends = zone.Split('-');
+                if (ends.Length != 2 || !double.TryParse(ends[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double from)
+                    || !double.TryParse(ends[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double to))
+                {
+                    return Failed($"jump_zones: '{zone}' is not from-to in metres");
+                }
+                zones.Add((from, to));
+            }
             if (!Laps.Start(craft, through, (int)command.Number("laps", 1.0), command.Number("speed", 0.0), command.Number("offset", 0.0),
                             command.Number("timeout", 600.0), command.Flag("place", true), command.Flag("rows", false),
-                            command.Flag("jump", false), out string why))
+                            command.Flag("jump", false), out string why, command.Flag("racing", false),
+                            Math.Clamp(command.Number("push", 0.0), 0.0, 1.0), zones))
             {
                 return Failed(why);
             }

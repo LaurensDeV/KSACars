@@ -95,8 +95,12 @@ internal static class Laps
     /// <param name="speedMs">The speed to hold where no bend asks for less; nothing is the car's own top speed.</param>
     /// <param name="place">Whether the car is first stood on the road at the route's start, facing along it.</param>
     /// <param name="jumps">Whether crests and dips are taken at whatever the bends allow.</param>
+    /// <param name="racing">Whether the route is the racing line through the roads and not their middle.</param>
+    /// <param name="push">How hard it is driven, 0 to 1: <see cref="Autopilot.Push"/>.</param>
+    /// <param name="jumpZones">Stretches of the route where a crest is not slowed for.</param>
     public static bool Start(Vehicle craft, IReadOnlyList<int>? through, int laps, double speedMs, double offsetM, double timeoutSeconds,
-                             bool place, bool keepRows, bool jumps, out string why)
+                             bool place, bool keepRows, bool jumps, out string why, bool racing = false, double push = 0.0,
+                             IReadOnlyList<(double From, double To)>? jumpZones = null)
     {
         if (Buggies.Of(craft) is not { } car)
         {
@@ -104,7 +108,8 @@ internal static class Laps
             return false;
         }
         BuggyProfile profile = car.Drive.Profile;
-        if (Roads.RouteOver(through, offsetM, Autopilot.TurnRadius(profile), out Celestial? body, out RoadSurface? surface, out why) is not { } route)
+        if (Roads.RouteOver(through, offsetM, Autopilot.TurnRadius(profile), out Celestial? body, out RoadSurface? surface, out why,
+                            racing ? Autopilot.RaceInside(profile) : 0.0) is not { } route)
         {
             return false;
         }
@@ -120,7 +125,7 @@ internal static class Laps
 
         LapRow[]? rows = keepRows ? new LapRow[MostRows] : null;
         Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air, laps, speedMs,
-                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps };
+                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [] };
 
         if (place)
         {

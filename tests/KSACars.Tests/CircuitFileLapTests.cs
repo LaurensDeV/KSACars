@@ -8,6 +8,16 @@ namespace KSACars.Tests;
 // climb is a fair thing to draw; the table is what is read.
 public class CircuitFileLapTests
 {
+    // The stretches a circuit file says are jumps, which the game's reader does not keep.
+    private static List<(double, double)> Zones(string file)
+    {
+        List<(double, double)> zones = [];
+        using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+        if (!doc.RootElement.TryGetProperty("jumps", out System.Text.Json.JsonElement jumps)) return zones;
+        foreach (System.Text.Json.JsonElement zone in jumps.EnumerateArray()) zones.Add((zone[0].GetDouble(), zone[1].GetDouble()));
+        return zones;
+    }
+
     [Fact]
     public void EveryCarLapsEveryCircuitFileItIsPointedAt()
     {
@@ -15,6 +25,8 @@ public class CircuitFileLapTests
         string prefix = Environment.GetEnvironmentVariable("KSACARS_ONLY") ?? "";
         string traced = Environment.GetEnvironmentVariable("KSACARS_TRACE") ?? "";
         string? into = Environment.GetEnvironmentVariable("KSACARS_LAPS_OUT");
+        double push = double.TryParse(Environment.GetEnvironmentVariable("KSACARS_PUSH"), System.Globalization.CultureInfo.InvariantCulture, out double asked) ? asked : 0.0;
+        bool racing = Environment.GetEnvironmentVariable("KSACARS_RACING") == "1", jumps = Environment.GetEnvironmentVariable("KSACARS_JUMP") == "1";
 
         // The game's own uneven steps, or one length for every step.
         double stepMs = double.TryParse(Environment.GetEnvironmentVariable("KSACARS_STEP_MS"), out double ms) ? ms : 0.0;
@@ -35,7 +47,7 @@ public class CircuitFileLapTests
             foreach (TrackCar car in TrackCar.All)
             {
                 Route? route = Route.Of(circuit, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM,
-                                        null, 0.0, out why, Autopilot.TurnRadius(car.Profile));
+                                        null, 0.0, out why, Autopilot.TurnRadius(car.Profile), racing ? Autopilot.RaceInside(car.Profile) : 0.0);
                 if (route is null)
                 {
                     table.AppendLine($"{name,-12} {car.Name,-9} no route: {why}");
@@ -44,7 +56,7 @@ public class CircuitFileLapTests
 
                 LapRow[]? rows = traced == car.Name ? new LapRow[400_000] : null;
                 AutopilotTests.Lap lap = AutopilotTests.Drive(car, track, route, stepMs > 0.0 ? stepMs / 1000.0 : 1.0 / 60.0, timeout: 900.0,
-                                                               pattern: stepMs > 0.0 ? null : ExtremeLapTests.GameSteps, rows: rows);
+                                                               pattern: stepMs > 0.0 ? null : ExtremeLapTests.GameSteps, rows: rows, jumps: jumps, push: push, jumpZones: Zones(file));
                 LapSummary s = lap.Summary;
                 table.AppendLine($"{name,-12} {car.Name,-9} {lap.End,-9} {s.ProgressM,6:F0}/{route.LengthM,6:F0} m {s.Seconds,6:F1} s  "
                                  + $"vmax {s.MaxSpeed,5:F1}  cross {s.MaxCrossM,5:F2}  off {s.OffAsphaltSeconds,5:F2}  flight {s.LongestFlightSeconds,5:F2}  "

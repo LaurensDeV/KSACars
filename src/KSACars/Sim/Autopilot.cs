@@ -189,6 +189,19 @@ internal sealed class Autopilot
 
     /// <summary>Whether crests and dips are taken at whatever the bends allow, to see what a car does in the air.</summary>
     public bool Jumps { get; init; }
+
+    /// <summary>
+    /// How hard the lap is driven, from 0 for the shares above, which leave room for a road that is
+    /// not what it was taken to be, to 1 for nearly all the car has: a lap for the watch.
+    /// </summary>
+    public double Push { get; init; }
+
+    /// <summary>Stretches of the route, in metres along it, where a crest or a dip is not slowed for: a jump that is meant.</summary>
+    public IReadOnlyList<(double From, double To)> JumpZones { get; init; } = [];
+
+    private double Pushed(double share, double most) => share + ((most - share) * Math.Clamp(Push, 0.0, 1.0));
+
+    private bool JumpsAt(double s) => Jumps || JumpZones.Any(z => s >= z.From && s <= z.To);
     public LapEnd End { get; private set; }
 
     /// <summary>What went wrong, where the reason alone does not say.</summary>
@@ -209,6 +222,11 @@ internal sealed class Autopilot
     /// <summary>The speed the route allows at each of its samples, m/s; nothing before the first step, which is where the car is weighed up.</summary>
     public ReadOnlySpan<double> Limit => _limit;
 
+    /// <summary>How far inside a road's edge a car's racing line keeps its middle: half its track, a tyre and what the steering wanders by.</summary>
+    public static double RaceInside(BuggyProfile profile) => profile.Corners.Max(c => Math.Abs(c.Hub.Z)) + RaceMarginM;
+
+    public const double RaceMarginM = 0.9;
+
     /// <summary>The tightest turn a car is asked to make, m: what a route for it is drawn with.</summary>
     public static double TurnRadius(BuggyProfile profile) =>
         TurnMargin * BuggyDrive.Wheelbase(profile) / Math.Tan(Math.Max(profile.MaxSteerDeg, 1.0) * Math.PI / 180.0);
@@ -228,18 +246,20 @@ internal sealed class Autopilot
     {
         ReadOnlySpan<Route.Sample> samples = _route.Samples;
         double[] limit = new double[samples.Length];
-        double grip = GripShare * Math.Min(_profile.FrontGrip, _profile.FrontGrip * _profile.SteerOverGrip);
-        if (comHeightM > 0.0) grip = Math.Min(grip, TipShare * halfTrackM / comHeightM);
+        double grip = Pushed(GripShare, 1.0) * Math.Min(_profile.FrontGrip, _profile.FrontGrip * _profile.SteerOverGrip);
+        if (comHeightM > 0.0) grip = Math.Min(grip, Pushed(TipShare, 0.85) * halfTrackM / comHeightM);
+        double crestShare = Pushed(CrestShare, 0.92);
         double wings = _mass > 0.0 ? 0.5 * _air * _profile.DownforceAreaM2 / _mass : 0.0;
 
         // What a spring carries over its share of the weight at a compression is that times its rate.
         double spring = 2.0 * Math.PI * _profile.SpringHz;
-        double dip = DipShare * _profile.BumpTravel * spring * spring;
+        double dip = Pushed(DipShare, 0.8) * _profile.BumpTravel * spring * spring;
         for (int i = 0; i < limit.Length; i++)
         {
             Route.Sample s = samples[i];
             double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
-            double crest = Jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
+            bool jumps = JumpsAt(s.S);
+            double crest = jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
             double held = Banked(grip, s);
             double allowed = Math.Min(CruiseMs, Under(held * _gravity * level, Math.Abs(s.Curvature) + (held * (crest - wings))));
 
@@ -252,9 +272,9 @@ internal sealed class Autopilot
                 double flat = Under(grip * _gravity * level, Math.Abs(s.Curvature) + (grip * (crest - wings)));
                 allowed = Math.Min(allowed, Math.Max(pressed, flat));
             }
-            if (!Jumps)
+            if (!jumps)
             {
-                allowed = Math.Min(allowed, Under(CrestShare * _gravity * level, crest - (CrestShare * wings)));
+                allowed = Math.Min(allowed, Under(crestShare * _gravity * level, crest - (crestShare * wings)));
                 allowed = Math.Min(allowed, Under(dip, Math.Max(s.Vertical, 0.0)));
             }
             limit[i] = s.S >= _stopAt - ArriveOverM ? ArriveMs : Math.Max(allowed, CrawlMs);
@@ -264,7 +284,7 @@ internal sealed class Autopilot
         // have: into a bend the braking is done before the turn is. The car is taken to be the brake's
         // gap over the speed it is braked to. Twice round a closed route, so the bend after the line
         // slows the straight before it.
-        double brakes = BrakeShare * _profile.BrakeG * _gravity;
+        double brakes = Pushed(BrakeShare, 0.92) * _profile.BrakeG * _gravity;
         int last = limit.Length - 1;
         for (int pass = 0; pass < (_route.Closed ? 2 : 1); pass++)
         {
@@ -274,9 +294,10 @@ internal sealed class Autopilot
                 Route.Sample s = samples[i];
                 double piece = Vec.Len(samples[next].At - s.At);
                 double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
-                double crest = Jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
+                bool jumps = JumpsAt(s.S);
+                double crest = jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
                 // Through a dip too: the brakes' dive and the dip push the same front springs.
-                bool gently = s.S >= _stopAt - ArriveBrakeOverM || (!Jumps && s.Vertical * limit[next] * limit[next] > DipBrakeShare * dip);
+                bool gently = s.S >= _stopAt - ArriveBrakeOverM || (!jumps && s.Vertical * limit[next] * limit[next] > DipBrakeShare * dip);
                 double most = gently ? Math.Min(brakes, GentleBrakeG * _gravity) : brakes;
                 double from = limit[next];
                 for (int again = 0; again < 2; again++)
@@ -398,6 +419,10 @@ internal sealed class Autopilot
         double angle = range > 0.0 ? Math.Atan2(2.0 * _wheelbase * Math.Sin(bearing), range) : 0.0;
         double lockRad = BuggyDrive.SteerLock(_profile, rolling, _gravity, BuggyDrive.WingLoad(_profile, rolling, _air, _mass));
         double steer = lockRad > 0.0 ? Math.Clamp(angle / lockRad, -1.0, 1.0) : 0.0;
+
+        // In the air the wheels steer nothing, and what the line asks for grows until they come down
+        // at full lock: they are held straight to land on.
+        if (_flight > 0.0) steer = 0.0;
 
         // The least the route allows between here and where the next step ends, and a little beyond.
         // Between two samples it is what a steady braking from one to the other passes through: taken

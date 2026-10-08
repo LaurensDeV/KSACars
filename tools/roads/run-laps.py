@@ -62,6 +62,9 @@ def main():
     ap.add_argument("--offset", type=float, default=0.0, help="metres left of the centre line")
     ap.add_argument("--route", help="point ids to pass through, comma separated")
     ap.add_argument("--laps", type=int, default=1)
+    ap.add_argument("--crew", action="store_true", help="fill each car's seats first, so it has a driver to film")
+    ap.add_argument("--racing", action="store_true", help="drive the racing line and not the middle of the road")
+    ap.add_argument("--push", type=float, default=0.0, help="how hard the lap is driven, 0 to 1")
     ap.add_argument("--rows", action="store_true", help="file every step of each lap as a CSV beside its summary")
     ap.add_argument("--wait", type=float, default=300.0, help="wall seconds to give a run")
     args = ap.parse_args()
@@ -87,6 +90,10 @@ def main():
                 bridge("site", craft=craft, lat=lat, lon=lon, timeout=90)
                 time.sleep(1.0)
         bridge("drive", craft=f"Lap {cars[0]}", focus=True, cam_elevation_deg=30, cam_azimuth_deg=270, cam_distance=2.6)
+        if args.crew:
+            for car in cars:
+                if not bridge("drive", craft=f"Lap {car}").get("crew"):
+                    bridge("drive", craft=f"Lap {car}", crew=True)
         laid = bridge("road", circuit=circuit)
         if not laid.get("laid"):
             print(f"   road not laid: {str(laid)[:160]}", flush=True)
@@ -97,6 +104,13 @@ def main():
         time.sleep(1.5)
 
         extra = {k: v for k, v in (("speed", args.speed), ("route", args.route)) if v is not None}
+        if args.racing:
+            extra["racing"] = True
+        if args.push:
+            extra["push"] = args.push
+        zones = json.loads((library() / f"{circuit}.json").read_text()).get("jumps") or []
+        if zones:
+            extra["jump_zones"] = ",".join(f"{a}-{b}" for a, b in zones)
         if args.jump:
             extra["jump"] = True
 

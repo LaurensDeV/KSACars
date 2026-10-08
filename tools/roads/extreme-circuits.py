@@ -300,6 +300,153 @@ def cliffs():
     return c
 
 
+class Lap:
+    """A course drawn by driving it: straights and arcs from where the last one ended, each point with
+    its own height, lean and width. A point put where one already is joins the road there, which is a
+    junction, and `route` is every point in the order driven."""
+
+    def __init__(self, name, what, slot, width=12.0):
+        self.name, self.what, self.slot, self.width = name, what, slot, width
+        self.x = self.y = 0.0
+        self.heading = 0.0            # radians anticlockwise from east
+        self.h, self.bank, self.w = 0.0, 0.0, width
+        self.nodes, self.roads, self.route = [], [], []
+        self.along, self.marks, self.last = 0.0, [], None
+
+    def _point(self):
+        if self.last is not None:
+            self.along += math.dist(self.last, (self.x, self.y, self.h))
+        self.last = (self.x, self.y, self.h)
+        for i, n in enumerate(self.nodes):
+            if math.hypot(n[0] - self.x, n[1] - self.y) < 0.5 and abs(n[2] - self.h) < 0.5:
+                break
+        else:
+            self.nodes.append((self.x, self.y, self.h, self.bank, self.w))
+            i = len(self.nodes) - 1
+        if self.route:
+            self.roads.append((self.route[-1], i + 1))
+        self.route.append(i + 1)
+
+    def start(self):
+        self._point()
+        return self
+
+    def mark(self):
+        """Opens a stretch where the driver is not to slow for a crest, or closes the one that is open."""
+        self.marks.append(self.along)
+        return self
+
+    def straight(self, length, rise=0.0, pieces=1, bank=None, width=None):
+        b0, w0 = self.bank, self.w
+        for k in range(1, pieces + 1):
+            self.x += math.cos(self.heading) * length / pieces
+            self.y += math.sin(self.heading) * length / pieces
+            self.h += rise / pieces
+            self.bank = b0 + ((bank if bank is not None else b0) - b0) * k / pieces
+            self.w = w0 + ((width if width is not None else w0) - w0) * k / pieces
+            self._point()
+        return self
+
+    def climb(self, run, grade, ease=30.0):
+        """Up or down at a held grade, eased at each end: see ramp()."""
+        last = 0.0, 0.0
+        for d, h in ramp(run, abs(grade), ease)[1:]:
+            self.x += math.cos(self.heading) * (d - last[0])
+            self.y += math.sin(self.heading) * (d - last[0])
+            self.h += math.copysign(h - last[1], grade)
+            last = d, h
+            self._point()
+        return self
+
+    def arc(self, radius, degrees, rise=0.0, lean=0.0, every=30.0, width=None):
+        """Left for a positive angle. `lean` is into the bend, whichever way it goes, and eases in and out over its first and last points."""
+        steps = max(2, round(abs(degrees) / every))
+        turn = math.radians(degrees) / steps
+        side = 1.0 if degrees > 0 else -1.0
+        w0 = self.w
+        for k in range(1, steps + 1):
+            cx = self.x - math.sin(self.heading) * radius * side
+            cy = self.y + math.cos(self.heading) * radius * side
+            self.heading += turn
+            self.x = cx + math.sin(self.heading) * radius * side
+            self.y = cy - math.cos(self.heading) * radius * side
+            self.h += rise / steps
+            self.bank = 0.0 if k == steps else -side * lean
+            self.w = w0 + ((width if width is not None else w0) - w0) * k / steps
+            self._point()
+        return self
+
+    def close(self):
+        if self.route[-1] != self.route[0]:            # unless the last point drawn was the first one itself
+            self.roads.append((self.route[-1], self.route[0]))
+            self.route.append(self.route[0])
+        return self
+
+    def to_json(self):
+        east0 = -self.slot * 2500.0
+        nodes = [{"id": i + 1, "lat_deg": LAT0 + n / M_PER_DEG_LAT, "lon_deg": LON0 + (east0 + e) / M_PER_DEG_LON,
+                  "corner": 1.0, "height_m": round(h, 3)} for i, (e, n, h, _, _) in enumerate(self.nodes)]
+        roads = []
+        for a, b in self.roads:
+            (_, _, _, ba, wa), (_, _, _, bb, wb) = self.nodes[a - 1], self.nodes[b - 1]
+            road = {"from": a, "to": b}
+            if ba or bb:
+                road["from_bank_deg"], road["to_bank_deg"] = round(ba, 2), round(bb, 2)
+            if wa != self.width or wb != self.width:
+                road["from_width_m"], road["to_width_m"] = round(wa, 2), round(wb, 2)
+            roads.append(road)
+        return {"version": 2, "name": self.name, "body": "Earth", "width_m": self.width, "nodes": nodes, "roads": roads,
+                "route": self.route, "jumps": [[round(a - 60.0), round(b + 60.0)] for a, b in zip(self.marks[::2], self.marks[1::2])]}
+
+
+def insane():
+    c = Lap("Insane", "everything at once, at a racing car's size: 900 m flat out through a crossroads, a bowl banked 30 degrees, a 50% wall "
+            "160 m up, a weave along the sky, a corkscrew down, a dive, a jump, the crossroads again and a flick", 18, width=14.0)
+    c.x, c.y = 10.0, 0.0
+    c.start()
+    c.straight(750.0, pieces=5, width=16.0)            # the crossroads is the last point of this, at 760 east
+    c.straight(150.0)
+    c.arc(180.0, 180.0, lean=30.0, width=14.0)         # the bowl; its width sets how long the straight into the crossroads is later
+    c.straight(100.0)
+    c.climb(480.0, 0.50, ease=160.0)                   # the wall, to 160 m, its foot long enough to be met at speed
+    c.straight(60.0, width=9.0)
+    c.arc(180.0, -40.0, lean=20.0, every=20.0)         # the weave in the sky, 9 m wide
+    c.arc(180.0, 80.0, lean=20.0, every=20.0)
+    c.arc(180.0, -40.0, lean=20.0, every=20.0)
+    c.straight(60.0, width=12.0)
+    c.arc(80.0, 540.0, rise=-130.0, lean=25.0, every=30.0)   # the corkscrew, a turn and a half down 130 m
+    c.straight(40.0)
+    c.climb(130.0, -30.0 / 90.0, ease=40.0)            # the dive
+    c.h = 0.0
+    c.straight(150.0, pieces=2, width=14.0)
+    c.mark()
+    # The jump: a ramp held at 12% to its very lip, a table 3.4 m under the lip that the car clears, and a landing
+    # as steep as it comes down. A ramp that eases off at its top is a hump the car follows and does not leave.
+    for run, rise in ((40.0, 2.4), (50.0, 6.0), (47.0, 5.64), (3.0, 0.36)):
+        c.straight(run, rise=rise)
+    c.straight(6.0, rise=-3.4)
+    c.straight(54.0)
+    c.climb(140.0, -c.h / 100.0, ease=40.0)
+    c.h = 0.0
+    c.mark()
+    c.straight(640.0 - c.x, pieces=2)                  # room to brake in after landing
+    c.arc(120.0, -90.0, lean=20.0)
+    c.x = 760.0
+    c.straight(c.y)                                    # 80 m straight onto the crossroads, southbound: a junction wants room for its mouth
+    c.straight(200.0, pieces=2)
+    c.arc(120.0, -90.0, lean=20.0)
+    c.straight(400.0, pieces=3)
+    c.arc(60.0, -30.0, lean=10.0, every=15.0)          # the flick
+    c.arc(60.0, 60.0, lean=10.0, every=15.0)
+    c.arc(60.0, -30.0, lean=10.0, every=15.0)
+    c.straight(c.x - 20.0)
+    c.arc(120.0, -90.0, lean=20.0)
+    c.straight(-110.0 - c.y)
+    c.arc(110.0, -90.0, lean=20.0, every=22.5)
+    c.close()
+    return c
+
+
 BRUTAL = [stelvio, tower, corkscrew, bowl, offcamber, sky, alley, knot, marathon, vertical, cliffs]
 
 COURSES = [hairpins, spiral, coaster, eight, speedway, chicane, kinks, grid] + BRUTAL
@@ -309,7 +456,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--list", action="store_true", help="say what each circuit is for and write nothing")
     args = ap.parse_args()
-    courses = [make() for make in COURSES]
+    courses = [make() for make in COURSES] + [insane()]
     if args.list:
         for c in courses:
             print(f"{c.name:12} {len(c.nodes):3} points  {c.what}")

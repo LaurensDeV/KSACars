@@ -118,7 +118,8 @@ public class AutopilotTests
     // says the lap is over; then left alone for `after` seconds.
     internal static Lap Drive(TrackCar car, Track track, Route route, double dt, int laps = 1, double cruise = 0.0,
                               double timeout = 300.0, double after = 0.0, Action<TrackRig, Autopilot>? each = null,
-                              double[]? pattern = null, LapRow[]? rows = null, bool jumps = false)
+                              double[]? pattern = null, LapRow[]? rows = null, bool jumps = false, double push = 0.0,
+                              IReadOnlyList<(double, double)>? jumpZones = null)
     {
         TrackRig rig = new(car, track.World, track.Road);
         (double3 at, _, double3 ahead) = route.Standing(1.5 * BuggyDrive.Wheelbase(car.Profile));
@@ -129,7 +130,7 @@ public class AutopilotTests
         rig.Dt = dt;
         rig.Pattern = pattern;
 
-        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps };
+        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [] };
         rig.Driver = pilot;
         for (int guard = 0; pilot.End == LapEnd.Running && guard < 2_000_000 && rig.Finite; guard++)
         {
