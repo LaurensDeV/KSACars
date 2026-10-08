@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-235 types and 525 members across 12 assemblies.
+235 types and 526 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -183,6 +183,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### Brutal.Numerics.doubleQuat
 
 - `Brutal.Numerics.double3 op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.double3)`
+- `Brutal.Numerics.doubleQuat Conjugate(Brutal.Numerics.doubleQuat)`
 - `Brutal.Numerics.doubleQuat CreateFromAxisAngle(Brutal.Numerics.double3, double)`
 - `Brutal.Numerics.doubleQuat CreateFromRotationMatrix(Brutal.Numerics.double4x4)`
 - `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`

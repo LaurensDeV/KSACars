@@ -207,7 +207,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RoadJunction.cs` | **where three or more roads meet, as one polygon of asphalt under one tilted plane**: each road's mouth, the corners between them rounded, bevelled or joined round the point, the plane that is the through road's climb and lean, what is past the edge between the mouths, what a wheel there is over and the line a driver takes across — or why the roads are too nearly alongside for one to be made |
 | `Sim/RoadRibbon.cs` | **a run of roads as one surface**: where it is a distance along and across, the way it faces there, and for any place how far along and across that is — the asphalt leaning by its bank, a verge and an embankment down into the ground past its edge, or a deck with nothing beside it where it is more than 4 m up |
 | `Sim/RoadTessellation.cs` | a ribbon as triangles, **the ones the game draws and collides with**: rows of vertices across the road, closer where it bends, climbs or twists, joined into meshes of about 100 m or of as much as a place in the pool holds, with the asphalt, the earth and a deck's sides apart, each vertex facing as the surface does and given twice only at a crease; and a junction as a mesh that **takes each run's last row for its own at the mouth**, several junctions to a mesh where they are near |
-| `Sim/RoadLoop.cs` | **a loop, which a height over the ground cannot say**: road that leaves the ground level, goes over upside down and comes back level to one side, its bend nothing at its foot and the most over its top, and for a wheel how far off its asphalt it is the way that faces. **In the headless rig only** |
+| `Sim/RoadLoop.cs` | **a loop, which a height over the ground cannot say**: road that leaves the ground level, goes over upside down and comes back level to one side, its bend nothing at its foot and the most over its top; for a wheel how far off its asphalt it is the way that faces, where a circuit's roads put it, its triangles and the steering that carries a car round it |
 | `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it, or a junction's plane, and the way that faces, **a road more than a deck's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
 | `Sim/RoadCollider.cs` | the meshes of runs and junctions that are joined as **the one solid KSA's physics is given for them**: every triangle about one origin, listed so that it is solid from the side it is drawn from, and narrowed from where each vertex was worked out so two meshes' triangles share their corners |
 | `Sim/RoadDrawList.cs` | which of a circuit's meshes are drawn: how much one place in the pool holds and how many places there are, **the nearest meshes given the places when there are too few and the nearest drawn when a view has too few draws**, a mesh's triangles in the order of the two materials, and the ledger of which places are out |
@@ -281,7 +281,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 525 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 526 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -802,21 +802,29 @@ and the editor lists them in its panel and rings each in red on the ground. None
 **The panel's sliders and its warnings have not been seen in game**: the bridge's capture does not take
 the game's own windows.
 
-**A loop is a piece of its own, and so far only in the rig.** A road is a height over a chart of the
+**A loop is a piece of its own, which only a car's wheels meet.** A road is a height over a chart of the
 ground, and a loop is upright and then upside down over itself, so `Sim/RoadLoop.cs` is a surface of its
 own in one upright plane: 110 m of road round for one 30 m high, bending as a sine squared along it,
-nothing where it leaves the ground and 4 pi over its length at the top, and carried 12 m to the left on the
-way so the way out clears the way in. `WheelGround.Read` takes loops, and a wheel on one is sprung along
-the loop's own facing under that wheel and not along one plane through all four: a loop turns a seventh
-of a radian between a car's axles, and with one plane the nose closed on the road at that share of the
-car's speed while its dampers saw it leaving. A loop presses a car at four to six times its weight
-whatever its size, since the speed it takes grows as the loop does, and that is 8 cm of the F2004's
-springs, which have 2: `BuggyDrive.BumpStops` holds each hub at the end of its travel, as a wall holds a
-car's side (`Barrier.Hold`, with nothing rubbing). `RoadLoopTests` drives every car round at 25 and
-30 m/s at 60 and 50 steps a second: four wheels down all the way, 2 cm past the stops at most, and out
-straight on the loop's own line; at 15 m/s a car comes off the top. **Nothing of it is in the game**: a
-loop has no mesh, no solid, no place in a circuit's file, and neither the route driver nor the line to
-drive knows of one.
+nothing where it leaves the ground and 4 pi over its length at the top, and carried to the left on the way
+so the way out clears the way in. A circuit has `loops`, each from the point one road ends at to the
+point another starts at, with its length; the second point is to be `RoadLoop.Reach` ahead of the first
+and to its left by more than the road's width, and `RoadLoop.Of` stands the loop on the first road's end
+as that road arrives. The file is version 4 for it. `WheelGround.Read` takes the loops, and a wheel on
+one is sprung along the loop's own facing under that wheel and not along one plane through all four: a
+loop turns a seventh of a radian between a car's axles, and with one plane the nose closed on the road
+at that share of the car's speed while its dampers saw it leaving. A loop presses a car at four to six
+times its weight whatever its size, since the speed it takes grows as the loop does, and that is 8 cm of
+the F2004's springs, which have 2: `BuggyDrive.BumpStops` holds each hub at the end of its travel, as a
+wall holds a car's side (`Barrier.Hold`, with nothing rubbing), in `Buggies.Physics` while a wheel is on a
+loop. **On a loop the mod steers**, by `RoadLoop.Steer` towards a place on its middle a little ahead, and
+the keys are the throttle's: it is carried aside as it goes round. `Roads` draws it as a road is drawn,
+with its lines, in a place of the pool. **It is not solid**: a hull's box is longer than a loop's bend
+lets lie in it, so nothing is given to the physics, and a kitten, a rock and a car off its wheels go
+through it. It has no barrier, the route driver stops at the road's end before it and the line to drive
+ends there, and the editor has no control for one: the bridge's `road` with `loop` lays a road to one and
+a road on from it. `RoadLoopTests` drives every car round in the rig at 25 and 30 m/s at 60 and 50 steps
+a second: four wheels down all the way, 2 cm past the stops at most, and out straight on the loop's own
+line; at 15 m/s a car comes off the top, and at 40 m/s and 30 steps a second the F2004 does.
 
 **Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances

@@ -299,6 +299,11 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       four wheels down, and a lap set going from there. The strip at a closed run's start that was drawn
       pale, with a whole lap of its lines in it, is drawn as the rest
 - [ ] The panel's Course list, Lay here and Take up roads, by hand; an install with no `developer` file
+- [x] A loop (2026.10.10.5554): a road of 300 m to a loop of 110 m and a road on from it, laid by the
+      bridge's `road` with `loop`; the F2004 driven at it on the throttle alone went in at 36 m/s, was
+      steered round with four wheels down and its hubs on their stops, and came out on the road at 35.
+      Drawn with a road's lines, in the bridge's capture of the car on its way up
+- [ ] A loop with the buggy and the Eldorado, at 30 frames a second, and too slowly; a kitten at one
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
