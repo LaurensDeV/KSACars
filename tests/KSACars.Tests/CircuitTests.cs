@@ -59,7 +59,7 @@ public class CircuitTests
     {
         string json = Course().ToJson();
 
-        Assert.Contains("\"version\": 3", json);
+        Assert.Contains("\"version\": 4", json);
         Assert.Contains("\"at\": {\"lat_deg\":-24,\"lon_deg\":-62.5}", json);
         Assert.Contains("{\"id\":1,\"east_m\":0,\"north_m\":0}", json);
         Assert.DoesNotContain("lat_deg\":-23", json);

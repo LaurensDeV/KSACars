@@ -439,8 +439,11 @@ internal sealed class Bridge
         }
         else
         {
-            circuit = TestCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0),
-                Math.Clamp(command.Number("length", 300.0), 10.0, 20_000.0), Math.Clamp(command.Number("width", 8.0), 1.0, 40.0));
+            double width = Math.Clamp(command.Number("width", 8.0), 1.0, 40.0), length = Math.Clamp(command.Number("length", 300.0), 10.0, 20_000.0);
+            circuit = command.Has("loop")
+                ? LoopCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0), length, width,
+                              Math.Clamp(command.Number("loop", 110.0), Circuit.MinLoopM, Circuit.MaxLoopM))
+                : TestCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0), length, width);
             if (command.String("save_as") is { Length: > 0 } saveAs && !CircuitLibrary.Save(circuit with { Name = saveAs, RadiusM = body.MeanRadius }, out string failed))
             {
                 return Failed(failed);
@@ -526,6 +529,26 @@ internal sealed class Bridge
         return new Circuit { Name = "Test", Body = body.Id, WidthM = width }
             .AddNode(lat, lon, out int start).Extend(start, b.Lat, b.Lon, out int mid).Extend(mid, c.Lat, c.Lon, out int end)
             .Extend(mid, d.Lat, d.Lon, out int side).Connect(side, end);
+    }
+
+    // A straight road to a loop and a straight road on from where it comes down, to try a loop on.
+    private static Circuit LoopCircuit(Celestial body, double lat, double lon, double headingDeg, double runUp, double width, double loop)
+    {
+        double heading = headingDeg * Math.PI / 180.0, perDeg = Math.PI * body.MeanRadius / 180.0;
+        (double Lat, double Lon) At(double ahead, double right)
+        {
+            double north = (ahead * Math.Cos(heading)) - (right * Math.Sin(heading));
+            double east = (ahead * Math.Sin(heading)) + (right * Math.Cos(heading));
+            return (lat + (north / perDeg), lon + (east / (perDeg * Math.Cos(lat * Math.PI / 180.0))));
+        }
+
+        // It comes down that far on and to the left by the road's width and room for a car's width between.
+        double on = runUp + RoadLoop.Reach(loop), aside = -(width + 4.0);
+        (double Lat, double Lon) foot = At(runUp, 0.0), down = At(on, aside), end = At(on + 250.0, aside);
+        return new Circuit { Name = "Loop", Body = body.Id, WidthM = width, RadiusM = body.MeanRadius }
+            .AddNode(lat, lon, out int start).Extend(start, foot.Lat, foot.Lon, out int from)
+            .AddNode(down.Lat, down.Lon, out int to).Extend(to, end.Lat, end.Lon, out _)
+            .AddLoop(from, to, loop);
     }
 
     // The ground's height against sea level at lat/lon, negative where it is seabed -- or along a line

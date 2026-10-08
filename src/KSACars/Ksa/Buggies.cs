@@ -751,9 +751,10 @@ internal sealed class Buggies
             e.RoadGeneration = Roads.Generation;
         }
 
-        WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs,
-                         body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
-                         Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights);
+        IReadOnlyList<RoadLoop> loops = Roads.LoopsOn(body);
+        bool looped = WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs,
+                                       body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
+                                       Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights, loops);
 
         // A lap's driver has the wheel, ahead of the keys and of anything held: asked here, where the
         // ground under the wheels is known and the drive has not been stepped.
@@ -762,6 +763,20 @@ internal sealed class Buggies
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));
         double air = KsaWorld.ReferenceAirDensityKgPerM3 * KsaWorld.AirDensityRatioAt(craft, KsaWorld.PositionEcl(craft));
+
+        // On a loop the mod has the wheel, and the keys the throttle: it is carried aside as it goes round.
+        if (looped && !warped)
+        {
+            double speedNow = Vec.Len(velocityBody);
+            foreach (RoadLoop loop in loops)
+            {
+                if (loop.Steer(positionCcf, body2Ccf, speedNow, BuggyDrive.Wheelbase(e.Drive.Profile)) is not { } angle) continue;
+                double lockRad = BuggyDrive.SteerLock(e.Drive.Profile, Vec.Dot(velocityBody, forward), gravity,
+                                                      BuggyDrive.WingLoad(e.Drive.Profile, speedNow, air, mass));
+                e.Input = e.Input with { Steer = lockRad > 0.0 ? Math.Clamp(angle / lockRad, -1.0, 1.0) : 0.0 };
+                break;
+            }
+        }
 
         // Both sets of rockets at once hold the car where it is, so neither pushes on its own.
         bool hovering = e.Pressed && e.Rockets > 0.0;
@@ -793,6 +808,18 @@ internal sealed class Buggies
         double3 dw = new((inverse.XX * l.X) + (inverse.YX * l.Y) + (inverse.ZX * l.Z),
                          (inverse.YX * l.X) + (inverse.YY * l.Y) + (inverse.ZY * l.Z),
                          (inverse.ZX * l.X) + (inverse.ZY * l.Y) + (inverse.ZZ * l.Z));
+
+        // A loop presses a car at several times its weight, which its springs have no travel for: each hub is held on its stop.
+        if (looped && !warped)
+        {
+            DriveImpulse stop = e.Drive.BumpStops(contacts, hubs, up, velocityBody + dv, spinBody + dw, mass,
+                (new double3(inverse.XX, inverse.YX, inverse.ZX), new double3(inverse.YX, inverse.YY, inverse.ZY), new double3(inverse.ZX, inverse.ZY, inverse.ZZ)), dt);
+            dv += stop.Linear / mass;
+            double3 w = stop.Angular;
+            dw += new double3((inverse.XX * w.X) + (inverse.YX * w.Y) + (inverse.ZX * w.Z),
+                              (inverse.YX * w.X) + (inverse.YY * w.Y) + (inverse.ZY * w.Z),
+                              (inverse.ZX * w.X) + (inverse.ZY * w.Y) + (inverse.ZZ * w.Z));
+        }
 
         // A deck's barrier, where a side of the car is at one: the mod's own push, which rubs as a rail does and not as KSA's ground.
         if (!warped && Roads.SurfaceOn(body) is { } roads)

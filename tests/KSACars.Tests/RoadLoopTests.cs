@@ -190,6 +190,110 @@ public class RoadLoopTests
     }
 
     [Fact]
+    public void ACircuitsLoopStandsWhereItsRoadsEndAndIsKeptInItsFile()
+    {
+        // A road east to a point, and one on from where a loop of 110 m comes down, 12 m to its left.
+        TrackWorld world = TrackWorld.Earth();
+        double on = 200.0 + RoadLoop.Reach(110.0);
+        Circuit circuit = new Circuit { WidthM = 8.0, RadiusM = world.RadiusM }
+            .AddNode(0.0, 0.0, out int a).Extend(a, 0.0, world.Deg(200.0), out int foot)
+            .AddNode(world.Deg(12.0), world.Deg(on), out int down).Extend(down, world.Deg(12.0), world.Deg(on + 200.0), out _)
+            .AddLoop(foot, down, 110.0);
+
+        Circuit back = Circuit.FromJson(circuit.ToJson(), out string why, out _)!;
+        Assert.True(back is not null, why);
+        Assert.Equal([new Circuit.Loop(foot, down, 110.0)], back.Loops);
+        Assert.Equal(circuit.ToJson(), back.ToJson());
+        Assert.Null(back.RemoveNode(down).Loops);
+
+        RoadLaying.Network net = RoadLaying.Laid(circuit, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM);
+        RoadLoop loop = RoadLoop.Of(circuit.Loops![0], net.Ribbons, out why)!;
+        Assert.True(loop is not null, why);
+        Assert.Equal(12.0, loop.ShiftM, 2);
+        Assert.Equal(4.0, loop.HalfWidthM, 6);
+
+        // It starts on the first road's asphalt going the way that road arrives, and comes down on the second's.
+        RoadSurface roads = RoadLaying.Surface(RoadLaying.Strips(net.Ribbons, world.HeightAt, TrackWorld.SpacingM));
+        double3 start = loop.Point(0.0, 0.0, out double3 along, out _), end = loop.Point(loop.LengthM, 0.0, out _, out _);
+        Assert.True(roads.TryHeightOver(loop.Point(-1.0, 0.0, out _, out _), out double over) && Math.Abs(over) < 0.01, $"{over:F3} m over the road it leaves");
+        Assert.True(roads.TryHeightOver(loop.Point(loop.LengthM + 1.0, 0.0, out _, out _), out over) && Math.Abs(over) < 0.01, $"{over:F3} m over the road it comes down on");
+        Assert.True(Vec.Dot(along, Vec.Unit(world.Dir(1.0, 0.0) - world.Dir(0.0, 0.0))) > 0.999);
+        Assert.Equal(RoadLoop.Reach(110.0), Vec.Dot(end - start, along), 2);
+
+        Assert.Null(RoadLoop.Of(new Circuit.Loop(a, 99, 110.0), net.Ribbons, out why));
+        Assert.Contains("no road", why);
+    }
+
+    [Fact]
+    public void ItsMeshIsWholeFacesOutAndHasTheRoadsLinesAlongIt()
+    {
+        RoadLoop loop = Loop(TrackWorld.Earth());
+        RoadMeshData mesh = loop.Mesh(2048);
+        Assert.True(mesh.Positions.Length <= 2048 && mesh.Indices.Length % 3 == 0);
+        Assert.Equal(mesh.Indices.Length, mesh.AsphaltIndices + mesh.DeckIndices);
+
+        for (int t = 0; t < mesh.Indices.Length; t += 3)
+        {
+            int a = mesh.Indices[t], b = mesh.Indices[t + 1], c = mesh.Indices[t + 2];
+            double3 across = Vec.Cross(mesh.Places[b] - mesh.Places[a], mesh.Places[c] - mesh.Places[a]);
+            Assert.True(Vec.Len(across) > 1e-3, "a triangle of the loop has no area");
+            double3 said = new(mesh.Normals[a].X, mesh.Normals[a].Y, mesh.Normals[a].Z);
+            Assert.True(Vec.Dot(Vec.Unit(across), said) > 0.9, $"triangle {t / 3} faces away from its own vertices");
+            if (t >= mesh.AsphaltIndices) continue;
+
+            // The asphalt is the loop's own, and takes of the lined picture what a road that long does.
+            double3 middle = (mesh.Places[a] + mesh.Places[b] + mesh.Places[c]) / 3.0;
+            Assert.True(loop.TryLocate(middle + (said * 0.3), out _, out _, out double over, out _) && Math.Abs(over - 0.3) < 0.02, $"triangle {t / 3} is {over:F3} m off the loop");
+            double along = Math.Max(mesh.Uvs[a].Y, Math.Max(mesh.Uvs[b].Y, mesh.Uvs[c].Y)) - Math.Min(mesh.Uvs[a].Y, Math.Min(mesh.Uvs[b].Y, mesh.Uvs[c].Y));
+            Assert.InRange(along, 0.5 / RoadTessellation.MarkingsM, 1.5 / RoadTessellation.MarkingsM);
+        }
+        Assert.Equal(40, loop.Mesh(9 * 41).Positions.Length / 9 - 1);
+    }
+
+    [Fact]
+    public void ACarOnItIsSteeredTowardsItsMiddleAndOneOffItIsNot()
+    {
+        TrackWorld world = TrackWorld.Earth();
+        RoadLoop loop = Loop(world);
+        double3 at = loop.Point(20.0, 0.0, out double3 along, out double3 facing);
+        double3 left = loop.Left;
+
+        // The car's up, ahead and left as the loop's are there: X, Y and Z of the car.
+        double3 X(doubleQuat q) => q * new double3(1, 0, 0);
+        doubleQuat turn = FromAxes(facing, along, left);
+        Assert.True(Vec.Len(X(turn) - facing) < 1e-9);
+
+        // To the right of the middle it is steered left, to the left of it right, and the middle bears left as the loop does.
+        Assert.True(loop.Steer(at - (left * 2.0) + (facing * 0.4), turn, 25.0, 3.0) > 0.05);
+        Assert.True(loop.Steer(at + (left * 2.0) + (facing * 0.4), turn, 25.0, 3.0) < -0.05);
+        Assert.InRange(loop.Steer(at + (facing * 0.4), turn, 25.0, 3.0)!.Value, 0.0, 0.1);
+        Assert.Null(loop.Steer(at + (facing * 5.0), turn, 25.0, 3.0));
+    }
+
+    // The turn that carries a car's X, Y and Z to three ways at right angles.
+    private static doubleQuat FromAxes(double3 x, double3 y, double3 z)
+    {
+        double trace = x.X + y.Y + z.Z;
+        if (trace > 0.0)
+        {
+            double s = 0.5 / Math.Sqrt(trace + 1.0);
+            return new doubleQuat((y.Z - z.Y) * s, (z.X - x.Z) * s, (x.Y - y.X) * s, 0.25 / s);
+        }
+        if (x.X > y.Y && x.X > z.Z)
+        {
+            double s = 2.0 * Math.Sqrt(1.0 + x.X - y.Y - z.Z);
+            return new doubleQuat(0.25 * s, (y.X + x.Y) / s, (z.X + x.Z) / s, (y.Z - z.Y) / s);
+        }
+        if (y.Y > z.Z)
+        {
+            double s = 2.0 * Math.Sqrt(1.0 + y.Y - x.X - z.Z);
+            return new doubleQuat((y.X + x.Y) / s, 0.25 * s, (z.Y + y.Z) / s, (z.X - x.Z) / s);
+        }
+        double r = 2.0 * Math.Sqrt(1.0 + z.Z - x.X - y.Y);
+        return new doubleQuat((z.X + x.Z) / r, (z.Y + y.Z) / r, 0.25 * r, (x.Y - y.X) / r);
+    }
+
+    [Fact]
     public void Probe()
     {
         if (Environment.GetEnvironmentVariable("KSACARS_LOOP") is not { Length: > 0 } file) return;

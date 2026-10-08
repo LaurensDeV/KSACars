@@ -20,7 +20,8 @@ internal static class WheelGround
     /// <param name="terrain">The ground's height over <paramref name="meanRadius"/>, asked along directions in the body's own frame.</param>
     /// <param name="roadOver">How far each hub was above the road under it last step, or null; brought up to date.</param>
     /// <param name="hubHeights">Each hub's height over what is under it, straight up, as it is before the contacts are tilted.</param>
-    public static void Read(
+    /// <returns>Whether any wheel is on a loop.</returns>
+    public static bool Read(
         double3 positionCcf, doubleQuat body2Ccf, double3 velocityBody, double3 spinBody,
         ReadOnlySpan<double3> hubs, double meanRadius,
         ITerrainHeights terrain, PadHeight? pad, RoadSurface? road,
@@ -66,5 +67,6 @@ internal static class WheelGround
         // One plane through what is under all four is the road's own where the road is nearly flat under a car. A loop
         // turns a seventh of a radian between a car's axles, and the nose closes on it at that share of the car's speed.
         if (!looped) GroundPlane.Tilt(contacts, hubs);
+        return looped;
     }
 }

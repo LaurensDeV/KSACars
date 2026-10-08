@@ -24,7 +24,9 @@ internal static class Roads
 
     private sealed record Ribbon(double3[] SurfaceCcf, double HalfWidth, double LengthM, bool Closed);
 
-    private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM);
+    private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM, RoadLoop[] Loops);
+
+    private const string LoopKey = "loop:";
 
     private static volatile Laid? _laid;
 
@@ -54,6 +56,9 @@ internal static class Roads
 
     /// <summary>The circuit whose roads are laid on <paramref name="body"/>, or null with none.</summary>
     public static Circuit? CircuitOn(Celestial body) => _laid is { } laid && ReferenceEquals(laid.Body, body) ? laid.Circuit : null;
+
+    /// <summary>The loops standing on a body, which a wheel is sprung against where it is on one. For the physics window.</summary>
+    public static IReadOnlyList<RoadLoop> LoopsOn(Celestial body) => _laid is { } laid && ReferenceEquals(laid.Body, body) ? laid.Loops : [];
 
     /// <summary>The roads laid on <paramref name="body"/> as a wheel is over them, or null with none. Swapped whole, as above.</summary>
     public static RoadSurface? SurfaceOn(Celestial body) =>
@@ -400,7 +405,14 @@ internal static class Roads
                 lines.Add(new Ribbon([junction.Point(arm.MouthAt), junction.Point(junction.At)], arm.HalfWidth + junction.RadiusM, arm.MouthS, false));
             }
         }
-        _laid = strips.Count > 0 ? new Laid(body, [.. lines], RoadLaying.Surface(strips), circuit, liftM, spacingM) : null;
+        // A loop stands where the roads at its two points end, so it is placed once they are laid.
+        List<RoadLoop> loops = [];
+        foreach (Circuit.Loop loop in circuit.Loops ?? [])
+        {
+            if (RoadLoop.Of(loop, network.Ribbons, out string noLoop) is { } placed) loops.Add(placed);
+            else Log.Warn(noLoop);
+        }
+        _laid = strips.Count > 0 ? new Laid(body, [.. lines], RoadLaying.Surface(strips), circuit, liftM, spacingM, [.. loops]) : null;
         Refused = network.Refused;
         if (whole) Warnings = RoadWarning.Of(circuit, network, body.GetDirCcfFromLatLon);
 
@@ -647,6 +659,15 @@ internal static class Roads
             _roadSolids = colliders.Count > 0 ? (body, [.. colliders]) : null;
             HandColliders();
         }
+        // A loop is drawn and is not solid: the wheels are sprung against it and nothing else of a car meets it.
+        if (whole && _laid is { } laidNow)
+        {
+            for (int i = 0; i < laidNow.Loops.Length; i++)
+            {
+                runs.Add(new RoadDrawing.Run($"{LoopKey}{i}", [laidNow.Loops[i].Mesh(RoadDrawList.SlotVertices)]));
+            }
+        }
+        foreach (string key in shown.Where(k => k.StartsWith(LoopKey, StringComparison.Ordinal))) gone.Remove(key);
         RoadDrawing.Show(body, runs, others: !whole, EyeCcf(body), TakesGoneRuns ? gone : null);
         HashSet<string> now = [.. network.Ribbons.Select(KeyOf)];
         StaleRuns = RoadDrawing.ShownKeys().Count(k => !k.StartsWith(JunctionKey, StringComparison.Ordinal) && !now.Contains(k));

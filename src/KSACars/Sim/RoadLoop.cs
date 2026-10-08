@@ -96,6 +96,126 @@ internal sealed class RoadLoop
         return _base + (_ahead * x) + (_up * z) + (_left * (Aside(s) + leftM));
     }
 
+    /// <summary>How far ahead of where it leaves the ground a loop of this length comes back to it.</summary>
+    public static double Reach(double lengthM)
+    {
+        const int Steps = 2000;
+        double x = 0.0, step = lengthM / Steps;
+        for (int i = 0; i < Steps; i++)
+        {
+            double t = (i + 0.5) / Steps;
+            x += Math.Cos((2.0 * Math.PI * t) - Math.Sin(2.0 * Math.PI * t)) * step;
+        }
+        return x;
+    }
+
+    /// <summary>
+    /// A circuit's loop where its roads are laid: from the end of the road at its first point, the
+    /// way that road arrives, to one side by as far as the road at its second point starts to the
+    /// side of it. Null with the reason where either point has no road ending at it.
+    /// </summary>
+    public static RoadLoop? Of(Circuit.Loop loop, IReadOnlyList<RoadRibbon> ribbons, out string why)
+    {
+        if (End(ribbons, loop.From, arriving: true) is not { } from || End(ribbons, loop.To, arriving: false) is not { } to)
+        {
+            why = $"the loop from point {loop.From} to point {loop.To} has no road ending at one of them";
+            return null;
+        }
+        double3 up = Vec.Unit(from.At), ahead = Vec.Unit(Vec.RejectFrom(from.Ahead, up));
+        why = "";
+        return new RoadLoop(from.At, ahead, loop.LengthM, Vec.Dot(to.At - from.At, Vec.Cross(up, ahead)), Math.Min(from.HalfWidth, to.HalfWidth));
+    }
+
+    // Where a road ends at a point, on its own asphalt, and the way a car arriving there by it, or leaving there by it, is going.
+    private static (double3 At, double3 Ahead, double HalfWidth)? End(IReadOnlyList<RoadRibbon> ribbons, int node, bool arriving)
+    {
+        foreach (RoadRibbon ribbon in ribbons)
+        {
+            if (ribbon.Closed || ribbon.Spans.Count == 0) continue;
+            bool last = ribbon.Spans[^1].To == node, first = ribbon.Spans[0].From == node;
+            if (!last && !first) continue;
+
+            RoadRibbon.Section at = ribbon.At(last ? ribbon.LengthM : 0.0);
+            ribbon.Chart.Compass(at.At, out _, out double3 east, out double3 north);
+            double3 along = (east * at.Heading.E) + (north * at.Heading.N);
+            return (ribbon.Point(at, 0.0, at.Height), last == arriving ? along : -along, at.HalfWidth);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The angle to steer a car on the loop by, to the left, towards a place on its middle a little
+    /// ahead: a loop is carried aside as it goes round, and upside down is no place to learn that. Null
+    /// for a car that is not on it.
+    /// </summary>
+    /// <param name="at">The car's centre of mass, from the body's centre.</param>
+    /// <param name="body2Ccf">The car's turn: its up is X, ahead Y and left Z.</param>
+    public double? Steer(double3 at, doubleQuat body2Ccf, double speedMs, double wheelbaseM)
+    {
+        if (!TryLocate(at, out double s, out _, out _, out _)) return null;
+        double reach = Math.Max(6.0, 0.3 * speedMs);
+        double3 to = doubleQuat.Conjugate(body2Ccf) * (Point(s + reach, 0.0, out _, out _) - at);
+        return Math.Atan2(2.0 * wheelbaseM * Math.Sin(Math.Atan2(to.Z, to.Y)), reach);
+    }
+
+    /// <summary>How thick the road of it is, and how far apart its rows of vertices are at the least.</summary>
+    public const double ThickM = 0.4, RowsEveryM = 1.0;
+
+    /// <summary>
+    /// The loop as triangles: its asphalt, drawn as a road's is with its lines, and its two sides and
+    /// its underside. A row every metre, or as few more apart as keep it to <paramref name="mostVertices"/>.
+    /// </summary>
+    public RoadMeshData Mesh(int mostVertices)
+    {
+        const int Across = 9;
+        int rows = Math.Max(Math.Min((int)Math.Ceiling(LengthM / RowsEveryM), (mostVertices / Across) - 1), 8) + 1;
+        double3 origin = Point(0.5 * LengthM, 0.0, out _, out _);
+        double3[] places = new double3[rows * Across];
+        float3[] positions = new float3[rows * Across], normals = new float3[rows * Across];
+        float2[] uvs = new float2[rows * Across];
+        double radius = 0.0;
+        for (int r = 0; r < rows; r++)
+        {
+            double s = LengthM * r / (rows - 1);
+            double3 middle = Point(s, 0.0, out _, out double3 facing);
+
+            // Left edge, middle and right edge of the asphalt; then down each side, and the underside's two edges.
+            ReadOnlySpan<double> aside = [HalfWidthM, 0.0, -HalfWidthM, HalfWidthM, HalfWidthM, -HalfWidthM, -HalfWidthM, HalfWidthM, -HalfWidthM];
+            ReadOnlySpan<double> down = [0.0, 0.0, 0.0, 0.0, ThickM, 0.0, ThickM, ThickM, ThickM];
+            for (int i = 0; i < Across; i++)
+            {
+                double3 at = middle + (_left * aside[i]) - (facing * down[i]);
+                double3 normal = i <= 2 ? facing : i <= 4 ? _left : i <= 6 ? -_left : -facing;
+                places[(r * Across) + i] = at;
+                double3 from = at - origin;
+                radius = Math.Max(radius, Vec.Len(from));
+                positions[(r * Across) + i] = new float3((float)from.X, (float)from.Y, (float)from.Z);
+                normals[(r * Across) + i] = new float3((float)normal.X, (float)normal.Y, (float)normal.Z);
+                // The asphalt as a road's: across the picture from its left edge, and along it by its length. The rest by where it is.
+                uvs[(r * Across) + i] = i <= 2
+                    ? new float2((float)(0.5 * i), (float)(s / RoadTessellation.MarkingsM))
+                    : new float2((float)((aside[i] + down[i]) / RoadTessellation.TileM), (float)(s / RoadTessellation.TileM));
+            }
+        }
+
+        List<int> asphalt = [], sides = [];
+        void Quad(List<int> to, int r, int a, int b)
+        {
+            // Anticlockwise seen from outside: a is to the left of b for whoever looks at the face going along the loop.
+            int a0 = (r * Across) + a, b0 = (r * Across) + b, a1 = a0 + Across, b1 = b0 + Across;
+            to.AddRange([a0, b0, b1, a0, b1, a1]);
+        }
+        for (int r = 0; r < rows - 1; r++)
+        {
+            Quad(asphalt, r, 0, 1);
+            Quad(asphalt, r, 1, 2);
+            Quad(sides, r, 4, 3);
+            Quad(sides, r, 5, 6);
+            Quad(sides, r, 8, 7);
+        }
+        return new RoadMeshData(origin, positions, normals, uvs, [.. asphalt, .. sides], asphalt.Count, 0, sides.Count, radius, 0.0, LengthM, [], [], 0, places);
+    }
+
     /// <summary>The way to its left, which is the same all the way round.</summary>
     public double3 Left => _left;
 

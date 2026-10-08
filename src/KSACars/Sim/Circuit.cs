@@ -21,7 +21,7 @@ namespace KSACars;
 /// </summary>
 internal sealed record Circuit
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 
     /// <summary>The body's radius a file's metres are taken on where nothing says: Earth's, and a file read with what it was written with comes back the same whatever that is.</summary>
     public const double DefaultRadiusM = 6_371_000.0;
@@ -52,6 +52,24 @@ internal sealed record Circuit
     /// <summary>The mean radius of the body the points are on, m, which is what makes a file's metres metres; nothing where it is not known.</summary>
     [JsonIgnore]
     public double RadiusM { get; init; }
+
+    /// <summary>
+    /// A loop from where the road at one point ends to where the road at another starts: so much road
+    /// round, up and over upside down. The second point is to be where the loop comes down, which is
+    /// <see cref="RoadLoop.Reach"/> ahead of the first and to its left by more than the road's width.
+    /// </summary>
+    public sealed record Loop(int From, int To, double LengthM);
+
+    public IReadOnlyList<Loop>? Loops { get; init; }
+
+    /// <summary>The same circuit with a loop from one point to another, in place of any there was between them.</summary>
+    public Circuit AddLoop(int from, int to, double lengthM)
+    {
+        if (from == to || Find(from) is null || Find(to) is null || !(lengthM > 0.0)) return this;
+        return this with { Loops = [.. (Loops ?? []).Where(l => !(l.From == from && l.To == to)), new Loop(from, to, Math.Clamp(lengthM, MinLoopM, MaxLoopM))] };
+    }
+
+    public const double MinLoopM = 60.0, MaxLoopM = 400.0;
 
     /// <summary>The points a lap goes through, in order, and the stretches of it, in metres along, where a crest is meant to be jumped: kept for whoever drives it.</summary>
     public IReadOnlyList<int>? Route { get; init; }
@@ -132,6 +150,7 @@ internal sealed record Circuit
     {
         Nodes = [.. Nodes.Where(n => n.Id != id)],
         Roads = [.. Roads.Where(r => !r.Touches(id))],
+        Loops = Loops?.Where(l => l.From != id && l.To != id).ToList() is { Count: > 0 } kept ? kept : null,
     };
 
     public Circuit RemoveRoad(int a, int b) => this with { Roads = [.. Roads.Where(r => !r.Joins(a, b))] };
@@ -269,7 +288,8 @@ internal sealed record Circuit
 
     // The file: one place, and every point and handle as metres from it. A millimetre is kept of each.
     private sealed record Saved(int Version, string? Name, string? Body, double? RadiusM, SavedAt? At, double? WidthM, double? GroundSmoothM,
-                                List<SavedNode>? Nodes, List<SavedRoad>? Roads, IReadOnlyList<int>? Route, IReadOnlyList<double[]>? Jumps);
+                                List<SavedNode>? Nodes, List<SavedRoad>? Roads, IReadOnlyList<int>? Route, IReadOnlyList<double[]>? Jumps,
+                                IReadOnlyList<Loop>? Loops = null);
 
     private sealed record SavedAt(double LatDeg, double LonDeg, double? HeadingDeg);
 
@@ -305,6 +325,7 @@ internal sealed record Circuit
         if (Mm(GroundSmoothM) != DefaultGroundSmoothM) text.Append("  \"ground_smooth_m\": ").Append(One(Mm(GroundSmoothM))).Append(",\n");
         if (Route is { Count: > 0 }) text.Append("  \"route\": ").Append(One(Route)).Append(",\n");
         if (Jumps is { Count: > 0 }) text.Append("  \"jumps\": ").Append(One(Jumps)).Append(",\n");
+        if (Loops is { Count: > 0 }) text.Append("  \"loops\": ").Append(One(Loops)).Append(",\n");
 
         void Lines<T>(string name, IEnumerable<T> items, bool last)
         {
@@ -388,8 +409,11 @@ internal sealed record Circuit
                 ToWidthM = Kept(r.ToWidthM, MinWidthM, MaxWidthM),
             });
         }
+        List<Loop> loops = [.. (read.Loops ?? []).Where(l => l is not null && l.From != l.To && nodes.Any(n => n.Id == l.From) && nodes.Any(n => n.Id == l.To)
+                                                             && double.IsFinite(l.LengthM)).Select(l => l with { LengthM = Math.Clamp(l.LengthM, MinLoopM, MaxLoopM) })];
         return read with
         {
+            Loops = loops.Count > 0 ? loops : null,
             Version = CurrentVersion,
             GroundSmoothM = double.IsFinite(read.GroundSmoothM) ? Math.Clamp(read.GroundSmoothM, 0.0, MaxGroundSmoothM) : DefaultGroundSmoothM,
             Nodes = nodes,
@@ -412,7 +436,7 @@ internal sealed record Circuit
         return new Circuit
         {
             Version = file.Version, Name = file.Name ?? "", Body = file.Body ?? "", RadiusM = radius, WidthM = file.WidthM ?? 10.0,
-            GroundSmoothM = file.GroundSmoothM ?? DefaultGroundSmoothM, Route = file.Route, Jumps = file.Jumps,
+            GroundSmoothM = file.GroundSmoothM ?? DefaultGroundSmoothM, Route = file.Route, Jumps = file.Jumps, Loops = file.Loops,
             Nodes = [.. file.Nodes.Where(n => n is not null).Select(n => On(n.EastM, n.NorthM) is var (lat, lon)
                 ? new Node(n.Id, lat, lon, n.Corner ?? 1.0, n.HeightM ?? 0.0, n.JunctionRadiusM) : null!)],
             Roads = [.. file.Roads.Where(x => x is not null).Select(x => new Road(x.From, x.To, x.WidthM, Handle(x.FromHandle), Handle(x.ToHandle),
