@@ -52,6 +52,9 @@ internal static class Roads
         return _laid is { } laid && ReferenceEquals(laid.Body, body) && laid.Surface.TryHeightOver(atCcf, last, out metres);
     }
 
+    /// <summary>The circuit whose roads are laid on <paramref name="body"/>, or null with none.</summary>
+    public static Circuit? CircuitOn(Celestial body) => _laid is { } laid && ReferenceEquals(laid.Body, body) ? laid.Circuit : null;
+
     /// <summary>The roads laid on <paramref name="body"/> as a wheel is over them, or null with none. Swapped whole, as above.</summary>
     public static RoadSurface? SurfaceOn(Celestial body) =>
         _laid is { } laid && ReferenceEquals(laid.Body, body) ? laid.Surface : null;

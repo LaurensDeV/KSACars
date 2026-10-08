@@ -93,7 +93,11 @@ internal sealed class RoadEditor
         {
             _body = body;
             _viewSet = false;
-            Start(new Circuit { Name = "Circuit", Body = body.Id });
+
+            // Opened on roads that are already laid, it is those it edits: a new circuit would take them up.
+            Circuit? laid = Roads.CircuitOn(body);
+            Start(laid ?? new Circuit { Name = "Circuit", Body = body.Id });
+            if (laid is not null) (_laidFor, _laidFine) = (Now, true);
         }
 
         if (AskCircuit is { } given)
