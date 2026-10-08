@@ -618,7 +618,7 @@ the drag and not from KSA each time: a circuit of a kilometre or two is 3,900 ac
 roads laid when the drag ends are read from KSA's own. A drag at a point where several roads meet can
 change which of them carry on through it, and so which runs there are: a run that is new is made
 whoever's point was dragged, and the mesh of one that is a run no longer is taken away, where it used to
-stay drawn beside the new ones until the drag ended. **Not seen in game.** Made again while it lasts are the meshes of the runs through the dragged point and the points
+stay drawn beside the new ones until the drag ended. Made again while it lasts are the meshes of the runs through the dragged point and the points
 its roads go to, and of the junctions those runs stop at, ten times a second at most and for no more than a quarter of the time, a long run taking
 60 ms to make; the rest, and the physics, when the drag ends, when everything is made again. A road that cannot be drawn is still driven on and still solid: if the render
 hook throws, drawing stops until roads are next laid whole and nothing else is touched. The bridge's
