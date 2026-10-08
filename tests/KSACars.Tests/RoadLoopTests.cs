@@ -468,6 +468,91 @@ public class RoadLoopTests
         Assert.InRange(on, 32, 37);
     }
 
+    private static RoadLoop Laid(TrackWorld world, Circuit c, out RoadSurface roads)
+    {
+        RoadLaying.Network net = RoadLaying.Laid(c, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM);
+        roads = RoadLaying.Surface(RoadLaying.Strips(net.Ribbons, world.HeightAt, TrackWorld.SpacingM));
+        RoadLoop? loop = RoadLoop.Of(c.Loops![0], net.Ribbons, out string why);
+        Assert.True(loop is not null, why);
+        return loop!;
+    }
+
+    // How far the loop's end is from the road it is to come down on: along the loop's run, and off the road's asphalt.
+    private static (double Short, double Over) Landing(RoadLoop loop, RoadSurface roads)
+    {
+        Assert.True(roads.TryHeightOver(loop.Point(loop.LengthM + 2.0, 0.0, out _, out _), out double over), "no road where the loop comes down");
+        Assert.True(roads.TryLocate(loop.Point(loop.LengthM + 2.0, 0.0, out _, out _), null, out _, out double outM) && outM <= 0.0, "the loop comes down beside the road");
+        return (0.0, over);
+    }
+
+    [Fact]
+    public void ALoopPutAtARoadsEndComesDownOnTheRoadMadeForItAndIsSeatedAgainWhenItChanges()
+    {
+        TrackWorld world = TrackWorld.Earth();
+        Circuit road = new Circuit { WidthM = 8.0, RadiusM = world.RadiusM }.AddNode(0.0, 0.0, out int start).Extend(start, 0.0, world.Deg(300.0), out int foot);
+
+        Circuit c = road.PutLoop(foot, 110.0, world.RadiusM, out int down, out int onward);
+        Assert.Equal([new Circuit.Loop(foot, down, 110.0)], c.Loops);
+        Assert.Equal(4, c.Nodes.Count);
+        Assert.Contains(c.Roads, r => r.Joins(down, onward));
+        Assert.Same(c, c.PutLoop(foot, 110.0, world.RadiusM, out _, out _));
+        // Not at a point a road goes through.
+        Circuit through = road.Extend(foot, world.Deg(50.0), world.Deg(400.0), out _);
+        Assert.Same(through, through.PutLoop(foot, 110.0, world.RadiusM, out _, out _));
+
+        // To the left by the road's width and a car's, and on the road made for it to within a hand.
+        RoadLoop loop = Laid(world, c, out RoadSurface roads);
+        Assert.Equal(8.0 + Circuit.LoopClearM, loop.ShiftM, 2);
+        Assert.InRange(Landing(loop, roads).Over, -0.02, 0.02);
+        double3 landed = loop.Point(loop.LengthM, 0.0, out _, out _);
+        Circuit.Node at = c.Find(down)!;
+        Assert.True(Vec.Len(landed - (TrackWorld.DirOf(at.LatDeg, at.LonDeg) * Vec.Len(landed))) < 0.2, "the point it comes down at is not where it comes down");
+
+        // Longer, it comes down further on, and the point goes with it; on the other side, to the right.
+        Circuit longer = c.SeatLoop(down, 200.0, world.RadiusM);
+        RoadLoop big = Laid(world, longer, out roads);
+        Assert.Equal(200.0, big.LengthM);
+        Assert.InRange(Landing(big, roads).Over, -0.02, 0.02);
+        Assert.True(world.Flatten(TrackWorld.DirOf(longer.Find(down)!.LatDeg, longer.Find(down)!.LonDeg) * world.RadiusM).East
+                    > world.Flatten(TrackWorld.DirOf(at.LatDeg, at.LonDeg) * world.RadiusM).East + 20.0);
+
+        Circuit other = c.SeatLoop(foot, 110.0, world.RadiusM, otherSide: true);
+        Assert.Equal(-(8.0 + Circuit.LoopClearM), Laid(world, other, out _).ShiftM, 2);
+
+        // The road to it turned a little, the loop turns with it and its landing is put back under it.
+        Circuit turned = c.MoveNode(start, world.Deg(-40.0), 0.0);
+        RoadLoop astray = Laid(world, turned, out roads);
+        Assert.False(roads.TryLocate(astray.Point(astray.LengthM + 2.0, 0.0, out _, out _), null, out _, out double off) && off <= 0.0 && Math.Abs(astray.ShiftM - 12.0) < 0.5);
+        RoadLoop seated = Laid(world, turned.SeatLoop(foot, 110.0, world.RadiusM), out roads);
+        Assert.Equal(12.0, seated.ShiftM, 1);
+
+        Assert.Null(c.RemoveLoop(down).Loops);
+        Assert.Equal(c.ToJson(), Circuit.FromJson(c.ToJson(), out _, out _)!.ToJson());
+    }
+
+    [Fact]
+    public void ACarIsDrivenRoundALoopPutWithTheEditorsOwnEdit()
+    {
+        TrackWorld world = TrackWorld.Earth();
+        Circuit c = new Circuit { WidthM = 8.0, RadiusM = world.RadiusM }.AddNode(0.0, 0.0, out int start).Extend(start, 0.0, world.Deg(300.0), out int foot)
+            .PutLoop(foot, 110.0, world.RadiusM, out int down, out int onward);
+        c = c.MoveNode(onward, c.Find(down)!.LatDeg, c.Find(onward)!.LonDeg + world.Deg(140.0));
+        RoadLoop loop = Laid(world, c, out RoadSurface roads);
+        AutopilotTests.Track track = new(world, c, roads);
+        Route route = AutopilotTests.RouteOn(track, car: TrackCar.F2004);
+        Assert.Equal(300.0 + 110.0 + Circuit.LoopOnwardM + 140.0, route.LengthM, 0);
+
+        int fewest = 4, steps = 0;
+        AutopilotTests.Lap lap = AutopilotTests.Drive(TrackCar.F2004, track, route, 0.02, each: (rig, pilot) =>
+        {
+            if (rig.Loops.Count == 0) rig.Loops.Add(loop);
+            if (!loop.TryLocate(rig.Position, out _, out _, out _, out _)) return;
+            steps++;
+            fewest = Math.Min(fewest, rig.Drive.Grounded.Count(g => g));
+        });
+        Assert.True(lap.End == LapEnd.Finished && steps > 100 && fewest == 4 && lap.Summary.OffAsphaltSeconds == 0.0, $"{steps} steps on the loop, fewest wheels {fewest}; {lap.Told}");
+    }
+
     [Fact]
     public void Probe()
     {

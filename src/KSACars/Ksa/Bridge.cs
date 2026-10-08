@@ -560,13 +560,13 @@ internal sealed class Bridge
             return (lat + (north / perDeg), lon + (east / (perDeg * Math.Cos(lat * Math.PI / 180.0))));
         }
 
-        // It comes down that far on and to the left by the road's width and room for a car's width between.
-        double on = runUp + RoadLoop.Reach(loop), aside = -(width + 4.0);
-        (double Lat, double Lon) foot = At(runUp, 0.0), down = At(on, aside), end = At(on + 250.0, aside);
+        // By the editor's own edit, and the road on from where it comes down carried further.
+        double on = runUp + RoadLoop.Reach(loop), aside = -(width + Circuit.LoopClearM);
+        (double Lat, double Lon) foot = At(runUp, 0.0), end = At(on + 250.0, aside);
         return new Circuit { Name = "Loop", Body = body.Id, WidthM = width, RadiusM = body.MeanRadius }
             .AddNode(lat, lon, out int start).Extend(start, foot.Lat, foot.Lon, out int from)
-            .AddNode(down.Lat, down.Lon, out int to).Extend(to, end.Lat, end.Lon, out _)
-            .AddLoop(from, to, loop);
+            .PutLoop(from, loop, body.MeanRadius, out _, out int onward)
+            .MoveNode(onward, end.Lat, end.Lon);
     }
 
     // The ground's height against sea level at lat/lon, negative where it is seabed -- or along a line

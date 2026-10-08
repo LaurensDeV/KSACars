@@ -48,6 +48,7 @@ internal sealed class RoadEditor
     private int _grabNode, _grabOther;
     private float2 _pressAt;
     private bool _moved;
+    private float? _loopHeld;
     private bool _loadAtCar;
     private float _loadTurnDeg;
     private float? _widthHeld;
@@ -278,6 +279,8 @@ internal sealed class RoadEditor
 
                 PointSliders(node, roads);
 
+                LoopControls(node, roads);
+
                 if (Now.Roads.Any(r => (r.From == node.Id && r.FromHandle is not null) || (r.To == node.Id && r.ToHandle is not null)))
                 {
                     if (ImGui.Button("Automatic handles", null)) ClearHandles(node.Id);
@@ -380,6 +383,54 @@ internal sealed class RoadEditor
         }
         if (ImGui.IsItemDeactivated()) _history.EndDrag();
     }
+
+    // A loop is put at a road's end, and from either of its ends its length is set, its side changed and it is taken away.
+    private void LoopControls(Circuit.Node node, int roads)
+    {
+        double radius = _body!.MeanRadius;
+        if (Now.LoopAt(node.Id) is { } loop)
+        {
+            ImGui.Text(loop.From == node.Id ? "Foot of a loop" : "Where a loop comes down");
+            _loopHeld ??= (float)loop.LengthM;
+            float length = _loopHeld.Value;
+            ImGui.SetNextItemWidth(180f);
+            ImGui.SliderFloat("Loop length", ref length, (float)Circuit.MinLoopM, (float)Circuit.MaxLoopM, "%.0f m", ImGuiSliderFlags.None);
+            _loopHeld = length;
+            if (ImGui.IsItemDeactivatedAfterEdit()) _history.Do(Now.SeatLoop(node.Id, Math.Round(length), radius));
+            if (!ImGui.IsItemActive()) _loopHeld = (float)loop.LengthM;
+            ImGui.TextDisabled($"{0.27 * loop.LengthM:F0} m high, gone into at {Autopilot.LoopSpeed(loop.LengthM, 9.81) * 3.6:F0} km/h");
+
+            if (ImGui.Button("Seat loop", null)) _history.Do(Now.SeatLoop(node.Id, loop.LengthM, radius));
+            ImGui.SameLine(0f, -1f);
+            if (ImGui.Button("Other side", null)) _history.Do(Now.SeatLoop(node.Id, loop.LengthM, radius, otherSide: true));
+            ImGui.SameLine(0f, -1f);
+            if (ImGui.Button("Remove loop", null)) _history.Do(Now.RemoveLoop(node.Id));
+            ImGui.TextDisabled("Seat loop puts its landing back where it\ncomes down, after its road is moved");
+        }
+        else if (roads == 1)
+        {
+            _loopHeld = null;
+            if (ImGui.Button("Add a loop here", null))
+            {
+                Circuit with = Now.PutLoop(node.Id, DefaultLoopM, radius, out _, out int onward);
+                if (!ReferenceEquals(with, Now))
+                {
+                    _history.Do(with);
+                    _selected = onward;
+                }
+                else
+                {
+                    _message = "no loop: the road has no length here";
+                }
+            }
+        }
+        else
+        {
+            _loopHeld = null;
+        }
+    }
+
+    private const double DefaultLoopM = 110.0;
 
     // Whether a road at a point runs the way the road through that point is taken to: the first road into it, the rest out.
     private static double Sense(Circuit.Road road, int node, int index) => (index == 0 ? road.To == node : road.From == node) ? 1.0 : -1.0;

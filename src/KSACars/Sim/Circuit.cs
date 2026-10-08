@@ -71,6 +71,77 @@ internal sealed record Circuit
 
     public const double MinLoopM = 60.0, MaxLoopM = 400.0;
 
+    /// <summary>How far to one side a loop is carried over the road's width, so a car's width goes between its way in and its way out; and how long the road on from it is.</summary>
+    public const double LoopClearM = 4.0, LoopOnwardM = 60.0;
+
+    /// <summary>The same circuit without the loop at a point, whichever end of it the point is.</summary>
+    public Circuit RemoveLoop(int node) => this with { Loops = Loops?.Where(l => l.From != node && l.To != node).ToList() is { Count: > 0 } kept ? kept : null };
+
+    /// <summary>The loop a point is the foot of or the landing of, or none.</summary>
+    public Loop? LoopAt(int node) => Loops?.FirstOrDefault(l => l.From == node || l.To == node);
+
+    /// <summary>
+    /// A loop from the end of the road at <paramref name="from"/>: a new point where it comes down,
+    /// ahead of that end as the road arrives and to its left, a road on from there, and the loop
+    /// between. Unchanged where the point is not the end of one road, or has a loop already.
+    /// </summary>
+    /// <param name="down">The point it comes down at, and <paramref name="onward"/> the end of the road on from it; nothing where no loop was made.</param>
+    public Circuit PutLoop(int from, double lengthM, double radiusM, out int down, out int onward)
+    {
+        (down, onward) = (0, 0);
+        lengthM = Math.Clamp(lengthM, MinLoopM, MaxLoopM);
+        if (LoopAt(from) is not null || Landing(from, lengthM, WidthM + LoopClearM, LoopOnwardM, radiusM) is not { } lands) return this;
+        return AddNode(lands.Down.Lat, lands.Down.Lon, out down).Extend(down, lands.On.Lat, lands.On.Lon, out onward).AddLoop(from, down, lengthM);
+    }
+
+    /// <summary>
+    /// The loop at a point of the given length, and the point it comes down at moved to where a loop
+    /// of that length does, on the side it was: what a loop wants after its length is changed, or the
+    /// road to it moved. With <paramref name="otherSide"/>, on the other side.
+    /// </summary>
+    public Circuit SeatLoop(int node, double lengthM, double radiusM, bool otherSide = false)
+    {
+        if (LoopAt(node) is not { } loop || Find(loop.From) is not { } foot || Find(loop.To) is not { } was) return this;
+        lengthM = Math.Clamp(lengthM, MinLoopM, MaxLoopM);
+        if (Ahead(loop.From, radiusM) is not { } ahead) return this;
+
+        // To the side it is on now, and no nearer than a car's width clear of the road.
+        RoadChart chart = Chart(foot.LatDeg, foot.LonDeg, Radius(radiusM));
+        Plan to = chart.Of(DirOf(was.LatDeg, was.LonDeg));
+        double side = Plan.Dot(to, new Plan(-ahead.N, ahead.E)) < 0.0 ? -1.0 : 1.0;
+        if (otherSide) side = -side;
+        if (Landing(loop.From, lengthM, side * (WidthM + LoopClearM), 0.0, radiusM) is not { } lands) return this;
+        return MoveNode(loop.To, lands.Down.Lat, lands.Down.Lon).AddLoop(loop.From, loop.To, lengthM);
+    }
+
+    private static double Radius(double radiusM) => radiusM > 0.0 ? radiusM : DefaultRadiusM;
+
+    // The way the one road at a point arrives there, on a chart about the point; nothing where it is not the end of one road.
+    private Plan? Ahead(int node, double radiusM)
+    {
+        if (Find(node) is not { } here || Roads.Count(r => r.Touches(node)) != 1) return null;
+        Road road = Roads.First(r => r.Touches(node));
+        int far = road.From == node ? road.To : road.From;
+        double radius = Radius(radiusM);
+        Dictionary<int, Brutal.Numerics.double3> at = RoadLayout.Places(this, DirOf, radius);
+        Brutal.Numerics.double3 handle = RoadLayout.Handle(this, at, node, far, road.From == node ? road.FromHandle : road.ToHandle, DirOf, radius);
+        if (!(Vec.Len(handle) > 1e-6)) return null;
+
+        // The handle reaches back along the road, so the road arrives the other way.
+        Plan back = Chart(here.LatDeg, here.LonDeg, radius).Of(at[node] + handle);
+        double length = Math.Sqrt(Plan.Dot(back, back));
+        return length > 1e-9 ? new Plan(-back.E / length, -back.N / length) : null;
+    }
+
+    // Where a loop from a point comes down, so far to its left, and a place further on the same way.
+    private ((double Lat, double Lon) Down, (double Lat, double Lon) On)? Landing(int from, double lengthM, double asideM, double onwardM, double radiusM)
+    {
+        if (Find(from) is not { } foot || Ahead(from, radiusM) is not { } ahead) return null;
+        RoadChart chart = Chart(foot.LatDeg, foot.LonDeg, Radius(radiusM));
+        Plan left = new(-ahead.N, ahead.E), down = (ahead * RoadLoop.Reach(lengthM)) + (left * asideM);
+        return (LatLonOf(chart.Dir(down)), LatLonOf(chart.Dir(down + (ahead * onwardM))));
+    }
+
     /// <summary>The points a lap goes through, in order, and the stretches of it, in metres along, where a crest is meant to be jumped: kept for whoever drives it.</summary>
     public IReadOnlyList<int>? Route { get; init; }
     public IReadOnlyList<double[]>? Jumps { get; init; }
