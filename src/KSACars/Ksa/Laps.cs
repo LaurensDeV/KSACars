@@ -127,7 +127,13 @@ internal static class Laps
             // Far enough along that the rear wheels are on the road where it starts at a dead end.
             (double3 on, double3 roadUp, double3 ahead) = route.Standing(Math.Min(1.5 * BuggyDrive.Wheelbase(profile), route.LengthM));
             double3 radial = Vec.Unit(on);
-            if (surface!.TryHeightOver(on + radial, out double over)) on += radial * (1.0 - over);
+            if (surface!.TryLocate(on + radial, null, out double over, out _, out double3? facing))
+            {
+                on += radial * (1.0 - over);
+
+                // The way the asphalt faces there, which a banked road leans and the route's own line does not.
+                if (facing is { } face) (roadUp, ahead) = (face, Vec.Unit(Vec.RejectFrom(ahead, face)));
+            }
             Buggies.Stand(craft, on, roadUp, ahead);
         }
 

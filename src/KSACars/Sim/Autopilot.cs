@@ -240,7 +240,18 @@ internal sealed class Autopilot
             Route.Sample s = samples[i];
             double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
             double crest = Jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
-            double allowed = Math.Min(CruiseMs, Under(grip * _gravity * level, Math.Abs(s.Curvature) + (grip * (crest - wings))));
+            double held = Banked(grip, s);
+            double allowed = Math.Min(CruiseMs, Under(held * _gravity * level, Math.Abs(s.Curvature) + (held * (crest - wings))));
+
+            // Round a bend that leans into it the turn presses the car into the road as a dip does.
+            double inward = -s.Bank * Math.Sign(s.Curvature);
+            if (inward > 0.0)
+            {
+                // And never slower for the lean than the same bend would be taken level.
+                double pressed = Under(dip, Math.Abs(s.Curvature) * inward / Math.Sqrt(1.0 + (inward * inward)));
+                double flat = Under(grip * _gravity * level, Math.Abs(s.Curvature) + (grip * (crest - wings)));
+                allowed = Math.Min(allowed, Math.Max(pressed, flat));
+            }
             if (!Jumps)
             {
                 allowed = Math.Min(allowed, Under(CrestShare * _gravity * level, crest - (CrestShare * wings)));
@@ -271,7 +282,7 @@ internal sealed class Autopilot
                 for (int again = 0; again < 2; again++)
                 {
                     double over = from * (1.0 + BrakeOnShare);
-                    double held = grip * Math.Max((_gravity * level) + ((wings - crest) * over * over), 0.0);
+                    double held = Banked(grip, s) * Math.Max((_gravity * level) + ((wings - crest) * over * over), 0.0);
                     double turning = over * over * Math.Abs(s.Curvature);
                     double spare = Math.Sqrt(Math.Max((held * held) - (turning * turning), 0.0));
 
@@ -283,6 +294,14 @@ internal sealed class Autopilot
             }
         }
         return limit;
+    }
+
+    // What a bend leaves of the grip on a road that leans: less where it leans out of the bend, which
+    // the car's weight slides down, and more where it leans into it.
+    private static double Banked(double grip, in Route.Sample s)
+    {
+        double outward = s.Bank * Math.Sign(s.Curvature);
+        return Math.Max((grip - outward) / Math.Max(1.0 + (grip * outward), 0.5), 0.05);
     }
 
     // The speed at which v^2 x per = most; any speed where nothing is asked.
@@ -425,7 +444,9 @@ internal sealed class Autopilot
         int grounded = 0, onGround = 0, offAsphalt = 0, off = 0;
         for (int i = 0; i < corners.Length && i < hubs.Length && i < hubHeights.Length; i++)
         {
-            double over = hubHeights[i] - corners[i].Radius;
+            // Straight up a hub on a slope or a bank is further from the road than its tyre is.
+            double lean = Vec.Dot(top, radial);
+            double over = (hubHeights[i] * (lean > 0.5 ? lean : 1.0)) - corners[i].Radius;
             _summary.MinHubM = Math.Min(_summary.MinHubM, over);
             _summary.MaxHubM = Math.Max(_summary.MaxHubM, over);
             if (over <= _profile.DroopTravel)
@@ -445,6 +466,13 @@ internal sealed class Autopilot
         double pitch = Deg(Math.Asin(Math.Clamp(Vec.Dot(ahead, radial), -1.0, 1.0)) - Math.Atan(here.Slope * facing));
         double roll = Deg(Math.Asin(Math.Clamp(Vec.Dot(left, radial), -1.0, 1.0))
                           - Math.Atan(here.Slope * Vec.Dot(Vec.Cross(radial, nose), here.Tangent)));
+
+        // Against the asphalt's own face where the car is over it, which a banked road leans.
+        if (_road is not null && _road.TryLocate(position, null, out _, out _, out double3? face) && face is { } faces)
+        {
+            pitch = Deg(Math.Asin(Math.Clamp(Vec.Dot(ahead, faces), -1.0, 1.0)));
+            roll = Deg(Math.Asin(Math.Clamp(Vec.Dot(left, faces), -1.0, 1.0)));
+        }
 
         if (_rows is { } rows && RowCount < rows.Length)
         {

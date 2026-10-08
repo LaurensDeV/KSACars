@@ -22,10 +22,11 @@ internal sealed class Route
     /// <param name="Across">Level, to the left of it.</param>
     /// <param name="Curvature">Seen from above, 1/m, a left turn positive.</param>
     /// <param name="Slope">Climb for each metre along.</param>
+    /// <param name="Bank">The tangent of the road's lean across, the left of the route up positive.</param>
     /// <param name="Vertical">How the climb itself bends, 1/m: positive through a dip, negative over a crest.</param>
     /// <param name="CentreM">How far to the left of this the road's centre is, m.</param>
     public readonly record struct Sample(double3 At, double S, double3 Tangent, double3 Across, double Curvature,
-                                         double Slope, double Vertical, double HalfWidth, double CentreM);
+                                         double Slope, double Vertical, double HalfWidth, double CentreM, double Bank = 0.0);
 
     public const double SpacingM = 1.0;
 
@@ -83,7 +84,7 @@ internal sealed class Route
         RoadLaying.Network laid = RoadLaying.Laid(circuit, dirOf, radiusM, groundAt, liftM, spacingM);
         List<RoadRibbon> ribbons = laid.Ribbons;
         List<double3> line = [];
-        List<double> halfWidths = [];
+        List<double> halfWidths = [], banks = [];
 
         // From the road just driven across the junction at `at` to the road on to `next`.
         void Cross(int from, int at, int next)
@@ -95,6 +96,7 @@ internal sealed class Route
             {
                 line.Add(across[i]);
                 halfWidths.Add(into.HalfWidth + ((outOf.HalfWidth - into.HalfWidth) * i / (across.Count - 1)));
+                banks.Add(0.0);
             }
         }
 
@@ -126,6 +128,7 @@ internal sealed class Route
                 RoadRibbon.Section section = on.At(s);
                 line.Add(on.Point(section, 0.0, section.Height));
                 halfWidths.Add(section.HalfWidth);
+                banks.Add(to >= from ? section.BankTan : -section.BankTan);
             }
         }
 
@@ -135,8 +138,9 @@ internal sealed class Route
             Cross(path[^2], path[0], path[1]);
             line.RemoveAt(line.Count - 1);
             halfWidths.RemoveAt(halfWidths.Count - 1);
+            banks.RemoveAt(banks.Count - 1);
         }
-        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM) is not { } route)
+        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks]) is not { } route)
         {
             why = "the route has no length";
             return null;
@@ -172,7 +176,8 @@ internal sealed class Route
     /// <paramref name="turnRadiusM"/> is more than that the line swings to the outside of the road
     /// before the kink and back after it, which is the only other room there is.</para>
     /// </summary>
-    public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0)
+    public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0,
+                               double[]? banks = null)
     {
         int pieces = closed ? line.Length : line.Length - 1;
         if (pieces < 1 || halfWidths.Length != line.Length) return null;
@@ -186,6 +191,7 @@ internal sealed class Route
         int count = closed ? steps : steps + 1;
         double3[] at = new double3[count];
         double[] half = new double[count];
+        double[] bank = new double[count];
         for (int i = 0, piece = 0; i < count; i++)
         {
             double s = length * i / steps;
@@ -195,6 +201,7 @@ internal sealed class Route
             int next = (piece + 1) % line.Length;
             at[i] = line[piece] + ((line[next] - line[piece]) * t);
             half[i] = halfWidths[piece] + ((halfWidths[next] - halfWidths[piece]) * t);
+            if (banks is not null && banks.Length == line.Length) bank[i] = banks[piece] + ((banks[next] - banks[piece]) * t);
         }
 
         // No car turns on the spot, so a kink is rounded: between a point either side of it the line is
@@ -284,7 +291,11 @@ internal sealed class Route
             double3 up = Vec.Unit(at[i]);
             double turn = Math.Atan2(Vec.Dot(Vec.Cross(heading[before], heading[after]), up), Vec.Dot(heading[before], heading[after]));
             double climb = Vec.Len(at[after]) - Vec.Len(at[before]);
-            double slope = between > 0.0 ? climb / between : 0.0;
+
+            // The line's length is along the road, so the climb over it is the slope's sine.
+            double sine = between > 0.0 ? Math.Clamp(climb / between, -0.999, 0.999) : 0.0;
+            double level = Math.Sqrt(1.0 - (sine * sine));
+            double slope = sine / level;
 
             // Nothing at an end, where there is no road beyond to bend to.
             double vertical = 0.0;
@@ -295,10 +306,10 @@ internal sealed class Route
                 if (back <= 0.0) back += total;
                 if (on <= 0.0) on += total;
                 double bends = (((Vec.Len(at[high]) - Vec.Len(at[i])) / on) - ((Vec.Len(at[i]) - Vec.Len(at[low])) / back)) / (0.5 * (back + on));
-                vertical = bends / Math.Pow(1.0 + (slope * slope), 1.5);
+                vertical = bends / level;
             }
             samples[i] = new Sample(at[i], along[i], heading[i], Vec.Cross(up, heading[i]),
-                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], -offsetM);
+                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], -offsetM, bank[i]);
         }
         return new Route(samples, total, closed);
     }

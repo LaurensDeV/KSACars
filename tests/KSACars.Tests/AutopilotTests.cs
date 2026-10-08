@@ -70,6 +70,18 @@ public class AutopilotTests
             (radius * Math.Cos(2.0 * Math.PI * k / points), radius * Math.Sin(2.0 * Math.PI * k / points), 0.0))]);
     });
 
+    // A ring that leans the same way all the way round: the left of a lap anticlockwise is its inside.
+    internal static Track Leaning(double radius, double bankDeg) => Laid($"leaning{radius}/{bankDeg}", world =>
+    {
+        Circuit c = Ring(radius).Circuit;
+        foreach (Circuit.Road road in c.Roads) c = c.SetBank(road.From, road.To, bankDeg).SetBank(road.To, road.From, bankDeg);
+        return c;
+    });
+
+    // Level, up 50 m at 80%, and level again: the height's own points along the ramp hold it to that.
+    internal static Track Wall() => Laid("wall", world => Through(world, false,
+        (-150.0, 0.0, 0.0), (0.0, 0.0, 0.0), (20.0, 0.0, 8.0), (40.0, 0.0, 24.0), (60.0, 0.0, 40.0), (82.5, 0.0, 50.0), (200.0, 0.0, 50.0)));
+
     // A through road east along the equator, and from its middle a side road north that climbs four metres.
     internal static Track Junction() => Laid("junction", world =>
     {
@@ -161,6 +173,43 @@ public class AutopilotTests
         Assert.True(lap.Summary.MaxCrossM < Room(car), lap.Told);
         Assert.True(lap.Rig.Log.Min(s => s.UpDot) > 0.9, lap.Told);
         Assert.True(lap.HullSteps == 0 && lap.Summary.AirSeconds == 0.0, lap.Told);
+    }
+
+    [Theory]
+    [InlineData("F2004", 20.0)]
+    [InlineData("Eldorado", 20.0)]
+    [InlineData("Manx", 20.0)]
+    [InlineData("F2004", -30.0)]
+    [InlineData("Eldorado", -30.0)]
+    public void ARingThatLeansOutOfItsBendOrIntoItIsLappedOnTheAsphalt(string name, double bankDeg)
+    {
+        TrackCar car = TrackCar.Of(name);
+        Track ring = Leaning(80.0, bankDeg);
+        Lap lap = Drive(car, ring, RouteOn(ring), 1.0 / 60.0, pattern: ExtremeLapTests.GameSteps);
+
+        Assert.True(lap.End == LapEnd.Finished, lap.Told);
+        Assert.True(lap.Summary.OffAsphaltSeconds == 0.0 && lap.Summary.MaxCrossM < Room(car), lap.Told);
+
+        // Against the road's own face, which is what a lap's roll is measured from.
+        Assert.True(lap.Summary.MaxRollDeg < 8.0 && lap.Summary.LongestFlightSeconds == 0.0, lap.Told);
+    }
+
+    [Fact]
+    public void ARoutesSlopeIsTheRoadsTangentAndItsBendIsTheRoadsOwn()
+    {
+        Route route = RouteOn(Wall());
+        Route.Sample steepest = route.Samples.ToArray().MaxBy(s => s.Slope);
+
+        // 16 m up in 20 m along the ground, which is 0.62 of a metre for each metre along the road.
+        Assert.InRange(steepest.Slope, 0.75, 0.90);
+
+        // From level to that steep: all the bending into the climb adds up to the angle it reaches.
+        double turned = 0.0;
+        for (int i = 1; i < route.Samples.Length; i++)
+        {
+            turned += Math.Max(route.Samples[i].Vertical, 0.0) * (route.Samples[i].S - route.Samples[i - 1].S);
+        }
+        Assert.InRange(turned, 0.9 * Math.Atan(steepest.Slope), 1.1 * Math.Atan(steepest.Slope));
     }
 
     [Theory]
