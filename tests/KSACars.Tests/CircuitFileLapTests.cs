@@ -16,6 +16,9 @@ public class CircuitFileLapTests
         string traced = Environment.GetEnvironmentVariable("KSACARS_TRACE") ?? "";
         string? into = Environment.GetEnvironmentVariable("KSACARS_LAPS_OUT");
 
+        // The game's own uneven steps, or one length for every step.
+        double stepMs = double.TryParse(Environment.GetEnvironmentVariable("KSACARS_STEP_MS"), out double ms) ? ms : 0.0;
+
         StringBuilder table = new();
         foreach (string file in Directory.GetFiles(folder, "*.json").Order())
         {
@@ -40,7 +43,8 @@ public class CircuitFileLapTests
                 }
 
                 LapRow[]? rows = traced == car.Name ? new LapRow[400_000] : null;
-                AutopilotTests.Lap lap = AutopilotTests.Drive(car, track, route, 1.0 / 60.0, timeout: 900.0, pattern: ExtremeLapTests.GameSteps, rows: rows);
+                AutopilotTests.Lap lap = AutopilotTests.Drive(car, track, route, stepMs > 0.0 ? stepMs / 1000.0 : 1.0 / 60.0, timeout: 900.0,
+                                                               pattern: stepMs > 0.0 ? null : ExtremeLapTests.GameSteps, rows: rows);
                 LapSummary s = lap.Summary;
                 table.AppendLine($"{name,-12} {car.Name,-9} {lap.End,-9} {s.ProgressM,6:F0}/{route.LengthM,6:F0} m {s.Seconds,6:F1} s  "
                                  + $"vmax {s.MaxSpeed,5:F1}  cross {s.MaxCrossM,5:F2}  off {s.OffAsphaltSeconds,5:F2}  flight {s.LongestFlightSeconds,5:F2}  "

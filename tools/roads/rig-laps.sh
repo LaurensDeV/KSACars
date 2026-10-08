@@ -6,6 +6,7 @@
 #   ./tools/roads/rig-laps.sh "Z "        the ones whose name starts so
 #   ./tools/roads/rig-laps.sh "Z Sky" F2004   and every step of that car's lap, as a CSV beside the table
 #
+# KSACARS_STEP_MS=30 steps every lap at that length and not at the game's uneven ones.
 # KSACARS_CIRCUITS names another folder of circuits; the table and the CSVs go to KSACARS_LAPS_DIR, or a
 # temporary folder that is printed.
 set -euo pipefail

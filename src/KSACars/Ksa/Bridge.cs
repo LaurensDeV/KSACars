@@ -265,6 +265,7 @@ internal sealed class Bridge
             Buggies.Ignite(flyer, lift > 0.0);
         }
         if (command.Has("game_drag")) Buggies.ShedsGameDrag = !command.Flag("game_drag", false);
+        if (command.Has("hull_margin")) Buggies.HoldsHullMargin = command.Flag("hull_margin", true);
         if (command.Has("downforce"))
         {
             if (Buggies.Of(craft) is not { } pressed) return Failed("that craft is not a buggy");

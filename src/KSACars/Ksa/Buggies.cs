@@ -768,7 +768,7 @@ internal sealed class Buggies
         bool onRoad = false;
         for (int i = 0; i < e.RoadOver.Length && i < e.Drive.Grounded.Length; i++) onRoad |= e.RoadOver[i] is not null && e.Drive.Grounded[i];
         double closing = Math.Abs(Vec.Dot(velocityBody, contacts[0].Valid ? contacts[0].GroundUp : up)) + (HullReachM * Vec.Len(spinBody));
-        HullMargins[craft] = onRoad && !warped ? (float)(HullMarginM + (2.0 * closing * dt)) : float.MaxValue;
+        HullMargins[craft] = HoldsHullMargin && onRoad && !warped ? (float)(HullMarginM + (2.0 * closing * dt)) : float.MaxValue;
 
         double3 dv = impulse.Linear / mass;
         Symmetric3x3 inverse = Symmetric3x3.Invert(craft.TotalMassPropsBody.Inertia);
@@ -814,6 +814,9 @@ internal sealed class Buggies
     /// takes a triangle ahead for a wall. docs/KSA-MODDING-NOTES.md has the mechanism.
     /// </summary>
     public static readonly System.Collections.Concurrent.ConcurrentDictionary<Vehicle, float> HullMargins = new();
+
+    /// <summary>Whether a car on a road has that margin held short. The bridge clears it to compare.</summary>
+    public static bool HoldsHullMargin { get; set; } = true;
 
     // The margin a car on a road is held to, under the least any hull stands over its wheels; and how
     // far from the middle a hull's corner is, which is what a turning car closes on the ground with.
