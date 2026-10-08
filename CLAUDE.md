@@ -835,7 +835,7 @@ arrives and to its left by the road's width and 4 m, a road of 60 m on from ther
 from, and the loop between. With either end of a loop selected it has the loop's length, from 60 m to
 400 m, Other side, Remove loop and Seat loop, which is `Circuit.SeatLoop`: the point it comes down at put
 back where a loop of that length does, as a change of length does of itself and a road moved does not.
-**None of it has been clicked**: the bridge's `road` with `loop` makes its course by the same edit. Else, the bridge's `road` with `loop` lays a road to one and
+**None of it has been clicked**: the bridge's `road` with `loop` makes its course by the same edit: it lays a road to one and
 a road on from it. `RoadLoopTests` drives every car round in the rig at 25 and 30 m/s at 60 and 50 steps
 a second: four wheels down all the way, 2 cm past the stops at most, and out straight on the loop's own
 line; at 15 m/s a car comes off the top, and at 40 m/s and 30 steps a second the F2004 does.
