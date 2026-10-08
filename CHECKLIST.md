@@ -245,6 +245,8 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [ ] A point with several roads dragged by hand since: does it still lag
 - [x] The F2004's helmet (2026.10.10.5554): on the seated driver's head from the front, the side and
       above, shell and visor together, the livery whole and the driver's eyes seen through the visor
+- [x] The helmet redrawn (2026.10.10.5554): pointed ears, the chin bar forward under the visor, a stripe
+      over the crown and no stars or brow band, on the seated driver from three sides
 - [ ] The helmet with the driver looking about and the wheel turned; gone when the driver gets out;
       on a car that is not the one flown; and in the vehicle editor, where there is no driver
 - [ ] A car standing on a wall it cannot climb, with its hull on the road; the buggy's hull at the foot

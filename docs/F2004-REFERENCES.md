@@ -122,12 +122,19 @@ over the rim, and set forward of a driver's so the back of the head clears the r
 
 ## The driver's helmet
 
-Modelled on the Schuberth RF1 Michael Schumacher wore in 2004: a full-face shell with a forward chin
-bar, a wide visor on a pivot each side, and a livery of red with a white brow band, a black panel
-running back from the visor and seven gold stars on the crown. **None of its sponsors' marks are
-painted.** The shell is not a scaled helmet: it is grown from the kitten's own head mesh with 2.8 cm
-of clearance, so the ears, which stand 14 cm past where a plain shell would be, are under two fairings
-moulded into it, and the opening underneath is as wide as the suit's collar and 6 cm more.
+Modelled on the Schuberth RF1 Michael Schumacher wore in 2004: a full-face shell whose chin bar
+stands 9 cm forward of the brow, as a racing helmet's does, and a wide visor on a pivot each side.
+The livery is its red with the black panel running back from the visor to a point, a white
+pinstripe round the chin and a black stripe edged in white from the brow over the crown and down
+the back. **None of its sponsors' marks are painted**, nor its stars or its white band above the
+visor. The shell is not a scaled helmet: it is grown from the kitten's own head mesh with 2.8 cm of
+clearance, each ear is under a fairing that comes to a point 15 cm past the ear's own tip, and the
+opening underneath is as wide as the suit's collar and 6 cm more.
+
+`Helmet_work/helmet_generate.py`, beside the `.blend` and in it as a text, builds the shell, the
+visor and the trim from the kitten in the scene and unwraps them; its `PARAMS` are the shape. The
+livery is the `HelmetSrc_Paint` material, from the shell's own coordinates, so it is baked again
+after any change to either.
 
 The photographs are beside the `.blend` in `Helmet_refs/`, all from Wikimedia Commons, and were
 looked at, not copied: nothing of them is in a texture.
