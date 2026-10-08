@@ -270,7 +270,12 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       6 km parcours lapped in 131.3 s with them, nothing hit, 44 meshes all drawn
 - [x] What stood through a low deck were KSA's shrubs, which are small trees with colliders: the car was
       stopped by one in the bowl, 2 m over the ground. Under a deck only grass is kept now
-- [ ] A car driven into a barrier on purpose; a barrier's open end where a deck begins, seen from the road
+- [x] A car driven into a barrier on purpose (2026.10.10.5554): its faces were drawn facing away from the
+      road, so the physics let a car in from the road side and its wheels stood in the wall. Faced the
+      right way, the F2004 driven along a line 6.7 m left of a 14 m road's middle round the banked bowl
+      rubs the wall the whole way with its wheels on the asphalt, pushed up to 0.44 m off that line,
+      and is slowed by it from 25 m/s to 3.5
+- [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
 - [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits
