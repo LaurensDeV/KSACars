@@ -184,6 +184,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/HeadGear.cs` | where a thing worn on the driver's head is as a subpart of the car, from the matrix KSA carries the kitten's unposed mesh to its head by — **the mesh is in the kitten's own model space, in metres, and that matrix is in centimetres** |
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof; and the turn that stands a car on a road facing along it |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
+| `Sim/Barrier.cs` | a car's side against a deck's barrier, as a push of the mod's own: **what speed it has into the wall taken away and a share of that push rubbing it along**, held short of the solid wall, whose friction is the ground's and stops a car that leans on it |
 | `Sim/Boost.cs` | two rockets on the tail as one push along the car's own forward, through its centre of mass — a fixed acceleration whatever the gravity, which is what moves a rock where the tyres have nothing to push against |
 | `Sim/Downforce.cs` | rockets on the bonnet and the boot that press the car onto the ground — a push along its own down through the centre of mass, and **the load the springs are sized off while it is on**, so the car rides at its usual height |
 | `Sim/Hover.cs` | the rockets under the car and the ones on top firing together — **thrust that carries the car's weight and brakes any climb or fall**, so it hangs where it is |
@@ -662,7 +663,18 @@ a deck stands a barrier 0.9 m high and 0.2 m thick, outside the edge, so the roa
 it is in the solid the physics is given, and stops a car leaving a bridge. It is built in straight
 panels of 3 m or more and not a row at a time: a row a panel was 104,000 triangles and 78 meshes for the
 6 km parcours, more than the pool's 56 places, where panels are 69,000 and 44. A junction that is a deck
-has none between its mouths. Both are the last of a mesh's triangles, `RoadMeshData.TrimIndices`. KSA never gives back room in its mesh
+has none between its mouths. Both are the last of a mesh's triangles, `RoadMeshData.TrimIndices`.
+
+**A car rubs along a barrier by a push of the mod's own, not by KSA's friction.** KSA has one friction for
+all a craft touches, the ground's, and a car leaning on the solid wall with it was stopped from 25 m/s to
+3 in 150 m. `Sim/Barrier.cs` holds each side of a car 10 cm short of the solid wall: it takes away the
+speed the side has into the wall and rubs the car along it by 0.35 of that push, steel on a rail.
+`RoadSurface.TryBarrier` says how far past a deck's edge a place is, and `Buggies.Physics` asks it for the
+side of each wheel, low and high, because the wall is plumb and a car on a banked deck is not; the way
+out is taken across the car's own floor, since the level way out of a banked deck has a share of the
+car's up, along which the springs push every step. The solid wall is what is left for a kitten, a rock
+and a car under time warp. A barrier's end is still blunt, and a car that meets one head on is stopped
+by it. KSA never gives back room in its mesh
 buffers, so the pool grows eight places at a time to 56, a quarter of what those buffers hold for the
 whole game, and a place whose mesh is gone is kept for the next. That is 7 km of hairpins or 20 km of
 fast road: the circuits of `ExtremeCircuits.cs` take two to nine places each, the grid with its five junctions thirteen, and a 5 km oval

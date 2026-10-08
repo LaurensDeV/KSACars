@@ -275,6 +275,11 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       right way, the F2004 driven along a line 6.7 m left of a 14 m road's middle round the banked bowl
       rubs the wall the whole way with its wheels on the asphalt, pushed up to 0.44 m off that line,
       and is slowed by it from 25 m/s to 3.5
+- [x] A barrier rubbed with the mod's own push (2026.10.10.5554): the F2004 along a line 6.5 m left of the
+      same road's middle round the banked bowl is held 0.15 to 0.39 m off that line for 200 m with no
+      collider touching, and goes from 24.4 m/s to 23.4 with the driver holding 25 on a third to
+      three quarters throttle. Where the deck begins the same line is outside the asphalt, and the car
+      meets the barrier's end head on and is stopped by it
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
