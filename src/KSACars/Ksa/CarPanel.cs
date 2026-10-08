@@ -112,6 +112,9 @@ internal static class CarPanel
                 if (ImGui.Checkbox("Build roads", ref editing)) roads.Enabled = editing;
                 // One of the two has the mouse's clicks on the world.
                 if (roads.Enabled) mover.Enabled = false;
+
+                bool line = RacingLine.Enabled;
+                if (ImGui.Checkbox("Racing line", ref line)) RacingLine.Set(line);
             }
 
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);

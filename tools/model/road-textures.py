@@ -62,7 +62,17 @@ def main():
     write("KSACars_RoadEarth", np.array([64.0, 54.0, 38.0]) * (1.0 + 0.22 * patches) + grit, np.full((SIZE, SIZE), 245.0))
     lined(rng)
     trim(rng)
-    print("wrote KSACars_Road_*.png, KSACars_RoadLined_*.png, KSACars_RoadEarth_*.png and KSACars_RoadTrim_*.png")
+    race_line()
+    print("wrote KSACars_Road_*.png, KSACars_RoadLined_*.png, KSACars_RoadEarth_*.png KSACars_RoadTrim_*.png and KSACars_RaceLine_*.png")
+
+
+def race_line():
+    """The line to drive, a flat picture a colour (RaceLine.Levels): blue, yellow, orange, red; and one normal and PBR for all."""
+    flat = np.ones((64, 64, 1))
+    for level, colour in enumerate(((20.0, 110.0, 255.0), (255.0, 215.0, 0.0), (255.0, 120.0, 0.0), (255.0, 25.0, 15.0))):
+        (TEXTURES / f"KSACars_RaceLine{level}_Diffuse.png").write_bytes(png(flat * np.array(colour)))
+    (TEXTURES / "KSACars_RaceLine_Normal.png").write_bytes(png(flat * np.array([128.0, 128.0, 255.0])))
+    (TEXTURES / "KSACars_RaceLine_PBR.png").write_bytes(png(flat * np.array([255.0, 150.0, 0.0])))
 
 
 def trim(rng):

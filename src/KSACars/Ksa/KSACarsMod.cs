@@ -74,6 +74,7 @@ public sealed class KSACarsMod
 
             // Here and not from the render hook: writing a mesh waits for the graphics card.
             Roads.Update();
+            RacingLine.Update();
         }
         catch (Exception e)
         {

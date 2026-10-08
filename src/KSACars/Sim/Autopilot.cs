@@ -320,6 +320,12 @@ internal sealed class Autopilot
     /// <summary>The speed the route allows at each of its samples, m/s; nothing before the first step, which is where the car is weighed up.</summary>
     public ReadOnlySpan<double> Limit => _limit;
 
+    /// <summary>
+    /// <see cref="Limit"/> without a step driven, the car's track taken off its profile and nothing held
+    /// back for tipping: for a line drawn for somebody else's driving.
+    /// </summary>
+    public ReadOnlySpan<double> Plan() => _limit ??= Limits(_profile.Corners.Max(c => Math.Abs(c.Hub.Z)), 0.0);
+
     /// <summary>How far inside a road's edge a car's racing line keeps its middle: half its track, a tyre and what the steering wanders by.</summary>
     public static double RaceInside(BuggyProfile profile) => profile.Corners.Max(c => Math.Abs(c.Hub.Z)) + RaceMarginM;
 

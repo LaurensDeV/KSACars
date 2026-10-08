@@ -257,7 +257,9 @@ internal static class RoadDrawing
             _range[i] = RoadDrawList.Range(Vec.Len(bodyEgo + piece.Mesh.Origin.Transform(turn)), piece.Mesh.RadiusM);
         }
 
-        int count = RoadDrawList.Pick(_range.AsSpan(0, pieces.Length), _draws.AsSpan(0, pieces.Length), DrawWithinM, RoadDrawList.MostDraws, _picked, out _);
+        // KSA has so many draws a view, and the line to drive has some of them while it is drawn.
+        int most = RoadDrawList.MostDraws - (RacingLine.Any ? RacingLine.MostDraws : 0);
+        int count = RoadDrawList.Pick(_range.AsSpan(0, pieces.Length), _draws.AsSpan(0, pieces.Length), DrawWithinM, most, _picked, out _);
         var view = Program.Instance.SuperMeshRenderSystem.ViewForViewport(viewport);
         for (int k = 0; k < count; k++)
         {

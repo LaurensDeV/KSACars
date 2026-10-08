@@ -47,6 +47,11 @@ internal sealed class Buggies
         public KittenRenderable? HandsOn { get; set; }
         public DriverHands? Hands { get; set; }
         public bool Scraping { get; set; }
+
+        /// <summary>Where the car was in the body's own frame as its last physics step began, and how fast it was going over the ground.</summary>
+        public double3 PlaceCcf;
+        public double SpeedMs;
+        public bool PlaceValid;
         public double SpringLift { get; set; }
         public double YawRate { get; set; }
         public double SideSpeed { get; set; }
@@ -665,6 +670,7 @@ internal sealed class Buggies
         doubleQuat body2Phys = states.Kinematic.Body2Phys;
         double3 spinBody = states.Kinematic.AngularVelocityPhys.Transform(body2Phys.Inverse());
         double3 velocityBody = velocityCcf.Transform(ccf2Body);
+        (e.PlaceCcf, e.SpeedMs, e.PlaceValid) = (positionCcf, Vec.Len(velocityCcf), true);
 
         double3 com = craft.CenterOfMassAsmb;
         doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;

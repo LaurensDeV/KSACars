@@ -32,7 +32,7 @@ internal static class Roads
     public static bool Any => _laid is not null;
 
     /// <summary>Whether the render hook has anything to hand over.</summary>
-    public static bool AnyDrawn => RoadDrawing.Any || _patch is not null;
+    public static bool AnyDrawn => RoadDrawing.Any || _patch is not null || RacingLine.Any;
 
     private static int _generation;
 
@@ -816,5 +816,15 @@ internal static class Roads
     {
         if (_patch is { } patch && _patchMesh is { } runtime) DrawAt(runtime.Renderable, patch, viewport);
         RoadDrawing.Draw(viewport);
+
+        // On its own, so a line that cannot be drawn leaves the roads drawn.
+        try
+        {
+            RacingLine.Draw(viewport);
+        }
+        catch (Exception e)
+        {
+            RacingLine.Stop($"drawing the racing line threw: {e.GetBaseException().GetType().Name}: {e.GetBaseException().Message}");
+        }
     }
 }

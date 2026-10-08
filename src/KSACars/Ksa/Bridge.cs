@@ -381,6 +381,11 @@ internal sealed class Bridge
         {
             return Failed("no body under the craft");
         }
+        if (command.Has("racing_line"))
+        {
+            RacingLine.Set(command.Flag("racing_line", true));
+            return Done(RacingLine.Report());
+        }
         if (command.Has("box_top"))
         {
             if (!RoadColliders.Installed) return Failed("the road colliders are not hooked");

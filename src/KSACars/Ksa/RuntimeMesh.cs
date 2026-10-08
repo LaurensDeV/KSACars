@@ -103,6 +103,18 @@ internal sealed class RuntimeMesh
     /// <summary>How many indices the mesh has in one of its materials: nothing, and that one is not to be drawn.</summary>
     public int PartIndices(int part) => _refs[part].IndexCount;
 
+    /// <summary>
+    /// Has one of the mesh's materials draw another run of the indices that are written, from the next
+    /// frame and with nothing uploaded; a run that is not all inside them, and it draws nothing.
+    /// </summary>
+    public void Draws(int part, int firstIndex, int count)
+    {
+        MeshIndirectRef to = _refs[part];
+        bool inside = firstIndex >= 0 && count > 0 && firstIndex + count <= Indices;
+        to.Data.IndexOffset = _indexOffset + (inside ? firstIndex : 0);
+        to.Data.IndexCount = inside ? count : 0;
+    }
+
     /// <summary>What is free in KSA's static mesh buffers now, or null if its allocators are not where they were.</summary>
     public static Room? Free()
     {
