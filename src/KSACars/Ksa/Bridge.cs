@@ -398,6 +398,12 @@ internal sealed class Bridge
                 command.Number("mesh_test", 3.0), bend, (int)command.Number("mesh_cells", bend == 0.0 ? MeshPatch.MaxCells : 12));
             return report.TryGetValue("error", out object? error) ? new Reply(false, error?.ToString() ?? "failed", report) : Done(report);
         }
+        if (command.Has("clutter_near"))
+        {
+            double3 hereCcf = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            List<Dictionary<string, object?>> near = Roads.ClutterNear(body, hereCcf, Math.Clamp(command.Number("clutter_near", 10.0), 1.0, 60.0));
+            return Done(new() { ["cover_here"] = Roads.SurfaceOn(body)?.Over(Vec.Unit(hereCcf)).ToString(), ["count"] = near.Count, ["instances"] = near.Take(40).ToList() });
+        }
         if (command.Flag("probe_clutter", false)) return Done(Roads.ProbeClutter(body).ToDictionary(k => k.Key, k => (object?)k.Value));
 
         Circuit circuit;

@@ -207,8 +207,9 @@ internal static class Roads
 
                 // Whatever is near enough to be looked at is asked of the roads' own outline: as wide as the road is
                 // there, the shape a junction is, and with a bank's foot. Under a deck the ground is still ground, and
-                // only what would stand up through the deck goes.
-                bool tall = ecotype.EcotypeName.Contains("Tree", StringComparison.OrdinalIgnoreCase);
+                // only what would stand up through the deck goes: all of it but the grass.
+                // Everything but grass: KSA's shrubs are small trees, and stand through a deck two metres up as a tree does.
+                bool tall = !ecotype.EcotypeName.Contains("Grass", StringComparison.OrdinalIgnoreCase);
                 double near = marginM / road.Body.MeanRadius;
                 bool Covered(double3 at)
                 {
@@ -256,6 +257,39 @@ internal static class Roads
         if (taken.Values.Any(n => n > 0)) KsaWorld.RebuildClutterColliders();
         CheckPlacement(road.Body);
         return taken;
+    }
+
+    /// <summary>
+    /// What stands within <paramref name="withinM"/> of a place, of each kind of clutter: for each instance where it
+    /// is, what of the roads is over it, and whether KSA's mask still has it. For the bridge, to see why one stands.
+    /// </summary>
+    public static List<Dictionary<string, object?>> ClutterNear(Celestial body, double3 atCcf, double withinM)
+    {
+        List<Dictionary<string, object?>> found = [];
+        if (Program.GetPlanetRenderer()?.GroundClutterRenderer is not { } renderer) return found;
+        if (!renderer.PlanetEcotypeRenderData.TryGetValue(body.Hash, out ClutterEcotypeRenderData[]? ecotypes)) return found;
+        double3 here = Vec.Unit(atCcf);
+        RoadSurface? surface = SurfaceOn(body);
+        for (int e = 0; e < ecotypes.Length; e++)
+        {
+            if (ecotypes[e] is not { } ecotype || ecotype.EcotypeName.Contains("Grass", StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (((int face, int x, int y), uint[] bits) in ClutterGrid.Under([here], body.MeanRadius, withinM, ecotype.CubeCellGrid.GridResolution))
+            {
+                GroundClutterRenderer.ExclusionData mask = ecotype.PlacementData.GetExclusionData(new CubeCellGrid.Cell(x, y, face));
+                for (int slot = 0; slot < ClutterGrid.Slots; slot++)
+                {
+                    if ((bits[slot / 32] & (1u << (slot % 32))) == 0) continue;
+                    double3 at = ClutterGrid.Instance(face, x, y, slot, ecotype.CubeCellGrid.GridResolution);
+                    found.Add(new()
+                    {
+                        ["kind"] = ecotype.EcotypeName, ["index"] = e, ["away_m"] = Math.Round(Vec.Len(at - here) * body.MeanRadius, 1),
+                        ["cover"] = surface?.Over(at).ToString() ?? "no roads", ["masked_out"] = (mask[slot / 32] & (1u << (slot % 32))) == 0,
+                        ["resolution"] = ecotype.CubeCellGrid.GridResolution,
+                    });
+                }
+            }
+        }
+        return found;
     }
 
     // Bodies whose clutter has been checked against KSA's own this session.
