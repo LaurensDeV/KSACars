@@ -134,6 +134,7 @@ internal static class Roads
         Interlocked.Increment(ref _generation);
         _laid = null;
         Refused = [];
+        Warnings = [];
         _roadSolids = null;
         _pending = null;
         _status = [];
@@ -212,11 +213,22 @@ internal static class Roads
                 bool Covered(double3 at)
                 {
                     double3 east = Vec.Unit(Vec.Cross(Math.Abs(at.Z) < 0.9 ? new double3(0, 0, 1) : new double3(1, 0, 0), at)), north = Vec.Cross(at, east);
-                    ReadOnlySpan<(double E, double N)> round = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)];
-                    foreach ((double e_, double n_) in round)
+                    bool Under(double3 dir)
                     {
-                        RoadSurface.Cover cover = road.Surface.Over(Vec.Unit(at + (east * (e_ * near)) + (north * (n_ * near))));
-                        if (cover == RoadSurface.Cover.Ground || (tall && cover == RoadSurface.Cover.Deck)) return true;
+                        RoadSurface.Cover cover = road.Surface.Over(dir);
+                        return cover == RoadSurface.Cover.Ground || (tall && cover == RoadSurface.Cover.Deck);
+                    }
+
+                    // Where it stands, and all round it at the margin: a road's edge is within the margin of it whichever
+                    // way the road runs. A tree is as wide again, since what stands beside a deck comes up past its edge.
+                    if (Under(at)) return true;
+                    for (int ring = 1; ring <= (tall ? 2 : 1); ring++)
+                    {
+                        for (int k = 0; k < 8; k++)
+                        {
+                            double angle = k * Math.PI / 4.0, out_ = ring * near;
+                            if (Under(Vec.Unit(at + (east * (Math.Cos(angle) * out_)) + (north * (Math.Sin(angle) * out_))))) return true;
+                        }
                     }
                     return false;
                 }
@@ -356,6 +368,7 @@ internal static class Roads
         }
         _laid = strips.Count > 0 ? new Laid(body, [.. lines], RoadLaying.Surface(strips), circuit, liftM, spacingM) : null;
         Refused = network.Refused;
+        if (whole) Warnings = RoadWarning.Of(circuit, network, body.GetDirCcfFromLatLon);
 
         if (whole)
         {
@@ -449,6 +462,9 @@ internal static class Roads
     /// made, each with the reason: for an editor to mark, on every laying and not only a whole one.
     /// </summary>
     public static IReadOnlyList<(int Node, string Why)> Refused { get; private set; } = [];
+
+    /// <summary>What is wrong with the circuit last laid whole, for an editor to say and to mark.</summary>
+    public static IReadOnlyList<RoadWarning> Warnings { get; private set; } = [];
 
     /// <summary>What the key of every junction mesh starts with, which tells it from a run's.</summary>
     public const string JunctionKey = "junctions ";

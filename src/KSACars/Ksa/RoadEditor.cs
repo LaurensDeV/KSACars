@@ -265,6 +265,8 @@ internal sealed class RoadEditor
                 }
                 ImGui.TextDisabled("or drag the green knob over the point");
 
+                PointSliders(node, roads);
+
                 if (Now.Roads.Any(r => (r.From == node.Id && r.FromHandle is not null) || (r.To == node.Id && r.ToHandle is not null)))
                 {
                     if (ImGui.Button("Automatic handles", null)) ClearHandles(node.Id);
@@ -279,6 +281,19 @@ internal sealed class RoadEditor
                     : "click a point to pick it up,\na road to put a point in it,\nor the ground to start another road");
             }
 
+            if (Roads.Warnings.Count > 0)
+            {
+                ImGui.Separator();
+                ImGui.PushTextWrapPos(300f);
+                foreach (RoadWarning warning in Roads.Warnings.Take(MostWarningsShown))
+                {
+                    ImGui.TextColored(WarnText, "! " + warning.Text);
+                    if (warning.Node is { } point && ImGui.IsItemClicked(ImGuiMouseButton.Left)) _selected = point;
+                }
+                if (Roads.Warnings.Count > MostWarningsShown) ImGui.TextDisabled($"and {Roads.Warnings.Count - MostWarningsShown} more, each marked in red");
+                ImGui.PopTextWrapPos();
+            }
+
             ImGui.Separator();
             ImGui.TextDisabled($"{Now.Nodes.Count} points, {Now.Roads.Count} roads, {_lengthM:F0} m{(_history.Unsaved ? ", not saved" : "")}");
             if (_message.Length > 0) ImGui.TextDisabled(_message);
@@ -286,6 +301,77 @@ internal sealed class RoadEditor
         ImGui.End();
         if (!open) Enabled = false;
     }
+
+    private const int MostWarningsShown = 6;
+    private static readonly float4 WarnText = new(1.0f, 0.55f, 0.35f, 1.0f);
+    private static readonly ImColor8 Warn = new(255, 80, 60, 255);
+
+    // What a point sets of the roads at it: how wide they are there and how they lean, and at a
+    // junction how far its corners are rounded. A slider is one step to undo however far it is dragged.
+    private void PointSliders(Circuit.Node node, int roads)
+    {
+        List<Circuit.Road> here = [.. Now.Roads.Where(r => r.Touches(node.Id))];
+        if (here.Count == 0) return;
+
+        float width = (float)(Circuit.EndWidth(here[0], node.Id) ?? Now.WidthOf(here[0]));
+        ImGui.SetNextItemWidth(180f);
+        if (ImGui.SliderFloat("Width here", ref width, 4f, 30f, "%.0f m", ImGuiSliderFlags.None))
+        {
+            _history.BeginDrag();
+            Circuit next = Now;
+            foreach (Circuit.Road r in here) next = next.SetEndWidth(node.Id, r.From == node.Id ? r.To : r.From, Math.Round(width));
+            _history.Do(next);
+        }
+        if (ImGui.IsItemDeactivated()) _history.EndDrag();
+        if (here.Any(r => Circuit.EndWidth(r, node.Id) is not null))
+        {
+            ImGui.SameLine(0f, -1f);
+            if (ImGui.SmallButton("the road's"))
+            {
+                Circuit next = Now;
+                foreach (Circuit.Road r in here) next = next.SetEndWidth(node.Id, r.From == node.Id ? r.To : r.From, null);
+                _history.Do(next);
+            }
+        }
+
+        if (roads >= 3)
+        {
+            // A junction is one plane, which its roads take their lean from: there is none to set.
+            float radius = (float)(node.JunctionRadiusM ?? RoadJunction.DefaultRadiusM);
+            ImGui.SetNextItemWidth(180f);
+            if (ImGui.SliderFloat("Corners", ref radius, 0f, 40f, "%.0f m", ImGuiSliderFlags.None))
+            {
+                _history.BeginDrag();
+                _history.Do(Now.SetJunctionRadius(node.Id, Math.Round(radius)));
+            }
+            if (ImGui.IsItemDeactivated()) _history.EndDrag();
+            return;
+        }
+
+        // One lean for the road through the point: each road keeps its own as its left edge up from its
+        // first point to its second, so the one that runs the other way through here keeps the opposite.
+        float lean = 0f;
+        for (int i = 0; i < here.Count; i++)
+        {
+            if (Circuit.EndBankDeg(here[i], node.Id) is { } kept) lean = (float)(kept * Sense(here[i], node.Id, i));
+        }
+        ImGui.SetNextItemWidth(180f);
+        if (ImGui.SliderFloat("Lean", ref lean, (float)-Circuit.MaxBankDeg, (float)Circuit.MaxBankDeg, "%.0f deg", ImGuiSliderFlags.None))
+        {
+            _history.BeginDrag();
+            Circuit next = Now;
+            for (int i = 0; i < here.Count; i++)
+            {
+                double? bank = Math.Abs(lean) < 0.5f ? null : Math.Round(lean) * Sense(here[i], node.Id, i);
+                next = next.SetBank(node.Id, here[i].From == node.Id ? here[i].To : here[i].From, bank);
+            }
+            _history.Do(next);
+        }
+        if (ImGui.IsItemDeactivated()) _history.EndDrag();
+    }
+
+    // Whether a road at a point runs the way the road through that point is taken to: the first road into it, the rest out.
+    private static double Sense(Circuit.Road road, int node, int index) => (index == 0 ? road.To == node : road.From == node) ? 1.0 : -1.0;
 
     private void Save()
     {
@@ -615,6 +701,14 @@ internal sealed class RoadEditor
 
             // Where the next click would carry the road to.
             if (free && over is null && overKnob is null && !(_liftKnob is { } k2 && Vec2(k2 - mouse) < KnobReach)) draw.AddLine(chosen, mouse, Chosen, 1.2f);
+        }
+
+        foreach (RoadWarning warning in Roads.Warnings)
+        {
+            if (!KsaWorld.TryProjectAhead(EclOf(warning.At), out float2 where)) continue;
+            draw.AddCircle(where, 13f, Shadow, 0, 4f);
+            draw.AddCircle(where, 13f, Warn, 0, 2f);
+            draw.AddText(new float2(where.X - 2.5f, where.Y - 7f), Warn, "!");
         }
 
         foreach ((int id, float2 at) in _nodeScreen)
