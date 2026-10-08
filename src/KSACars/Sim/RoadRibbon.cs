@@ -11,7 +11,8 @@ namespace KSACars;
 /// at <see cref="VergeSlope"/> for <see cref="VergeM"/>, and an embankment at <see cref="BankSlope"/>
 /// from there to <see cref="BuriedM"/> under the ground. Where an edge is more than
 /// <see cref="DeckOverM"/> above the ground the road is a deck instead, with nothing past its edge.
-/// Past an end that is not a deck the whole section carries on ahead, sunk by the same fall.</para>
+/// Past an end that is not a deck the whole section carries on ahead, sunk by the same fall; an end
+/// at a junction stops square at its mouth, where the junction's own surface starts.</para>
 ///
 /// <para>Lengths are the chart's, which a road <c>r</c> metres from the chart's middle and <c>h</c>
 /// above the body's mean radius has too long by <c>(r / 2R)^2 - h / R</c> of themselves.</para>
@@ -66,6 +67,11 @@ internal sealed class RoadRibbon
     /// </summary>
     public bool Laid { get; }
 
+    /// <summary>The junction the run's first end stops at the mouth of, or none; and its last.</summary>
+    public RoadJunction? StartJunction { get; }
+
+    public RoadJunction? EndJunction { get; }
+
     private readonly double _sideStepM;
     private readonly double[] _toeLeft, _toeRight;
     private readonly bool[] _deck;
@@ -77,9 +83,10 @@ internal sealed class RoadRibbon
     public double SideStepM => _sideStepM;
 
     private RoadRibbon(RoadChart chart, RoadLine line, RoadProfile profile, IReadOnlyList<Span> spans,
-                       int steps, Func<double, double, double> terrainAt, double[]? leftGround, double[]? rightGround)
+                       int steps, Func<double, double, double> terrainAt, double[]? leftGround, double[]? rightGround,
+                       RoadJunction? start = null, RoadJunction? end = null)
     {
-        (Chart, Line, Profile, Spans) = (chart, line, profile, spans);
+        (Chart, Line, Profile, Spans, StartJunction, EndJunction) = (chart, line, profile, spans, start, end);
         Laid = leftGround is not null;
 
         _sideStepM = line.LengthM / steps;
@@ -105,6 +112,10 @@ internal sealed class RoadRibbon
         ReachM = widest + furthest;
         _deck = Decks(high, _sideStepM, line.Closed);
 
+        // A run is what its junction is where it meets it, so the two share every vertex of the mouth.
+        if (start is not null) _deck[0] = start.Deck;
+        if (end is not null) _deck[^1] = end.Deck;
+
         int places = Math.Max(1, (int)Math.Ceiling(line.LengthM / LookupM));
         _lookupStepM = line.LengthM / places;
         _lookup = new Plan[line.Closed ? places : places + 1];
@@ -120,12 +131,17 @@ internal sealed class RoadRibbon
     public static RoadRibbon Lay(RoadChart chart, RoadLine line, RoadProfile profile, IReadOnlyList<Span> spans,
                                  Func<Plan, double> terrainAt, double stepM, double smoothM)
     {
-        double Terrain(double s, double d)
-        {
-            RoadLine.Point on = line.At(s);
-            return terrainAt(on.At + (on.Heading.Left() * d));
-        }
+        Survey survey = Look(line, profile, terrainAt, stepM, smoothM);
+        return Lay(chart, line, profile.Over(survey.Ground), spans, terrainAt, survey);
+    }
 
+    /// <summary>The ground along a run as it was read: smoothed under the road, and under each edge at every step.</summary>
+    public sealed record Survey(RoadGround Ground, int Steps, double[] Left, double[] Right);
+
+    /// <summary>Reads the ground under a run, for it to be laid on once its ends are known.</summary>
+    public static Survey Look(RoadLine line, RoadProfile profile, Func<Plan, double> terrainAt, double stepM, double smoothM)
+    {
+        Func<double, double, double> terrain = Across(line, terrainAt);
         int steps = Math.Max(1, (int)Math.Ceiling(line.LengthM / Math.Max(stepM, 0.1)));
         double each = line.LengthM / steps;
         double[] highest = new double[line.Closed ? steps : steps + 1], left = new double[steps + 1], right = new double[steps + 1];
@@ -136,16 +152,30 @@ internal sealed class RoadRibbon
             profile.HalfWidth(s, out double half, out _);
 
             // Against the leaning section: ground under the raised edge may stand that much higher before it is through the road.
-            left[i] = Terrain(s, half);
-            right[i] = Terrain(s, -half);
+            left[i] = terrain(s, half);
+            right[i] = terrain(s, -half);
             double most = Math.Max(left[i] - (half * bank), right[i] + (half * bank));
-            most = Math.Max(most, Terrain(s, 0.0));
-            most = Math.Max(most, Math.Max(Terrain(s, 0.5 * half) - (0.5 * half * bank), Terrain(s, -0.5 * half) + (0.5 * half * bank)));
+            most = Math.Max(most, terrain(s, 0.0));
+            most = Math.Max(most, Math.Max(terrain(s, 0.5 * half) - (0.5 * half * bank), terrain(s, -0.5 * half) + (0.5 * half * bank)));
             if (i < highest.Length) highest[i] = most;
             else highest[0] = Math.Max(highest[0], most);
         }
-        return new RoadRibbon(chart, line, profile.Over(RoadGround.Smooth(highest, each, smoothM, line.Closed)), spans, steps, Terrain, left, right);
+        return new Survey(RoadGround.Smooth(highest, each, smoothM, line.Closed), steps, left, right);
     }
+
+    /// <summary>
+    /// A run laid on ground already read, its profile over that ground and held to the junctions its
+    /// ends stop at.
+    /// </summary>
+    public static RoadRibbon Lay(RoadChart chart, RoadLine line, RoadProfile profile, IReadOnlyList<Span> spans,
+                                 Func<Plan, double> terrainAt, Survey survey, RoadJunction? start = null, RoadJunction? end = null) =>
+        new(chart, line, profile, spans, survey.Steps, Across(line, terrainAt), survey.Left, survey.Right, start, end);
+
+    private static Func<double, double, double> Across(RoadLine line, Func<Plan, double> terrainAt) => (s, d) =>
+    {
+        RoadLine.Point on = line.At(s);
+        return terrainAt(on.At + (on.Heading.Left() * d));
+    };
 
     /// <summary>
     /// A surface whose centre line's height is already known, with the ground taken to be level
@@ -162,7 +192,7 @@ internal sealed class RoadRibbon
     }
 
     // How far out from an edge the verge and the embankment go before they are buried.
-    private static double Toe(double edge, double under, Func<double, double> terrainOut)
+    internal static double Toe(double edge, double under, Func<double, double> terrainOut)
     {
         double Gap(double out_) => edge - Drop(out_) - (terrainOut(out_) - BuriedM);
 
@@ -272,6 +302,7 @@ internal sealed class RoadRibbon
             SideRises(at, side, Fall(beside), out alongRise, out acrossRise);
         }
         if (!(beyondM > 0.0)) return true;
+        if ((at.S > 0.5 * LengthM ? EndJunction : StartJunction) is not null) return false;
 
         // Past an end the whole section carries on ahead as it was there, sunk by the same fall as
         // goes out from an edge, until both its edges are buried.

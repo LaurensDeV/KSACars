@@ -387,8 +387,9 @@ public class RoadSurfaceSweepTests
                 .Extend(mid, 0, Deg(-100), out _).Extend(mid, 0, Deg(100), out _).Extend(mid, Deg(sideM), 0, out int far)
                 .SetHeight(far, riseM);
             Laid laid = Lay(c, spacing);
-            Assert.Equal(2, laid.Strips.Count);
-            P[] side = Centre(laid.Strips.Single(s => s.LengthM < 150.0));
+            // Each half of the through road and the side road, every one of them stopping at the junction's mouth.
+            Assert.Equal(3, laid.Strips.Count);
+            P[] side = Centre(laid.Strips.Single(s => Plan(s.Line).Max(p => p.N) > 20.0));
             double steepest = SteepestGradient(laid.Strips);
 
             List<(double E, double N, double Surface)> told = Roll(laid, Path(stride, (-20.0, 0.0), (0.0, 0.0), (0.0, sideM - 1.0)), R + Lift, out int lost);

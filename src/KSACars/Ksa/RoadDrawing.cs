@@ -25,7 +25,7 @@ internal static class RoadDrawing
     // An undrawn mesh takes a drawn one's place when it is this much the nearer, so two a like distance off do not swap every look.
     private const double SwapNearerM = 150.0;
 
-    /// <summary>One run of roads: what tells it from the others, and its meshes.</summary>
+    /// <summary>One run of roads, or the junctions that share a mesh: what tells it from the others, and its meshes.</summary>
     public sealed record Run(string Key, IReadOnlyList<RoadMeshData> Meshes);
 
     // A mesh and the place it is written in, or -1 while it has none and is not drawn.
@@ -214,7 +214,8 @@ internal static class RoadDrawing
         Piece[] pieces = _shown?.Pieces ?? [];
         Dictionary<string, object?> report = new()
         {
-            ["drawn"] = _shown is not null, ["runs"] = pieces.Select(p => p.Key).Distinct().Count(), ["meshes"] = pieces.Length,
+            ["drawn"] = _shown is not null, ["runs"] = pieces.Where(p => !p.Key.StartsWith(Roads.JunctionKey)).Select(p => p.Key).Distinct().Count(),
+            ["junction_meshes"] = pieces.Count(p => p.Key.StartsWith(Roads.JunctionKey)), ["meshes"] = pieces.Length,
             ["meshes_not_drawn"] = _leftOut, ["vertices"] = pieces.Sum(p => p.Mesh.Positions.Length), ["indices"] = pieces.Sum(p => p.Mesh.Indices.Length),
             ["uploaded_vertices"] = _uploadedVertices, ["uploaded_indices"] = _uploadedIndices,
             ["slots_used"] = Ledger.Used, ["slots"] = Ledger.Size, ["slots_at_most"] = RoadDrawList.MostSlots,

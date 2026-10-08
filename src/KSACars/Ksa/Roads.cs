@@ -4,14 +4,14 @@ using KSA;
 namespace KSACars;
 
 /// <summary>
-/// A circuit's roads on the ground: laid as one surface a run, which a wheel asks through
-/// <see cref="SurfaceOn"/>, and that surface as triangles, which <see cref="RoadDrawing"/> draws and
-/// <see cref="RoadColliders"/> gives the physics, so a hull, a kitten and any other craft meet what
-/// is drawn.
+/// A circuit's roads on the ground: laid as one surface a run and one a junction, which a wheel asks
+/// through <see cref="SurfaceOn"/>, and those surfaces as triangles, which <see cref="RoadDrawing"/>
+/// draws and <see cref="RoadColliders"/> gives the physics, one solid for all that is joined, so a
+/// hull, a kitten and any other craft meet what is drawn.
 ///
 /// <para>The surface is swapped whole on every laying. The triangles are made again when a laying is
-/// whole; while a road is being dragged only the runs the drag touches are, a few times a second, and
-/// the physics keeps what it had.</para>
+/// whole; while a road is being dragged only the runs the drag touches and the junctions they stop at
+/// are, a few times a second, and the physics keeps what it had.</para>
 /// </summary>
 internal static class Roads
 {
@@ -268,26 +268,41 @@ internal static class Roads
         }
 
         Interlocked.Increment(ref _generation);
-        List<RoadLaying.Strip> strips = RoadLaying.Lay(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
-        _laid = strips.Count > 0
-            ? new Laid(body, [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))], RoadLaying.Surface(strips),
-                       circuit, liftM, spacingM)
-            : null;
+        RoadLaying.Network network = RoadLaying.Laid(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
+        List<RoadLaying.Strip> strips = RoadLaying.Strips(network.Ribbons, Ground, spacingM);
 
-        List<RoadRibbon> ribbons = [.. strips.Where(s => s.Ribbon is not null).Select(s => s.Ribbon!)];
+        // What is cleared of clutter is a width either side of a line: a junction's asphalt as a line in
+        // from each mouth to its point, as wide as the road and the rounding of its corners.
+        List<Ribbon> lines = [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))];
+        foreach (RoadJunction junction in network.Junctions)
+        {
+            foreach (RoadJunction.Arm arm in junction.Arms)
+            {
+                lines.Add(new Ribbon([junction.Point(arm.MouthAt), junction.Point(junction.At)], arm.HalfWidth + junction.RadiusM, arm.MouthS, false));
+            }
+        }
+        _laid = strips.Count > 0 ? new Laid(body, [.. lines], RoadLaying.Surface(strips), circuit, liftM, spacingM) : null;
+
         if (whole)
         {
             _pending = null;
-            Mesh(body, ribbons, null);
+            Mesh(body, network, null);
         }
         else
         {
-            _pending = (body, ribbons, [.. touched ?? []]);
+            _pending = (body, network, [.. touched ?? []]);
         }
         return (points, low, high);
     }
 
-    private static (Celestial Body, List<RoadRibbon> Ribbons, HashSet<int> Touched)? _pending;
+    private static (Celestial Body, RoadLaying.Network Network, HashSet<int> Touched)? _pending;
+
+    /// <summary>What the key of every junction mesh starts with, which tells it from a run's.</summary>
+    public const string JunctionKey = "junctions ";
+
+    // The junctions that were put in each mesh when the roads were last laid whole, by their points:
+    // a drag draws a mesh again under the key it had, so it is of the same junctions.
+    private static List<int[]> _junctionMeshes = [];
     private static readonly System.Diagnostics.Stopwatch SinceRedraw = System.Diagnostics.Stopwatch.StartNew();
     private static readonly System.Diagnostics.Stopwatch SinceRestock = System.Diagnostics.Stopwatch.StartNew();
     private static Dictionary<string, object?> _status = [];
@@ -314,7 +329,7 @@ internal static class Roads
         if (_pending is { } pending && SinceRedraw.Elapsed.TotalSeconds >= Math.Max(DragRedrawSeconds, _redrawTook / DragRedrawShare))
         {
             _pending = null;
-            Mesh(pending.Body, pending.Ribbons, pending.Touched);
+            Mesh(pending.Body, pending.Network, pending.Touched);
             _redrawTook = SinceRedraw.Elapsed.TotalSeconds;
         }
 
@@ -328,24 +343,25 @@ internal static class Roads
     // A run is told from the others by the points it goes through, which a drag does not change.
     private static string KeyOf(RoadRibbon ribbon) => string.Join(",", ribbon.Spans.Select(s => $"{s.From}-{s.To}"));
 
-    // The ribbons as triangles, drawn and given to the physics; or, with the points a drag touched,
-    // only the runs through those, drawn in place of the same runs before and the physics left as it
-    // was. A road whose triangles cannot be made or drawn is still a surface under a wheel.
-    private static void Mesh(Celestial body, List<RoadRibbon> ribbons, HashSet<int>? touched)
+    // The runs and the junctions as triangles, drawn and given to the physics; or, with the points a
+    // drag touched, only the runs through those and the junctions they stop at, drawn in place of the
+    // same ones before and the physics left as it was. A road whose triangles cannot be made or drawn
+    // is still a surface under a wheel.
+    private static void Mesh(Celestial body, RoadLaying.Network network, HashSet<int>? touched)
     {
         SinceRedraw.Restart();
         bool whole = touched is null;
         List<RoadDrawing.Run> runs = [];
-        List<RoadCollider> colliders = [];
+        Dictionary<RoadRibbon, List<RoadMeshData>> made = new(ReferenceEqualityComparer.Instance);
         string? failed = null;
-        foreach (RoadRibbon ribbon in ribbons)
+        foreach (RoadRibbon ribbon in network.Ribbons)
         {
             if (touched is not null && !ribbon.Spans.Any(s => touched.Contains(s.From) || touched.Contains(s.To))) continue;
             try
             {
                 List<RoadMeshData> meshes = RoadTessellation.Mesh(ribbon, RoadDrawList.Fit);
                 runs.Add(new RoadDrawing.Run(KeyOf(ribbon), meshes));
-                if (whole && RoadCollider.Of(meshes) is { } solid) colliders.Add(solid);
+                made[ribbon] = meshes;
             }
             catch (Exception e)
             {
@@ -354,8 +370,71 @@ internal static class Roads
             }
         }
 
+        // A junction is made again where a run that stops at it was, or its point was touched.
+        Dictionary<int, (RoadJunction Junction, RoadMeshData Mesh)> junctions = [];
+        foreach (RoadJunction junction in network.Junctions)
+        {
+            if (touched is not null && !touched.Contains(junction.Node) && !junction.Arms.Any(a => a.Ribbon is { } r && made.ContainsKey(r))) continue;
+            try
+            {
+                junctions[junction.Node] = (junction, RoadTessellation.Mesh(junction));
+            }
+            catch (Exception e)
+            {
+                failed = $"the junction at {junction.Node} could not be made into a mesh and is neither drawn nor solid: {e.GetBaseException().Message}";
+                Log.Warn(failed);
+            }
+        }
+
         if (whole)
         {
+            _junctionMeshes = [];
+            foreach ((int[] nodes, RoadMeshData mesh) in RoadTessellation.Gather([.. junctions.Values], RoadDrawList.Fit))
+            {
+                _junctionMeshes.Add(nodes);
+                runs.Add(new RoadDrawing.Run(JunctionKey + nodes[0], [mesh]));
+            }
+        }
+        else
+        {
+            // Each mesh of junctions that has one of these in it, or had one that is no longer a
+            // junction, whole and under its own key; and a junction that is new, on its own.
+            HashSet<int> placed = [];
+            foreach (int[] nodes in _junctionMeshes)
+            {
+                placed.UnionWith(nodes);
+                if (!nodes.Any(n => junctions.ContainsKey(n) || touched!.Contains(n))) continue;
+                List<(RoadJunction, RoadMeshData)> together = [];
+                foreach (int node in nodes)
+                {
+                    try
+                    {
+                        if (junctions.TryGetValue(node, out (RoadJunction Junction, RoadMeshData Mesh) done)) together.Add(done);
+                        else if (network.Junctions.FirstOrDefault(j => j.Node == node) is { } other) together.Add((other, RoadTessellation.Mesh(other)));
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn($"the junction at {node} could not be made into a mesh: {e.GetBaseException().Message}");
+                    }
+                }
+                runs.Add(new RoadDrawing.Run(JunctionKey + nodes[0], [.. RoadTessellation.Gather(together, RoadDrawList.Fit).Select(g => g.Mesh)]));
+            }
+            foreach ((int node, (_, RoadMeshData mesh)) in junctions)
+            {
+                if (!placed.Contains(node)) runs.Add(new RoadDrawing.Run(JunctionKey + node, [mesh]));
+            }
+        }
+
+        // One solid for all that is joined: a hull crossing a mouth is on triangles that share an edge.
+        List<RoadCollider> colliders = [];
+        if (whole)
+        {
+            foreach (RoadLaying.Component component in RoadLaying.Components(network.Ribbons))
+            {
+                List<RoadMeshData> meshes = [.. component.Ribbons.Where(made.ContainsKey).SelectMany(r => made[r])];
+                meshes.AddRange(component.Junctions.Where(j => junctions.ContainsKey(j.Node)).Select(j => junctions[j.Node].Mesh));
+                if (RoadCollider.Of(meshes) is { } solid) colliders.Add(solid);
+            }
             _roadSolids = colliders.Count > 0 ? (body, [.. colliders]) : null;
             HandColliders();
         }
@@ -365,9 +444,16 @@ internal static class Roads
         bool hooked = RoadColliders.Installed;
         _status = new()
         {
+            ["junctions"] = network.Junctions.Count, ["junctions_refused"] = network.Refused.Count,
             ["collider_meshes"] = hooked ? colliders.Count : 0, ["collider_triangles"] = hooked ? colliders.Sum(c => c.Triangles) : 0,
+            ["collider_most_triangles"] = hooked && colliders.Count > 0 ? colliders.Max(c => c.Triangles) : 0,
             ["collider_reach_m"] = colliders.Count > 0 ? Math.Round(colliders.Max(c => c.RadiusM)) : 0.0,
         };
+        if (network.Refused.Count > 0)
+        {
+            _status["junction_warning"] = "no junction could be made, and the roads there lie over one another, at " + string.Join("; ", network.Refused.Select(r => $"{r.Node}: {r.Why}"));
+            Log.Warn((string)_status["junction_warning"]!);
+        }
         if (!hooked) _status["collider_warning"] = "the road colliders are not hooked: only wheels meet a road";
         if (!RoadDrawHook.Installed) _status["hook_warning"] = "the render hook is not installed: no road is drawn";
         if (failed is not null) _status["mesh_warning"] = failed;

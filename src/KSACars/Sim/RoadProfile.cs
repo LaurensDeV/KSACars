@@ -19,11 +19,14 @@ internal sealed class MonotoneCurve
     public static MonotoneCurve Straight(IReadOnlyList<double> x, IReadOnlyList<double> y, double period = 0.0) => new(x, y, period, true);
 
     /// <param name="period">More than nothing for a curve that comes round to its first point again that far on.</param>
-    public MonotoneCurve(IReadOnlyList<double> x, IReadOnlyList<double> y, double period = 0.0) : this(x, y, period, false)
+    /// <param name="startSlope">The slope an open curve is to have at its first point, where that is given and not the curve's to choose; and so at its last.</param>
+    public MonotoneCurve(IReadOnlyList<double> x, IReadOnlyList<double> y, double period = 0.0, double? startSlope = null, double? endSlope = null)
+        : this(x, y, period, false, startSlope, endSlope)
     {
     }
 
-    private MonotoneCurve(IReadOnlyList<double> x, IReadOnlyList<double> y, double period, bool straight)
+    private MonotoneCurve(IReadOnlyList<double> x, IReadOnlyList<double> y, double period, bool straight,
+                          double? startSlope = null, double? endSlope = null)
     {
         _straight = straight;
         List<double> xs = [], ys = [];
@@ -48,6 +51,11 @@ internal sealed class MonotoneCurve
         _period = round ? period : 0.0;
         (_x, _y) = ([.. xs], [.. ys]);
         _slope = Slopes(_x, _y, round);
+        if (!round && _x.Length > 1)
+        {
+            _slope[0] = startSlope ?? _slope[0];
+            _slope[^1] = endSlope ?? _slope[^1];
+        }
     }
 
     public static MonotoneCurve Level(double y) => new([0.0], [y]);
@@ -83,7 +91,7 @@ internal sealed class MonotoneCurve
         return slope;
     }
 
-    private static double Between(double hBefore, double before, double hAfter, double after)
+    internal static double Between(double hBefore, double before, double hAfter, double after)
     {
         if (!(before * after > 0.0)) return 0.0;
         double w1 = (2.0 * hAfter) + hBefore, w2 = hAfter + (2.0 * hBefore);
@@ -150,16 +158,22 @@ internal sealed class MonotoneCurve
 /// each a distance along the run of roads it belongs to.
 ///
 /// <para>The height is the ground under the road, smoothed, the lift every road stands proud by, and a
-/// curve through the heights of the run's points that climbs steadily where they do, less the sink of
-/// an end that meets other roads. The lean is a curve of the same kind through the banks set at the
-/// points; the width eases from one point's to the next's.</para>
+/// curve through the heights of the run's points that climbs steadily where they do. The lean is a
+/// curve of the same kind through the banks set at the points; the width eases from one point's to
+/// the next's.</para>
+///
+/// <para>An end at a junction is the junction's to say: the run's first or last point is then its
+/// mouth, where its height, its climb, its lean and how fast that changes are the junction's plane's.</para>
 /// </summary>
 internal sealed class RoadProfile
 {
-    private readonly double[] _knot, _halfWidth;
+    /// <summary>What an end of a run is held to at a junction's mouth: its height over the body's mean radius, and its climb for each metre along the run.</summary>
+    public readonly record struct Pin(double HeightM, double Slope);
+
+    private readonly double[] _knot, _halfWidth, _heightM;
     private readonly MonotoneCurve _above, _bank;
     private readonly RoadGround _ground;
-    private readonly double _liftM, _sinkStartM, _sinkEndM;
+    private readonly double _liftM;
 
     public double LengthM => _knot[^1];
     public bool Closed { get; }
@@ -171,31 +185,54 @@ internal sealed class RoadProfile
     /// <param name="heightM">Each point's height above the ground. One below it is laid on it.</param>
     /// <param name="bankDeg">The lean at each point, raising the left edge of one travelling along the run.</param>
     /// <param name="widthM">The road's width at each point.</param>
-    /// <param name="sinkStartM">How far the run's first end is sunk, where it meets other roads; taken up over two widths.</param>
+    /// <param name="bankRateStart">How fast the tangent of the lean changes at an open run's first point (1/m), where that is given; and so at its last.</param>
     public RoadProfile(double[] knotS, double[] heightM, double[] bankDeg, double[] widthM, bool closed,
-                       double liftM, double sinkStartM = 0.0, double sinkEndM = 0.0, RoadGround? ground = null)
+                       double liftM, RoadGround? ground = null, double? bankRateStart = null, double? bankRateEnd = null)
     {
         _knot = knotS;
         Closed = closed;
         _halfWidth = [.. widthM.Select(w => 0.5 * w)];
-        (_liftM, _sinkStartM, _sinkEndM) = (liftM, sinkStartM, sinkEndM);
+        _liftM = liftM;
         _ground = ground ?? RoadGround.Level(0.0);
 
         int points = closed ? knotS.Length - 1 : knotS.Length;
         double period = closed ? knotS[^1] : 0.0;
-        _above = new MonotoneCurve(knotS[..points], [.. heightM[..points].Select(h => Math.Max(h, 0.0))], period);
-        _bank = new MonotoneCurve(knotS[..points], [.. bankDeg[..points].Select(b => b * Math.PI / 180.0)], period);
+        _heightM = [.. heightM[..points].Select(h => Math.Max(h, 0.0))];
+        double[] bank = [.. bankDeg[..points].Select(b => b * Math.PI / 180.0)];
+        _above = new MonotoneCurve(knotS[..points], _heightM, period);
+        _bank = new MonotoneCurve(knotS[..points], bank, period, Turning(bankRateStart, bank[0]), Turning(bankRateEnd, bank[^1]));
     }
 
-    private RoadProfile(RoadProfile from, RoadGround ground)
+    // How fast the lean itself turns where its tangent changes at a rate.
+    private static double? Turning(double? tanRate, double angle) =>
+        tanRate is { } rate ? rate * Math.Cos(angle) * Math.Cos(angle) : null;
+
+    private RoadProfile(RoadProfile from, RoadGround ground, Pin? start, Pin? end)
     {
-        (_knot, _halfWidth, _above, _bank, Closed) = (from._knot, from._halfWidth, from._above, from._bank, from.Closed);
-        (_liftM, _sinkStartM, _sinkEndM) = (from._liftM, from._sinkStartM, from._sinkEndM);
-        _ground = ground;
+        (_knot, _halfWidth, _heightM, _bank, Closed) = (from._knot, from._halfWidth, from._heightM, from._bank, from.Closed);
+        (_liftM, _ground, _above) = (from._liftM, ground, from._above);
+        if (Closed || (start is null && end is null)) return;
+
+        double[] above = [.. _heightM];
+        double? startSlope = null, endSlope = null;
+        if (start is { } first)
+        {
+            ground.At(0.0, out double under, out double slope, out _);
+            (above[0], startSlope) = (first.HeightM - under - _liftM, first.Slope - slope);
+        }
+        if (end is { } last)
+        {
+            ground.At(LengthM, out double under, out double slope, out _);
+            (above[^1], endSlope) = (last.HeightM - under - _liftM, last.Slope - slope);
+        }
+        _above = new MonotoneCurve(_knot, above, 0.0, startSlope, endSlope);
     }
 
-    /// <summary>The same road over <paramref name="ground"/>, the smoothed ground's height a distance along.</summary>
-    public RoadProfile Over(RoadGround ground) => new(this, ground);
+    /// <summary>
+    /// The same road over <paramref name="ground"/>, the smoothed ground's height a distance along,
+    /// with either end held to a junction's mouth.
+    /// </summary>
+    public RoadProfile Over(RoadGround ground, Pin? start = null, Pin? end = null) => new(this, ground, start, end);
 
     /// <summary>How far along the run its point <paramref name="index"/> is.</summary>
     public double KnotS(int index) => _knot[index];
@@ -208,36 +245,11 @@ internal sealed class RoadProfile
         (height, slope, bend) = (ground + above, groundSlope + aboveSlope, groundBend + aboveBend);
     }
 
-    /// <summary>How far the road is above the smoothed ground under it: the lift and the points' heights, less the sink.</summary>
+    /// <summary>How far the road is above the smoothed ground under it: the lift and the curve through the points' heights.</summary>
     public void Above(double s, out double above, out double slope, out double bend)
     {
         _above.At(s, out above, out slope, out bend);
         above += _liftM;
-        if (Closed || (_sinkStartM <= 0.0 && _sinkEndM <= 0.0)) return;
-
-        double startHalf = _halfWidth[0], endHalf = _halfWidth[^1];
-        Sunk(_sinkStartM, s / (4.0 * startHalf), 1.0 / (4.0 * startHalf), ref above, ref slope, ref bend);
-        Sunk(_sinkEndM, (LengthM - s) / (4.0 * endHalf), -1.0 / (4.0 * endHalf), ref above, ref slope, ref bend);
-    }
-
-    /// <summary>How far the road is sunk at <paramref name="s"/> for meeting other roads at an end.</summary>
-    public double Sink(double s)
-    {
-        double sunk = 0.0, slope = 0.0, bend = 0.0;
-        if (Closed) return 0.0;
-        Sunk(_sinkStartM, s / (4.0 * _halfWidth[0]), 0.0, ref sunk, ref slope, ref bend);
-        Sunk(_sinkEndM, (LengthM - s) / (4.0 * _halfWidth[^1]), 0.0, ref sunk, ref slope, ref bend);
-        return -sunk;
-    }
-
-    // The whole sink at the end and none of it two widths on, eased so the slope has no step at either.
-    private static void Sunk(double sinkM, double t, double rate, ref double above, ref double slope, ref double bend)
-    {
-        if (!(sinkM > 0.0) || t >= 1.0) return;
-        t = Math.Max(t, 0.0);
-        above -= sinkM * (1.0 - (t * t * (3.0 - (2.0 * t))));
-        slope += sinkM * 6.0 * t * (1.0 - t) * rate;
-        bend += sinkM * 6.0 * (1.0 - (2.0 * t)) * rate * rate;
     }
 
     /// <summary>The tangent of the lean at <paramref name="s"/>, the left edge up positive, and how fast it changes (1/m).</summary>

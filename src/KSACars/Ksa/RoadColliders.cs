@@ -15,7 +15,8 @@ namespace KSACars;
 
 /// <summary>
 /// Solids of the mod's own in KSA's physics, so a hull, a kitten and another craft meet a road as they
-/// meet the ground: one triangle mesh for each run of roads, of the triangles it is drawn with, and
+/// meet the ground: one triangle mesh for each piece of road that is joined, runs and the junctions
+/// they stop at, of the triangles it is drawn with, and
 /// the experiment's box.
 ///
 /// <para>A static only collides if the engine's narrow phase lets it: its own terrain and launch pad,
@@ -25,7 +26,7 @@ namespace KSACars;
 ///
 /// <para>One physics simulation belongs to each bubble and steps on a worker thread, so the statics are
 /// synced from prefixes on its collision passes, against a laying swapped in whole from the main thread.
-/// A bubble holds the runs any of which is within <see cref="ReachM"/> of its origin and no others.</para>
+/// A bubble holds the solids any of which is within <see cref="ReachM"/> of its origin and no others.</para>
 ///
 /// <para>Shapes live in a registry every simulation shares and that is only writable between vehicle
 /// steps, when no simulation is stepping. A mesh's triangles and its tree are built when the road is
@@ -147,7 +148,7 @@ internal static class RoadColliders
     }
 
     /// <summary>
-    /// The solids wanted on a body, from the main thread: every run of roads and the experiment's
+    /// The solids wanted on a body, from the main thread: every joined piece of road and the experiment's
     /// boxes. Nothing of either takes them all away. The meshes are built here.
     /// </summary>
     public static void Want(Celestial? body, IReadOnlyList<RoadCollider> roads, IReadOnlyList<(double3 Centre, doubleQuat Orientation, double3 Size)> boxes)

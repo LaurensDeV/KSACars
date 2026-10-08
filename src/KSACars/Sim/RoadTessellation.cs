@@ -447,9 +447,10 @@ internal static class RoadTessellation
                 chunk.Between(RowAt(from, deck[k]), RowAt(to, deck[k]), deck[k] ? DeckStrips : GroundStrips);
 
                 // What is before this stretch, and what is after it: nothing at an open run's end, and the other kind at a change.
+                // Nor is anything put at a junction's mouth, where the junction's own triangles carry on from the row.
                 bool starts = k == 0 && !ribbon.Closed, ends = k == count - 1 && !ribbon.Closed;
-                if (starts || deck[(k + count - 1) % count] != deck[k]) End(chunk, ribbon, stations[from].At, deck[k], -1.0, starts);
-                if (ends || deck[(k + 1) % count] != deck[k]) End(chunk, ribbon, stations[to].At, deck[k], 1.0, ends);
+                if (starts ? ribbon.StartJunction is null : deck[(k + count - 1) % count] != deck[k]) End(chunk, ribbon, stations[from].At, deck[k], -1.0, starts);
+                if (ends ? ribbon.EndJunction is null : deck[(k + 1) % count] != deck[k]) End(chunk, ribbon, stations[to].At, deck[k], 1.0, ends);
             }
             if (first < 0) continue;
 
@@ -460,6 +461,211 @@ internal static class RoadTessellation
             meshes.Add(Narrow(chunk, ribbon.Point(middle, 0.0, middle.Height), fromS, toS, Asphalt(start, deck[first]), Asphalt(end, deck[last])));
         }
         return meshes;
+    }
+
+    // The row of vertices a run's mesh has at one of its ends, to the last bit: what a junction's edge takes at the mouth.
+    private static Row EndRow(RoadRibbon ribbon, bool atStart, bool deck)
+    {
+        RoadRibbon.Section at = atStart ? ribbon.At(0, 0.0) : ribbon.At(ribbon.Line.Count - 1, ribbon.LengthM);
+        return deck ? DeckRow(ribbon, at) : GroundRow(ribbon, at);
+    }
+
+    // Where in a run's last row the vertices of one side are, the side being the left of someone leaving
+    // the junction or their right: a run that ends at the mouth has its own left on the other side.
+    // On the ground, from the asphalt's edge out to the bank's foot; round a deck, the top and bottom of
+    // the side, and the underside's corner.
+    private static int[] Side(RoadJunction.Arm arm, bool left, bool deck) =>
+        left == arm.AtStart ? (deck ? [8, 7, 6] : [3, 2, 1, 0]) : (deck ? [3, 4, 5] : [7, 8, 9, 10]);
+
+    /// <summary>
+    /// A junction as one mesh: its asphalt, a fan about its point or whatever triangles its polygon
+    /// was cut into, and round it between the mouths a verge and an embankment, or a deck's sides and
+    /// underside. At each mouth its vertices are the ones the arm's run ends on.
+    /// </summary>
+    public static RoadMeshData Mesh(RoadJunction junction)
+    {
+        Chunk chunk = new();
+        Plan[] edge = junction.Boundary;
+        int n = edge.Length;
+        bool deck = junction.Deck;
+
+        double3[] top = new double3[n];
+        for (int i = 0; i < n; i++) top[i] = junction.Point(edge[i]);
+        Dictionary<int, (Row Row, int[] Side)> corners = [];
+        foreach (RoadJunction.Arm arm in junction.Arms)
+        {
+            if (arm.Ribbon is not { } ribbon) continue;
+            Row row = EndRow(ribbon, arm.AtStart, deck);
+            double3[] asphalt = Asphalt(row, deck);
+            (top[arm.Mouth.Left], top[arm.Mouth.Centre], top[arm.Mouth.Right]) = arm.AtStart ? (asphalt[0], asphalt[1], asphalt[2]) : (asphalt[2], asphalt[1], asphalt[0]);
+            corners[arm.Mouth.Left] = (row, Side(arm, true, deck));
+            corners[arm.Mouth.Right] = (row, Side(arm, false, deck));
+        }
+
+        int first = chunk.At.Count;
+        for (int i = 0; i < n; i++) chunk.Add(top[i], junction.Normal(edge[i]), Tile(edge[i]));
+        chunk.Add(junction.Point(junction.Hub), junction.Normal(junction.Hub), Tile(junction.Hub));
+        for (int f = 0; f + 2 < junction.Faces.Length; f += 3)
+        {
+            chunk.Triangle(first + junction.Faces[f], first + junction.Faces[f + 1], first + junction.Faces[f + 2], Kind.Asphalt);
+        }
+
+        if (deck)
+        {
+            Under(chunk, junction, corners);
+        }
+
+        int[][] rows = new int[junction.Spokes.Length][];
+        for (int k = 0; k < rows.Length; k++)
+        {
+            rows[k] = deck ? Wall(chunk, junction, junction.Spokes[k], top, corners) : Earth(chunk, junction, k, top, corners);
+        }
+        foreach ((int from, int to) in junction.Strips)
+        {
+            for (int k = 0; k + 1 < rows[to].Length; k += 2)
+            {
+                chunk.Triangle(rows[from][k], rows[from][k + 1], rows[to][k + 1], deck ? Kind.Deck : Kind.Earth);
+                chunk.Triangle(rows[from][k], rows[to][k + 1], rows[to][k], deck ? Kind.Deck : Kind.Earth);
+            }
+        }
+        return Narrow(chunk, junction.Point(junction.At), 0.0, 0.0, [], []);
+    }
+
+    /// <summary>
+    /// Junctions' meshes put together, as many to a mesh as <paramref name="fit"/> holds and no two in
+    /// one that are further apart than it allows: a junction is a few hundred vertices, and a place in
+    /// the pool for each would leave a circuit of many junctions with none for its roads.
+    /// </summary>
+    /// <returns>Each mesh, with the junctions' points it is of.</returns>
+    public static List<(int[] Nodes, RoadMeshData Mesh)> Gather(IReadOnlyList<(RoadJunction Junction, RoadMeshData Mesh)> junctions, Fit fit)
+    {
+        List<(int[], RoadMeshData)> gathered = [];
+        bool[] taken = new bool[junctions.Count];
+        for (int i = 0; i < junctions.Count; i++)
+        {
+            if (taken[i]) continue;
+            List<int> group = [i];
+            int vertices = junctions[i].Mesh.Positions.Length, indices = junctions[i].Mesh.Indices.Length;
+            for (int k = i + 1; k < junctions.Count; k++)
+            {
+                RoadMeshData more = junctions[k].Mesh;
+                if (taken[k] || Vec.Len(more.Origin - junctions[i].Mesh.Origin) > fit.LengthM) continue;
+                if (vertices + more.Positions.Length > fit.Vertices || indices + more.Indices.Length > fit.Indices) continue;
+                taken[k] = true;
+                group.Add(k);
+                (vertices, indices) = (vertices + more.Positions.Length, indices + more.Indices.Length);
+            }
+            gathered.Add(([.. group.Select(k => junctions[k].Junction.Node)], group.Count == 1 ? junctions[i].Mesh : Merged([.. group.Select(k => junctions[k].Mesh)])));
+        }
+        return gathered;
+    }
+
+    // Several meshes as one, about the middle of their origins, the triangles of each kind together.
+    private static RoadMeshData Merged(RoadMeshData[] meshes)
+    {
+        double3 origin = Vec.Zero;
+        foreach (RoadMeshData mesh in meshes) origin += mesh.Origin / meshes.Length;
+
+        List<float3> positions = [], normals = [];
+        List<float2> uvs = [];
+        List<double3> places = [];
+        List<int>[] triangles = [[], [], []];
+        double radius = 0.0;
+        int folded = 0;
+        foreach (RoadMeshData mesh in meshes)
+        {
+            int first = places.Count;
+            foreach (double3 place in mesh.Places)
+            {
+                double3 from = place - origin;
+                positions.Add(new float3((float)from.X, (float)from.Y, (float)from.Z));
+                radius = Math.Max(radius, Vec.Len(from));
+            }
+            places.AddRange(mesh.Places);
+            normals.AddRange(mesh.Normals);
+            uvs.AddRange(mesh.Uvs);
+            folded += mesh.Folded;
+            for (int t = 0; t < mesh.Indices.Length; t++)
+            {
+                int kind = t < mesh.AsphaltIndices ? 0 : t < mesh.AsphaltIndices + mesh.EarthIndices ? 1 : 2;
+                triangles[kind].Add(first + mesh.Indices[t]);
+            }
+        }
+        return new RoadMeshData(origin, [.. positions], [.. normals], [.. uvs], [.. triangles[0], .. triangles[1], .. triangles[2]],
+                                triangles[0].Count, triangles[1].Count, triangles[2].Count, radius, 0.0, 0.0, [], [], folded, [.. places]);
+    }
+
+    // Out from the junction's edge along one of its spokes: the verge's two edges and the bank's top and foot.
+    private static int[] Earth(Chunk chunk, RoadJunction junction, int spoke, double3[] top, Dictionary<int, (Row Row, int[] Side)> corners)
+    {
+        RoadJunction.Spoke along = junction.Spokes[spoke];
+        if (along.Corner && corners.TryGetValue(along.At, out (Row Row, int[] Side) corner))
+        {
+            return [.. corner.Side.Select(v => chunk.Add(corner.Row.At[v], corner.Row.Normal[v], corner.Row.Uv[v]))];
+        }
+
+        Plan place = junction.Boundary[along.At], outward = along.Outward;
+        double reach = junction.OutOf(spoke), verge = Math.Min(reach, RoadRibbon.VergeM);
+        Plan atVerge = place + (outward * verge), atFoot = place + (outward * reach);
+        double3 onVerge = junction.Facing(place, junction.Gradient - (outward * RoadRibbon.VergeSlope));
+        double3 onBank = junction.Facing(place, junction.Gradient - (outward * RoadRibbon.BankSlope));
+        double3 edge = junction.Chart.Dir(atVerge) * (junction.Chart.RadiusM + junction.HeightAt(place) - RoadRibbon.Drop(verge));
+        double3 foot = junction.Chart.Dir(atFoot) * (junction.Chart.RadiusM + junction.HeightAt(place) - RoadRibbon.Drop(reach));
+        return [chunk.Add(top[along.At], onVerge, Tile(place)), chunk.Add(edge, onVerge, Tile(atVerge)), chunk.Add(edge, onBank, Tile(atVerge)), chunk.Add(foot, onBank, Tile(atFoot))];
+    }
+
+    // Down a deck's side at one of a junction's spokes: its top and its bottom, which at a mouth's corner are where the run's are.
+    private static int[] Wall(Chunk chunk, RoadJunction junction, RoadJunction.Spoke along, double3[] top, Dictionary<int, (Row Row, int[] Side)> corners)
+    {
+        bool mouth = corners.TryGetValue(along.At, out (Row Row, int[] Side) corner);
+        if (mouth && along.Corner)
+        {
+            return [chunk.Add(corner.Row.At[corner.Side[0]], corner.Row.Normal[corner.Side[0]], corner.Row.Uv[corner.Side[0]]),
+                    chunk.Add(corner.Row.At[corner.Side[1]], corner.Row.Normal[corner.Side[1]], corner.Row.Uv[corner.Side[1]])];
+        }
+
+        Plan place = junction.Boundary[along.At], outward = along.Outward;
+        junction.Chart.Compass(place, out _, out double3 east, out double3 north);
+        double3 facing = (east * outward.E) + (north * outward.N);
+        double height = junction.HeightAt(place);
+        float across = (float)((Math.Abs(outward.N) >= Math.Abs(outward.E) ? place.E : place.N) / TileM);
+        return [chunk.Add(top[along.At], facing, new float2(across, (float)(height / TileM))),
+                chunk.Add(mouth ? corner.Row.At[corner.Side[1]] : junction.Point(place, RoadRibbon.DeckThickM), facing, new float2(across, (float)((height - RoadRibbon.DeckThickM) / TileM)))];
+    }
+
+    // A deck's underside: the asphalt's own triangles the other way up, a deck's thickness down. A run's
+    // deck has no vertex under its centre line, so where the asphalt is a fan the underside's goes from
+    // corner to corner of each mouth.
+    private static void Under(Chunk chunk, RoadJunction junction, Dictionary<int, (Row Row, int[] Side)> corners)
+    {
+        Plan[] edge = junction.Boundary;
+        int n = edge.Length;
+        int[] at = new int[n + 1];
+        for (int i = 0; i <= n; i++)
+        {
+            Plan place = i < n ? edge[i] : junction.Hub;
+            double3 down = -junction.Normal(place);
+            at[i] = i < n && corners.TryGetValue(i, out (Row Row, int[] Side) corner)
+                ? chunk.Add(corner.Row.At[corner.Side[2]], down, Tile(place))
+                : chunk.Add(junction.Point(place, RoadRibbon.DeckThickM), down, Tile(place));
+        }
+
+        bool fan = junction.Faces.Length == 3 * n && junction.Faces[0] == n;
+        if (!fan)
+        {
+            for (int f = 0; f + 2 < junction.Faces.Length; f += 3) chunk.Triangle(at[junction.Faces[f]], at[junction.Faces[f + 2]], at[junction.Faces[f + 1]], Kind.Deck);
+            return;
+        }
+
+        HashSet<int> centres = [.. junction.Arms.Select(a => a.Mouth.Centre)];
+        int before = n - 1;
+        while (centres.Contains(before)) before--;
+        for (int i = 0; i < n; i++)
+        {
+            if (centres.Contains(i)) continue;
+            chunk.Triangle(at[n], at[i], at[before], Kind.Deck);
+            before = i;
+        }
     }
 
     private static double3[] Asphalt(Row row, bool deck) => deck ? [row.At[0], row.At[1], row.At[2]] : [row.At[4], row.At[5], row.At[6]];

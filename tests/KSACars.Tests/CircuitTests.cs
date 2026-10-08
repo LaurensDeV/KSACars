@@ -313,27 +313,32 @@ public class RoadRunTests
     private static double Deg(double metres) => metres / Radius * 180.0 / Math.PI;
 
     [Fact]
-    public void ARoadThroughAJunctionIsOneRunAndTheSideRoadIsSunkWhereItMeetsIt()
+    public void ARoadThroughAPointIsOneRunAndEveryRoadAtAJunctionStopsThere()
     {
         Circuit c = new Circuit().AddNode(0, 0, out int mid)
             .Extend(mid, 0, -Deg(200), out int west).Extend(mid, 0, Deg(200), out int east).Extend(mid, -Deg(200), 0, out _)
             .Extend(west, 0, -Deg(400), out int farWest);
 
+        // With no junction made at the point, which is what one that cannot be made falls back to.
         List<RoadLayout.Run> runs = RoadLayout.Runs(c, DirOf, Radius);
 
         Assert.Equal(2, runs.Count);
-        RoadLayout.Run through = runs.Single(r => r.Legs.Count == 3), side = runs.Single(r => r.Legs.Count == 1);
-        Assert.Equal(0.0, through.SinkStartM);
-        Assert.Equal(0.0, through.SinkEndM);
+        RoadLayout.Run through = runs.Single(r => r.Legs.Count == 3);
         Assert.Equal(new[] { east, farWest }.Order(), new[] { through.Legs[0].From, through.Legs[^1].To }.Order());
         for (int i = 1; i < through.Legs.Count; i++) Assert.Equal(through.Legs[i - 1].To, through.Legs[i].From);
         Assert.Contains(mid, new[] { through.Legs[1].From, through.Legs[1].To });
-        Assert.True(side.SinkStartM + side.SinkEndM > 0.0, "the side road lies in the through road's plane");
         Assert.False(through.Closed);
+
+        List<RoadLayout.Run> cut = RoadLayout.Runs(c, DirOf, Radius, new HashSet<int> { mid });
+
+        Assert.Equal(3, cut.Count);
+        Assert.All(cut, r => Assert.Contains(mid, new[] { r.Legs[0].From, r.Legs[^1].To }));
+        RoadLayout.Run long_ = cut.Single(r => r.Legs.Count == 2);
+        Assert.Equal(new[] { mid, farWest }.Order(), new[] { long_.Legs[0].From, long_.Legs[^1].To }.Order());
     }
 
     [Fact]
-    public void ARingIsOneClosedRunAndThreeRoadsMeetingAtAThirdOfATurnAreAllAtDifferentDepths()
+    public void ARingIsOneClosedRunAndThreeRoadsMeetingAtAThirdOfATurnAreThreeRuns()
     {
         Circuit ring = new Circuit().AddNode(0, 0, out int a).Extend(a, 0, Deg(200), out int b).Extend(b, Deg(200), Deg(200), out int d)
             .Extend(d, Deg(200), 0, out int e).Connect(e, a);
@@ -344,9 +349,8 @@ public class RoadRunTests
 
         Circuit star = new Circuit().AddNode(0, 0, out int mid).Extend(mid, Deg(200), 0, out _)
             .Extend(mid, -Deg(100), Deg(173), out _).Extend(mid, -Deg(100), -Deg(173), out _);
-        List<RoadLayout.Run> arms = RoadLayout.Runs(star, DirOf, Radius);
-        Assert.Equal(3, arms.Count);
-        Assert.Equal(3, arms.Select(r => Math.Round(r.SinkStartM + r.SinkEndM, 3)).Distinct().Count());
+        Assert.Equal(3, RoadLayout.Runs(star, DirOf, Radius).Count);
+        Assert.Equal(3, RoadLayout.Runs(star, DirOf, Radius, new HashSet<int> { mid }).Count);
     }
 
     [Fact]
@@ -541,7 +545,7 @@ public class RoadLayingTests
     private static double Deg(double metres) => metres / Radius * 180.0 / Math.PI;
 
     [Fact]
-    public void ALaidRoadStandsOnTheGroundByItsLiftAndItsPointsHeightsAndDipsWhereItJoinsAnother()
+    public void ALaidRoadStandsOnTheGroundByItsLiftAndItsPointsHeightsAndStopsAtAJunctionAtTheJunctionsHeight()
     {
         Circuit c = new Circuit { WidthM = 10.0 }.AddNode(0, 0, out int mid)
             .Extend(mid, 0, -Deg(200), out _).Extend(mid, 0, Deg(200), out int east).Extend(mid, -Deg(200), 0, out _)
@@ -549,23 +553,26 @@ public class RoadLayingTests
 
         List<RoadLaying.Strip> strips = RoadLaying.Lay(c, DirOf, Radius, dir => 50.0 + (1000.0 * dir.Z), 0.07, 2.0);
 
-        RoadLaying.Strip through = strips.Single(s => s.LengthM > 300.0), side = strips.Single(s => s.LengthM < 300.0);
-        Assert.Equal(400.0, through.LengthM, 0);
-        Assert.Equal(5.0, through.HalfWidth);
+        // Three roads, each from the mouth it has at the junction: the corner beside it is 5 m back and rounded by 6.
+        Assert.Equal(3, strips.Count);
+        RoadLaying.Strip through = strips.Single(s => s.AboveGroundM.Max() > 3.0);
+        Assert.All(strips, s => Assert.Equal(200.0 - 11.5, s.LengthM, 6));
+        Assert.All(strips, s => Assert.Equal(5.0, s.HalfWidth));
 
-        for (int i = 0; i < through.Line.Length; i++)
+        foreach (RoadLaying.Strip strip in strips)
         {
-            double3 dir = Vec.Unit(through.Line[i]);
-            Assert.Equal(Radius + 50.0 + (1000.0 * dir.Z) + through.AboveGroundM[i], Vec.Len(through.Line[i]), 6);
-        }
-        // On ground that climbs a hair to the north the smoothed ground is a hair above it.
-        Assert.InRange(through.AboveGroundM.Min(), 0.07, 0.071);
-        Assert.InRange(through.AboveGroundM.Max(), 6.07, 6.071);
+            for (int i = 0; i < strip.Line.Length; i++)
+            {
+                double3 dir = Vec.Unit(strip.Line[i]);
+                Assert.Equal(Radius + 50.0 + (1000.0 * dir.Z) + strip.AboveGroundM[i], Vec.Len(strip.Line[i]), 6);
+            }
 
-        // The side road meets the through road at one of its ends, and is under it there by its sink.
-        double atJunction = Math.Min(side.AboveGroundM[0], side.AboveGroundM[^1]);
-        Assert.InRange(0.07 - atJunction, 0.005, 0.03);
-        Assert.InRange(side.AboveGroundM[side.AboveGroundM.Length / 2], 0.07, 0.071);
+            // On ground that climbs a hair to the north the smoothed ground is a hair above it, and so is
+            // the junction, which is level and clear of the ground at its northern edge.
+            Assert.InRange(strip.AboveGroundM.Min(), 0.07, 0.075);
+            Assert.InRange(Math.Min(strip.AboveGroundM[0], strip.AboveGroundM[^1]), 0.07, 0.075);
+        }
+        Assert.InRange(through.AboveGroundM.Max(), 6.07, 6.071);
 
         Assert.True(RoadLaying.Surface(strips).TryHeightOver(through.Line[10] + (Vec.Unit(through.Line[10]) * 0.33), out double over));
         Assert.Equal(0.33, over, 2);

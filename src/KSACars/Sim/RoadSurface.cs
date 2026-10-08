@@ -8,7 +8,8 @@ namespace KSACars;
 ///
 /// <para>Each run of roads is a <see cref="RoadRibbon"/>, and the answer is the ribbon's own surface
 /// at the place under the point, not a piece of anything sampled from it: across the asphalt, down
-/// the verge and the embankment past its edge, and past an end that is not a deck.</para>
+/// the verge and the embankment past its edge, and past an end that is not a deck. A run stops at a
+/// junction's mouth, and from there the answer is the junction's plane.</para>
 ///
 /// <para>A road up to <see cref="StepM"/> above a point counts as under it; one higher than that is
 /// a bridge overhead, and the highest road that is not is the one answered. Asphalt is answered
@@ -37,7 +38,9 @@ public sealed class RoadSurface
 
     private readonly RoadChart? _chart;
     private readonly RoadRibbon[] _ribbons;
+    private readonly RoadJunction[] _junctions;
     private readonly Dictionary<(int, int), (int Ribbon, int Place)[]> _cells = [];
+    private readonly Dictionary<(int, int), int[]> _junctionCells = [];
 
     /// <param name="roads">Each road's centre line on its surface, from the body's centre, half its width, and whether it is a ring.</param>
     public RoadSurface(IEnumerable<(double3[] Line, double HalfWidth, bool Closed)> roads)
@@ -55,7 +58,7 @@ public sealed class RoadSurface
     {
     }
 
-    /// <param name="ribbons">Every run of roads on the body, all on one chart.</param>
+    /// <param name="ribbons">Every run of roads on the body, all on one chart. The junctions are the ones they stop at.</param>
     internal RoadSurface(IReadOnlyList<RoadRibbon> ribbons)
     {
         _ribbons = [.. ribbons];
@@ -83,6 +86,32 @@ public sealed class RoadSurface
             }
         }
         foreach (((int, int) cell, List<(int, int)> places) in cells) _cells[cell] = [.. places];
+
+        List<RoadJunction> junctions = [];
+        foreach (RoadRibbon ribbon in _ribbons)
+        {
+            if (ribbon.StartJunction is { } start && !junctions.Contains(start)) junctions.Add(start);
+            if (ribbon.EndJunction is { } end && !junctions.Contains(end)) junctions.Add(end);
+        }
+        _junctions = [.. junctions];
+
+        Dictionary<(int, int), List<int>> over = [];
+        for (int j = 0; j < _junctions.Length; j++)
+        {
+            RoadJunction junction = _junctions[j];
+            double reach = junction.ReachM + EdgeM;
+            (int x0, int y0) = Cell(new Plan(junction.At.E - reach, junction.At.N - reach));
+            (int x1, int y1) = Cell(new Plan(junction.At.E + reach, junction.At.N + reach));
+            for (int x = x0; x <= x1; x++)
+            {
+                for (int y = y0; y <= y1; y++)
+                {
+                    if (!over.TryGetValue((x, y), out List<int>? list)) over[(x, y)] = list = [];
+                    list.Add(j);
+                }
+            }
+        }
+        foreach (((int, int) cell, List<int> list) in over) _junctionCells[cell] = [.. list];
     }
 
     private static List<RoadRibbon> Along(List<(double3[] Line, double HalfWidth, bool Closed, double[]? AboveGroundM)> roads)
@@ -152,14 +181,34 @@ public sealed class RoadSurface
         if (_chart is null || !(radius > 0.0)) return false;
 
         Plan place = _chart.Of(at);
-        if (!_cells.TryGetValue(Cell(place), out (int Ribbon, int Place)[]? places)) return false;
+        _cells.TryGetValue(Cell(place), out (int Ribbon, int Place)[]? places);
+        _junctionCells.TryGetValue(Cell(place), out int[]? junctions);
+        if (places is null && junctions is null) return false;
 
         // A wheel above its road is asked as one new to it, or a deck it flew in over would not be under it.
         double deepest = Math.Min(last ?? 0.0, 0.0) - StepM;
         double height = radius - _chart.RadiusM, overEarth = double.PositiveInfinity, outEarth = 0.0;
         (RoadRibbon? Ribbon, RoadRibbon.Section At, double D, double Height, double Along, double Across) best = default;
 
-        foreach ((int r, int i) in places)
+        RoadJunction? on = null;
+        foreach (int j in junctions ?? [])
+        {
+            RoadJunction junction = _junctions[j];
+            if (!junction.Surface(place, EdgeM, out double surface, out double out_)) continue;
+
+            double over = height - surface;
+            if (over < deepest) continue;
+            if (out_ > EdgeM)
+            {
+                if (over < overEarth) (overEarth, outEarth) = (over, out_);
+            }
+            else if (over < metres)
+            {
+                (metres, on) = (over, junction);
+            }
+        }
+
+        foreach ((int r, int i) in places ?? [])
         {
             // Only from the place nearest the point of those either side of it: once a ribbon each time it passes.
             RoadRibbon ribbon = _ribbons[r];
@@ -178,16 +227,18 @@ public sealed class RoadSurface
             else if (over < metres)
             {
                 metres = over;
+                on = null;
                 best = (ribbon, section, d, surface, along, across);
             }
         }
 
-        if (best.Ribbon is null || metres - overEarth > AsphaltUnderM)
+        if ((best.Ribbon is null && on is null) || metres - overEarth > AsphaltUnderM)
         {
             (metres, outM) = (overEarth, outEarth);
             return !double.IsPositiveInfinity(metres);
         }
-        if (best.Ribbon.Laid) facing = best.Ribbon.Normal(best.At, best.D, best.Height, best.Along, best.Across);
+        if (on is not null) facing = on.Normal(place);
+        else if (best.Ribbon!.Laid) facing = best.Ribbon.Normal(best.At, best.D, best.Height, best.Along, best.Across);
         return true;
     }
 

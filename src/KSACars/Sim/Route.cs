@@ -11,8 +11,8 @@ namespace KSACars;
 /// another, and a route that comes back over itself is only told apart by how far along it the car
 /// has got.</para>
 ///
-/// <para>The line is the one the roads are laid through, without the centimetre or two an end is sunk
-/// by where it meets other roads.</para>
+/// <para>Across a junction the line is a curve from the middle of the mouth come in by to the middle of
+/// the one left by, leaving each along its road.</para>
 /// </summary>
 internal sealed class Route
 {
@@ -32,7 +32,7 @@ internal sealed class Route
     /// <summary>What a turn is measured over, so a kink between two straight stretches is a bend and not an instant.</summary>
     public const double SmoothOverM = 3.0;
 
-    /// <summary>A turn of more than this at one point of a road is a kink, which a road that joins another makes where they meet.</summary>
+    /// <summary>A turn of more than this at one point of a road is a kink: a point with no corner to it, or a junction that could not be made.</summary>
     public const double KinkDeg = 30.0;
 
     /// <summary>The share of the road's half width a kink is cut inside by, and the most of the road either side that is given up to it, in half widths.</summary>
@@ -80,12 +80,28 @@ internal sealed class Route
             return null;
         }
 
-        List<RoadRibbon> ribbons = RoadLaying.Ribbons(circuit, dirOf, radiusM, groundAt, liftM, spacingM);
+        RoadLaying.Network laid = RoadLaying.Laid(circuit, dirOf, radiusM, groundAt, liftM, spacingM);
+        List<RoadRibbon> ribbons = laid.Ribbons;
         List<double3> line = [];
         List<double> halfWidths = [];
+
+        // From the road just driven across the junction at `at` to the road on to `next`.
+        void Cross(int from, int at, int next)
+        {
+            if (laid.Junctions.FirstOrDefault(j => j.Node == at) is not { } junction) return;
+            if (junction.ArmTo(from) is not { } into || junction.ArmTo(next) is not { } outOf || ReferenceEquals(into, outOf)) return;
+            List<double3> across = junction.Across(into, outOf, spacingM);
+            for (int i = 1; i < across.Count; i++)
+            {
+                line.Add(across[i]);
+                halfWidths.Add(into.HalfWidth + ((outOf.HalfWidth - into.HalfWidth) * i / (across.Count - 1)));
+            }
+        }
+
         for (int k = 1; k < path.Count; k++)
         {
             int a = path[k - 1], b = path[k];
+            if (k > 1) Cross(path[k - 2], a, b);
             RoadRibbon? on = null;
             RoadRibbon.Span span = default;
             foreach (RoadRibbon ribbon in ribbons)
@@ -108,7 +124,7 @@ internal sealed class Route
                 // Just short of each end, so a closed run's last point is not its first come round again.
                 double s = Math.Clamp(from + ((to - from) * i / steps), Math.Min(from, to) + 1e-9, Math.Max(from, to) - 1e-9);
                 RoadRibbon.Section section = on.At(s);
-                line.Add(on.Point(section, 0.0, section.Height + on.Profile.Sink(s)));
+                line.Add(on.Point(section, 0.0, section.Height));
                 halfWidths.Add(section.HalfWidth);
             }
         }
@@ -116,6 +132,7 @@ internal sealed class Route
         bool closed = path.Count > 2 && path[0] == path[^1];
         if (closed)
         {
+            Cross(path[^2], path[0], path[1]);
             line.RemoveAt(line.Count - 1);
             halfWidths.RemoveAt(halfWidths.Count - 1);
         }

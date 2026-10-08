@@ -3,15 +3,15 @@ using Brutal.Numerics;
 namespace KSACars;
 
 /// <summary>
-/// A run of roads as the one solid a physics engine is given for it: every triangle of its meshes,
-/// which are the ones drawn, about one origin.
+/// Roads that are joined as the one solid a physics engine is given for them: every triangle of the
+/// meshes of their runs and of the junctions those stop at, which are the ones drawn, about one origin.
 ///
-/// <para>One for the whole run and not one a mesh, because a physics engine smooths a contact at an
-/// edge two triangles of one solid share and not where two solids meet, and a hull sliding from one
-/// onto the next is stopped or thrown there. So a corner can be kilometres from the origin, where a
-/// float is exact to a tenth of a millimetre at 2 km and a quarter at 4. Each is narrowed from where
-/// it was worked out and not from its mesh's floats, so the triangles of two meshes that share a row
-/// share its corners to the last bit.</para>
+/// <para>One for all of it and not one a mesh, because a physics engine smooths a contact at an edge
+/// two triangles of one solid share and not where two solids meet, and a hull sliding from one onto
+/// the next is stopped or thrown there. So a corner can be kilometres from the origin, where a float
+/// is exact to a tenth of a millimetre at 2 km and half a millimetre at 5. Each is narrowed from where
+/// it was worked out and not from its mesh's floats, so the triangles of two meshes that share a row,
+/// and of a run and the junction at its mouth, share its corners to the last bit.</para>
 ///
 /// <para>A road on the ground is a sheet with nothing under it, its banks' feet below the ground; a
 /// raised one is closed, as its mesh is.</para>
@@ -27,7 +27,7 @@ internal sealed record RoadCollider(double3 Origin, float3[] Corners, double Rad
 {
     public int Triangles => Corners.Length / 3;
 
-    /// <summary>The solid of one run's <paramref name="meshes"/>, or none if they have no triangle.</summary>
+    /// <summary>The solid of <paramref name="meshes"/> that are joined, or none if they have no triangle.</summary>
     public static RoadCollider? Of(IReadOnlyList<RoadMeshData> meshes)
     {
         int corners = 0;

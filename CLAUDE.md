@@ -200,16 +200,17 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/CircuitHistory.cs` | a circuit being edited and every state it has been through, for undo and redo — **a drag is many changes and one step** |
 | `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
-| `Sim/RoadLaying.cs` | a circuit put on the ground: each run of its roads as a `RoadRibbon` and as a line of points along that surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own |
+| `Sim/RoadLaying.cs` | a circuit put on the ground: each run of its roads as a `RoadRibbon`, stopped at the mouth of each `RoadJunction` and brought to its plane there, and as a line of points along that surface, the ground under it read through a function, so a test lays the same roads the game does over ground of its own; and **which runs and junctions are joined**, which the physics is given as one solid |
+| `Sim/RoadJunction.cs` | **where three or more roads meet, as one polygon of asphalt under one tilted plane**: each road's mouth, the corners between them rounded, bevelled or joined round the point, the plane that is the through road's climb and lean, what is past the edge between the mouths, what a wheel there is over and the line a driver takes across — or why the roads are too nearly alongside for one to be made |
 | `Sim/RoadRibbon.cs` | **a run of roads as one surface**: where it is a distance along and across, the way it faces there, and for any place how far along and across that is — the asphalt leaning by its bank, a verge and an embankment down into the ground past its edge, or a deck with nothing beside it where it is more than 4 m up |
-| `Sim/RoadTessellation.cs` | a ribbon as triangles, **the ones the game draws and collides with**: rows of vertices across the road, closer where it bends, climbs or twists, joined into meshes of about 100 m or of as much as a place in the pool holds, with the asphalt, the earth and a deck's sides apart, each vertex facing as the surface does and given twice only at a crease |
-| `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it and the way that faces, **a road more than a deck's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
-| `Sim/RoadCollider.cs` | a run's meshes as **the one solid KSA's physics is given for it**: every triangle about one origin, listed so that it is solid from the side it is drawn from, and narrowed from where each vertex was worked out so two meshes' triangles share their corners |
+| `Sim/RoadTessellation.cs` | a ribbon as triangles, **the ones the game draws and collides with**: rows of vertices across the road, closer where it bends, climbs or twists, joined into meshes of about 100 m or of as much as a place in the pool holds, with the asphalt, the earth and a deck's sides apart, each vertex facing as the surface does and given twice only at a crease; and a junction as a mesh that **takes each run's last row for its own at the mouth**, several junctions to a mesh where they are near |
+| `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it, or a junction's plane, and the way that faces, **a road more than a deck's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
+| `Sim/RoadCollider.cs` | the meshes of runs and junctions that are joined as **the one solid KSA's physics is given for them**: every triangle about one origin, listed so that it is solid from the side it is drawn from, and narrowed from where each vertex was worked out so two meshes' triangles share their corners |
 | `Sim/RoadDrawList.cs` | which of a circuit's meshes are drawn: how much one place in the pool holds and how many places there are, **the nearest meshes given the places when there are too few and the nearest drawn when a view has too few draws**, a mesh's triangles in the order of the two materials, and the ledger of which places are out |
-| `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
+| `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a curve across each junction from the mouth come in by to the one left by, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
-| `Sim/RoadProfile.cs` | what a road is along its length apart from where it goes: **its height as a curve through its points' heights that climbs steadily where they do and never overshoots**, its lean and its width, with the steepest grade and the tightest crest or dip of each road |
+| `Sim/RoadProfile.cs` | what a road is along its length apart from where it goes: **its height as a curve through its points' heights that climbs steadily where they do and never overshoots**, its lean and its width, an end at a junction held to the height, the climb and the lean it is given, with the steepest grade and the tightest crest or dip of each road |
 | `Sim/RoadGround.cs` | the ground along a road, **smoothed and never buried**: at or above every sample of the ground and the line between two, with no step in its slope, level ground and a steady slope left as they are and a bump filled over |
 | `Sim/RoadChart.cs` | **a flat chart of the ground round a circuit**, in metres east and north, so widths, offsets and lookups are plain geometry; stereographic, so every angle is kept and a length `r` from its centre is `(r/2R)^2` too long |
 | `Sim/RoadLine.cs` | a road's centre line on the chart, **measured by its own length**: where it is, its heading and how hard it turns a distance along, whatever speed the curve's parameter goes at, and where it turns tighter than the road on it can |
@@ -232,7 +233,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/RoadColliders.cs` | **on a developer's install**: triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each run of a laid road is one mesh, in the bubbles within three kilometres of any of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
 | `Ksa/RoadDrawing.cs` | **the roads as they are drawn**: each mesh of a laid circuit written into a place of its own in a pool of `RuntimeMesh`es that only grows, to 56 places, and handed to KSA's renderer for each view in asphalt and in earth, turned as the body is about the mesh's own origin; the nearest drawn where there are more meshes than places |
 | `Ksa/RuntimeMesh.cs` | a mesh made while the game runs: room taken once in the three buffers KSA's static meshes share, cut into meshes that are each written over in place, any number in one submission, and drawn by KSA's own renderer as a `StaticMeshRenderable` for each material it has. **One patch has been seen in game**, the bridge's `road` with `mesh_test`; a road's meshes have not |
-| `Ksa/Roads.cs` | a circuit laid on a body: every run as one surface, answered to a wheel asking what is under it, made into the triangles `RoadDrawing` draws and `RoadColliders` gives the physics, a dragged road's meshes written no more than ten times a second, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
+| `Ksa/Roads.cs` | a circuit laid on a body: every run and every junction as one surface each, answered to a wheel asking what is under it, made into the triangles `RoadDrawing` draws and `RoadColliders` gives the physics, a dragged road's meshes written no more than ten times a second, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
 | `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
@@ -502,7 +503,7 @@ centre line on a flat chart of the circuit (`Sim/RoadChart.cs`), measured by its
 1.5 m and an embankment at 1 in 2 from there to 0.3 m under the ground; where an edge is more than 4 m
 above the ground the road is a deck with nothing beside it, and a dip under that height shorter than
 20 m between two decks is a deck too. Past an end that is not a deck the whole section carries on ahead,
-sunk by the same fall.
+sunk by the same fall; an end at a junction stops square at its mouth.
 `RoadRibbon.TooTight` says where a bend's radius is under 1.25 times the half width and the verge,
 inside which the surface is close to folding over itself; nothing stops a circuit being drawn so, and
 the editor does not yet warn of it. The surface's slope has no step on the centre line; off it there is
@@ -524,26 +525,31 @@ metre above it, because the bank of a road up a hillside comes down across the r
 however deep, and is never put on one more than half a metre above the surface it was in.
 `RoadSurface.TryLocate` also answers the way a laid road's asphalt faces; the wheels do not take it and
 keep the plane through what is under all four, with which every lap in the suite is on its springs.
+Inside a junction's polygon a wheel is on its plane, with the plane's own facing, and between its mouths on
+its verge or bank at the nearest place of its edge; a run answers up to its mouth and no further.
 `RoadSurfaceSweepTests` lays bends, junctions and bridges as the game does and asks what a wheel would.
 **The lookup has not been driven in game.**
 
 **Everything but a wheel meets a road through KSA's own physics, as the triangles it is drawn with.**
-`Sim/RoadCollider.cs` makes one solid of a run's meshes and `Ksa/RoadColliders.cs` puts it in every physics
-bubble within three kilometres of any of it as ground clutter of infinite mass, which is what KSA lets a
+`Sim/RoadCollider.cs` makes one solid of the meshes of all the runs and junctions that are joined, and
+`Ksa/RoadColliders.cs` puts it in every physics bubble within three kilometres of any of it as ground clutter of infinite mass, which is what KSA lets a
 craft and a kitten collide with and count as ground. So a car that meets a ramp harder than its springs
 can carry comes down on its hull, as it does on the ground, and under time warp, where the springs are
 left out, it rests on its hull on the road.
 
-**One solid a run, because a hull sliding from one mesh onto the next is stopped or thrown.** KSA's
+**One solid for all that is joined, because a hull sliding from one mesh onto the next is stopped or thrown.** KSA's
 physics smooths a contact at an edge inside one mesh and not where two meet: in a test of the physics
 alone two meshes that only abutted stopped a sliding hull dead, and in game an F2004 left the road at
-55 m/s where two met. So a run's triangles are all about one origin, where a float is exact to a tenth of
-a millimetre 2 km out and a quarter 4 km out, and each corner is narrowed from where it was worked out, so
-the triangles of two drawn meshes share their corners on the row they meet at. A triangle is solid from
+55 m/s where two met. So the triangles of every run and junction `RoadLaying.Components` finds joined are all
+about one origin, where a float is exact to a tenth of a millimetre 2 km out and half a millimetre 5 km out,
+and each corner is narrowed from where it was worked out, so the triangles of two drawn meshes share their
+corners on the row they meet at, and a junction's with each run's at its mouth. A circuit that is all one
+piece is one solid however long: a ladder of 23 km of road and 38 junctions is 52,552 triangles reaching
+5 km from its origin, and nothing cuts it. A triangle is solid from
 one side, and `RoadCollider` lists each so that is the side it is drawn from. A road on the ground is a
 sheet with its banks' feet under the ground and nothing beneath it, which stops what falls on it and,
 unlike a box, never pushes a hull that is inside it further down; a raised road is a deck half a metre
-thick, closed all round. Two runs still only abut where one joins another. A road laid again has its
+thick, closed all round. Where a junction could not be made two runs still only lie over one another. A road laid again has its
 solids built again; the ones from before leave the physics once no bubble holds one. The editor lays a
 road's solids when a drag ends, not while it lasts, and until then the ones from before stay where they
 were. **A laid road's solids have not been seen in game**; one box under a parked car has.
@@ -556,7 +562,8 @@ scaled by the point's corner strength, or set by hand as another place on the bo
 
 **A driver follows a route round a circuit, the same one in the tests and in the game.** `Sim/Route.cs`
 is a line along the roads with progress along it, never the nearest road, so a junction or a crossing
-cannot put it on the wrong one; `Sim/Autopilot.cs` steers by pure pursuit through the lock
+cannot put it on the wrong one, and across a junction a curve from the middle of one mouth to the middle of
+another that reaches in only as far as keeps it 2.5 m clear of the corners; `Sim/Autopilot.cs` steers by pure pursuit through the lock
 `BuggyDrive.SteerLock` gives, holds a speed the bends allow, and ends itself with a reason. `Ksa/Laps.cs`
 steps it in the physics window for the bridge's `lap`, which stands the car at the route's start first
 and files a summary of the run.
@@ -571,26 +578,30 @@ braked at 0.3 g and the car is stopped on half its brakes, since a pad collider 
 the buggy's nose goes down 10 under all of them. **None of this has been lapped in game.**
 
 **A road is drawn as its own surface, in meshes made while the game runs.** `Roads.Lay` has
-`Sim/RoadTessellation.cs` cut each run into meshes of no more than 2,048 vertices and 400 m, and
+`Sim/RoadTessellation.cs` cut each run into meshes of no more than 2,048 vertices and 400 m and make each
+junction a mesh of a few hundred, which `RoadTessellation.Gather` puts several to a place where they are
+within 400 m of one another, and
 `Ksa/RoadDrawing.cs` writes each into a place of its own in a pool of `Ksa/RuntimeMesh.cs`'s and hands it
 to KSA's renderer for each view, turned as the body is about the mesh's own origin: the asphalt and a
 deck's sides in one material and the verges and embankments in another, so two draws a mesh at most.
 `tools/model/road-textures.py` writes both materials' textures. KSA never gives back room in its mesh
 buffers, so the pool grows eight places at a time to 56, a quarter of what those buffers hold for the
 whole game, and a place whose mesh is gone is kept for the next. That is 7 km of hairpins or 20 km of
-fast road: the eight circuits of `ExtremeCircuits.cs` take two to nine places each and a 5 km oval
-fourteen. A circuit with more has the meshes nearest the eye drawn, chosen again every two seconds, and
+fast road: the circuits of `ExtremeCircuits.cs` take two to nine places each, the grid with its five junctions thirteen, and a 5 km oval
+fourteen. A run stops at every junction and its last mesh is as short as what is left of it, so a circuit of
+many junctions takes more: the ladder of 23 km and 38 junctions is 99 meshes of road and 19 of junctions. A circuit with more than the pool holds has the meshes nearest the eye drawn, chosen again every two seconds, and
 says so once. KSA has 256 draws a view and throws past them from inside its render, which closes the
 game; 56 places are 112 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is.
 
 **A mesh is written from the frame hook, never from the render hook, and all of a laying in one
 submission**, because each submission waits for the graphics card. While a road is dragged the wheels'
 surface is laid again every frame, and the meshes of the runs through the dragged point and the points
-its roads go to ten times a second at most and for no more than a quarter of the time, a long run taking
+its roads go to, and of the junctions those runs stop at, ten times a second at most and for no more than a quarter of the time, a long run taking
 60 ms to make; the rest, and the physics, when the drag ends, when everything is made again. A road that cannot be drawn is still driven on and still solid: if the render
 hook throws, drawing stops until roads are next laid whole and nothing else is touched. The bridge's
-`road` says in its reply what was drawn, what room the pool and KSA's buffers have left, what the physics
-was given and what went wrong, and `Roads` logs the same on every whole laying. **No road's mesh has been
+`road` says in its reply what was drawn, how many junctions were made and at which points none could be and
+why, what room the pool and KSA's buffers have left, what the physics was given and what went wrong, and
+`Roads` logs the same on every whole laying. **No road's mesh has been
 seen in game.**
 
 **The triangles keep to the surface by where their rows are put.** `Sim/RoadTessellation.cs`
@@ -609,10 +620,35 @@ writes each over in place. The bridge's `road` with `mesh_test` draws `Sim/MeshP
 over the flown craft and writes another over it when asked again, **which has been seen in game**: lit,
 textured, smoothly shaded and casting its shadow. `docs/KSA-MODDING-NOTES.md` has the mechanism.
 
-**A road that goes through a point is one run, and a road that joins is tucked under.**
+**A road that goes through a point is one run, and where three or more meet every one stops at a junction.**
 `RoadLayout.Runs` joins the roads that carry on through one another into one run whatever their widths,
-each easing to the next one's, a ring into a closed one, and gives every other end at a junction its own
-centimetre or two of sink, taken up over two widths, so no two surfaces there share a plane. **The sink has not been judged in game.**
+each easing to the next one's, and a ring into a closed one. Two roads at a point are always one run, however
+sharply they meet: a kink is a fan of rows in the run's own mesh, and a junction of two arms would be the same
+asphalt with two seams in it.
+
+**A junction is one polygon of asphalt under one tilted plane.** `Sim/RoadJunction.cs` sorts the roads at a
+point by bearing. Between each two it finds where their facing edges cross, as the curves they are, and
+rounds the corner by the point's `JunctionRadiusM`, 6 m unless set, or by as much of it as fits; each road's
+mouth is half a metre past the further of its two corners, square to its own centre line, and no further
+from the point than 0.45 of the road's length or six of its widths. Two roads under 20 degrees apart are
+joined straight across from mouth to mouth. Where nothing crosses, on the far side of a T or where a narrow
+road's edge runs into a wide road's end, each edge is followed in to its foot beside the point and the two
+joined there. The plane is the through road's climb along it and its bank across it, so the through road is
+the ramp it would have been; at a crossroads each road's climb is the other's lean; and where nothing goes
+through it is the least squares of every arm's own climb, held to 15%. It is raised until no part of the
+polygon is under the ground, so on a hillside a level junction stands on fill and the through road rises to
+it. `RoadLaying.Laid` stops each run at its mouth and holds it there to the plane's height, its climb along
+the run and its lean across it, and the lean's rate to what a bend on a tilted plane has, so height and
+facing have no step at a mouth: 1e-15 m and 1e-16 rad over 123 junctions drawn at random. Past the asphalt between two mouths are the same verge and embankment a road has, along spokes out
+from the edge that fan round a corner turning outwards and are cut short, where two edges face one another,
+at the distance the other is as near; a junction with any of its edge more than 4 m up is a deck with sides
+and an underside, and each of its runs is a deck where it meets it. **No junction has been seen in game.**
+
+**Roads too nearly alongside to part make no junction, and say so.** If two edges have not crossed within
+reach of the point, or the polygon crosses itself, `RoadLaying.Network.Refused` has the point and the
+reason, `Roads` logs it and the bridge's `road` replies with it; the through road is then one run as with no
+junction and any other runs to the point and ends there, the two lying over one another in one plane.
+The editor does not yet show it.
 
 **Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances
@@ -728,7 +764,13 @@ step from 1/60 to a tenth of a second, and the F2004's times to speed, its braki
 driver reaches the rim of each car's wheel. `RoadSurfaceSweepTests` sweeps laid roads over legs, turns, corner
 strengths, spacings, widths and heights: every point of a road finds it, a level road is level round every
 bend, a climbing bend has no step, a junction onto a climbing road and a deck over a road answer the
-right one. `RoadLineTests`, `RoadProfileTests` and `RoadRibbonTests` hold the surface to
+right one. `RoadJunctionTests` lays a T, a Y, a crossroads, a five-way, a narrow road on a wide one, a fork of
+15 degrees, two junctions 24 m apart, the grid and 150 junctions of three to six roads drawn at random over
+rolling ground: every place is on one surface and no more, a road is on the plane at its mouth in height and
+in facing, a wheel walked from every arm to every other meets no step, the asphalt's triangles are whole and
+each mouth's edge is the junction's triangle's and the run's in one solid, a raised junction's solid is
+closed and one on the ground is one sheet with no hole; and roads too nearly alongside are refused with the
+reason. `KSACARS_JUNCTIONS=<file> ./tools/test.sh` writes what it measured. `RoadLineTests`, `RoadProfileTests` and `RoadRibbonTests` hold the surface to
 what it is said to be: a chart that keeps angles, a length that is the curve's own, a steady climb with
 nothing to feel at 80 m/s, ground that is never through the road, a facing that is the surface's own with
 no jump, and a place on it found again from where it is. `RoadTessellationTests` holds the triangles to the surface:
@@ -752,7 +794,8 @@ with the route driver round rings at five step lengths, along a bend's edges, th
 ramp and a bridge and to a road's end. `ExtremeLapTests` laps every car round the eight circuits of
 `tools/roads/extreme-circuits.py`, which `ExtremeCircuits.cs` lays again point for point, at 60 Hz and at
 the game's uneven steps: finished, on the asphalt, on its wheels and no spring within 2 cm of where a
-collider would touch. `KSACARS_EXTREME_LAPS=<file> ./tools/test.sh` writes them out as a table.
+collider would touch; and round the grid by its junctions, turning left and right at four and twice straight
+over the raised crossroads. `KSACARS_EXTREME_LAPS=<file> ./tools/test.sh` writes them out as a table.
 
 **A behaviour change is unverified until it has been seen in game**, whatever the suite says.
 `CHECKLIST.md` records what has been driven and what has not. The buggy and the Eldorado were driven

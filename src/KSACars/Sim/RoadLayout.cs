@@ -128,16 +128,17 @@ internal static class RoadLayout
 
     /// <summary>
     /// A run of roads that go through one another, in the order they are driven: what is laid as one
-    /// surface, so there is no seam where a road passes a point. An end that meets other roads is sunk by
-    /// <see cref="SinkStartM"/> or <see cref="SinkEndM"/>, each road at a junction by a different
-    /// amount, so no two surfaces lie in one plane there. A closed run ends at the point it starts from.
+    /// surface, so there is no seam where a road passes a point. A closed run ends at the point it
+    /// starts from.
     /// </summary>
-    public sealed record Run(IReadOnlyList<Leg> Legs, bool Closed, double SinkStartM, double SinkEndM);
+    public sealed record Run(IReadOnlyList<Leg> Legs, bool Closed);
 
-    private const double SinkM = 0.012, SinkStepM = 0.008;
-
-    /// <summary>The circuit's roads joined into runs, whatever their widths: a road eases from its width to the next one's.</summary>
-    public static List<Run> Runs(Circuit circuit, Func<double, double, double3> dirOf, double radiusM)
+    /// <summary>
+    /// The circuit's roads joined into runs, whatever their widths: a road eases from its width to the
+    /// next one's. No run carries on through one of <paramref name="junctions"/>: every road at one
+    /// stops at its mouth there.
+    /// </summary>
+    public static List<Run> Runs(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, IReadOnlySet<int>? junctions = null)
     {
         Dictionary<int, double3> at = Places(circuit, dirOf, radiusM);
 
@@ -145,7 +146,8 @@ internal static class RoadLayout
 
         // The road a road carries on as past its end at a point: its partner there, if that is mutual.
         (int Node, int Far)? Next(int from, int node) =>
-            Through(circuit, at, node, from) is { } onward && Through(circuit, at, node, onward) == from ? (node, onward) : null;
+            junctions?.Contains(node) != true && Through(circuit, at, node, from) is { } onward && Through(circuit, at, node, onward) == from
+                ? (node, onward) : null;
 
         List<Run> runs = [];
         HashSet<Circuit.Road> used = [];
@@ -168,27 +170,16 @@ internal static class RoadLayout
             }
 
             List<Leg> legs = [];
-            int start = a, end = b;
             while (Between(a, b) is { } road && used.Add(road))
             {
                 legs.Add(new Leg(road, road.From == a));
-                end = b;
                 if (Next(a, b) is not { } onward) break;
                 (a, b) = (b, onward.Far);
             }
 
-            runs.Add(new Run(legs, closed, closed ? 0.0 : Sink(circuit, used, start), closed ? 0.0 : Sink(circuit, used, end)));
+            runs.Add(new Run(legs, closed));
         }
         return runs;
-    }
-
-    // Deeper for each run that already ends at the point, so the ones meeting there are all at different depths.
-    private static double Sink(Circuit circuit, HashSet<Circuit.Road> used, int node)
-    {
-        int roads = circuit.Roads.Count(r => r.Touches(node));
-        if (roads < 2) return 0.0;
-        int before = circuit.Roads.Count(r => used.Contains(r) && r.Touches(node)) - 1;
-        return SinkM + (SinkStepM * Math.Max(before, 0));
     }
 
     private static double3 Arm(double3 here, double3 far, double3 up)

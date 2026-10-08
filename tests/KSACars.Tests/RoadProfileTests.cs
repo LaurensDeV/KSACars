@@ -201,25 +201,38 @@ public class RoadProfileTests
     }
 
     [Fact]
-    public void AnEndThatMeetsOtherRoadsIsSunkAndComesUpOverTwoWidthsWithNoStepInItsSlope()
+    public void AnEndAtAJunctionIsAtTheHeightAndTheSlopeItIsHeldToWithNoStepInItsSlopeOnTheWay()
     {
-        RoadProfile side = new([0.0, 200.0], [0.0, 0.0], [0.0, 0.0], [10.0, 10.0], false, 0.07, 0.012, 0.02);
+        RoadProfile free = new([0.0, 100.0, 200.0], [0.0, 3.0, 3.0], [0.0, 0.0, 0.0], [10.0, 10.0, 10.0], false, 0.07,
+                               bankRateStart: 0.002, bankRateEnd: -0.001);
+        RoadProfile held = free.Over(RoadGround.Level(50.0), new RoadProfile.Pin(51.5, 0.04), new RoadProfile.Pin(52.0, -0.03));
 
-        side.Above(0.0, out double above, out double slope, out _);
-        Assert.Equal(0.058, above, 12);
-        Assert.Equal(0.0, slope, 12);
-        side.Above(200.0, out above, out _, out _);
-        Assert.Equal(0.05, above, 12);
-        side.Above(100.0, out above, out _, out _);
-        Assert.Equal(0.07, above, 12);
+        held.Height(0.0, out double height, out double slope, out _);
+        Assert.Equal(51.5, height, 12);
+        Assert.Equal(0.04, slope, 12);
+        held.Height(200.0, out height, out slope, out _);
+        Assert.Equal(52.0, height, 12);
+        Assert.Equal(-0.03, slope, 12);
+        held.Height(100.0, out height, out _, out _);
+        Assert.Equal(53.07, height, 12);
 
-        double last = 0.0;
+        held.Bank(0.0, out double tan, out double rate);
+        Assert.Equal(0.0, tan, 12);
+        Assert.Equal(0.002, rate, 12);
+        held.Bank(200.0, out _, out rate);
+        Assert.Equal(-0.001, rate, 12);
+
+        double last = 0.04;
         for (double s = 0.0; s <= 200.0; s += 0.01)
         {
-            side.Above(s, out _, out slope, out _);
-            Assert.True(Math.Abs(slope - last) < 4e-6, $"the slope steps by {slope - last} at {s} m");
+            held.Height(s, out _, out slope, out _);
+            Assert.True(Math.Abs(slope - last) < 2e-5, $"the slope steps by {slope - last} at {s} m");
             last = slope;
         }
+
+        // One end held leaves the other the curve's own.
+        free.Over(RoadGround.Level(50.0), new RoadProfile.Pin(51.5, 0.04)).Height(200.0, out height, out _, out _);
+        Assert.Equal(53.07, height, 12);
     }
 }
 

@@ -79,6 +79,42 @@ public class ExtremeLapTests
         Assert.True(lap.HullSteps == 0 && s.MinHubM > 0.02 - car.FloorM, lap.Told);
     }
 
+    // Round the grid by its junctions and not its rim: left at a T, straight over the raised crossroads
+    // twice, right at two more Ts and left at the last, which is every way a junction is driven.
+    internal static readonly int[] GridTurns = [1, 2, 5, 8, 9, 6, 5, 4, 1];
+
+    public static TheoryData<string, bool> Turns()
+    {
+        TheoryData<string, bool> turns = [];
+        foreach (TrackCar car in TrackCar.All)
+        {
+            turns.Add(car.Name, false);
+            turns.Add(car.Name, true);
+        }
+        return turns;
+    }
+
+    internal static AutopilotTests.Lap Turned(TrackCar car, bool gameSteps)
+    {
+        AutopilotTests.Track track = Laid("Grid");
+        return AutopilotTests.Drive(car, track, AutopilotTests.RouteOn(track, GridTurns, car: car), 1.0 / 60.0, pattern: gameSteps ? GameSteps : null);
+    }
+
+    [Theory]
+    [MemberData(nameof(Turns))]
+    public void EveryCarTurnsAtTheGridsJunctionsAndCrossesItsRaisedMiddleOnItsWheels(string name, bool gameSteps)
+    {
+        TrackCar car = TrackCar.Of(name);
+        AutopilotTests.Lap lap = Turned(car, gameSteps);
+        LapSummary s = lap.Summary;
+
+        Assert.True(lap.Route.Closed && lap.End == LapEnd.Finished, lap.Told);
+        Assert.True(s.OffAsphaltSeconds == 0.0 && s.LongestFlightSeconds < 0.25, lap.Told);
+        Assert.True(lap.Rig.Log.Min(l => l.UpDot) > 0.9 && s.MaxRollDeg < 10.0, $"rolled {s.MaxRollDeg:F1} deg; {lap.Told}");
+        Assert.True(s.MaxCrossM < Math.Min(1.0, lap.Route.Samples[0].HalfWidth - HalfTrack(car)), lap.Told);
+        Assert.True(lap.HullSteps == 0 && s.MinHubM > 0.02 - car.FloorM, lap.Told);
+    }
+
     // What the limit over a crest is for, and that it can be taken off to see a car fly.
     [Fact]
     public void LeftToJumpTheF2004LeavesTheCoasterAndHeldDownItDoesNot()
@@ -188,6 +224,16 @@ public class ExtremeLapTests
                                  $"{circuit}\t{car.Name}\t{(gameSteps ? "17-33 ms" : "16.7 ms")}\t{lap.Route.LengthM:F0}\t{lap.Summary.ProgressM:F0}\t")
                          .AppendLine(lap.Row());
                 }
+            }
+        }
+        foreach (TrackCar car in TrackCar.All)
+        {
+            foreach (bool gameSteps in new[] { false, true })
+            {
+                AutopilotTests.Lap lap = Turned(car, gameSteps);
+                table.Append(CultureInfo.InvariantCulture,
+                             $"Grid by its junctions\t{car.Name}\t{(gameSteps ? "17-33 ms" : "16.7 ms")}\t{lap.Route.LengthM:F0}\t{lap.Summary.ProgressM:F0}\t")
+                     .AppendLine(lap.Row());
             }
         }
         File.WriteAllText(path, table.ToString());

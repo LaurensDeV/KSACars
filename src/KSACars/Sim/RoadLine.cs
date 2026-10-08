@@ -30,6 +30,22 @@ internal sealed class RoadArc
     /// <summary>A straight line as a curve, its parameter going at a steady speed.</summary>
     public static RoadArc Straight(Plan a, Plan d) => new(a, a + ((d - a) * (1.0 / 3.0)), a + ((d - a) * (2.0 / 3.0)), d);
 
+    /// <summary>The curve the other way along.</summary>
+    public RoadArc Reversed() => new(_d, _c, _b, _a);
+
+    /// <summary>The stretch of the curve between two of its parameter's values, as a curve of its own.</summary>
+    public RoadArc Part(double from, double to) =>
+        new(Blossom(from, from, from), Blossom(from, from, to), Blossom(from, to, to), Blossom(to, to, to));
+
+    // The curve's polar form: with all three the same, the curve there.
+    private Plan Blossom(double r, double s, double t)
+    {
+        Plan ab = Mix(_a, _b, r), bc = Mix(_b, _c, r), cd = Mix(_c, _d, r);
+        return Mix(Mix(ab, bc, s), Mix(bc, cd, s), t);
+    }
+
+    private static Plan Mix(Plan a, Plan b, double t) => (a * (1.0 - t)) + (b * t);
+
     /// <summary>Where the curve is at <paramref name="t"/> of its parameter, from 0 to 1.</summary>
     public Plan At(double t)
     {
