@@ -820,11 +820,23 @@ loop. **On a loop the mod steers**, by `RoadLoop.Steer` towards a place on its m
 the keys are the throttle's: it is carried aside as it goes round. `Roads` draws it as a road is drawn,
 with its lines, in a place of the pool. **It is not solid**: a hull's box is longer than a loop's bend
 lets lie in it, so nothing is given to the physics, and a kitten, a rock and a car off its wheels go
-through it. It has no barrier, the route driver stops at the road's end before it and the line to drive
-ends there, and the editor has no control for one: the bridge's `road` with `loop` lays a road to one and
+through it. It has no barrier, and the editor has no control for one: the bridge's `road` with `loop` lays a road to one and
 a road on from it. `RoadLoopTests` drives every car round in the rig at 25 and 30 m/s at 60 and 50 steps
 a second: four wheels down all the way, 2 cm past the stops at most, and out straight on the loop's own
 line; at 15 m/s a car comes off the top, and at 40 m/s and 30 steps a second the F2004 does.
+
+**A route goes round a loop, and the driver goes into one at the speed that carries it over.** `Route.Of`
+makes the roads before a loop one stretch, the loop another and the roads after it a third, each road
+stretch a line of its own, and joins them; with no points named it follows the road to a loop's foot,
+round, and on by the road the loop comes down on. A sample on a loop has `LoopM`, the loop's length: its
+place is on the loop, its tangent the way the loop really runs, and progress along it is found in three
+dimensions and not from above, where half a loop is no length. `Autopilot.LoopSpeed` is 1.12 of the least
+that still presses a car to the road at the top, 29 m/s for 110 m of loop, and that is what a loop's
+samples allow, so the straight before it is braked down to it; on a loop the driver does not brake, is not
+slowed for facing the wrong way, and is not taken for flipped or off the road, nor for a car's length
+either side of it. `RaceLine` puts its arrowheads on a loop by the route's own run there. The rig's laps
+with a loop in them finish with four wheels down all the way round, the F2004 and the Eldorado, open and
+closed; the buggy's top speed is under what this loop takes.
 
 **Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances

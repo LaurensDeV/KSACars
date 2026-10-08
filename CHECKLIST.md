@@ -303,6 +303,10 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       bridge's `road` with `loop`; the F2004 driven at it on the throttle alone went in at 36 m/s, was
       steered round with four wheels down and its hubs on their stops, and came out on the road at 35.
       Drawn with a road's lines, in the bridge's capture of the car on its way up
+- [x] The route driver round a loop (2026.10.10.5554): the F2004 lapped the `Loop` course through the
+      bridge's `lap`, braked from 58 m/s to 29 for the loop, went round at 27 to 34 with four wheels down
+      at every step, and finished the 660 m in 24.5 s with no wheel off the asphalt
+- [ ] The line to drive on a loop, seen: it was night, and the captures showed nothing
 - [ ] A loop with the buggy and the Eldorado, at 30 frames a second, and too slowly; a kitten at one
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
