@@ -235,16 +235,17 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
 | `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
-| `Ksa/RoadColliders.cs` | **on a developer's install**: triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each run of a laid road is one mesh, in the bubbles within three kilometres of any of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
+| `Ksa/RoadColliders.cs` | triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each run of a laid road is one mesh, in the bubbles within three kilometres of any of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
 | `Ksa/RoadDrawing.cs` | **the roads as they are drawn**: each mesh of a laid circuit written into a place of its own in a pool of `RuntimeMesh`es that only grows, to 56 places, and handed to KSA's renderer for each view in asphalt and in earth, turned as the body is about the mesh's own origin; the nearest drawn where there are more meshes than places |
 | `Ksa/RacingLine.cs` | **the line to drive, drawn ahead of the car being flown**, from the panel's Racing line: the route driver's own racing line and speeds for that car, a stretch of arrowheads written once and each colour's material told every frame which of them to draw |
 | `Ksa/RuntimeMesh.cs` | a mesh made while the game runs: room taken once in the three buffers KSA's static meshes share, cut into meshes that are each written over in place, any number in one submission, and drawn by KSA's own renderer as a `StaticMeshRenderable` for each material it has. **One patch has been seen in game**, the bridge's `road` with `mesh_test`; a road's meshes have not |
 | `Ksa/Roads.cs` | a circuit laid on a body: every run and every junction as one surface each, answered to a wheel asking what is under it, made into the triangles `RoadDrawing` draws and `RoadColliders` gives the physics, a dragged road's meshes written no more than ten times a second, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
-| `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write |
+| `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write — and the ones the mod ships beside its DLL, read where the player has none of that name |
+| `Ksa/Courses.cs` | **a circuit laid where the car being flown is, for a player**: its first point at the car, its first road the way the car faces, and the car stood on its start; asked from the panel and done from the frame hook |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap; it also reads where the head bone has the head, for the helmet |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, a course to lay and the line to drive, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
@@ -260,6 +261,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
 | `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
 | `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository. A road has no mesh here, and its asphalt and earth are written by `tools/model/road-textures.py` |
+| `src/KSACars/Circuits/` | the courses the mod ships, written by `tools/roads/club-motorsports.py`: **their line is OpenStreetMap's, under the ODbL, credited in `README.md`** |
 | `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py`, `tools/eldorado-sounds.py` and `tools/f2004-sounds.py`. **The F2004's four are CC BY-SA 3.0, credited in `README.md`**; the rest are CC0 |
 | `src/KSACars/mod.toml` | serves as both the content-mod and StarMap manifest |
 | `tests/KSACars.Tests/` | links the KSA-free sources and drives the cars headlessly |
@@ -278,7 +280,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 524 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 525 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -502,8 +504,17 @@ nothing extra.
 
 ## Roads
 
+**A player lays a course where the car is; drawing one is a developer's.** The panel's Course list is the
+mod's own courses, `src/KSACars/Circuits/`, shipped beside the DLL, and whatever is in the player's
+library, the player's own of a name before the mod's. Lay here asks `Ksa/Courses.cs`, which from the frame
+hook moves the circuit so its first point is where the car is and its first road runs the way the car
+faces (`Circuit.MovedTo`, `StartBearingDeg`), lays it, clears what stands under it and stands the car on
+its start; Take up roads puts the ground back, and Racing line is there while roads are laid. The bridge's
+`road` with `course` does the same, which is how it was tried. The road colliders are installed on every
+install for it. **The panel's own controls and an install with no `developer` file have not been run.**
+
 **Unfinished: no save remembers which circuits are laid, and a road grips as the ground does.** A circuit is drawn
-with `Ksa/RoadEditor.cs`, switched on from the car's panel on a developer's install, or laid from the bridge. A player's install has no way to lay a road. Switched on over roads
+with `Ksa/RoadEditor.cs`, switched on from the car's panel on a developer's install, or laid from the bridge. Switched on over roads
 that are already laid, the editor edits that circuit: starting an empty one would take them up.
 `docs/ROAD-TESTING-PLAN.md` lists the faults known in it and the order they are to be fixed in. **The editor's clicks and drags have not
 been tried in game**; its camera and a raised road have, through the bridge.

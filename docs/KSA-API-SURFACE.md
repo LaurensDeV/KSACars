@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-235 types and 524 members across 12 assemblies.
+235 types and 525 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -310,6 +310,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void PushTextWrapPos(float)`
 - `void SameLine(float, float)`
 - `void Separator()`
+- `void SeparatorText(Brutal.ImGuiApi.ImString)`
 - `void SetNextItemWidth(float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `void Text(Brutal.ImGuiApi.ImString)`

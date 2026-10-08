@@ -294,6 +294,11 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       at: it was dusk, and the overview the bridge took showed trees
 - [x] The same course as wide as its asphalt (2026.10.10.5554): 107 points, 12 to 40 m wide, 29 meshes,
       lapped clean by the F2004 on the racing line in 93.89 s. Not looked at either
+- [x] A course laid at the car (2026.10.10.5554): the shipped Club Motorsports laid through the bridge's
+      `road` with `course` with the F2004 on level ground, the car left standing on its start with all
+      four wheels down, and a lap set going from there. The strip at a closed run's start that was drawn
+      pale, with a whole lap of its lines in it, is drawn as the rest
+- [ ] The panel's Course list, Lay here and Take up roads, by hand; an install with no `developer` file
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck

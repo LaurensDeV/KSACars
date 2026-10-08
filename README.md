@@ -103,6 +103,22 @@ the ModMenu mod installed it is also under **Mods > Fast & Purrious**.
 A car that ends up on its roof or its side cannot drive off. The **Fast & Purrious** panel, on screen while you
 are in one, has an **Unflip** button that sets it back on its wheels where it lies.
 
+### A course to race on
+
+The panel has a **Course** list. Choose one and press **Lay here**: the course is laid on the ground with
+its start where your car is, running the way the car faces, and the car is stood on the start line.
+**Take up roads** removes it and puts back the grass, trees and rocks that stood under it. **Racing line**
+draws arrowheads along the fastest line ahead of you: blue while you are under the speed the next corner
+allows, then yellow, orange and red as you need to brake.
+
+Two courses come with the mod, both the layout of Club Motorsports, a real 3.6 km road course in Tamworth,
+New Hampshire. **Club Motorsports** climbs and falls 60 m as the real one does, so on level ground most of
+it is a raised road between barriers; **Club Motorsports Flat** is the same lap on the ground. Lay either
+on ground that is level for a kilometre around: a road follows whatever ground it is put on.
+
+A course is not kept in a save, so lay it again after loading one. A save made while a course is laid
+does keep the ground under it cleared; take the roads up before you save if you want that ground back.
+
 ## Build
 
 Requires the **.NET 10 SDK** — the mod targets `net10.0` because that is what KSA runs on. The scripts
@@ -128,5 +144,12 @@ The Ferrari F2004's engine sounds (`Sounds/KSACars_F1_*.wav`) are adapted from
 [*Red Bull-Cosworth RB1 (2005)*](https://commons.wikimedia.org/wiki/File:Red_Bull-Cosworth_RB1_(2005).ogg)
 by Edvvc, a recording of that car at the 2010 Goodwood Festival of Speed, used under
 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). The recording was cut, re-pitched,
-levelled and looped, and those four files are licensed under CC BY-SA 3.0 in turn. Everything else in
-this archive is under the licence in `LICENSE`.
+levelled and looped, and those four files are licensed under CC BY-SA 3.0 in turn.
+
+The Club Motorsports courses (`Circuits/Club Motorsports*.json`) follow the track's centre line as mapped
+in [OpenStreetMap](https://www.openstreetmap.org/copyright), © OpenStreetMap contributors, and are made
+available under the [Open Database License](https://opendatacommons.org/licenses/odbl/). Their heights
+are from the U.S. Geological Survey's 3D Elevation Program and their widths were measured on its NAIP
+aerial imagery, both in the public domain. The mod is not affiliated with or endorsed by Club Motorsports.
+
+Everything else in this archive is under the licence in `LICENSE`.
