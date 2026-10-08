@@ -130,20 +130,7 @@ internal static class Laps
         Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air, laps, speedMs,
                               timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new() };
 
-        if (place)
-        {
-            // Far enough along that the rear wheels are on the road where it starts at a dead end.
-            (double3 on, double3 roadUp, double3 ahead) = route.Standing(Math.Min(1.5 * BuggyDrive.Wheelbase(profile), route.LengthM));
-            double3 radial = Vec.Unit(on);
-            if (surface!.TryLocate(on + radial, null, out double over, out _, out double3? facing))
-            {
-                on += radial * (1.0 - over);
-
-                // The way the asphalt faces there, which a banked road leans and the route's own line does not.
-                if (facing is { } face) (roadUp, ahead) = (face, Vec.Unit(Vec.RejectFrom(ahead, face)));
-            }
-            Buggies.Stand(craft, on, roadUp, ahead);
-        }
+        if (place) Place(craft, profile, route, surface!);
 
         string name = KsaWorld.DisplayName(craft);
         string safe = string.Concat(name.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '_'));
@@ -156,6 +143,23 @@ internal static class Laps
         Log.Info($"lap: {name} set off round {route.LengthM:F0} m of {(route.Closed ? "circuit" : "road")}, "
                  + $"{pilot.CruiseMs:F0} m/s at most, {offsetM:F1} m left of centre");
         return true;
+    }
+
+
+    /// <summary>Stands a car on the road where a route starts, square on the asphalt's own face and facing along it.</summary>
+    public static void Place(Vehicle craft, BuggyProfile profile, Route route, RoadSurface surface)
+    {
+        // Far enough along that the rear wheels are on the road where it starts at a dead end.
+        (double3 on, double3 roadUp, double3 ahead) = route.Standing(Math.Min(1.5 * BuggyDrive.Wheelbase(profile), route.LengthM));
+        double3 radial = Vec.Unit(on);
+        if (surface.TryLocate(on + radial, null, out double over, out _, out double3? facing))
+        {
+            on += radial * (1.0 - over);
+
+            // The way the asphalt faces there, which a banked road leans and the route's own line does not.
+            if (facing is { } face) (roadUp, ahead) = (face, Vec.Unit(Vec.RejectFrom(ahead, face)));
+        }
+        Buggies.Stand(craft, on, roadUp, ahead);
     }
 
     /// <summary>Ends a car's lap where it is; false if it has none running.</summary>

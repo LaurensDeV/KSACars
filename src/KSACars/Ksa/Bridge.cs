@@ -381,6 +381,12 @@ internal sealed class Bridge
         {
             return Failed("no body under the craft");
         }
+        if (command.String("course") is { Length: > 0 } course)
+        {
+            Courses.Lay(course);
+            Courses.Update();
+            return Done(new() { ["course"] = Courses.Laid, ["message"] = Courses.Message, ["laid"] = Roads.Any });
+        }
         if (command.Has("racing_line"))
         {
             RacingLine.Set(command.Flag("racing_line", true));

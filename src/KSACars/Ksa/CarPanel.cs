@@ -43,6 +43,8 @@ internal static class CarPanel
         }
     }
 
+    private static string? _course;
+
     public static void Draw(CraftMover mover, RoadEditor roads)
     {
         if (KsaWorld.ControlledVehicle is not { } craft || Buggies.Of(craft) is not { } car) return;
@@ -105,16 +107,38 @@ internal static class CarPanel
                 else ImGui.TextDisabled("click a craft to pick it up");
             }
 
-            // Roads are unfinished, so only a developer's install offers them.
+            // A course is laid where the car is, with the car on its start.
+            ImGui.SeparatorText("Course");
+            ImGui.SetNextItemWidth(170f);
+            if (ImGui.BeginCombo("##course", _course ?? "Choose..."))
+            {
+                foreach (string name in CircuitLibrary.Names())
+                {
+                    if (ImGui.Selectable(name, selected: name == _course, ImGuiSelectableFlags.None, (float2?)null)) _course = name;
+                }
+                ImGui.EndCombo();
+            }
+            if (_course is { } chosen)
+            {
+                ImGui.SameLine(0f, -1f);
+                if (ImGui.Button("Lay here", null)) Courses.Lay(chosen);
+            }
+            if (Roads.Any)
+            {
+                if (ImGui.Button("Take up roads", null)) Courses.TakeUp();
+                ImGui.SameLine(0f, -1f);
+                bool line = RacingLine.Enabled;
+                if (ImGui.Checkbox("Racing line", ref line)) RacingLine.Set(line);
+            }
+            if (Courses.Message.Length > 0) ImGui.TextDisabled(Courses.Message);
+
+            // Drawing roads is unfinished, so only a developer's install offers it.
             if (Build.Developer)
             {
                 bool editing = roads.Enabled;
                 if (ImGui.Checkbox("Build roads", ref editing)) roads.Enabled = editing;
                 // One of the two has the mouse's clicks on the world.
                 if (roads.Enabled) mover.Enabled = false;
-
-                bool line = RacingLine.Enabled;
-                if (ImGui.Checkbox("Racing line", ref line)) RacingLine.Set(line);
             }
 
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);

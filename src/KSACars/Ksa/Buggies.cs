@@ -48,8 +48,9 @@ internal sealed class Buggies
         public DriverHands? Hands { get; set; }
         public bool Scraping { get; set; }
 
-        /// <summary>Where the car was in the body's own frame as its last physics step began, and how fast it was going over the ground.</summary>
+        /// <summary>Where the car was in the body's own frame as its last physics step began, the way it faced and how fast it was going over the ground.</summary>
         public double3 PlaceCcf;
+        public double3 AheadCcf;
         public double SpeedMs;
         public bool PlaceValid;
         public double SpringLift { get; set; }
@@ -677,6 +678,7 @@ internal sealed class Buggies
         double3 partOrigin = e.Part.PositionVehicleAsmb;
         double3 up = part2Asmb * new double3(1, 0, 0);
         double3 forward = part2Asmb * new double3(0, 1, 0);
+        e.AheadCcf = body2Ccf * forward;
 
         doubleQuat ccf2Cce = body.GetCcf2Cce();
         TerrainHeights ground = new(body, accurate: true);

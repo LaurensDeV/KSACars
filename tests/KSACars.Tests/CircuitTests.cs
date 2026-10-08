@@ -104,6 +104,10 @@ public class CircuitTests
         double was = Math.Atan2(900.0 * Math.Cos(24.0 * Math.PI / 180.0), 40.0) * 180.0 / Math.PI;
         Assert.Equal(0.0, Math.IEEERemainder(bearing - was - heading, 360.0), 2);
 
+        // The way its first road leaves is the way it left, and as much further round as it was turned.
+        Assert.Equal(0.0, Math.IEEERemainder(there.StartBearingDeg() - here.StartBearingDeg() - heading, 360.0), 2);
+        Assert.Equal(was, here.StartBearingDeg(), 1);
+
         // And moved back it is where it was.
         Circuit back = there.MovedTo(-24.0, -62.5, -heading, Radius, "Earth");
         for (int i = 0; i < 3; i++) Assert.True(Apart(here.Nodes[i], back.Nodes[i]) < 1e-3, $"point {i} is {Apart(here.Nodes[i], back.Nodes[i]):E2} m out");

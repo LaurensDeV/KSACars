@@ -233,6 +233,14 @@ internal sealed record Circuit
         };
     }
 
+    /// <summary>The way the first road leaves the first point, in degrees clockwise from north; nothing with no road.</summary>
+    public double StartBearingDeg()
+    {
+        if (Nodes.Count == 0 || Roads.FirstOrDefault(r => r.From == Nodes[0].Id) is not { } road || Find(road.To) is not { } to) return 0.0;
+        Plan step = Chart(Nodes[0].LatDeg, Nodes[0].LonDeg, DefaultRadiusM).Of(DirOf(to.LatDeg, to.LonDeg));
+        return Math.Atan2(step.E, step.N) * 180.0 / Math.PI;
+    }
+
     // A chart about a place, east and north as the compass has them. The axes are this file's own: only angles between places leave it.
     private static RoadChart Chart(double latDeg, double lonDeg, double radiusM) => new(DirOf(latDeg, lonDeg), radiusM, new Brutal.Numerics.double3(0.0, 0.0, 1.0));
 

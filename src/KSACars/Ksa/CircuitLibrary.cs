@@ -8,10 +8,24 @@ internal static class CircuitLibrary
 {
     public static string Folder => Path.Combine(Directory.GetParent(Log.Folder)?.FullName ?? Log.Folder, "KSACars", "Circuits");
 
-    public static List<string> Names()
+    /// <summary>The courses the mod comes with, beside its DLL: read and never written.</summary>
+    public static string Shipped => Path.Combine(Path.GetDirectoryName(typeof(CircuitLibrary).Assembly.Location) ?? ".", "Circuits");
+
+    /// <summary>Every circuit there is by name: the player's own, and the mod's where the player has none of that name.</summary>
+    public static List<string> Names() => [.. In(Folder).Concat(In(Shipped)).Distinct().Order()];
+
+    private static IEnumerable<string> In(string folder)
     {
-        if (!Directory.Exists(Folder)) return [];
-        return [.. Directory.EnumerateFiles(Folder, "*.json").Select(Path.GetFileNameWithoutExtension).OfType<string>().Order()];
+        try
+        {
+            return Directory.Exists(folder)
+                ? [.. Directory.EnumerateFiles(folder, "*.json").Select(Path.GetFileNameWithoutExtension).OfType<string>()]
+                : [];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
     }
 
     /// <summary>The circuit of that name, or null with the reason.</summary>
@@ -20,6 +34,8 @@ internal static class CircuitLibrary
         string path = Path.Combine(Folder, Circuit.FileName(name));
         try
         {
+            // The player's own of that name before the mod's.
+            if (!File.Exists(path) && Path.Combine(Shipped, Circuit.FileName(name)) is var shipped && File.Exists(shipped)) path = shipped;
             if (!File.Exists(path))
             {
                 why = $"no circuit '{name}' in {Folder}";

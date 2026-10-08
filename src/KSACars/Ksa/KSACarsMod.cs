@@ -51,7 +51,7 @@ public sealed class KSACarsMod
         HudHook.Install();
         RailsHook.Install();
         RoadDrawHook.Install();
-        if (Build.Developer) RoadColliders.Install();
+        RoadColliders.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -73,6 +73,7 @@ public sealed class KSACarsMod
             _bridge?.Update(dtPlayer, KsaWorld.InFlightScene && !KsaWorld.IsPaused ? KsaWorld.SimStepSeconds : 0.0);
 
             // Here and not from the render hook: writing a mesh waits for the graphics card.
+            Courses.Update();
             Roads.Update();
             RacingLine.Update();
         }

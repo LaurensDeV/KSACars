@@ -123,9 +123,12 @@ def main():
     user = subprocess.run([str(REPO / "tools" / "ksa-user-dir.sh")], capture_output=True, text=True, check=True).stdout.strip()
     folder = Path(user) / "KSACars" / "Circuits"
     folder.mkdir(parents=True, exist_ok=True)
-    write(circuit("Club Motorsports", raised=True), folder)
-    write(circuit("Club Motorsports Flat", raised=False), folder)
-    print(f"wrote Club Motorsports.json and Club Motorsports Flat.json to {folder}")
+    # And into the mod, which ships them: a player lays one where the car is.
+    for to in (folder, REPO / "src" / "KSACars" / "Circuits"):
+        to.mkdir(parents=True, exist_ok=True)
+        write(circuit("Club Motorsports", raised=True), to)
+        write(circuit("Club Motorsports Flat", raised=False), to)
+        print(f"wrote Club Motorsports.json and Club Motorsports Flat.json to {to}")
 
 
 if __name__ == "__main__":
