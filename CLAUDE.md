@@ -818,9 +818,17 @@ the F2004's springs, which have 2: `BuggyDrive.BumpStops` holds each hub at the 
 wall holds a car's side (`Barrier.Hold`, with nothing rubbing), in `Buggies.Physics` while a wheel is on a
 loop. **On a loop the mod steers**, by `RoadLoop.Steer` towards a place on its middle a little ahead, and
 the keys are the throttle's: it is carried aside as it goes round. `Roads` draws it as a road is drawn,
-with its lines, in a place of the pool. **It is not solid**: a hull's box is longer than a loop's bend
-lets lie in it, so nothing is given to the physics, and a kitten, a rock and a car off its wheels go
-through it. It has no barrier, and the editor has no control for one: the bridge's `road` with `loop` lays a road to one and
+with its lines, in a place of the pool, with a barrier outside each edge as a deck has, 5 cm high where
+the loop leaves the ground and comes back and a deck's 0.9 m from 8 m round, so its end is no wall to
+meet. **It is solid half a metre under its asphalt**: `RoadLoop.Solid` is a trough, a floor `ThickM` under
+the asphalt and a wall either side to the barriers' tops, each from both sides, given to the physics as a
+solid of its own. At the asphalt it could not be: a loop bends up under a hull's ends by 21 cm over the
+F2004's length at the top, and a car on its bump stops stands 10 cm clear, so a car going round on its
+wheels would scrape it. So a kitten stands in it to the shins and a car on its roof lies that deep in it.
+A car's side is held off a loop's wall by the mod's own push, as off a deck's (`RoadLoop.TryBarrier`), and
+a car with a wheel on a loop has the engine's look-ahead held short without the share for its turning,
+since round a loop it turns as fast as the loop does and closes on nothing by it. The editor has no
+control for one: the bridge's `road` with `loop` lays a road to one and
 a road on from it. `RoadLoopTests` drives every car round in the rig at 25 and 30 m/s at 60 and 50 steps
 a second: four wheels down all the way, 2 cm past the stops at most, and out straight on the loop's own
 line; at 15 m/s a car comes off the top, and at 40 m/s and 30 steps a second the F2004 does.

@@ -306,6 +306,11 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [x] The route driver round a loop (2026.10.10.5554): the F2004 lapped the `Loop` course through the
       bridge's `lap`, braked from 58 m/s to 29 for the loop, went round at 27 to 34 with four wheels down
       at every step, and finished the 660 m in 24.5 s with no wheel off the asphalt
+- [x] A loop with barriers and a solid under it (2026.10.10.5554): the F2004 lapped the `Loop` course
+      again in 24.6 s with its hull touching nothing, where with the look-ahead's share for turning it
+      was said to touch for 0.39 s over the top; stood 20 m round the loop and tipped onto its roof it
+      lay there, 1.18 m over the ground, and did not fall through
+- [ ] A loop's barriers, seen, and a car's side against one; a kitten on a loop
 - [ ] The line to drive on a loop, seen: it was night, and the captures showed nothing
 - [ ] A loop with the buggy and the Eldorado, at 30 frames a second, and too slowly; a kitten at one
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
