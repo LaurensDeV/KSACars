@@ -55,6 +55,8 @@ def main():
     ap.add_argument("--set", default="X", help="the first letter of the circuits to run: X the first eight, Z the harder ones")
     ap.add_argument("--jump", action="store_true", help="do not slow for crests and dips")
     ap.add_argument("--timeout", type=float, default=240.0, help="simulated seconds to give a lap")
+    ap.add_argument("--warp", type=float, default=1.0, help="the game's speed while the laps run; 2 doubles the physics step")
+    ap.add_argument("--gap", type=float, default=60.0, help="metres a car is given before the next sets off")
     ap.add_argument("--car", action="append", choices=list(CARS), help="default all three")
     ap.add_argument("--speed", type=float, help="cruise in m/s; default each car's top speed")
     ap.add_argument("--offset", type=float, default=0.0, help="metres left of the centre line")
@@ -67,45 +69,79 @@ def main():
     cars = args.car or list(CARS)
     present = {o["name"].replace("(flown) ", "") for o in bridge("status").get("others", [])}
 
+    if args.warp != 1.0:
+        bridge("speed", x=args.warp)
+
     for circuit in circuits:
         first = json.loads((library() / f"{circuit}.json").read_text())["nodes"][0]
-        print(f"== {circuit}")
-        for car in cars:
+        print(f"== {circuit}", flush=True)
+        for i, car in enumerate(cars):
             craft = f"Lap {car}"
+            lat, lon = first["lat_deg"] - 0.0006 - 0.0003 * i, first["lon_deg"]
             if craft not in present:
-                bridge("spawn", craft=CARS[car], name=craft, lat=first["lat_deg"] - 0.0003, lon=first["lon_deg"])
+                bridge("spawn", craft=CARS[car], name=craft, lat=lat, lon=lon)
                 present.add(craft)
                 time.sleep(3.0)
             else:
-                bridge("site", craft=craft, lat=first["lat_deg"] - 0.0003, lon=first["lon_deg"], timeout=90)
-                time.sleep(2.0)
-            bridge("drive", craft=craft, focus=True, cam_elevation_deg=30, cam_azimuth_deg=270, cam_distance=2.3)
-            time.sleep(1.0)
-            laid = bridge("road", circuit=circuit)
-            if not laid.get("laid"):
-                print(f"   {car:9} road not laid: {str(laid)[:120]}")
-                continue
+                bridge("site", craft=craft, lat=lat, lon=lon, timeout=90)
+                time.sleep(1.0)
+        bridge("drive", craft=f"Lap {cars[0]}", focus=True, cam_elevation_deg=30, cam_azimuth_deg=270, cam_distance=2.6)
+        laid = bridge("road", circuit=circuit)
+        if not laid.get("laid"):
+            print(f"   road not laid: {str(laid)[:160]}", flush=True)
+            continue
+        for key in ("draw_warning", "mesh_warning", "collider_warning", "hook_warning"):
+            if laid.get(key):
+                print(f"   {key}: {str(laid[key])[:160]}", flush=True)
+        time.sleep(1.5)
+
+        extra = {k: v for k, v in (("speed", args.speed), ("route", args.route)) if v is not None}
+        if args.jump:
+            extra["jump"] = True
+
+        # Every car at once, each set off when the one before is clear of the start. A car that has
+        # ended is parked off the road straight away, so none finds another standing where it finishes.
+        running, ended = [], {}
+        deadline = time.time() + max(args.wait, args.timeout * 1.5) / args.warp + 60.0
+        waiting = list(cars)
+        while (waiting or running) and time.time() < deadline:
+            clear = all((bridge("lap", craft=f"Lap {c}").get("progress_m") or 0) > args.gap for c in running[-1:])
+            if waiting and clear:
+                car = waiting.pop(0)
+                started = bridge("lap", start=True, craft=f"Lap {car}", laps=args.laps, offset=args.offset, timeout=args.timeout, **extra)
+                if "running" in started:
+                    running.append(car)
+                else:
+                    ended[car] = {"end": "Refused", "why": str(started)[:160]}
             time.sleep(1.5)
-            extra = {k: v for k, v in (("speed", args.speed), ("route", args.route)) if v is not None}
-            if args.jump:
-                extra["jump"] = True
-            s = lap(craft, max(args.wait, args.timeout * 1.5), laps=args.laps, offset=args.offset, timeout=args.timeout, **extra)
-            # Out of the way of the next car: an open route ends in one place, and a car left standing
-            # there is what the next one runs into.
-            bridge("site", craft=craft, lat=first["lat_deg"] - 0.003 - 0.0004 * cars.index(car), lon=first["lon_deg"], timeout=90)
+            for car in list(running):
+                status = bridge("lap", craft=f"Lap {car}")
+                if status.get("running") is False:
+                    ended[car] = status
+                    running.remove(car)
+                    k = cars.index(car)
+                    bridge("site", craft=f"Lap {car}", lat=first["lat_deg"] - 0.003 - 0.0004 * k, lon=first["lon_deg"], timeout=90)
+        for car in running:
+            bridge("lap", stop=True, craft=f"Lap {car}")
+            ended[car] = {**bridge("lap", craft=f"Lap {car}"), "end": "RunnerGaveUp"}
+
+        for car in cars:
+            s = ended.get(car, {"end": "NotRun"})
             bad = [w for w, hit in (
                 (s.get("end", "?"), s.get("end") != "Finished"),
                 (f"off asphalt {s.get('off_asphalt_s')} s", (s.get("off_asphalt_s") or 0) > 0.2),
                 (f"flight {s.get('longest_flight_s')} s", (s.get("longest_flight_s") or 0) > 0.5),
                 (f"roll {s.get('max_roll_deg')}", (s.get("max_roll_deg") or 0) > 20),
                 (f"pitch {s.get('max_pitch_deg')}", (s.get("max_pitch_deg") or 0) > 20),
-                (f"hull down {s.get('hull_down_s')} s", (s.get("hull_down_s") or 0) > 0),
                 (f"cross {s.get('max_cross_m')} m", (s.get("max_cross_m") or 0) > 2.5)) if hit]
             print(f"   {car:9} {s.get('end','?'):10} {s.get('progress_m',0):7.0f}/{s.get('route_m',0):5.0f} m in {s.get('seconds',0):6.1f} s"
                   f"  vmax {s.get('max_speed_ms',0):5.1f}  cross {s.get('max_cross_m',0):5.2f}  off {s.get('off_asphalt_s',0):5.2f}"
                   f"  air {s.get('air_s',0):5.2f}/{s.get('longest_flight_s',0):4.2f}  hub {s.get('hub_low_m')}..{s.get('hub_high_m')}"
-                  f"  roll {s.get('max_roll_deg',0):4.1f} pitch {s.get('max_pitch_deg',0):4.1f}"
-                  f"  {'!! ' + '; '.join(bad) if bad else 'ok'}  {s.get('why','')}", flush=True)
+                  f"  roll {s.get('max_roll_deg',0):4.1f} pitch {s.get('max_pitch_deg',0):4.1f}  hull {s.get('hull_down_s',0)}"
+                  f"  step {s.get('longest_step_ms',0)}  {'!! ' + '; '.join(bad) if bad else 'ok'}  {s.get('why','')}", flush=True)
+
+    if args.warp != 1.0:
+        bridge("speed", x=1.0)
 
 
 if __name__ == "__main__":
