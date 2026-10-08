@@ -262,9 +262,17 @@ internal static class Roads
         _clutterStale = true;
         int points = 0;
         double low = double.PositiveInfinity, high = double.NegativeInfinity;
+        System.Diagnostics.Stopwatch took = System.Diagnostics.Stopwatch.StartNew();
+        GroundLattice? lattice = null;
+        if (!whole && CachesDragGround)
+        {
+            if (_lattice is null || !ReferenceEquals(_lattice.Body, body) || _lattice.Count > GroundLattice.MostPoints) _lattice = new GroundLattice(body);
+            lattice = _lattice;
+        }
+        int before = lattice?.Reads ?? 0;
         double Ground(double3 dir)
         {
-            double ground = body.GetTerrainHeightFromDirCcf(dir, accurate: true);
+            double ground = lattice?.At(dir) ?? body.GetTerrainHeightFromDirCcf(dir, accurate: true);
             low = Math.Min(low, ground);
             high = Math.Max(high, ground);
             points++;
@@ -297,10 +305,77 @@ internal static class Roads
         {
             _pending = (body, network, [.. touched ?? []]);
         }
+        LastLay = (took.Elapsed.TotalMilliseconds, lattice is null ? points : lattice.Reads - before);
         return (points, low, high);
     }
 
     private static (Celestial Body, RoadLaying.Network Network, HashSet<int> Touched)? _pending;
+
+    /// <summary>How long the last laying took, its meshes apart, and how many times it read KSA's terrain.</summary>
+    public static (double Ms, int TerrainReads) LastLay { get; private set; }
+
+    /// <summary>How long the last making of a dragged road's meshes took.</summary>
+    public static double LastDragMeshMs => 1000.0 * _redrawTook;
+
+    /// <summary>Whether a drag reads the ground off a lattice of heights kept for it. The bridge clears it to compare.</summary>
+    public static bool CachesDragGround { get; set; } = true;
+
+    private static GroundLattice? _lattice;
+
+    /// <summary>Makes the meshes a drag has waiting now, whatever the time since the last: for the bridge to time.</summary>
+    public static void MeshPending()
+    {
+        if (_pending is not { } pending) return;
+        _pending = null;
+        Mesh(pending.Body, pending.Network, pending.Touched);
+        _redrawTook = SinceRedraw.Elapsed.TotalSeconds;
+    }
+
+    // The ground while a road is dragged, off heights kept on a 2 m lattice and read between its points.
+    // A drag lays every road again each frame and KSA's accurate height is most of what that costs; the
+    // chart the roads are laid on moves with the dragged point, so no two frames ask at the same place.
+    // What is laid when the drag ends is read from KSA's own.
+    private sealed class GroundLattice(Celestial body)
+    {
+        public const double StepM = 2.0;
+        public const int MostPoints = 400_000;
+
+        private readonly Dictionary<(int, int), double> _heights = [];
+        private double3 _centre, _east, _north;
+        private bool _set;
+
+        public Celestial Body => body;
+        public int Count => _heights.Count;
+        public int Reads { get; private set; }
+
+        public double At(double3 dir)
+        {
+            if (!_set)
+            {
+                _centre = Vec.Unit(dir);
+                double3 pole = Math.Abs(_centre.Z) < 0.9 ? new double3(0, 0, 1) : new double3(1, 0, 0);
+                _east = Vec.Unit(Vec.Cross(pole, _centre));
+                _north = Vec.Cross(_centre, _east);
+                _set = true;
+            }
+
+            // A flat sheet touching the body at the first place asked: a lattice on it is a lattice on the ground near there.
+            double along = Vec.Dot(dir, _centre);
+            double x = Vec.Dot(dir, _east) / along * body.MeanRadius / StepM, y = Vec.Dot(dir, _north) / along * body.MeanRadius / StepM;
+            int i = (int)Math.Floor(x), j = (int)Math.Floor(y);
+            double u = x - i, v = y - j;
+            double low = Corner(i, j) + ((Corner(i + 1, j) - Corner(i, j)) * u), high = Corner(i, j + 1) + ((Corner(i + 1, j + 1) - Corner(i, j + 1)) * u);
+            return low + ((high - low) * v);
+        }
+
+        private double Corner(int i, int j)
+        {
+            if (_heights.TryGetValue((i, j), out double height)) return height;
+            double scale = StepM / body.MeanRadius;
+            Reads++;
+            return _heights[(i, j)] = body.GetTerrainHeightFromDirCcf(Vec.Unit(_centre + (_east * (i * scale)) + (_north * (j * scale))), accurate: true);
+        }
+    }
 
     /// <summary>
     /// The points of the circuit last laid where three or more roads meet and no junction could be

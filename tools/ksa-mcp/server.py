@@ -256,7 +256,7 @@ TOOLS = {
                   "heading": _num("deg"), "length": _num("m"), "width": _num("m"), "lift": _num("m"), "spacing": _num("m"),
                   "margin": _num("m"), "clutter": {"type": "boolean"}, "clear": {"type": "boolean"},
                   "edit": {"type": "boolean"}, "probe_clutter": {"type": "boolean"}, "box_top": _num("m"),
-                  "box_size": _num("m"), "box_thick": _num("m"), "mesh_test": _num("m"),
+                  "box_size": _num("m"), "box_thick": _num("m"), "mesh_test": _num("m"), "drag_node": _num("point id"), "steps": _num("layings"), "ground_cache": {"type": "boolean"},
                   "mesh_size": _num("m"), "mesh_bend": _num("m"), "mesh_cells": _num("a side"), "view_yaw": _num("deg"), "view_pitch": _num("deg"),
                   "view_distance": _num("m")}, [],
                  lambda a: [_text(json.dumps(send("road", **a)))]),

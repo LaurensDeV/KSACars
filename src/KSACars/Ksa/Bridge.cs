@@ -406,6 +406,38 @@ internal sealed class Bridge
             return Done(new() { ["editing"] = RoadEditor.AskEnabled, ["roads"] = circuit.Roads.Count });
         }
 
+        // A point dragged a metre a step, as the editor lays it: what each frame of a drag costs.
+        if (command.Has("drag_node") && circuit.Find((int)command.Number("drag_node", 0.0)) is { } dragged)
+        {
+            Roads.CachesDragGround = command.Flag("ground_cache", true);
+            HashSet<int> touched = [dragged.Id];
+            foreach (Circuit.Road road in circuit.Roads.Where(r => r.Touches(dragged.Id)))
+            {
+                touched.Add(road.From);
+                touched.Add(road.To);
+            }
+            List<double> lays = [], meshes = [];
+            int reads = 0, steps = (int)Math.Clamp(command.Number("steps", 20.0), 1.0, 200.0);
+            for (int k = 0; k < steps; k++)
+            {
+                Circuit moved = circuit.MoveNode(dragged.Id, dragged.LatDeg + (k * 1e-5), dragged.LonDeg);
+                Roads.Lay(body, moved, 0.07, 6.0, whole: false, touched);
+                lays.Add(Roads.LastLay.Ms);
+                reads += Roads.LastLay.TerrainReads;
+                Roads.MeshPending();
+                meshes.Add(Roads.LastDragMeshMs);
+            }
+            Roads.Lay(body, circuit, 0.07, 2.0, whole: true);
+            return Done(new()
+            {
+                ["steps"] = steps, ["touched_points"] = touched.Count, ["ground_cache"] = Roads.CachesDragGround,
+                ["lay_ms_first"] = Math.Round(lays[0], 1), ["lay_ms_mean_after"] = Math.Round(lays.Skip(1).DefaultIfEmpty(0.0).Average(), 1),
+                ["lay_ms_worst_after"] = Math.Round(lays.Skip(1).DefaultIfEmpty(0.0).Max(), 1), ["terrain_reads_a_step"] = reads / steps,
+                ["mesh_ms_mean"] = Math.Round(meshes.Average(), 1), ["mesh_ms_worst"] = Math.Round(meshes.Max(), 1),
+                ["whole_lay_ms"] = Math.Round(Roads.LastLay.Ms, 1),
+            });
+        }
+
         (int points, double low, double high) = Roads.Lay(body, circuit, command.Number("lift", 0.07),
             Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0), whole: true);
         KsaWorld.TrySeaLevel(body, out double sea);
