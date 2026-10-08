@@ -130,6 +130,7 @@ internal static class Roads
     {
         Interlocked.Increment(ref _generation);
         _laid = null;
+        Refused = [];
         _roadSolids = null;
         _pending = null;
         _status = [];
@@ -282,6 +283,7 @@ internal static class Roads
             }
         }
         _laid = strips.Count > 0 ? new Laid(body, [.. lines], RoadLaying.Surface(strips), circuit, liftM, spacingM) : null;
+        Refused = network.Refused;
 
         if (whole)
         {
@@ -296,6 +298,12 @@ internal static class Roads
     }
 
     private static (Celestial Body, RoadLaying.Network Network, HashSet<int> Touched)? _pending;
+
+    /// <summary>
+    /// The points of the circuit last laid where three or more roads meet and no junction could be
+    /// made, each with the reason: for an editor to mark, on every laying and not only a whole one.
+    /// </summary>
+    public static IReadOnlyList<(int Node, string Why)> Refused { get; private set; } = [];
 
     /// <summary>What the key of every junction mesh starts with, which tells it from a run's.</summary>
     public const string JunctionKey = "junctions ";

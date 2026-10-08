@@ -646,7 +646,7 @@ and an underside, and each of its runs is a deck where it meets it. **No junctio
 
 **Roads too nearly alongside to part make no junction, and say so.** If two edges have not crossed within
 reach of the point, or the polygon crosses itself, `RoadLaying.Network.Refused` has the point and the
-reason, `Roads` logs it and the bridge's `road` replies with it; the through road is then one run as with no
+reason, `Roads.Refused` keeps it for the editor, `Roads` logs it and the bridge's `road` replies with it; the through road is then one run as with no
 junction and any other runs to the point and ends there, the two lying over one another in one plane.
 The editor does not yet show it.
 
