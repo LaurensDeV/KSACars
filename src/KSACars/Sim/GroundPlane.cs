@@ -13,7 +13,7 @@ namespace KSACars;
 public static class GroundPlane
 {
     // Past this lean from straight up the four points are a wall or a wheel hung over an edge, not a road.
-    private const double LeastCos = 0.7;
+    private const double LeastCos = 0.5;
 
     /// <summary>
     /// Gives every wheel the plane's up for its ground's up, and its height along that. Left as they

@@ -45,8 +45,13 @@ public class GroundPlaneTests
         GroundPlane.Tilt(hung, Hubs);
         Assert.True(Vec.Len(hung[0].GroundUp - Up) < 1e-12);
 
-        WheelContact[] wall = OnSlope(1.5, default);
+        WheelContact[] wall = OnSlope(2.5, default);
         GroundPlane.Tilt(wall, Hubs);
         Assert.True(Vec.Len(wall[0].GroundUp - Up) < 1e-12);
+
+        // A road is laid as steep as one in one and a bit over, and that is still a road.
+        WheelContact[] steep = OnSlope(1.2, default);
+        GroundPlane.Tilt(steep, Hubs);
+        Assert.True(Vec.Dot(steep[0].GroundUp, Up) < 0.7);
     }
 }
