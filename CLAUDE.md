@@ -299,6 +299,12 @@ is held to the grip of the weight and the wings together, and loses its three-de
 press, which at speed asked the F2004's tyres for more than they had. The F2004 has both;
 the other two have neither and drive as they did.
 
+**Off the ground a car with wings flies nose first.** With no wheel touching, `BuggyDrive.WingsInTheAir`
+turns the car's nose into the way it is going, in pitch and in yaw, and resists either turning, as the air
+on its tail would: half the wings' area 1.8 m behind the centre of mass. Without it a car keeps whatever
+turn it left a lip with, and the F2004 came down from a 180 m jump on its tail. A car with no wings is
+left as it was.
+
 **The springs are softened to what a step can carry.** The impulse is explicit, and past a step that
 depends on the car the roll mode overshoots: the car rocks from side to side every step and the unloaded
 tyre drives nothing, which halved the F2004's pull at KSA's 20 ms. `BuggyDrive.SpringRate` scales the rate
@@ -597,6 +603,17 @@ that leans out of the turn is taken with the grip the lean leaves, and one that 
 than the springs carry of what the turn presses on them. Pitch, roll and a wheel's clearance are
 measured against the asphalt's face, so a slope or a bank is not read as a car in the air.
 
+**A lap can be driven for the watch.** `Route.RacingLine` moves the route across the road to where it
+turns least, keeping `Autopilot.RaceInside` of asphalt outside the car, by relaxing the line's bend with
+its points far apart and then closer; a bend is then taken faster than its own radius allows, since the
+speeds come from the line's bends and not the road's. `Autopilot.Push` takes the shares the driver leaves
+spare, of grip, brakes, crests and dips, from their cautious values towards nearly all there is, and
+`JumpZones` are stretches of the route where a crest is not slowed for, for a jump that is meant; in the
+air the wheels are held straight. The bridge's `lap` takes `racing`, `push` and `jump_zones`, and
+`run-laps.py --racing --push 0.4 --crew` reads a circuit's zones from its file's `jumps`.
+`tools/roads/extreme-circuits.py` writes `Insane`, a 6 km lap drawn with its `Lap` class by driving it:
+straights, arcs and climbs, each point with its height, lean and width.
+
 **The driver keeps a car on its springs, because the game's colliders are what a hard landing meets.** Over
 a crest it holds the speed at which `Autopilot.CrestShare` of the weight is thrown off, and through a dip
 the one that pushes the springs `DipShare` of the way to their stops, from the bend of the climb
@@ -644,7 +661,7 @@ puts a row of vertices across a ribbon at stations along it: no further apart th
 within 5 mm of the surface to the side and 3 mm in height and turns the road's edge or its facing a
 degree, no closer than half a metre, and 10 m apart on a straight, level road. A row is eleven vertices
 on the ground, the bank's foot to the bank's foot with each crease given twice, and nine round a deck,
-which is closed underneath and at its ends; round a kink the rows fan about the point, and what folds on
+which is closed underneath and at its ends, and where a bank on the ground ends under a deck its end is a wall hung from the road's own outline, strip by strip, so that none of it is above the asphalt where the road leans; round a kink the rows fan about the point, and what folds on
 its inside is left out. Each mesh is in the body's own frame about an origin of its own, so a float holds
 it. A fast circuit has about half the rows a point every 2 m gives; one of 12 m hairpins has two and a
 half times as many, the degree at its inside edge asking for less than the half metre.

@@ -247,6 +247,12 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       above, shell and visor together, the livery whole and the driver's eyes seen through the visor
 - [x] The helmet redrawn (2026.10.10.5554): pointed ears, the chin bar forward under the visor, a stripe
       over the crown and no stars or brow band, on the seated driver from three sides
+- [x] The parcours `Insane` raced (2026.10.10.5554, `run-laps.py --circuit Insane --car F2004 --crew --racing
+      --push 0.4`): 6,019 m in 132.5 s, 322 km/h on the straight, 2.7 s and 180 m through the air off the
+      jump and on round the lap, no wheel off the asphalt. The landing takes 20 m/s off it in three hits
+- [x] The wedge a car hit in a banked bend: where the bend's bank ended under a deck its end wall stood
+      23 cm over the asphalt at the low edge, on the racing line; hung from the road's outline, the lap is finished
+- [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits
 - [ ] The helmet with the driver looking about and the wheel turned; gone when the driver gets out;
       on a car that is not the one flown; and in the vehicle editor, where there is no driver
 - [ ] A car standing on a wall it cannot climb, with its hull on the road; the buggy's hull at the foot
