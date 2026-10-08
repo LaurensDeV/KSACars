@@ -222,10 +222,39 @@ public sealed class BuggyDrive(BuggyProfile profile)
             if (s > 0.0) air = -v * (0.5 * airDensity * Profile.DragAreaM2 * s);
         }
         linear += air * dt;
+        if (!Grounded.Any(g => g)) angular += WingsInTheAir(contacts, hubs, up, forward, airDensity) * dt;
 
         UpdateEngine(input.Throttle, drivenOnGround > 0, dt);
 
         return new DriveImpulse(linear, angular);
+    }
+
+    /// <summary>The share of the wings' area that is the tail's, and how far behind the centre of mass it is, m.</summary>
+    public const double TailShare = 0.5, TailArmM = 1.8;
+
+    // Off the ground a car with wings is a dart: the air on its tail turns its nose into the way it is
+    // going, in pitch and in yaw, and resists either turning. Without it whatever turn a car leaves a
+    // lip with, it keeps, and comes down on its tail. Front pair first, as GroundPlane has them.
+    private double3 WingsInTheAir(ReadOnlySpan<WheelContact> contacts, ReadOnlySpan<double3> hubs, double3 up, double3 forward, double airDensity)
+    {
+        if (!(Profile.DownforceAreaM2 > 0.0) || contacts.Length != 4 || hubs.Length != 4) return Vec.Zero;
+        foreach (WheelContact c in contacts)
+        {
+            if (!c.Valid) return Vec.Zero;
+        }
+
+        double3 front = (contacts[0].HubVelocity + contacts[1].HubVelocity) * 0.5, rear = (contacts[2].HubVelocity + contacts[3].HubVelocity) * 0.5;
+        double3 v = (front + rear) * 0.5;
+        double along = Vec.Dot(v, forward), speed = Vec.Len(v);
+        double wheelbase = Vec.Dot(((hubs[0] + hubs[1]) - (hubs[2] + hubs[3])) * 0.5, forward);
+        if (!(along > 1.0) || !(wheelbase > 0.0)) return Vec.Zero;
+
+        double3 left = Vec.Cross(up, forward);
+        double tail = 0.5 * airDensity * speed * speed * Profile.DownforceAreaM2 * TailShare * TailArmM;
+        double noseUp = Math.Atan2(-Vec.Dot(v, up), along), goingLeft = Math.Atan2(Vec.Dot(v, left), along);
+        double pitching = -Vec.Dot(front - rear, up) / wheelbase, yawing = Vec.Dot(front - rear, left) / wheelbase;
+        double damping = tail * TailArmM / speed;
+        return (left * ((tail * noseUp) - (damping * pitching))) + (up * ((tail * goingLeft) - (damping * yawing)));
     }
 
     // The wheel on the other side of the same axle, or -1.

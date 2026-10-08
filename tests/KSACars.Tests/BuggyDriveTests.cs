@@ -9,6 +9,28 @@ public class BuggyDriveTests
     private const double G = 9.81;
     private const double Mass = 650.0;
 
+    // Ten metres up at 60 m/s with its nose 15 degrees above the way it is going: a car with wings is
+    // turned nose down by the air on its tail, and one without is left as it is.
+    [Theory]
+    [InlineData("F2004", true)]
+    [InlineData("Manx", false)]
+    public void ACarWithWingsIsTurnedIntoTheWayItFliesAndOneWithoutIsNot(string name, bool winged)
+    {
+        BuggyProfile p = TrackCar.Of(name).Profile;
+        double3 up = new(1, 0, 0), forward = new(0, 1, 0);
+        double3[] hubs = [.. p.Corners.Select(c => c.Hub - new double3(0.3, 0, 0))];
+        double tilt = 15.0 * Math.PI / 180.0;
+        double3 flying = ((forward * Math.Cos(tilt)) - (up * Math.Sin(tilt))) * 60.0;
+        WheelContact[] contacts = [.. hubs.Select(_ => new WheelContact(true, 10.0, up, flying))];
+
+        DriveImpulse push = new BuggyDrive(p).Step(default, contacts, hubs, up, forward, 600.0, 9.81, 1.2, 1.0 / 60.0);
+
+        // About the car's left, a turn that takes its nose down.
+        double noseDown = Vec.Dot(push.Angular, Vec.Cross(up, forward));
+        if (winged) Assert.True(noseDown > 10.0, $"{noseDown}");
+        else Assert.Equal(0.0, Vec.Len(push.Angular), 9);
+    }
+
     [Theory]
     [InlineData(-0.14)]
     [InlineData(-0.05)]
