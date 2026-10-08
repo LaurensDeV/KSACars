@@ -209,6 +209,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it, or a junction's plane, and the way that faces, **a road more than a deck's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
 | `Sim/RoadCollider.cs` | the meshes of runs and junctions that are joined as **the one solid KSA's physics is given for them**: every triangle about one origin, listed so that it is solid from the side it is drawn from, and narrowed from where each vertex was worked out so two meshes' triangles share their corners |
 | `Sim/RoadDrawList.cs` | which of a circuit's meshes are drawn: how much one place in the pool holds and how many places there are, **the nearest meshes given the places when there are too few and the nearest drawn when a view has too few draws**, a mesh's triangles in the order of the two materials, and the ledger of which places are out |
+| `Sim/RoadWarnings.cs` | what is wrong with a circuit as it is laid, for whoever is drawing it: a junction that could not be made or has a road too short for its corners, a bend tighter than its width turns in, and a grade past what each kind of car climbs |
 | `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a curve across each junction from the mouth come in by to the one left by, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
@@ -274,7 +275,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 519 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 524 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
 | `.claude/skills/ksa-blender/` | authoring art in Blender over MCP, and the export contract KSA reads |
@@ -516,8 +517,11 @@ they are in a line, rounds a crest or a dip and never goes above or below the tw
 `Sim/RoadGround.cs` puts that on the ground along the road smoothed over the circuit's `GroundSmoothM`,
 30 m unless set: the highest ground across the road at each sample, so the road is filled under and
 never has the ground through it, since KSA's terrain cannot be cut. A road across a hillside is level
-across and stands on fill on its low side. **A bank and a width can be set at each end of a road, in the
-circuit's file only**: the editor has no control for either.
+across and stands on fill on its low side. **A bank and a width are set at each end of a road**: the
+editor's panel has a width and a lean for the point selected, which set them for every road at it, a road
+keeping its lean as its left edge up from its first point to its second, so the one that runs the other
+way through the point keeps the opposite; at a junction it has the corners' radius in the lean's place,
+a junction being one plane.
 
 **One surface a run, which the wheels ask and the triangles are made from.** `Sim/RoadRibbon.cs` is a run's
 centre line on a flat chart of the circuit (`Sim/RoadChart.cs`), measured by its own length
@@ -527,8 +531,8 @@ above the ground the road is a deck with nothing beside it, and a dip under that
 20 m between two decks is a deck too. Past an end that is not a deck the whole section carries on ahead,
 sunk by the same fall; an end at a junction stops square at its mouth.
 `RoadRibbon.TooTight` says where a bend's radius is under 1.25 times the half width and the verge,
-inside which the surface is close to folding over itself; nothing stops a circuit being drawn so, and
-the editor does not yet warn of it. The surface's slope has no step on the centre line; off it there is
+inside which the surface is close to folding over itself; nothing stops a circuit being drawn so, but
+the editor says so. The surface's slope has no step on the centre line; off it there is
 a crease of a few hundredths of a degree at a point where a climbing road's curvature steps, the centre
 line being cubic curves that share a heading there and not a bend.
 
@@ -640,16 +644,23 @@ the buggy's nose goes down 10 under all of them. **None of this has been lapped 
 junction a mesh of a few hundred, which `RoadTessellation.Gather` puts several to a place where they are
 within 400 m of one another, and
 `Ksa/RoadDrawing.cs` writes each into a place of its own in a pool of `Ksa/RuntimeMesh.cs`'s and hands it
-to KSA's renderer for each view, turned as the body is about the mesh's own origin: the asphalt and a
-deck's sides in one material and the verges and embankments in another, so two draws a mesh at most.
-`tools/model/road-textures.py` writes both materials' textures. KSA never gives back room in its mesh
+to KSA's renderer for each view, turned as the body is about the mesh's own origin: a run's own
+asphalt in one material, a junction's asphalt and a deck's sides in a second and the verges and
+embankments in a third, so three draws a mesh at most. The first runs with the road: across the picture
+is across the road from edge to edge whatever its width and down it is 12 m along
+(`RoadTessellation.Lined`), so it carries a white line inside each edge, a dash down the middle and the
+darker wear of tyres either side of it; a kink counts as the length of its outside edge, and a closed
+run's dashes are stretched to come out whole. That picture is 1024 texels across and 128 along, because
+KSA filters a part's texture with no regard for the angle it is seen at, and a square one loses its lines
+at thirty metres. The other two have no way along them and tile by where a vertex is on the chart.
+`tools/model/road-textures.py` writes all three materials' textures. KSA never gives back room in its mesh
 buffers, so the pool grows eight places at a time to 56, a quarter of what those buffers hold for the
 whole game, and a place whose mesh is gone is kept for the next. That is 7 km of hairpins or 20 km of
 fast road: the circuits of `ExtremeCircuits.cs` take two to nine places each, the grid with its five junctions thirteen, and a 5 km oval
 fourteen. A run stops at every junction and its last mesh is as short as what is left of it, so a circuit of
 many junctions takes more: the ladder of 23 km and 38 junctions is 99 meshes of road and 19 of junctions. A circuit with more than the pool holds has the meshes nearest the eye drawn, chosen again every two seconds, and
 says so once. KSA has 256 draws a view and throws past them from inside its render, which closes the
-game; 56 places are 112 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is.
+game; 56 places are 168 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is.
 
 **A mesh is written from the frame hook, never from the render hook, and all of a laying in one
 submission**, because each submission waits for the graphics card. While a road is dragged the wheels'
@@ -712,7 +723,15 @@ and an underside, and each of its runs is a deck where it meets it. **No junctio
 reach of the point, or the polygon crosses itself, `RoadLaying.Network.Refused` has the point and the
 reason, `Roads.Refused` keeps it for the editor, `Roads` logs it and the bridge's `road` replies with it; the through road is then one run as with no
 junction and any other runs to the point and ends there, the two lying over one another in one plane.
-The editor does not yet show it.
+The editor says it and marks the point.
+
+**What is wrong with a circuit is said where it is drawn.** `Sim/RoadWarnings.cs` reads a laid circuit
+for a junction that could not be made, a road too short for its junction's corners, a bend tighter than
+its width turns in, and a grade past what the cars were driven up: 45% for the Eldorado from rest, 60%
+for the buggy with a run at it and 85% for any car. `Roads.Warnings` keeps them from each whole laying,
+and the editor lists them in its panel and rings each in red on the ground. None stops a road being drawn.
+**The panel's sliders and its warnings have not been seen in game**: the bridge's capture does not take
+the game's own windows.
 
 **Grass, trees and rocks under a road are switched off, not removed.** They are all KSA's ground clutter,
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances
@@ -720,7 +739,9 @@ near a road, `RoadSurface.Over` says which of them the roads' own outline covers
 there, the shape each junction is and out to a bank's foot, and `Roads.ClearClutter` clears their bits.
 Under a deck the ground is still ground: only trees go, which would stand up through it. Where an
 instance is reckoned to stand is KSA's generation shader worked again by hand, so once a body
-`Roads.CheckPlacement` compares that with KSA's own instances and warns in the log if they have parted.
+`Roads.CheckPlacement` compares that with KSA's own instances and warns in the log if they have parted. What is
+within the margin of a road all round it goes too, and a tree within twice the margin, since one beside
+a deck comes up past its edge.
 **All of this is to be replaced by KSA's own exclusion the day it has one**, which its developers are
 considering: `docs/BLOCKED-ON-KSA.md` has what goes. A cleared bit stops a
 collider being built but leaves one already standing, unseen, so every change has KSA build its clutter

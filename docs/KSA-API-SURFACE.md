@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-235 types and 519 members across 12 assemblies.
+235 types and 524 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -270,6 +270,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### Brutal.ImGuiApi.ImDrawListExtensions
 
+- `void AddCircle(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, float, Brutal.ImGuiApi.ImColor8, int, float)`
 - `void AddCircleFilled(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, float, Brutal.ImGuiApi.ImColor8, int)`
 - `void AddLine(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, float)`
 - `void AddText(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, Brutal.ImGuiApi.ImString)`
@@ -292,6 +293,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool InputDouble(Brutal.ImGuiApi.ImString, ref double, double, double, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiInputTextFlags)`
 - `bool InputText(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
 - `bool IsItemActive()`
+- `bool IsItemClicked(Brutal.ImGuiApi.ImGuiMouseButton)`
 - `bool IsItemDeactivated()`
 - `bool IsItemDeactivatedAfterEdit()`
 - `bool IsKeyPressed(Brutal.ImGuiApi.ImGuiKey, bool)`
@@ -304,11 +306,14 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool SmallButton(Brutal.ImGuiApi.ImString)`
 - `void End()`
 - `void EndCombo()`
+- `void PopTextWrapPos()`
+- `void PushTextWrapPos(float)`
 - `void SameLine(float, float)`
 - `void Separator()`
 - `void SetNextItemWidth(float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `void Text(Brutal.ImGuiApi.ImString)`
+- `void TextColored(ref Brutal.Numerics.float4, Brutal.ImGuiApi.ImString)`
 - `void TextDisabled(Brutal.ImGuiApi.ImString)`
 
 ### Brutal.ImGuiApi.ImGuiComboFlags

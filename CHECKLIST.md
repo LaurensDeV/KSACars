@@ -260,6 +260,12 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [x] Clutter cleared by the roads' outline (2026.10.10.5554): the F2004 stood on grass 18 m off the
       crossroads on the diagonal and on grass under the road 160 m up, both of which the old reach would
       have cleared; and the log's check of where clutter stands, 228 instances against KSA's, the worst 0.00 m
+- [x] Lane markings (2026.10.10.5554): a white line inside each edge and a dash down the middle, following
+      the banked bowl and sharp down the length of the 900 m straight; a junction and a deck's sides in
+      plain asphalt
+- [x] Trees beside a road: one stood under a raised deck's edge and a car hit it; with all round each
+      instance tested at the margin, and twice as far for a tree, 70 more trees go on the same circuit
+- [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
 - [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits
 - [ ] The helmet with the driver looking about and the wheel turned; gone when the driver gets out;
