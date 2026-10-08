@@ -40,7 +40,103 @@ public class CircuitTests
         Assert.Equal(c.ToJson(), back.ToJson());
         Assert.Equal(8.0, back.WidthOf(back.Roads[0]));
         Assert.Equal(12.0, back.WidthOf(back.Roads[1]));
-        Assert.Equal(new Circuit.Place(Deg(50), Deg(320)), back.Roads[1].FromHandle);
+        // A file keeps a millimetre of where a place is.
+        Assert.True(Apart(c.Roads[1].FromHandle!, back.Roads[1].FromHandle!) < 1e-3);
+        for (int i = 0; i < c.Nodes.Count; i++) Assert.True(Apart(c.Nodes[i], back.Nodes[i]) < 1e-3, $"point {i} came back moved");
+        Assert.Equal(0.4, back.Find(b)!.Corner);
+    }
+
+    private static double Apart(Circuit.Place a, Circuit.Place b) => Vec.Len(DirOf(a.LatDeg, a.LonDeg) - DirOf(b.LatDeg, b.LonDeg)) * Radius;
+
+    private static double Apart(Circuit.Node a, Circuit.Node b) => Apart(new Circuit.Place(a.LatDeg, a.LonDeg), new Circuit.Place(b.LatDeg, b.LonDeg));
+
+    private static Circuit Course() => new Circuit { Name = "Course", Body = "Earth", WidthM = 12.0, RadiusM = Radius }
+        .AddNode(-24.0, -62.5, out int a).Extend(a, -24.0 + Deg(40), -62.5 + Deg(900), out int b).Extend(b, -24.0 + Deg(700), -62.5 + Deg(1100), out int d)
+        .Connect(d, a).SetHeight(b, 12.5).SetHandle(b, d, new Circuit.Place(-24.0 + Deg(60), -62.5 + Deg(1000)));
+
+    [Fact]
+    public void AFileIsOnePlaceAndEveryPointInMetresFromIt()
+    {
+        string json = Course().ToJson();
+
+        Assert.Contains("\"version\": 3", json);
+        Assert.Contains("\"at\": {\"lat_deg\":-24,\"lon_deg\":-62.5}", json);
+        Assert.Contains("{\"id\":1,\"east_m\":0,\"north_m\":0}", json);
+        Assert.DoesNotContain("lat_deg\":-23", json);
+
+        // A point a line, and nothing said that is at its default.
+        Assert.Equal(3, json.Split('\n').Count(l => l.Contains("\"id\":")));
+        Assert.Single(json.Split('\n'), l => l.Contains("height_m"));
+        Assert.DoesNotContain("corner", json);
+
+        // The same file with another place in it is the same circuit there: nothing else in it says where it is.
+        Circuit there = Circuit.FromJson(json.Replace("\"lat_deg\":-24,\"lon_deg\":-62.5", "\"lat_deg\":10,\"lon_deg\":20"), out _, out _)!;
+        Assert.Equal(10.0, there.Nodes[0].LatDeg, 9);
+        Assert.Equal(20.0, there.Nodes[0].LonDeg, 9);
+        Assert.Equal(Apart(Course().Nodes[0], Course().Nodes[2]), Apart(there.Nodes[0], there.Nodes[2]), 2);
+    }
+
+    [Theory]
+    [InlineData(10.0, 20.0, 0.0, Radius)]
+    [InlineData(-70.0, 170.0, 90.0, Radius)]
+    [InlineData(0.5, -0.5, 215.0, 1_737_400.0)]
+    public void ACircuitMovedIsTheSameCircuitSomewhereElse(double lat, double lon, double heading, double radius)
+    {
+        Circuit here = Course(), there = here.MovedTo(lat, lon, heading, radius, "Luna");
+
+        Assert.Equal("Luna", there.Body);
+        Assert.Equal(radius, there.RadiusM);
+        Assert.Equal(lat, there.Nodes[0].LatDeg, 9);
+        Assert.Equal(lon, there.Nodes[0].LonDeg, 9);
+        Assert.Equal(12.5, there.Nodes[1].HeightM);
+
+        // Every point as far from every other as it was, in metres on its own body, to what a chart of a few kilometres is out.
+        double Far(Circuit c, int i, int j, double r) => Vec.Len(DirOf(c.Nodes[i].LatDeg, c.Nodes[i].LonDeg) - DirOf(c.Nodes[j].LatDeg, c.Nodes[j].LonDeg)) * r;
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = i + 1; j < 3; j++) Assert.Equal(Far(here, i, j, Radius), Far(there, i, j, radius), 2);
+        }
+
+        // Turned by the heading: the second point is as much further round from the first as that. A degree of longitude at 24 south is cos 24 of one at the equator.
+        double3 at = DirOf(lat, lon), to = DirOf(there.Nodes[1].LatDeg, there.Nodes[1].LonDeg);
+        double3 north = Vec.Unit(Vec.RejectFrom(new double3(0, 0, 1), at)), east = Vec.Cross(north, at);
+        double bearing = Math.Atan2(Vec.Dot(to - at, east), Vec.Dot(to - at, north)) * 180.0 / Math.PI;
+        double was = Math.Atan2(900.0 * Math.Cos(24.0 * Math.PI / 180.0), 40.0) * 180.0 / Math.PI;
+        Assert.Equal(0.0, Math.IEEERemainder(bearing - was - heading, 360.0), 2);
+
+        // And moved back it is where it was.
+        Circuit back = there.MovedTo(-24.0, -62.5, -heading, Radius, "Earth");
+        for (int i = 0; i < 3; i++) Assert.True(Apart(here.Nodes[i], back.Nodes[i]) < 1e-3, $"point {i} is {Apart(here.Nodes[i], back.Nodes[i]):E2} m out");
+        Assert.True(Apart(here.Roads[1].FromHandle!, back.Roads[1].FromHandle!) < 1e-3);
+    }
+
+    [Fact]
+    public void AFileOfTheVersionBeforeIsReadWhereItSaysAndWrittenAsTheNewOne()
+    {
+        Circuit? read = Circuit.FromJson("""
+            {"version": 2, "name": "old", "body": "Earth", "width_m": 9, "route": [1, 2, 1], "jumps": [[100, 200]],
+             "nodes": [{"id": 1, "lat_deg": -24.0, "lon_deg": -62.51708309658762, "corner": 1.0, "height_m": 0.0},
+                       {"id": 2, "lat_deg": -24.001, "lon_deg": -62.515, "height_m": 3.5}],
+             "roads": [{"from": 1, "to": 2, "from_width_m": 14.0, "to_bank_deg": 12.0}]}
+            """, out string why, out _);
+
+        Assert.True(read is not null, why);
+        Assert.Equal(-62.51708309658762, read.Nodes[0].LonDeg);
+        Assert.Equal(3.5, read.Nodes[1].HeightM);
+        Assert.Equal([1, 2, 1], read.Route);
+
+        // A height under the millimetre a file keeps is the ground's, and is not said.
+        read = read.SetHeight(1, 0.0002);
+        Assert.DoesNotContain("\"id\":1,\"east_m\":0,\"north_m\":0,", read.ToJson());
+
+        string json = read.ToJson();
+        Circuit again = Circuit.FromJson(json, out _, out _)!;
+        Assert.Equal(json, again.ToJson());
+        Assert.True(Apart(read.Nodes[1], again.Nodes[1]) < 1e-3);
+        Assert.Equal(12.0, again.Roads[0].ToBankDeg);
+        Assert.Equal(14.0, again.Roads[0].FromWidthM);
+        Assert.Equal([1, 2, 1], again.Route);
+        Assert.Equal(200.0, again.Jumps![0][1]);
     }
 
     [Fact]

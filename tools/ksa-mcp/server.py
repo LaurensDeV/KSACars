@@ -236,7 +236,7 @@ TOOLS = {
                    {"lat": _num("deg"), "lon": _num("deg"), "to_lat": _num("deg"), "to_lon": _num("deg"),
                     "steps": _num("count")}, ["lat", "lon"],
                    lambda a: [_text(json.dumps(send("ground", **a)))]),
-    "ksa_road": ("Lay the roads of a circuit from the library (circuit), or a test circuit with a junction from lat/lon "
+    "ksa_road": ("Lay the roads of a circuit from the library (circuit), with lat/lon its first point put there and turned by heading, on whatever body the craft is on, and save_as keeping it so; or a test circuit with a junction from lat/lon "
                  "along heading (deg, 0 north), length and width in metres, kept in the library with save_as. lift is "
                  "above the ground, spacing between points, margin how far past the edge clutter is cleared "
                  "(clutter=false leaves it); clear=true takes the roads up. edit=true opens that circuit in the road "

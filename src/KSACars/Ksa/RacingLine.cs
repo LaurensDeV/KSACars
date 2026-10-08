@@ -201,7 +201,9 @@ internal static class RacingLine
         double3 at = KsaWorld.PositionEcl(craft);
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, at));
         double air = KsaWorld.ReferenceAirDensityKgPerM3 * KsaWorld.AirDensityRatioAt(craft, at);
-        Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air) { Push = Push };
+        // Where the circuit says a crest is to be jumped the line is not red for it.
+        (double, double)[] jumps = [.. (Roads.CircuitOn(body)?.Jumps ?? []).Where(j => j is { Length: 2 }).Select(j => (j[0], j[1]))];
+        Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air) { Push = Push, JumpZones = jumps };
 
         _noPlan = null;
         Plan plan = new(craft, body, Roads.Generation, route, RaceLine.Lay(route, surface), pilot.Plan().ToArray());

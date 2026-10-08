@@ -340,10 +340,10 @@ public class CircuitFormatTests
             .SetJunctionRadius(b, 12.0).SetGroundSmooth(45.0).SetHeight(d, 3.0);
 
         string json = c.ToJson();
-        Assert.Contains("\"version\": 2", json);
-        Assert.Contains("\"to_bank_deg\": 9", json);
+        Assert.Contains("\"version\": 3", json);
+        Assert.Contains("\"to_bank_deg\":9", json);
         Assert.Contains("\"ground_smooth_m\": 45", json);
-        Assert.Contains("\"junction_radius_m\": 12", json);
+        Assert.Contains("\"junction_radius_m\":12", json);
 
         Circuit? back = Circuit.FromJson(json, out string why, out int dropped);
         Assert.NotNull(back);

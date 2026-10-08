@@ -48,6 +48,8 @@ internal sealed class RoadEditor
     private int _grabNode, _grabOther;
     private float2 _pressAt;
     private bool _moved;
+    private bool _loadAtCar;
+    private float _loadTurnDeg;
     private float? _widthHeld;
     private string _message = "";
 
@@ -221,6 +223,15 @@ internal sealed class RoadEditor
                 ImGui.EndCombo();
             }
 
+            // A circuit's file is metres from one place, so it can be laid with its first point where the craft is.
+            ImGui.Checkbox("Load at the craft", ref _loadAtCar);
+            if (_loadAtCar)
+            {
+                ImGui.SameLine(0f, -1f);
+                ImGui.SetNextItemWidth(110f);
+                ImGui.SliderFloat("turned", ref _loadTurnDeg, 0f, 360f, "%.0f deg", ImGuiSliderFlags.None);
+            }
+
             if (ImGui.Button("Undo", null)) Undo();
             ImGui.SameLine(0f, -1f);
             if (ImGui.Button("Redo", null)) Redo();
@@ -375,7 +386,7 @@ internal sealed class RoadEditor
 
     private void Save()
     {
-        Circuit saving = Now with { Body = _body!.Id };
+        Circuit saving = Now with { Body = _body!.Id, RadiusM = _body.MeanRadius };
         if (CircuitLibrary.Save(saving, out string why))
         {
             _history.MarkSaved();
@@ -394,9 +405,19 @@ internal sealed class RoadEditor
             _message = $"not loaded: {why}";
             return;
         }
-        if (read.Body != _body!.Id)
+        if (_loadAtCar)
         {
-            _message = $"'{read.Name}' is on {read.Body}, not here";
+            if (KsaWorld.ControlledVehicle is not { } craft || !KsaWorld.TryCraftSurfacePoint(craft, out _, out double lat, out double lon, out string on)
+                || on != _body!.Id)
+            {
+                _message = "not loaded: no craft here to lay it at";
+                return;
+            }
+            read = read.MovedTo(lat, lon, _loadTurnDeg, _body.MeanRadius, _body.Id);
+        }
+        else if (read.Body != _body!.Id)
+        {
+            _message = $"'{read.Name}' is on {read.Body}: tick 'at the craft' to lay it here";
             return;
         }
         Start(read);

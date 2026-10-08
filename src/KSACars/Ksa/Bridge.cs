@@ -416,12 +416,26 @@ internal sealed class Bridge
         {
             if (CircuitLibrary.Load(name, out string why) is not { } read) return Failed(why);
             circuit = read;
+
+            // With a place it is laid there and not where its file has it, on whatever body the craft is on.
+            if (command.Has("lat") && command.Has("lon"))
+            {
+                circuit = read.MovedTo(command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0), body.MeanRadius, body.Id);
+            }
+            else if (read.Body != body.Id)
+            {
+                return Failed($"'{read.Name}' is on {read.Body}: give lat and lon to lay it here");
+            }
+            if (command.String("save_as") is { Length: > 0 } kept && !CircuitLibrary.Save(circuit with { Name = kept, RadiusM = body.MeanRadius }, out string notKept))
+            {
+                return Failed(notKept);
+            }
         }
         else
         {
             circuit = TestCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0),
                 Math.Clamp(command.Number("length", 300.0), 10.0, 20_000.0), Math.Clamp(command.Number("width", 8.0), 1.0, 40.0));
-            if (command.String("save_as") is { Length: > 0 } saveAs && !CircuitLibrary.Save(circuit with { Name = saveAs }, out string failed))
+            if (command.String("save_as") is { Length: > 0 } saveAs && !CircuitLibrary.Save(circuit with { Name = saveAs, RadiusM = body.MeanRadius }, out string failed))
             {
                 return Failed(failed);
             }

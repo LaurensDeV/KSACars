@@ -78,7 +78,9 @@ def main():
         bridge("speed", x=args.warp)
 
     for circuit in circuits:
-        first = json.loads((library() / f"{circuit}.json").read_text())["nodes"][0]
+        saved = json.loads((library() / f"{circuit}.json").read_text())
+        # A file since version 3 is one place and metres from it, and its first point is that place.
+        first = saved["at"] if "at" in saved else saved["nodes"][0]
         print(f"== {circuit}", flush=True)
         for i, car in enumerate(cars):
             craft = f"Lap {car}"

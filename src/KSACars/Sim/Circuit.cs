@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -11,13 +12,19 @@ namespace KSACars;
 /// roads at one point are a junction. A circuit is never changed in place: every edit answers a new
 /// one, so the one before is the undo.</para>
 ///
-/// <para>A file of an earlier version is read with what it does not say at its default: level across,
-/// one width a road, the ground smoothed over 30 m. A point below the ground in one is kept as
-/// written and laid on the ground, since a road can be filled under and never cut in.</para>
+/// <para>In its file a circuit is one place on a body and every point as metres east and north of
+/// it, so the same file can be laid anywhere: <see cref="MovedTo"/> is that, and the file is
+/// <see cref="ToJson"/>'s. A file of an earlier version, which has a latitude and a longitude a
+/// point, is read with what it does not say at its default: level across, one width a road, the
+/// ground smoothed over 30 m. A point below the ground in one is kept as written and laid on the
+/// ground, since a road can be filled under and never cut in.</para>
 /// </summary>
 internal sealed record Circuit
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
+
+    /// <summary>The body's radius a file's metres are taken on where nothing says: Earth's, and a file read with what it was written with comes back the same whatever that is.</summary>
+    public const double DefaultRadiusM = 6_371_000.0;
     public const double MinWidthM = 2.0, MaxWidthM = 40.0;
 
     /// <summary>A handle no longer than half the road it is on, at each end, so the two cannot cross.</summary>
@@ -41,6 +48,14 @@ internal sealed record Circuit
     public double GroundSmoothM { get; init; } = DefaultGroundSmoothM;
     public IReadOnlyList<Node> Nodes { get; init; } = [];
     public IReadOnlyList<Road> Roads { get; init; } = [];
+
+    /// <summary>The mean radius of the body the points are on, m, which is what makes a file's metres metres; nothing where it is not known.</summary>
+    [JsonIgnore]
+    public double RadiusM { get; init; }
+
+    /// <summary>The points a lap goes through, in order, and the stretches of it, in metres along, where a crest is meant to be jumped: kept for whoever drives it.</summary>
+    public IReadOnlyList<int>? Route { get; init; }
+    public IReadOnlyList<double[]>? Jumps { get; init; }
 
     /// <summary>
     /// A point a road goes through. <paramref name="Corner"/> is how far the road reaches before it
@@ -189,6 +204,50 @@ internal sealed record Circuit
         };
     }
 
+    // ---- where it is -------------------------------------------------------------------------
+
+    /// <summary>
+    /// The circuit as it would be with its first point at another place, on this body or another, and
+    /// turned about that point by <paramref name="headingDeg"/> clockwise seen from above: every point
+    /// and handle as far east and north of the first, in metres, as it was.
+    /// </summary>
+    /// <param name="radiusM">The mean radius of the body it is moved to.</param>
+    public Circuit MovedTo(double latDeg, double lonDeg, double headingDeg, double radiusM, string? body = null)
+    {
+        if (Nodes.Count == 0 || !(radiusM > 0.0)) return this with { RadiusM = radiusM, Body = body ?? Body };
+
+        RoadChart from = Chart(Nodes[0].LatDeg, Nodes[0].LonDeg, RadiusM > 0.0 ? RadiusM : radiusM), to = Chart(latDeg, lonDeg, radiusM);
+        double turn = headingDeg * Math.PI / 180.0, cos = Math.Cos(turn), sin = Math.Sin(turn);
+        (double Lat, double Lon) Moved(double lat, double lon)
+        {
+            Plan at = from.Of(DirOf(lat, lon));
+            return LatLonOf(to.Dir(new Plan((at.E * cos) + (at.N * sin), (at.N * cos) - (at.E * sin))));
+        }
+        Place? Handle(Place? p) => p is null ? null : Moved(p.LatDeg, p.LonDeg) is var (lat, lon) ? new Place(lat, lon) : null;
+        return this with
+        {
+            Body = body ?? Body,
+            RadiusM = radiusM,
+            Nodes = [.. Nodes.Select(n => Moved(n.LatDeg, n.LonDeg) is var (lat, lon) ? n with { LatDeg = lat, LonDeg = lon } : n)],
+            Roads = [.. Roads.Select(r => r with { FromHandle = Handle(r.FromHandle), ToHandle = Handle(r.ToHandle) })],
+        };
+    }
+
+    // A chart about a place, east and north as the compass has them. The axes are this file's own: only angles between places leave it.
+    private static RoadChart Chart(double latDeg, double lonDeg, double radiusM) => new(DirOf(latDeg, lonDeg), radiusM, new Brutal.Numerics.double3(0.0, 0.0, 1.0));
+
+    private static Brutal.Numerics.double3 DirOf(double latDeg, double lonDeg)
+    {
+        double lat = latDeg * Math.PI / 180.0, lon = lonDeg * Math.PI / 180.0;
+        return new Brutal.Numerics.double3(Math.Cos(lat) * Math.Cos(lon), Math.Cos(lat) * Math.Sin(lon), Math.Sin(lat));
+    }
+
+    private static (double Lat, double Lon) LatLonOf(Brutal.Numerics.double3 dir)
+    {
+        Brutal.Numerics.double3 d = Vec.Unit(dir);
+        return (Math.Asin(Math.Clamp(d.Z, -1.0, 1.0)) * 180.0 / Math.PI, Math.Atan2(d.Y, d.X) * 180.0 / Math.PI);
+    }
+
     // ---- the file ---------------------------------------------------------------------------
 
     private static readonly JsonSerializerOptions Options = new()
@@ -198,7 +257,67 @@ internal sealed record Circuit
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public string ToJson() => JsonSerializer.Serialize(this, Options);
+    private static readonly JsonSerializerOptions Line = new(Options) { WriteIndented = false };
+
+    // The file: one place, and every point and handle as metres from it. A millimetre is kept of each.
+    private sealed record Saved(int Version, string? Name, string? Body, double? RadiusM, SavedAt? At, double? WidthM, double? GroundSmoothM,
+                                List<SavedNode>? Nodes, List<SavedRoad>? Roads, IReadOnlyList<int>? Route, IReadOnlyList<double[]>? Jumps);
+
+    private sealed record SavedAt(double LatDeg, double LonDeg, double? HeadingDeg);
+
+    private sealed record SavedNode(int Id, double EastM, double NorthM, double? HeightM, double? Corner, double? JunctionRadiusM);
+
+    private sealed record SavedPlace(double EastM, double NorthM);
+
+    private sealed record SavedRoad(int From, int To, double? WidthM, SavedPlace? FromHandle, SavedPlace? ToHandle,
+                                    double? FromBankDeg, double? ToBankDeg, double? FromWidthM, double? ToWidthM);
+
+    /// <summary>
+    /// The circuit as its file: the place of its first point, and each point a line, as metres east
+    /// and north of that place to the millimetre, with what is at its default left out.
+    /// </summary>
+    public string ToJson()
+    {
+        double radius = RadiusM > 0.0 ? RadiusM : DefaultRadiusM;
+        (double lat, double lon) = Nodes.Count > 0 ? (Math.Round(Nodes[0].LatDeg, 9), Math.Round(Nodes[0].LonDeg, 9)) : (0.0, 0.0);
+        RoadChart chart = Chart(lat, lon, radius);
+        SavedPlace At(double la, double lo) => chart.Of(DirOf(la, lo)) is var p ? new SavedPlace(Mm(p.E), Mm(p.N)) : null!;
+        static double Mm(double v) => Math.Round(v, 3) + 0.0;
+        static double? Set(double? v) => v is { } x ? Mm(x) : null;
+        static string One<T>(T value) => JsonSerializer.Serialize(value, Line);
+
+        StringBuilder text = new();
+        text.Append("{\n");
+        text.Append("  \"version\": ").Append(CurrentVersion).Append(",\n");
+        text.Append("  \"name\": ").Append(One(Name)).Append(",\n");
+        text.Append("  \"body\": ").Append(One(Body)).Append(",\n");
+        text.Append("  \"radius_m\": ").Append(One(Mm(radius))).Append(",\n");
+        text.Append("  \"at\": ").Append(One(new SavedAt(lat, lon, null))).Append(",\n");
+        text.Append("  \"width_m\": ").Append(One(Mm(WidthM))).Append(",\n");
+        if (Mm(GroundSmoothM) != DefaultGroundSmoothM) text.Append("  \"ground_smooth_m\": ").Append(One(Mm(GroundSmoothM))).Append(",\n");
+        if (Route is { Count: > 0 }) text.Append("  \"route\": ").Append(One(Route)).Append(",\n");
+        if (Jumps is { Count: > 0 }) text.Append("  \"jumps\": ").Append(One(Jumps)).Append(",\n");
+
+        void Lines<T>(string name, IEnumerable<T> items, bool last)
+        {
+            text.Append("  \"").Append(name).Append("\": [");
+            string between = "\n    ";
+            foreach (T item in items)
+            {
+                text.Append(between).Append(One(item));
+                between = ",\n    ";
+            }
+            text.Append(between == "\n    " ? "]" : "\n  ]").Append(last ? "\n" : ",\n");
+        }
+        Lines("nodes", Nodes.Select(n => At(n.LatDeg, n.LonDeg) is var p
+            ? new SavedNode(n.Id, p.EastM, p.NorthM, Mm(n.HeightM) == 0.0 ? null : Mm(n.HeightM), Mm(n.Corner) == 1.0 ? null : Mm(n.Corner), Set(n.JunctionRadiusM))
+            : null!), last: false);
+        Lines("roads", Roads.Select(r => new SavedRoad(r.From, r.To, Set(r.WidthM),
+            r.FromHandle is { } f ? At(f.LatDeg, f.LonDeg) : null, r.ToHandle is { } t ? At(t.LatDeg, t.LonDeg) : null,
+            Set(r.FromBankDeg), Set(r.ToBankDeg), Set(r.FromWidthM), Set(r.ToWidthM))), last: true);
+        text.Append("}\n");
+        return text.ToString();
+    }
 
     /// <summary>
     /// The circuit read, or null with the reason. One from a newer build is refused rather than half
@@ -212,7 +331,15 @@ internal sealed record Circuit
         Circuit? read;
         try
         {
-            read = JsonSerializer.Deserialize<Circuit>(json, Options);
+            using JsonDocument file = JsonDocument.Parse(json);
+            int version = file.RootElement.ValueKind == JsonValueKind.Object && file.RootElement.TryGetProperty("version", out JsonElement v)
+                          && v.TryGetInt32(out int said) ? said : 1;
+            if (version > CurrentVersion)
+            {
+                why = $"written by a newer build (version {version})";
+                return null;
+            }
+            read = version >= 3 ? Placed(JsonSerializer.Deserialize<Saved>(json, Options)) : JsonSerializer.Deserialize<Circuit>(json, Options);
         }
         catch (JsonException e)
         {
@@ -222,11 +349,6 @@ internal sealed record Circuit
         if (read is null || read.Nodes is null || read.Roads is null)
         {
             why = "empty";
-            return null;
-        }
-        if (read.Version > CurrentVersion)
-        {
-            why = $"written by a newer build (version {read.Version})";
             return null;
         }
 
@@ -265,6 +387,28 @@ internal sealed record Circuit
             Nodes = nodes,
             Roads = roads,
             WidthM = double.IsFinite(read.WidthM) ? Math.Clamp(read.WidthM, MinWidthM, MaxWidthM) : 10.0,
+        };
+    }
+
+    // A file's metres as places on the body, about the place it gives and turned as it says.
+    private static Circuit? Placed(Saved? file)
+    {
+        if (file is null || file.Nodes is null || file.Roads is null) return null;
+        double radius = file.RadiusM is { } r && double.IsFinite(r) && r > 0.0 ? r : DefaultRadiusM;
+        SavedAt at = file.At is { } a && double.IsFinite(a.LatDeg) && double.IsFinite(a.LonDeg) ? a : new SavedAt(0.0, 0.0, null);
+        RoadChart chart = Chart(at.LatDeg, at.LonDeg, radius);
+        double turn = (at.HeadingDeg is { } h && double.IsFinite(h) ? h : 0.0) * Math.PI / 180.0, cos = Math.Cos(turn), sin = Math.Sin(turn);
+        (double Lat, double Lon) On(double east, double north) => LatLonOf(chart.Dir(new Plan((east * cos) + (north * sin), (north * cos) - (east * sin))));
+        Place? Handle(SavedPlace? p) => p is null ? null : On(p.EastM, p.NorthM) is var (lat, lon) ? new Place(lat, lon) : null;
+
+        return new Circuit
+        {
+            Version = file.Version, Name = file.Name ?? "", Body = file.Body ?? "", RadiusM = radius, WidthM = file.WidthM ?? 10.0,
+            GroundSmoothM = file.GroundSmoothM ?? DefaultGroundSmoothM, Route = file.Route, Jumps = file.Jumps,
+            Nodes = [.. file.Nodes.Where(n => n is not null).Select(n => On(n.EastM, n.NorthM) is var (lat, lon)
+                ? new Node(n.Id, lat, lon, n.Corner ?? 1.0, n.HeightM ?? 0.0, n.JunctionRadiusM) : null!)],
+            Roads = [.. file.Roads.Where(x => x is not null).Select(x => new Road(x.From, x.To, x.WidthM, Handle(x.FromHandle), Handle(x.ToHandle),
+                x.FromBankDeg, x.ToBankDeg, x.FromWidthM, x.ToWidthM))],
         };
     }
 
