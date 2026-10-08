@@ -199,7 +199,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
 | `Sim/PadSurface.cs` | the top of a structure standing on the ground, as the first of its boxes and cylinders a line dropped from a hub meets — **the height field knows nothing of a launch pad** |
-| `Sim/Circuit.cs` | **a set of roads as it is saved**: points on a body by latitude and longitude, the roads that join them, each point's corner strength and height, any handle set by hand, and a bank and a width at each end of a road — its edits, each answering a new circuit so the old one is the undo, and its JSON |
+| `Sim/Circuit.cs` | **a set of roads as it is saved**: points on a body by latitude and longitude, the roads that join them, each point's corner strength and height, any handle set by hand, and a bank and a width at each end of a road — its edits, each answering a new circuit so the old one is the undo, the same circuit moved to another place or body, and its JSON, **which is one place and every point as metres from it** |
 | `Sim/CircuitHistory.cs` | a circuit being edited and every state it has been through, for undo and redo — **a drag is many changes and one step** |
 | `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
@@ -594,7 +594,20 @@ were. **A laid road's solids have not been seen in game**; one box under a parke
 `docs/KSA-MODDING-NOTES.md` has how a solid is made to collide and how the clutter mask is addressed.
 
 **A circuit is a graph of points, and a road is a curve between two.** `Sim/Circuit.cs` keeps a point as a
-latitude, a longitude and a height above the ground, so a road follows whatever ground is there. The file is versioned: one from a newer build is refused and an older one loads with what it does not say at its default. A point is set no lower than the ground, because KSA's terrain cannot be cut into; one below it in an old file is kept as written. Each end of a road has a
+latitude, a longitude and a height above the ground, so a road follows whatever ground is there. The file is versioned: one from a newer build is refused and an older one loads with what it does not say at its default.
+
+**A circuit's file is one place and metres from it, so the same circuit can be laid anywhere.** Since
+version 3 a file has `at`, the latitude and longitude of its first point, the body's `radius_m`, and every
+point and handle as `east_m` and `north_m` from that place on a stereographic chart about it, to the
+millimetre; `Circuit.MovedTo` is the same circuit with its first point somewhere else, on that body or
+another, turned by a heading. In the game a circuit is still latitudes and longitudes, and a file of
+version 1 or 2, which has those a point, is read as before and written as version 3 when it is next
+saved. The bridge's `road` with `circuit`, `lat`, `lon` and `heading` lays one elsewhere and `save_as`
+keeps it; the editor's Load at the craft does it by hand, **which has not been tried**. The file is JSON
+with a point a line and what is at its default left out, 55% of what it was: all 26 circuits of the
+library are 55 KB where they were 101. A packed binary of the same would be 10 KB, and nobody could read,
+compare or mend one, for 45 KB. A file's `route` and `jumps` are kept through a save, and `jumps` is where
+the line to drive is not red for a crest. A point is set no lower than the ground, because KSA's terrain cannot be cut into; one below it in an old file is kept as written. Each end of a road has a
 handle, as a vector shape's has: worked out by `Sim/RoadLayout.cs` from the roads meeting at the point and
 scaled by the point's corner strength, or set by hand as another place on the body.
 
@@ -640,8 +653,7 @@ indices to draw (`RuntimeMesh.Draws`), since writing a mesh waits for the graphi
 it was done eight times a second. Each colour has six draws, a run past them is left out, and the roads
 keep to 24 fewer draws a view while the line is drawn. It is switched from the panel's Racing line, on a
 developer's install, or the bridge's `road` with `racing_line`. The plan is the cautious driver's with
-`Push` 0.3 and knows nothing of a circuit file's `jumps`, so it is red before a crest that is meant to be
-jumped. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
+`Push` 0.3, and takes a crest for one to be jumped where the circuit's file has it in `jumps`. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
 
 `tools/roads/extreme-circuits.py` writes `Insane`, a 6 km lap drawn with its `Lap` class by driving it:
 straights, arcs and climbs, each point with its height, lean and width.
