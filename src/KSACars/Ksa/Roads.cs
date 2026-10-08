@@ -656,10 +656,15 @@ internal static class Roads
                 meshes.AddRange(component.Junctions.Where(j => junctions.ContainsKey(j.Node)).Select(j => junctions[j.Node].Mesh));
                 if (RoadCollider.Of(meshes) is { } solid) colliders.Add(solid);
             }
+            // A loop is a solid of its own: nothing slides from a road onto it but on wheels, which no solid carries.
+            foreach (RoadLoop loop in _laid is { } standing && ReferenceEquals(standing.Body, body) ? standing.Loops : [])
+            {
+                if (RoadCollider.Of([loop.Solid(RoadDrawList.SlotVertices)]) is { } trough) colliders.Add(trough);
+            }
             _roadSolids = colliders.Count > 0 ? (body, [.. colliders]) : null;
             HandColliders();
         }
-        // A loop is drawn and is not solid: the wheels are sprung against it and nothing else of a car meets it.
+        // A loop is drawn as it is, and solid a little under that: see RoadLoop.Solid.
         if (whole && _laid is { } laidNow)
         {
             for (int i = 0; i < laidNow.Loops.Length; i++)

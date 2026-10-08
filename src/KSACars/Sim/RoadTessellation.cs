@@ -245,7 +245,7 @@ internal static class RoadTessellation
     public const double TrimRepeatM = 1.5;
 
     // Where in the trim's picture a kerb is, across it, and where a barrier is: its left half is the kerb's stripes.
-    private const double KerbFrom = 0.03, KerbTo = 0.47, BarrierFrom = 0.53, BarrierTo = 0.97;
+    internal const double KerbFrom = 0.03, KerbTo = 0.47, BarrierFrom = 0.53, BarrierTo = 0.97;
 
     // Round a deck: over the top left to right, down the right side, back under it and up the left.
     private static readonly (int Left, Kind Kind)[] DeckStrips =

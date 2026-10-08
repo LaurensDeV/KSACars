@@ -387,6 +387,24 @@ internal sealed class Bridge
             Courses.Update();
             return Done(new() { ["course"] = Courses.Laid, ["message"] = Courses.Message, ["laid"] = Roads.Any });
         }
+        if (command.Has("loop_stand") || command.Flag("loop_where", false))
+        {
+            if (Roads.LoopsOn(body) is not { Count: > 0 } loops) return Failed("no loop is laid here");
+            RoadLoop loop = loops[0];
+            if (command.Has("loop_stand"))
+            {
+                double3 on = loop.Point(Math.Clamp(command.Number("loop_stand", 0.0), 0.0, loop.LengthM), 0.0, out double3 along, out double3 facing);
+                Buggies.Stand(flown, on + (facing * 0.5), facing, along);
+            }
+            double3 at = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            bool onIt = loop.TryLocate(at, out double s, out double left, out double over, out _);
+            return Done(new()
+            {
+                ["over_ground_m"] = Math.Round(Vec.Len(at) - body.MeanRadius - body.GetTerrainHeightFromDirCcf(Vec.Unit(at), accurate: true), 2),
+                ["on_loop"] = onIt, ["loop_s_m"] = onIt ? Math.Round(s, 1) : null, ["loop_left_m"] = onIt ? Math.Round(left, 2) : null,
+                ["over_asphalt_m"] = onIt ? Math.Round(over, 2) : null,
+            });
+        }
         if (command.Has("racing_line"))
         {
             RacingLine.Set(command.Flag("racing_line", true));

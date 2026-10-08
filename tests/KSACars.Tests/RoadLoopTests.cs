@@ -230,7 +230,8 @@ public class RoadLoopTests
         RoadLoop loop = Loop(TrackWorld.Earth());
         RoadMeshData mesh = loop.Mesh(2048);
         Assert.True(mesh.Positions.Length <= 2048 && mesh.Indices.Length % 3 == 0);
-        Assert.Equal(mesh.Indices.Length, mesh.AsphaltIndices + mesh.DeckIndices);
+        Assert.Equal(mesh.Indices.Length, mesh.AsphaltIndices + mesh.DeckIndices + mesh.TrimIndices);
+        Assert.True(mesh.TrimIndices > 0 && mesh.DeckIndices > 0);
 
         for (int t = 0; t < mesh.Indices.Length; t += 3)
         {
@@ -247,7 +248,72 @@ public class RoadLoopTests
             double along = Math.Max(mesh.Uvs[a].Y, Math.Max(mesh.Uvs[b].Y, mesh.Uvs[c].Y)) - Math.Min(mesh.Uvs[a].Y, Math.Min(mesh.Uvs[b].Y, mesh.Uvs[c].Y));
             Assert.InRange(along, 0.5 / RoadTessellation.MarkingsM, 1.5 / RoadTessellation.MarkingsM);
         }
-        Assert.Equal(40, loop.Mesh(9 * 41).Positions.Length / 9 - 1);
+        Assert.Equal(40, loop.Mesh(17 * 41).Positions.Length / 17 - 1);
+    }
+
+    [Fact]
+    public void ItHasABarrierEitherSideThatStartsLowAndASolidTroughUnderItsAsphalt()
+    {
+        RoadLoop loop = Loop(TrackWorld.Earth());
+        Assert.Equal(RoadLoop.BarrierFootM, loop.BarrierHigh(0.0), 9);
+        Assert.Equal(RoadLoop.BarrierFootM, loop.BarrierHigh(loop.LengthM), 9);
+        Assert.Equal(RoadTessellation.BarrierHighM, loop.BarrierHigh(0.5 * loop.LengthM), 9);
+        Assert.True(loop.BarrierHigh(2.0) < 0.3);
+
+        // The barriers are outside the asphalt's edges and stand off it the way it faces, as high as they are said to.
+        RoadMeshData mesh = loop.Mesh(2048);
+        double highest = 0.0;
+        for (int t = mesh.Indices.Length - mesh.TrimIndices; t < mesh.Indices.Length; t++)
+        {
+            double3 at = mesh.Places[mesh.Indices[t]];
+            Assert.True(loop.TryBarrier(at, out double past, out _) || !loop.TryLocate(at, out _, out _, out _, out _), "a barrier's corner is nowhere near the loop");
+            Assert.True(past >= -1e-6, $"a barrier's corner is {-past:F3} m inside the asphalt's edge");
+        }
+        // Seventeen places a row: the fourth and fifth are the foot and the top of the left barrier's face.
+        int rows = mesh.Places.Length / 17;
+        for (int r = 0; r < rows; r++)
+        {
+            double along = loop.LengthM * r / (rows - 1);
+            Assert.Equal(loop.BarrierHigh(along), Vec.Len(mesh.Places[(r * 17) + 4] - mesh.Places[(r * 17) + 3]), 6);
+            highest = Math.Max(highest, Vec.Len(mesh.Places[(r * 17) + 4] - mesh.Places[(r * 17) + 3]));
+        }
+        Assert.Equal(RoadTessellation.BarrierHighM, highest, 6);
+
+        // A car's side is told how far past the edge it is and which way is out, on either side.
+        double3 on = loop.Point(40.0, 0.0, out _, out double3 facing);
+        Assert.True(loop.TryBarrier(on + (loop.Left * (HalfWidth + 0.3)) + (facing * 0.3), out double out1, out double3 way) && Math.Abs(out1 - 0.3) < 1e-3 && Vec.Dot(way, loop.Left) > 0.99);
+        Assert.True(loop.TryBarrier(on - (loop.Left * (HalfWidth - 0.5)) + (facing * 0.3), out double in1, out way) && Math.Abs(in1 + 0.5) < 1e-3 && Vec.Dot(way, loop.Left) < -0.99);
+        Assert.False(loop.TryBarrier(on + (loop.Left * (HalfWidth + 3.0)), out _, out _));
+
+        // The solid: nothing of it within a hand of the asphalt between the edges, a floor under all of it, and walls to the barriers' tops.
+        RoadMeshData solid = loop.Solid(2048);
+        Assert.True(solid.Indices.Length > 0 && solid.Indices.Length % 3 == 0);
+        double least = double.PositiveInfinity, most = double.NegativeInfinity;
+        for (int t = 0; t < solid.Indices.Length; t += 3)
+        {
+            double3 a = solid.Places[solid.Indices[t]], b = solid.Places[solid.Indices[t + 1]], c = solid.Places[solid.Indices[t + 2]];
+            Assert.True(Vec.Len(Vec.Cross(b - a, c - a)) > 1e-4, "a triangle of the solid has no area");
+            double3 middle = (a + b + c) / 3.0;
+            if (!loop.TryLocate(middle, out double s, out _, out double over, out _) || s < 10.0 || s > loop.LengthM - 10.0) continue;
+            (least, most) = (Math.Min(least, over), Math.Max(most, over));
+        }
+        // To the couple of centimetres a metre of flat triangle is off a loop's bend.
+        Assert.InRange(least, -RoadLoop.ThickM - 0.03, -RoadLoop.ThickM + 0.03);
+        Assert.InRange(most, -RoadLoop.ThickM - 0.03, -RoadLoop.ThickM + 0.03);
+
+        // Solid from both sides: under any place of the asphalt as much of the floor faces up through it as down.
+        loop.Point(40.0, 0.0, out _, out double3 up40);
+        double facingIn = 0.0, facingOut = 0.0;
+        for (int t = 0; t < solid.Indices.Length; t += 3)
+        {
+            double3 a = solid.Places[solid.Indices[t]], b = solid.Places[solid.Indices[t + 1]], c = solid.Places[solid.Indices[t + 2]];
+            if (!loop.TryLocate((a + b + c) / 3.0, out double s, out _, out _, out _) || Math.Abs(s - 40.0) > 3.0) continue;
+            double area = Vec.Dot(Vec.Cross(b - a, c - a), up40);
+            if (area > 0.0) facingIn += area;
+            else facingOut -= area;
+        }
+        Assert.True(facingIn > 10.0 && Math.Abs(facingIn - facingOut) < 1e-6 * facingIn, $"{facingIn:F2} m2 of floor faces in and {facingOut:F2} out");
+        Assert.NotNull(RoadCollider.Of([solid]));
     }
 
     [Fact]

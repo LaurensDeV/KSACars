@@ -799,7 +799,9 @@ internal sealed class Buggies
         // will hit next finds there is a triangle's edge ahead to take its speed off against.
         bool onRoad = false;
         for (int i = 0; i < e.RoadOver.Length && i < e.Drive.Grounded.Length; i++) onRoad |= e.RoadOver[i] is not null && e.Drive.Grounded[i];
-        double closing = Math.Abs(Vec.Dot(velocityBody, contacts[0].Valid ? contacts[0].GroundUp : up)) + (HullReachM * Vec.Len(spinBody));
+        onRoad |= looped;
+        // Round a loop a car turns as fast as the loop does under it, and closes on nothing by that.
+        double closing = Math.Abs(Vec.Dot(velocityBody, contacts[0].Valid ? contacts[0].GroundUp : up)) + (looped ? 0.0 : HullReachM * Vec.Len(spinBody));
         HullMargins[craft] = HoldsHullMargin && onRoad && !warped ? (float)(HullMarginM + (2.0 * closing * dt)) : float.MaxValue;
 
         double3 dv = impulse.Linear / mass;
@@ -834,7 +836,14 @@ internal sealed class Buggies
                 sides[i] = hubs[i] + (left * (Math.Sign(reach) * (e.Drive.Profile.Side - Math.Abs(corners[i].Hub.Z))));
                 past[i] = double.NegativeInfinity;
                 // The wall is plumb and a car on a banked deck is not, so its side is asked low and high, where a collider's edge leads.
-                if (!roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] - (up * SideLowM))), out double pastM, out double3 outCcf)) continue;
+                double3 sideCcf = positionCcf + (body2Ccf * sides[i]);
+                double pastM = double.NegativeInfinity;
+                double3 outCcf = default;
+                foreach (RoadLoop loop in loops)
+                {
+                    if (loop.TryBarrier(sideCcf, out pastM, out outCcf)) break;
+                }
+                if (double.IsNegativeInfinity(pastM) && !roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] - (up * SideLowM))), out pastM, out outCcf)) continue;
                 if (roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] + (up * SideHighM))), out double high, out _)) pastM = Math.Max(pastM, high);
                 // Across the car's own floor: on a banked deck the level way out has a share of the car's up, along which the springs push every step.
                 double3 across = Barrier.Across(outCcf.Transform(ccf2Body), up);

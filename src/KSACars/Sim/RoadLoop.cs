@@ -159,61 +159,115 @@ internal sealed class RoadLoop
     }
 
     /// <summary>How thick the road of it is, and how far apart its rows of vertices are at the least.</summary>
-    public const double ThickM = 0.4, RowsEveryM = 1.0;
+    public const double ThickM = 0.5, RowsEveryM = 1.0;
+
+    /// <summary>How high its barriers stand at its foot, where they start, and how far round they come to a deck's height.</summary>
+    public const double BarrierFootM = 0.05, BarrierRiseOverM = 8.0;
+
+    private const int Across = 17;
+
+    /// <summary>How high the barrier either side stands a distance along: low where it leaves the ground and comes back, so its end is no wall to meet.</summary>
+    public double BarrierHigh(double s)
+    {
+        double t = Math.Clamp(Math.Min(s, LengthM - s) / BarrierRiseOverM, 0.0, 1.0);
+        return BarrierFootM + ((RoadTessellation.BarrierHighM - BarrierFootM) * t * t * (3.0 - (2.0 * t)));
+    }
 
     /// <summary>
-    /// The loop as triangles: its asphalt, drawn as a road's is with its lines, and its two sides and
-    /// its underside. A row every metre, or as few more apart as keep it to <paramref name="mostVertices"/>.
+    /// The loop as triangles: its asphalt, drawn as a road's is with its lines, its underside, and a
+    /// barrier outside each edge as a deck has. A row every metre, or as few more apart as keep it to
+    /// <paramref name="mostVertices"/>.
     /// </summary>
-    public RoadMeshData Mesh(int mostVertices)
+    public RoadMeshData Mesh(int mostVertices) => Built(mostVertices, solid: false);
+
+    /// <summary>
+    /// What the physics is given of it: a trough, its floor <see cref="ThickM"/> under the asphalt and
+    /// a wall either side to the barriers' tops, each solid from both sides. Under the asphalt and not
+    /// at it because a loop bends up under a hull's ends by more than a car stands clear on its
+    /// wheels: at the asphalt, a car going round on its wheels would be scraping it.
+    /// </summary>
+    public RoadMeshData Solid(int mostVertices) => Built(mostVertices, solid: true);
+
+    private RoadMeshData Built(int mostVertices, bool solid)
     {
-        const int Across = 9;
         int rows = Math.Max(Math.Min((int)Math.Ceiling(LengthM / RowsEveryM), (mostVertices / Across) - 1), 8) + 1;
         double3 origin = Point(0.5 * LengthM, 0.0, out _, out _);
         double3[] places = new double3[rows * Across];
         float3[] positions = new float3[rows * Across], normals = new float3[rows * Across];
         float2[] uvs = new float2[rows * Across];
-        double radius = 0.0;
+        double radius = 0.0, thick = RoadTessellation.BarrierThickM;
         for (int r = 0; r < rows; r++)
         {
-            double s = LengthM * r / (rows - 1);
+            double s = LengthM * r / (rows - 1), high = BarrierHigh(s);
             double3 middle = Point(s, 0.0, out _, out double3 facing);
 
-            // Left edge, middle and right edge of the asphalt; then down each side, and the underside's two edges.
-            ReadOnlySpan<double> aside = [HalfWidthM, 0.0, -HalfWidthM, HalfWidthM, HalfWidthM, -HalfWidthM, -HalfWidthM, HalfWidthM, -HalfWidthM];
-            ReadOnlySpan<double> down = [0.0, 0.0, 0.0, 0.0, ThickM, 0.0, ThickM, ThickM, ThickM];
-            for (int i = 0; i < Across; i++)
+            void Put(int i, double aside, double over, double3 normal, float2 uv)
             {
-                double3 at = middle + (_left * aside[i]) - (facing * down[i]);
-                double3 normal = i <= 2 ? facing : i <= 4 ? _left : i <= 6 ? -_left : -facing;
+                double3 at = middle + (_left * aside) + (facing * over), from = at - origin;
                 places[(r * Across) + i] = at;
-                double3 from = at - origin;
                 radius = Math.Max(radius, Vec.Len(from));
                 positions[(r * Across) + i] = new float3((float)from.X, (float)from.Y, (float)from.Z);
                 normals[(r * Across) + i] = new float3((float)normal.X, (float)normal.Y, (float)normal.Z);
-                // The asphalt as a road's: across the picture from its left edge, and along it by its length. The rest by where it is.
-                uvs[(r * Across) + i] = i <= 2
-                    ? new float2((float)(0.5 * i), (float)(s / RoadTessellation.MarkingsM))
-                    : new float2((float)((aside[i] + down[i]) / RoadTessellation.TileM), (float)(s / RoadTessellation.TileM));
+                uvs[(r * Across) + i] = uv;
+            }
+
+            // The asphalt as a road's: across the picture from its left edge, and along it by its length.
+            for (int i = 0; i < 3; i++) Put(i, HalfWidthM * (1 - i), 0.0, facing, new float2((float)(0.5 * i), (float)(s / RoadTessellation.MarkingsM)));
+
+            // A barrier a side: up its face from the asphalt's edge, across its top and down its back to the underside.
+            double span = (2.0 * high) + thick + ThickM;
+            float along = (float)(s / RoadTessellation.TrimRepeatM);
+            float2 Trim(double gone) => new((float)(RoadTessellation.BarrierFrom + ((RoadTessellation.BarrierTo - RoadTessellation.BarrierFrom) * gone / span)), along);
+            for (int side = 1, first = 3; side >= -1; side -= 2, first += 6)
+            {
+                double edge = side * HalfWidthM, back = side * (HalfWidthM + thick);
+                Put(first, edge, 0.0, _left * -side, Trim(0.0));
+                Put(first + 1, edge, high, _left * -side, Trim(high));
+                Put(first + 2, edge, high, facing, Trim(high));
+                Put(first + 3, back, high, facing, Trim(high + thick));
+                Put(first + 4, back, high, _left * side, Trim(high + thick));
+                Put(first + 5, back, -ThickM, _left * side, Trim(span));
+            }
+
+            // The underside, from one barrier's back to the other's.
+            for (int i = 0; i < 2; i++)
+            {
+                double aside = (HalfWidthM + thick) * (1 - (2 * i));
+                Put(15 + i, aside, -ThickM, -facing, new float2((float)(aside / RoadTessellation.TileM), (float)(s / RoadTessellation.TileM)));
             }
         }
 
-        List<int> asphalt = [], sides = [];
+        List<int> asphalt = [], under = [], trim = [];
         void Quad(List<int> to, int r, int a, int b)
         {
-            // Anticlockwise seen from outside: a is to the left of b for whoever looks at the face going along the loop.
+            // Anticlockwise seen from outside: a is to the left of b for whoever stands on the face looking along the loop.
             int a0 = (r * Across) + a, b0 = (r * Across) + b, a1 = a0 + Across, b1 = b0 + Across;
             to.AddRange([a0, b0, b1, a0, b1, a1]);
         }
         for (int r = 0; r < rows - 1; r++)
         {
+            if (solid)
+            {
+                // The floor and each wall, from the barrier's back, each way round.
+                foreach ((int a, int b) in new[] { (15, 16), (7, 8), (14, 13) })
+                {
+                    Quad(under, r, a, b);
+                    Quad(under, r, b, a);
+                }
+                continue;
+            }
             Quad(asphalt, r, 0, 1);
             Quad(asphalt, r, 1, 2);
-            Quad(sides, r, 4, 3);
-            Quad(sides, r, 5, 6);
-            Quad(sides, r, 8, 7);
+            Quad(under, r, 16, 15);
+            Quad(trim, r, 4, 3);
+            Quad(trim, r, 6, 5);
+            Quad(trim, r, 8, 7);
+            Quad(trim, r, 9, 10);
+            Quad(trim, r, 11, 12);
+            Quad(trim, r, 13, 14);
         }
-        return new RoadMeshData(origin, positions, normals, uvs, [.. asphalt, .. sides], asphalt.Count, 0, sides.Count, radius, 0.0, LengthM, [], [], 0, places);
+        return new RoadMeshData(origin, positions, normals, uvs, [.. asphalt, .. under, .. trim], asphalt.Count, 0, under.Count, radius, 0.0, LengthM,
+                                [], [], 0, places, trim.Count);
     }
 
     /// <summary>The way to its left, which is the same all the way round.</summary>
@@ -224,7 +278,27 @@ internal sealed class RoadLoop
     /// asphalt the way that faces. False where it is not within the loop's width, its length and a
     /// wheel's reach of its asphalt.
     /// </summary>
-    public bool TryLocate(double3 at, out double s, out double leftM, out double over, out double3 facing)
+    public bool TryLocate(double3 at, out double s, out double leftM, out double over, out double3 facing) =>
+        Locate(at, 0.0, out s, out leftM, out over, out facing);
+
+    /// <summary>
+    /// Whether a place is at one of the loop's barriers: within its length and a barrier's height of
+    /// its asphalt, whichever side of the edge it is on.
+    /// </summary>
+    /// <param name="pastM">How far past the asphalt's edge the place is: under nothing, and it is short of the wall.</param>
+    /// <param name="outward">The way out of the loop through the wall there.</param>
+    public bool TryBarrier(double3 at, out double pastM, out double3 outward)
+    {
+        (pastM, outward) = (double.NegativeInfinity, default);
+        if (!Locate(at, BesideM, out _, out double leftM, out _, out _)) return false;
+        (pastM, outward) = (Math.Abs(leftM) - HalfWidthM, leftM < 0.0 ? -_left : _left);
+        return true;
+    }
+
+    // How far past the asphalt's edge a place is still asked about for the barrier there.
+    private const double BesideM = 1.5;
+
+    private bool Locate(double3 at, double besideM, out double s, out double leftM, out double over, out double3 facing)
     {
         double3 from = at - _base;
         double x = Vec.Dot(from, _ahead), z = Vec.Dot(from, _up), y = Vec.Dot(from, _left);
@@ -236,7 +310,7 @@ internal sealed class RoadLoop
         double step = LengthM / (_x.Length - 1);
         for (int i = 0; i < _x.Length; i++)
         {
-            if (Math.Abs(y - Aside(i * step)) > HalfWidthM) continue;
+            if (Math.Abs(y - Aside(i * step)) > HalfWidthM + besideM) continue;
             double dx = x - _x[i], dz = z - _z[i], d = (dx * dx) + (dz * dz);
             if (d < least) (best, least) = (i, d);
         }
@@ -254,7 +328,7 @@ internal sealed class RoadLoop
         (double fx, double fz, double turned) = In(along);
         over = ((z - fz) * Math.Cos(turned)) - ((x - fx) * Math.Sin(turned));
         leftM = y - Aside(along);
-        if (over < -UnderM || over > OverM || Math.Abs(leftM) > HalfWidthM) return false;
+        if (over < -UnderM || over > OverM || Math.Abs(leftM) > HalfWidthM + besideM) return false;
 
         s = along;
         facing = (_up * Math.Cos(turned)) - (_ahead * Math.Sin(turned));
