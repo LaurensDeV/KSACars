@@ -314,6 +314,12 @@ internal static class RoadColliders
 
         IDictionary? registered = sim.ClutterStatics is { } clutter ? _clutterStatics?.GetValue(clutter) as IDictionary : null;
         bool moved = state.Bub != bub;
+        // Rare, and the one moment every solid in the bubble is posed afresh: worth a line when a car
+        // is thrown, to see whether it was then.
+        if (moved && state.Laying is not null && (state.Bub - bub).Length() > 1.0)
+        {
+            Log.Info($"road colliders: a bubble's origin moved {(state.Bub - bub).Length():F0} m");
+        }
         int first = -1, last = -1;
         for (int k = 0; k < laying!.Solids.Length; k++)
         {

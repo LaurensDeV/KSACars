@@ -208,3 +208,15 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       finishes; with each car parked clear, all three finish the hairpins and the kinks
 - [ ] The smooth roads driven: all eight circuits lapped by all three cars; a climb with nothing to feel;
       a car on a bank; the editor dragging a point with the mesh following; a kitten on a road
+- [x] The eight first circuits on the smooth roads, all three cars: 23 of 24 laps clean; the F2004 left
+      the helix's descent at 942 m, and hopped for 0.6 s on the flat oval at 93 m/s
+- [x] Junctions (2026.10.10.5554): the grid of crossroads laid as five junctions, none refused, one solid
+      of 12,762 triangles; all three cars at once round `1,2,5,8,9,6,5,4,1`, left and right at the Ts and
+      twice over the crossroads 5 m up, finished within 0.27 m of the line with no flight
+- [ ] Junctions looked at close to: the corners, the mouth lines, the deck crossroads from beneath; a
+      junction that cannot be made; a T on a hillside
+- [ ] The eleven harder circuits. First pass, one car at a time: every car fell over at once on the ring
+      banked 30 degrees and stood stuck at the start of the lap that is never level, both where a car is
+      stood level on a road that is not; the F2004 was thrown on four circuits at speed, once losing
+      37 m/s in a third of a second 74 m up a descent with nothing there to hit; the Eldorado and the
+      buggy drove the 5 m road 300 m up and the 20 km lap

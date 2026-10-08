@@ -93,11 +93,18 @@ Each step leaves the game working. Only steps 5 and 6 need the game.
    of a collider cut that way.
 6. **Done, seen in game.** The mesh drawn, from a pool of slots in KSA's buffers, asphalt and earth as
    two materials; the slab, its boxes and their maths are gone.
-7. Junctions. Runs still overlap where they meet, the joining one sunk a centimetre.
+7. **Done, driven in game.** `Sim/RoadJunction`: three or more roads at a point are one polygon of
+   asphalt under one plane; every road stops at a square mouth and is brought to the plane's height,
+   climb and lean there; corners rounded, bevelled under 20 degrees; a verge and an embankment or a deck
+   round it; one solid for everything that is joined; a route crosses on a curve from mouth to mouth.
+   Roads too nearly alongside to part make no junction, say why, and lie over one another.
 8. The editor: bank, width at each end, junction radius, warnings. Only the runs through a dragged point
    are meshed again while it is dragged.
 
-Still open: a road's bank lies across another road below it on a hillside; nothing enforces the least
+Still open: a run's short last mesh before a junction takes a whole place in the pool, so a circuit of
+many junctions outruns it (23 km and 38 junctions want 118 places of 56); two arms' banks cross in the
+gore between them where they are longer than the corner's radius; a level junction on a hillside stands on
+fill and the through road humps up to it; a road's bank lies across another road below it on a hillside; nothing enforces the least
 radius, which `RoadRibbon.TooTight` reports; no editor control sets a bank or a width at one end.
 
 ## Not to be built
