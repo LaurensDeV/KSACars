@@ -265,6 +265,12 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       plain asphalt
 - [x] Trees beside a road: one stood under a raised deck's edge and a car hit it; with all round each
       instance tested at the margin, and twice as far for a tree, 70 more trees go on the same circuit
+- [x] Kerbs and barriers (2026.10.10.5554): red and white kerbs both sides of the short course's bends and
+      a barrier with a red and white top along the banked bowl's deck, in the player's own capture; the
+      6 km parcours lapped in 131.3 s with them, nothing hit, 44 meshes all drawn
+- [x] What stood through a low deck were KSA's shrubs, which are small trees with colliders: the car was
+      stopped by one in the bowl, 2 m over the ground. Under a deck only grass is kept now
+- [ ] A car driven into a barrier on purpose; a barrier's open end where a deck begins, seen from the road
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
 - [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits

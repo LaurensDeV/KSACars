@@ -646,21 +646,30 @@ within 400 m of one another, and
 `Ksa/RoadDrawing.cs` writes each into a place of its own in a pool of `Ksa/RuntimeMesh.cs`'s and hands it
 to KSA's renderer for each view, turned as the body is about the mesh's own origin: a run's own
 asphalt in one material, a junction's asphalt and a deck's sides in a second and the verges and
-embankments in a third, so three draws a mesh at most. The first runs with the road: across the picture
+embankments in a third, and kerbs and barriers in a fourth, so four draws a mesh at most. The first runs with the road: across the picture
 is across the road from edge to edge whatever its width and down it is 12 m along
 (`RoadTessellation.Lined`), so it carries a white line inside each edge, a dash down the middle and the
 darker wear of tyres either side of it; a kink counts as the length of its outside edge, and a closed
 run's dashes are stretched to come out whole. That picture is 1024 texels across and 128 along, because
 KSA filters a part's texture with no regard for the angle it is seen at, and a square one loses its lines
 at thirty metres. The other two have no way along them and tile by where a vertex is on the chart.
-`tools/model/road-textures.py` writes all three materials' textures. KSA never gives back room in its mesh
+`tools/model/road-textures.py` writes all four materials' textures.
+
+**A bend has kerbs and a deck has barriers.** Round a bend tighter than `RoadTessellation.KerbRadiusM`,
+150 m, the verge either side of a road on the ground is drawn as a kerb, red and white 0.75 m each: the
+verge's own triangles in the trim's material, so a kerb is nothing new to drive over. Along both edges of
+a deck stands a barrier 0.9 m high and 0.2 m thick, outside the edge, so the road is as wide as it was;
+it is in the solid the physics is given, and stops a car leaving a bridge. It is built in straight
+panels of 3 m or more and not a row at a time: a row a panel was 104,000 triangles and 78 meshes for the
+6 km parcours, more than the pool's 56 places, where panels are 69,000 and 44. A junction that is a deck
+has none between its mouths. Both are the last of a mesh's triangles, `RoadMeshData.TrimIndices`. KSA never gives back room in its mesh
 buffers, so the pool grows eight places at a time to 56, a quarter of what those buffers hold for the
 whole game, and a place whose mesh is gone is kept for the next. That is 7 km of hairpins or 20 km of
 fast road: the circuits of `ExtremeCircuits.cs` take two to nine places each, the grid with its five junctions thirteen, and a 5 km oval
 fourteen. A run stops at every junction and its last mesh is as short as what is left of it, so a circuit of
 many junctions takes more: the ladder of 23 km and 38 junctions is 99 meshes of road and 19 of junctions. A circuit with more than the pool holds has the meshes nearest the eye drawn, chosen again every two seconds, and
 says so once. KSA has 256 draws a view and throws past them from inside its render, which closes the
-game; 56 places are 168 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is.
+game; 56 places are 224 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is.
 
 **A mesh is written from the frame hook, never from the render hook, and all of a laying in one
 submission**, because each submission waits for the graphics card. While a road is dragged the wheels'
@@ -737,11 +746,12 @@ the game's own windows.
 which keeps a bit per instance in each cell of a grid on the body; `Sim/ClutterGrid.cs` finds the instances
 near a road, `RoadSurface.Over` says which of them the roads' own outline covers, as wide as each road is
 there, the shape each junction is and out to a bank's foot, and `Roads.ClearClutter` clears their bits.
-Under a deck the ground is still ground: only trees go, which would stand up through it. Where an
+Under a deck the ground is still ground: the grass stays and everything else goes, since KSA's shrubs
+are small trees and stand through a deck two metres up as a tree does. Where an
 instance is reckoned to stand is KSA's generation shader worked again by hand, so once a body
 `Roads.CheckPlacement` compares that with KSA's own instances and warns in the log if they have parted. What is
-within the margin of a road all round it goes too, and a tree within twice the margin, since one beside
-a deck comes up past its edge.
+within the margin of a road all round it goes too, and anything but grass within twice the margin, since what
+stands beside a deck comes up past its edge.
 **All of this is to be replaced by KSA's own exclusion the day it has one**, which its developers are
 considering: `docs/BLOCKED-ON-KSA.md` has what goes. A cleared bit stops a
 collider being built but leaves one already standing, unseen, so every change has KSA build its clutter
