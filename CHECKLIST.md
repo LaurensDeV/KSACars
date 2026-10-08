@@ -280,6 +280,11 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       collider touching, and goes from 24.4 m/s to 23.4 with the driver holding 25 on a third to
       three quarters throttle. Where the deck begins the same line is outside the asphalt, and the car
       meets the barrier's end head on and is stopped by it
+- [x] The line to drive (2026.10.10.5554): arrowheads on the racing line ahead of the F2004 on the short
+      course, blue at 12 m/s and red into a bend on a lap of 35 s, one write of 1.8 ms for the lap and
+      up to 14 runs of colour at once
+- [ ] The line to drive at night, on a circuit over 3 km, where a stretch is written again, and from the
+      panel's own switch: only the bridge's has been used
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck

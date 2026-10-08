@@ -213,6 +213,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RoadWarnings.cs` | what is wrong with a circuit as it is laid, for whoever is drawing it: a junction that could not be made or has a road too short for its corners, a bend tighter than its width turns in, and a grade past what each kind of car climbs |
 | `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a curve across each junction from the mouth come in by to the one left by, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
+| `Sim/RaceLine.cs` | the line to drive as arrowheads on the road ahead of a car: where each lies, on the road's own surface, and **its colour from the car's speed now against what the route allows there**, as runs of one colour that are each a draw |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/RoadProfile.cs` | what a road is along its length apart from where it goes: **its height as a curve through its points' heights that climbs steadily where they do and never overshoots**, its lean and its width, an end at a junction held to the height, the climb and the lean it is given, with the steepest grade and the tightest crest or dip of each road |
 | `Sim/RoadGround.cs` | the ground along a road, **smoothed and never buried**: at or above every sample of the ground and the line between two, with no step in its slope, level ground and a steady slope left as they are and a bump filled over |
@@ -236,6 +237,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
 | `Ksa/RoadColliders.cs` | **on a developer's install**: triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each run of a laid road is one mesh, in the bubbles within three kilometres of any of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
 | `Ksa/RoadDrawing.cs` | **the roads as they are drawn**: each mesh of a laid circuit written into a place of its own in a pool of `RuntimeMesh`es that only grows, to 56 places, and handed to KSA's renderer for each view in asphalt and in earth, turned as the body is about the mesh's own origin; the nearest drawn where there are more meshes than places |
+| `Ksa/RacingLine.cs` | **the line to drive, drawn ahead of the car being flown**, from the panel's Racing line: the route driver's own racing line and speeds for that car, a stretch of arrowheads written once and each colour's material told every frame which of them to draw |
 | `Ksa/RuntimeMesh.cs` | a mesh made while the game runs: room taken once in the three buffers KSA's static meshes share, cut into meshes that are each written over in place, any number in one submission, and drawn by KSA's own renderer as a `StaticMeshRenderable` for each material it has. **One patch has been seen in game**, the bridge's `road` with `mesh_test`; a road's meshes have not |
 | `Ksa/Roads.cs` | a circuit laid on a body: every run and every junction as one surface each, answered to a wheel asking what is under it, made into the triangles `RoadDrawing` draws and `RoadColliders` gives the physics, a dragged road's meshes written no more than ten times a second, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
@@ -628,6 +630,19 @@ round are in `tools/roads/pb/`. `run-laps.py --best` drives it in the game throu
 with `tune` and `inside`. The brake is pressed as hard as the throttle is negative, which a key makes
 all of it.
 
+**The line to drive can be drawn on the road, as a racing game draws it.** `Sim/RaceLine.cs` lays an
+arrowhead every 3 m along the racing line the route driver would take in that car, each corner of it on
+the road's surface and 4 cm over it, and colours the 210 m ahead of the car by its speed now against the
+speed the driver's plan allows at each, braking for what comes after counted in: blue under it, then
+yellow, orange and red by a fifth over. `Ksa/RacingLine.cs` writes a stretch of them to the graphics card
+once, the whole of a lap under 3 km, and every frame tells each of four flat materials which runs of the
+indices to draw (`RuntimeMesh.Draws`), since writing a mesh waits for the graphics card, up to 33 ms when
+it was done eight times a second. Each colour has six draws, a run past them is left out, and the roads
+keep to 24 fewer draws a view while the line is drawn. It is switched from the panel's Racing line, on a
+developer's install, or the bridge's `road` with `racing_line`. The plan is the cautious driver's with
+`Push` 0.3 and knows nothing of a circuit file's `jumps`, so it is red before a crest that is meant to be
+jumped. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
+
 `tools/roads/extreme-circuits.py` writes `Insane`, a 6 km lap drawn with its `Lap` class by driving it:
 straights, arcs and climbs, each point with its height, lean and width.
 
@@ -681,7 +696,8 @@ fast road: the circuits of `ExtremeCircuits.cs` take two to nine places each, th
 fourteen. A run stops at every junction and its last mesh is as short as what is left of it, so a circuit of
 many junctions takes more: the ladder of 23 km and 38 junctions is 99 meshes of road and 19 of junctions. A circuit with more than the pool holds has the meshes nearest the eye drawn, chosen again every two seconds, and
 says so once. KSA has 256 draws a view and throws past them from inside its render, which closes the
-game; 56 places are 224 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is.
+game; 56 places are 224 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is,
+less what the line to drive takes.
 
 **A mesh is written from the frame hook, never from the render hook, and all of a laying in one
 submission**, because each submission waits for the graphics card. While a road is dragged the wheels'
