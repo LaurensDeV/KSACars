@@ -656,9 +656,12 @@ developer's install, or the bridge's `road` with `racing_line`. The plan is the 
 `Push` 0.3, and takes a crest for one to be jumped where the circuit's file has it in `jumps`. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
 
 `tools/roads/club-motorsports.py` writes a real course, Club Motorsports in New Hampshire: its centre line
-from OpenStreetMap and its heights from the USGS's lidar, in `club-motorsports.csv` with where each is
-from, as 86 points each as high above level ground as the real track is above its lowest place, 59.5 m,
-so the lap climbs as the real one does, on fill and decks; and the same line flat on the ground.
+from OpenStreetMap, its heights from the USGS's lidar and how far its asphalt reaches either side measured
+on the USGS's aerial pictures, in `club-motorsports.csv` with where each is from, as 107 points each in the
+middle of the asphalt and as high above level ground as the real track is above its lowest place, 59.5 m,
+so the lap climbs as the real one does, on fill and decks; and the same line flat on the ground. The road
+is as wide at each point as the asphalt is there, 12 m to 40 m, a bend's paved runoff counted in; beside a
+straight nothing past 8 m is, since what is wide there is the pit lane.
 
 `tools/roads/extreme-circuits.py` writes `Insane`, a 6 km lap drawn with its `Lap` class by driving it:
 straights, arcs and climbs, each point with its height, lean and width.
