@@ -242,6 +242,53 @@ public sealed class RoadSurface
         return true;
     }
 
+    /// <summary>What of the roads is over a place on the ground.</summary>
+    public enum Cover
+    {
+        /// <summary>No road, nor a road's verge or bank.</summary>
+        None,
+
+        /// <summary>A deck and nothing else: the ground under a bridge, which is still ground.</summary>
+        Deck,
+
+        /// <summary>A road that stands on the ground, or its verge or its bank: what is there is under it.</summary>
+        Ground,
+    }
+
+    /// <summary>
+    /// What is over the ground in a direction from the body's centre, whatever the height of anything:
+    /// the roads' own outline, as wide as each is there and the shape each junction is, which is what
+    /// says whether a thing standing on the ground is under a road.
+    /// </summary>
+    public Cover Over(double3 dir)
+    {
+        if (_chart is null) return Cover.None;
+
+        Plan place = _chart.Of(dir);
+        _cells.TryGetValue(Cell(place), out (int Ribbon, int Place)[]? places);
+        _junctionCells.TryGetValue(Cell(place), out int[]? junctions);
+
+        Cover cover = Cover.None;
+        foreach (int j in junctions ?? [])
+        {
+            RoadJunction junction = _junctions[j];
+            if (!junction.Surface(place, EdgeM, out _, out _)) continue;
+            if (!junction.Deck) return Cover.Ground;
+            cover = Cover.Deck;
+        }
+        foreach ((int r, int i) in places ?? [])
+        {
+            RoadRibbon ribbon = _ribbons[r];
+            double here = Off(ribbon, i, place);
+            if (Off(ribbon, i - 1, place) < here || Off(ribbon, i + 1, place) <= here) continue;
+            if (!ribbon.Locate(place, i, out RoadRibbon.Section section, out double d, out double beyond)) continue;
+            if (!ribbon.Surface(section, d, beyond, out _, out _, out _, out _)) continue;
+            if (!ribbon.DeckOver(Math.Min((int)(section.S / ribbon.SideStepM), ribbon.SideStretches - 1))) return Cover.Ground;
+            cover = Cover.Deck;
+        }
+        return cover;
+    }
+
     // How far a point is from one of a ribbon's lookup places, squared; no distance at all past the end of an open one.
     private static double Off(RoadRibbon ribbon, int index, Plan place)
     {

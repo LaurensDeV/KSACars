@@ -9,6 +9,9 @@ namespace KSACars;
 /// <para>A kind of clutter is laid on a grid over each face of a cube round the body. A cell holds 16
 /// by 16 slots, one thing in each, pushed up to a slot either way by a hash of the cell and the slot.
 /// KSA keeps a bit per slot, and a cleared bit is a thing not drawn and not collided with.</para>
+///
+/// <para>This goes the day KSA can be told to keep clutter off a footprint itself, which its
+/// developers are considering: docs/BLOCKED-ON-KSA.md.</para>
 /// </summary>
 public static class ClutterGrid
 {
@@ -71,8 +74,9 @@ public static class ClutterGrid
     /// directions from the centre, close enough together that the line between two is as good as either.
     /// A cell over the edge of a cube face is left alone.
     /// </summary>
+    /// <param name="covered">Asked of each thing within reach, with where it stands: whether it is to go. None, and all within reach go.</param>
     public static Dictionary<(int Face, int X, int Y), uint[]> Under(IReadOnlyList<double3> line, double radiusM,
-                                                                     double reachM, int resolution)
+                                                                     double reachM, int resolution, Func<double3, bool>? covered = null)
     {
         var near = new Dictionary<(int, int, int), List<int>>();
         double cellM = radiusM * (Math.PI / 2.0) / resolution;
@@ -108,6 +112,7 @@ public static class ClutterGrid
                 {
                     if (Vec.Len(at - line[i]) <= reach)
                     {
+                        if (covered is not null && !covered(at)) break;
                         bits ??= new uint[Slots / 32];
                         bits[slot / 32] |= 1u << (slot % 32);
                         break;

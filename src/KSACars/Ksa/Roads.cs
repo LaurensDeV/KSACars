@@ -120,7 +120,7 @@ internal static class Roads
             report[ecotype.EcotypeName] = new Dictionary<string, object>
             {
                 ["compared"] = count, ["grid_resolution"] = resolution, ["physics_resolution"] = phys.VesselGrid.GridResolution,
-                ["as_used"] = $"mean {sum[0] / count:F2} worst {worst[0]:F2}",
+                ["as_used"] = $"mean {sum[0] / count:F2} worst {worst[0]:F2}", ["worst_m"] = worst[0],
                 ["no_jitter"] = $"mean {sum[1] / count:F2} worst {worst[1]:F2}",
                 ["no_flip"] = $"mean {sum[2] / count:F2} worst {worst[2]:F2}",
                 ["neither"] = $"mean {sum[3] / count:F2} worst {worst[3]:F2}",
@@ -203,8 +203,27 @@ internal static class Roads
             {
                 if (ecotypes[e] is not { } ecotype) continue;
                 int count = 0;
+
+                // Whatever is near enough to be looked at is asked of the roads' own outline: as wide as the road is
+                // there, the shape a junction is, and with a bank's foot. Under a deck the ground is still ground, and
+                // only what would stand up through the deck goes.
+                bool tall = ecotype.EcotypeName.Contains("Tree", StringComparison.OrdinalIgnoreCase);
+                double near = marginM / road.Body.MeanRadius;
+                bool Covered(double3 at)
+                {
+                    double3 east = Vec.Unit(Vec.Cross(Math.Abs(at.Z) < 0.9 ? new double3(0, 0, 1) : new double3(1, 0, 0), at)), north = Vec.Cross(at, east);
+                    ReadOnlySpan<(double E, double N)> round = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)];
+                    foreach ((double e_, double n_) in round)
+                    {
+                        RoadSurface.Cover cover = road.Surface.Over(Vec.Unit(at + (east * (e_ * near)) + (north * (n_ * near))));
+                        if (cover == RoadSurface.Cover.Ground || (tall && cover == RoadSurface.Cover.Deck)) return true;
+                    }
+                    return false;
+                }
+
                 foreach (((int face, int x, int y), uint[] bits) in
-                         ClutterGrid.Under(line, road.Body.MeanRadius, ribbon.HalfWidth + marginM, ecotype.CubeCellGrid.GridResolution))
+                         ClutterGrid.Under(line, road.Body.MeanRadius, (2.0 * ribbon.HalfWidth) + RoadRibbon.MostToeM + marginM,
+                                           ecotype.CubeCellGrid.GridResolution, Covered))
                 {
                     CubeCellGrid.Cell cell = new(x, y, face);
                     GroundClutterRenderer.ExclusionData mask = ecotype.PlacementData.GetExclusionData(cell);
@@ -223,8 +242,50 @@ internal static class Roads
         }
         // The mask stops a collider being built; one already standing stays until KSA builds them all again.
         if (taken.Values.Any(n => n > 0)) KsaWorld.RebuildClutterColliders();
+        CheckPlacement(road.Body);
         return taken;
     }
+
+    // Bodies whose clutter has been checked against KSA's own this session.
+    private static readonly HashSet<KeyHash> PlacementChecked = [];
+
+    // Where this reckons clutter stands is KSA's generation shader worked again by hand, and a change to
+    // that shader moves every instance and says nothing. So once a body, when KSA has instances of its
+    // own to compare with, the two are compared and the log says how they agree.
+    private static void CheckPlacement(Celestial body)
+    {
+        if (PlacementChecked.Contains(body.Hash)) return;
+        try
+        {
+            int compared = 0;
+            double worst = 0.0;
+            foreach ((_, object value) in ProbeClutter(body))
+            {
+                if (value is not Dictionary<string, object> kind) continue;
+                compared += (int)kind["compared"];
+                worst = Math.Max(worst, (double)kind["worst_m"]);
+            }
+            if (compared == 0) return;
+
+            PlacementChecked.Add(body.Hash);
+            if (worst > PlacementToleranceM)
+            {
+                Log.Warn($"clutter on {body.Id} is not where this reckons it: up to {worst:F2} m out over {compared} instance(s). KSA's placement "
+                         + "has changed, and what is cleared under a road is not what stands on it: Sim/ClutterGrid.cs has to follow Generate.comp");
+            }
+            else
+            {
+                Log.Info($"clutter on {body.Id} is where this reckons it: {compared} instance(s) compared with KSA's, the worst {worst:F2} m out");
+            }
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"could not check where clutter stands against KSA's own: {e.Message}");
+        }
+    }
+
+    // Further out than this and it is not rounding: a slot is at least this wide for every kind KSA ships.
+    private const double PlacementToleranceM = 0.25;
 
     private static void RestoreClutter()
     {

@@ -50,7 +50,7 @@ public class AutopilotTests
     });
 
     // A circuit through points so many metres east and north, each so far above the ground, joined in order.
-    private static Circuit Through(TrackWorld world, bool closed, params (double East, double North, double Height)[] points)
+    internal static Circuit Through(TrackWorld world, bool closed, params (double East, double North, double Height)[] points)
     {
         Circuit circuit = new Circuit { WidthM = Width }.AddNode(world.Deg(points[0].North), world.Deg(points[0].East), out int first)
             .SetHeight(first, points[0].Height);
