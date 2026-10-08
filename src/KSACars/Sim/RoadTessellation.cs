@@ -388,7 +388,7 @@ internal static class RoadTessellation
             for (int k = 0; k < 3; k++)
             {
                 double3 along = b[k] - a[k], up = a[k + 1] - a[k];
-                double3 facing = Vec.Unit(Vec.Cross(along, up) * -side);
+                double3 facing = Vec.Unit(Vec.Cross(along, up) * side);
                 int first = chunk.Add(a[k], facing, new float2((float)u[k], (float)vFrom));
                 chunk.Add(a[k + 1], facing, new float2((float)u[k + 1], (float)vFrom));
                 chunk.Add(b[k + 1], facing, new float2((float)u[k + 1], (float)vTo));

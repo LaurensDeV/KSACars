@@ -655,6 +655,28 @@ public class RoadTessellationTests
         Assert.True(corners > 200, $"{corners}");
         Assert.InRange(highest, 12.0 + RoadTessellation.BarrierHighM - 0.1, 12.0 + RoadTessellation.BarrierHighM + 0.2);
 
+        // Its face at the road's edge looks at the road, which is the side the physics takes it to be solid from:
+        // a wall that faces away lets a car in from the road and holds it there.
+        int faces = 0;
+        foreach (RoadMeshData mesh in meshes)
+        {
+            for (int t = mesh.Indices.Length - mesh.TrimIndices; t < mesh.Indices.Length; t += 3)
+            {
+                double3 a = mesh.Places[mesh.Indices[t]], b = mesh.Places[mesh.Indices[t + 1]], c = mesh.Places[mesh.Indices[t + 2]];
+                double[] north = [world.Flatten(a).North, world.Flatten(b).North, world.Flatten(c).North];
+                if (north.Any(n => Math.Abs(Math.Abs(n) - (0.5 * AutopilotTests.Width)) > 0.01)) continue;
+
+                // Drawn anticlockwise from the side it faces, and its vertices say the same.
+                double3 drawn = Vec.Unit(Vec.Cross(b - a, c - a));
+                double3 toRoad = Vec.Unit(world.Dir(world.Flatten(a).East, 0.0) - world.Dir(world.Flatten(a).East, north[0]));
+                Assert.True(Vec.Dot(drawn, toRoad) > 0.9, "a barrier's face at the road's edge is drawn facing away from the road");
+                float3 said = mesh.Normals[mesh.Indices[t]];
+                Assert.True(Vec.Dot(new double3(said.X, said.Y, said.Z), toRoad) > 0.9, "a barrier's face at the road's edge has normals facing away from the road");
+                faces++;
+            }
+        }
+        Assert.True(faces > 40, $"{faces}");
+
         // And it is in what the physics is given, so it stops a car.
         Assert.Equal(meshes.Sum(m => m.Indices.Length / 3), RoadCollider.Of(meshes)!.Triangles);
     }
