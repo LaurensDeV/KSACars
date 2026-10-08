@@ -310,6 +310,10 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
       again in 24.6 s with its hull touching nothing, where with the look-ahead's share for turning it
       was said to touch for 0.39 s over the top; stood 20 m round the loop and tipped onto its roof it
       lay there, 1.18 m over the ground, and did not fall through
+- [x] A loop put by the editor's edit (2026.10.10.5554): the bridge's `road` with `loop` of 140 m, made
+      with `Circuit.PutLoop`, laid as two roads and a loop in three solids and lapped clean by the F2004
+      in 24.7 s
+- [ ] The editor's own loop controls, clicked: Add a loop here, its length, Other side, Seat and Remove
 - [ ] A loop's barriers, seen, and a car's side against one; a kitten on a loop
 - [ ] The line to drive on a loop, seen: it was night, and the captures showed nothing
 - [ ] A loop with the buggy and the Eldorado, at 30 frames a second, and too slowly; a kitten at one

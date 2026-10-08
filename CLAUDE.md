@@ -827,8 +827,15 @@ F2004's length at the top, and a car on its bump stops stands 10 cm clear, so a 
 wheels would scrape it. So a kitten stands in it to the shins and a car on its roof lies that deep in it.
 A car's side is held off a loop's wall by the mod's own push, as off a deck's (`RoadLoop.TryBarrier`), and
 a car with a wheel on a loop has the engine's look-ahead held short without the share for its turning,
-since round a loop it turns as fast as the loop does and closes on nothing by it. The editor has no
-control for one: the bridge's `road` with `loop` lays a road to one and
+since round a loop it turns as fast as the loop does and closes on nothing by it.
+
+**A loop is put at a road's end in the editor.** With the end of a road selected the panel has Add a loop
+here, which is `Circuit.PutLoop`: a point where a loop of 110 m comes down, ahead of the end as its road
+arrives and to its left by the road's width and 4 m, a road of 60 m on from there, selected to carry on
+from, and the loop between. With either end of a loop selected it has the loop's length, from 60 m to
+400 m, Other side, Remove loop and Seat loop, which is `Circuit.SeatLoop`: the point it comes down at put
+back where a loop of that length does, as a change of length does of itself and a road moved does not.
+**None of it has been clicked**: the bridge's `road` with `loop` makes its course by the same edit. Else, the bridge's `road` with `loop` lays a road to one and
 a road on from it. `RoadLoopTests` drives every car round in the rig at 25 and 30 m/s at 60 and 50 steps
 a second: four wheels down all the way, 2 cm past the stops at most, and out straight on the loop's own
 line; at 15 m/s a car comes off the top, and at 40 m/s and 30 steps a second the F2004 does.
