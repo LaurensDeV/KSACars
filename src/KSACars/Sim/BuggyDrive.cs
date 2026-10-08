@@ -388,7 +388,8 @@ public sealed class BuggyDrive(BuggyProfile profile)
         bool braking = (throttle > 0.0 && ForwardSpeed < -0.5) || (throttle < 0.0 && ForwardSpeed > 0.5);
         if (braking)
         {
-            return -Math.Sign(vAlong) * Math.Min(Profile.BrakeG * load, Math.Abs(vAlong) * m / dt);
+            // As hard as it is pressed: a key is all of it, and a driver that can press part way holds a speed with it.
+            return -Math.Sign(vAlong) * Math.Min(Profile.BrakeG * load * Math.Min(Math.Abs(throttle), 1.0), Math.Abs(vAlong) * m / dt);
         }
 
         if (corner.Driven && drive != 0.0 && drivenOnGround > 0) return drive / drivenOnGround;
