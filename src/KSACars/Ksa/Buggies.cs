@@ -34,6 +34,8 @@ internal sealed class Buggies
         public double StepSeconds { get; set; }
         public string Skipped { get; set; } = "";
         public double[] HubHeights { get; } = new double[profile.Corners.Length];
+        public double3 LeftVelocityCcf;
+        public bool LeftValid;
 
         /// <summary>How far each hub was above the road under it last step, or null with no road under it.</summary>
         public double?[] RoadOver { get; } = new double?[profile.Corners.Length];
@@ -126,6 +128,7 @@ internal sealed class Buggies
             foreach (Vehicle v in gone)
             {
                 Active.Remove(v);
+                HullMargins.TryRemove(v, out _);
                 RailsHook.Forget(v);
             }
         }
@@ -155,6 +158,7 @@ internal sealed class Buggies
         Held.Clear();
         ToRight.Clear();
         ToStand.Clear();
+        HullMargins.Clear();
     }
 
     /// <summary>Holds a buggy's throttle and steering for so many simulated seconds, whoever is flying.</summary>
@@ -713,6 +717,17 @@ internal sealed class Buggies
             return;
         }
 
+        // Whose push a sudden change of speed is: the engine's between two windows, or the drive's in one.
+        double3 since = velocityCcf - e.LeftVelocityCcf;
+        if (e.LeftValid && !warped && Vec.Len(since) > JoltMs + (20.0 * dt))
+        {
+            double3 inBody = since.Transform(ccf2Body);
+            Log.Info($"jolt: the engine changed {KsaWorld.DisplayName(craft)}'s velocity by {Vec.Len(since):F1} m/s between two steps: "
+                     + $"{Vec.Dot(inBody, forward):F1} ahead, {Vec.Dot(inBody, up):F1} up, {Vec.Dot(inBody, Vec.Cross(up, forward)):F1} left, "
+                     + $"at {Vec.Len(velocityCcf):F1} m/s, step {dt * 1000.0:F1} ms");
+        }
+        e.LeftValid = false;
+
         if (e.RoadGeneration != Roads.Generation)
         {
             Array.Clear(e.RoadOver);
@@ -748,6 +763,13 @@ internal sealed class Buggies
         try { e.Scraping = craft.Situation.HasTerrainContact(); } catch { e.Scraping = false; }
         LogWhileDriven(e, dt);
 
+        // On a road's asphalt the wheels hold the hull clear, and all the engine's guess at what it
+        // will hit next finds there is a triangle's edge ahead to take its speed off against.
+        bool onRoad = false;
+        for (int i = 0; i < e.RoadOver.Length && i < e.Drive.Grounded.Length; i++) onRoad |= e.RoadOver[i] is not null && e.Drive.Grounded[i];
+        double closing = Math.Abs(Vec.Dot(velocityBody, contacts[0].Valid ? contacts[0].GroundUp : up)) + (HullReachM * Vec.Len(spinBody));
+        HullMargins[craft] = onRoad && !warped ? (float)(HullMarginM + (2.0 * closing * dt)) : float.MaxValue;
+
         double3 dv = impulse.Linear / mass;
         Symmetric3x3 inverse = Symmetric3x3.Invert(craft.TotalMassPropsBody.Inertia);
         double3 l = impulse.Angular;
@@ -769,12 +791,36 @@ internal sealed class Buggies
 
         states.Kinematic.VelocityPhys += dv.Transform(body2Phys);
         states.Kinematic.AngularVelocityPhys += dw.Transform(body2Phys);
+        e.LeftVelocityCcf = velocityCcf + dv.Transform(body2Ccf);
+        e.LeftValid = true;
+        if (Vec.Len(impulse.Linear) / mass > JoltMs)
+        {
+            double3 push = impulse.Linear / mass;
+            Log.Info($"jolt: the drive pushed {KsaWorld.DisplayName(craft)} {Vec.Len(push):F1} m/s in a step: {Vec.Dot(push, forward):F1} ahead, "
+                     + $"{Vec.Dot(push, up):F1} up, at {Vec.Len(velocityCcf):F1} m/s, step {dt * 1000.0:F1} ms, "
+                     + $"hubs {string.Join(" ", e.HubHeights.Select(t => t.ToString("F3")))}");
+        }
 
         // Woken the way KSA wakes a landed craft something has bumped into. Not rebuilt from its orbit,
         // as a craft in flight is: a landed craft on rails is held to the ground, not to that orbit, and
         // rebuilt from it the car is left standing still in space while the planet turns away at 400 m/s.
         if (railed) craft.TakeOffRails();
     }
+
+    /// <summary>
+    /// How far ahead of itself the physics engine looks for what each car's hull will touch, where
+    /// that is held short: read on a worker by <see cref="RoadColliders"/>, which is where it is set.
+    /// The engine's own is as far as the hull moves in a step, and at speed over a road's mesh it
+    /// takes a triangle ahead for a wall. docs/KSA-MODDING-NOTES.md has the mechanism.
+    /// </summary>
+    public static readonly System.Collections.Concurrent.ConcurrentDictionary<Vehicle, float> HullMargins = new();
+
+    // The margin a car on a road is held to, under the least any hull stands over its wheels; and how
+    // far from the middle a hull's corner is, which is what a turning car closes on the ground with.
+    private const double HullMarginM = 0.05, HullReachM = 2.5;
+
+    // A change of speed in one step that no spring, tyre or brake makes.
+    private const double JoltMs = 3.0;
 
     // Once a second in play; the bridge shortens it to watch a manoeuvre.
     public static double LogEverySeconds { get; set; } = 1.0;

@@ -284,6 +284,13 @@ internal static class RoadColliders
         try
         {
             Sync(__instance);
+            foreach ((BodyHandle handle, VehicleUpdateState state) in __instance.HandleToState)
+            {
+                if (Buggies.HullMargins.TryGetValue(state.ReadOnlyVehicle, out float margin))
+                {
+                    __instance.Simulation.Bodies[handle].Collidable.MaximumSpeculativeMargin = margin;
+                }
+            }
         }
         catch (Exception e)
         {

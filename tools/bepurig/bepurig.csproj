@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>KSACars.BepuRig</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\KSACars\Sim\**\*.cs" Link="Linked\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(KsaDllDir)Brutal.Core.Numerics.dll" />
+    <Reference Include="$(KsaDllDir)Brutal.Core.Common.dll" />
+    <Reference Include="$(KsaDllDir)BepuPhysics.dll" />
+    <Reference Include="$(KsaDllDir)BepuUtilities.dll" />
+  </ItemGroup>
+
+</Project>

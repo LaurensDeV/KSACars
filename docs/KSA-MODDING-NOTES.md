@@ -890,6 +890,27 @@ lifted the car onto it by its hull, where it came to rest as landed, and taking 
 back on the ground; a box half a metre deep with the car inside it pushed the car down instead, the
 shorter way out.
 
+**A craft at speed over a triangle mesh is braked by triangles it is nowhere near.** KSA adds a vehicle's
+body with `BodyDescription.CreateDynamic(pose, velocity, inertia, shape, activity)`, and a bare shape
+converts to a `CollidableDescription` whose speculative margin has no upper bound, so the engine sets it
+each step to how far the body moves in the step: 0.4 m at 25 m/s, 1.7 m at 100. Every triangle within
+that of a hull's box gets a contact, and for one lying wholly ahead of the box's front face the axis of
+least overlap is along the car, not up. Its constraint lets the box close on that triangle no faster than
+the gap over the step, so a box 14 cm clear of the road has its speed cut to that in one step: 10 to 15 m/s
+off 25, 44 off 60, with a pitch nose down because the push is at the road and under the centre of mass. A
+contact that is real, the box resting on or in the mesh, is corrected by the engine's mesh reduction and
+costs nothing but its friction. A static has no margin of its own (`StaticDescription` carries only a
+shape, a pose and a continuity), so the cure is on the body: `Simulation.Bodies[handle].Collidable
+.MaximumSpeculativeMargin`, which `BoundingBoxBatcher` clamps the step's margin to, written before
+`Simulation.PredictBoundingBoxes`, which `ConstraintSim.DetectCollisions` calls first. `Ksa/RoadColliders.cs`
+writes it from its prefix there for every car in `Buggies.HullMargins`: 5 cm and what the car closes on
+the road with while a wheel is on a road, and the engine's own otherwise, because what stops a hull
+falling fast through a one-sided triangle is that margin. `tools/bepurig` is this in the engine alone: a
+box flown along a circuit's road, 33 such contacts in the 2 km of `Z Vertical` at 25 m/s and none with
+the margin held. **Seen in game on 2026.10.10.5554**: the F2004 lost 10 m/s in a step two or three times
+a lap of that circuit, each logged as the engine's change and not the drive's, and none with the margin
+held, on it or on three other circuits it had been thrown on.
+
 **A road's collider is a triangle mesh, not boxes**: KSA's simulations are made with BepuPhysics' default
 collision tasks, which pair a `Mesh` with a vehicle's `Compound` or `BigCompound`, a kitten and displaced
 clutter. A `Mesh` is built as KSA builds a parachute's terrain (`ChuteBepuClothState.BuildTerrainMesh`):

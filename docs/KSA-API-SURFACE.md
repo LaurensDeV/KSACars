@@ -7,17 +7,29 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-231 types and 503 members across 11 assemblies.
+234 types and 507 members across 11 assemblies.
 
 ## BepuPhysics
+
+### BepuPhysics.Bodies
+
+- `BepuPhysics.BodyReference get_Item(BepuPhysics.BodyHandle)`
 
 ### BepuPhysics.BodyHandle
 
 *referenced as a type only*
 
+### BepuPhysics.BodyReference
+
+- `ref BepuPhysics.Collidables.Collidable get_Collidable()`
+
 ### BepuPhysics.Collidables.Box
 
 - `void .ctor(float, float, float)`
+
+### BepuPhysics.Collidables.Collidable
+
+- `float MaximumSpeculativeMargin`
 
 ### BepuPhysics.Collidables.Mesh
 
@@ -45,6 +57,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### BepuPhysics.Simulation
 
+- `BepuPhysics.Bodies get_Bodies()`
 - `BepuPhysics.Statics get_Statics()`
 
 ### BepuPhysics.StaticDescription
