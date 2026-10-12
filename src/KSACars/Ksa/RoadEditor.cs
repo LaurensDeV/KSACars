@@ -57,6 +57,12 @@ internal sealed class RoadEditor
     private Circuit? _laidFor;
     private bool _laidFine;
     private double _lengthM;
+
+    // The roads as this editor last laid or took them: another number, and something else has changed them.
+    private int _generation;
+
+    // The circuit being worked out beside the game to be laid whole, and the work.
+    private (Circuit For, Task<Roads.Prepared> Work)? _coming;
     private List<RoadLayout.Stretch> _stretches = [];
     private readonly Dictionary<int, float2> _nodeScreen = [];
     private readonly List<KnobAt> _knobs = [];
@@ -97,11 +103,10 @@ internal sealed class RoadEditor
             _body = body;
             _viewSet = false;
 
-            // Opened on roads that are already laid, it is those it edits: a new circuit would take them up.
-            Circuit? laid = Roads.CircuitOn(body);
-            Start(laid ?? new Circuit { Name = "Circuit", Body = body.Id });
-            if (laid is not null) (_laidFor, _laidFine) = (Now, true);
+            Adopt(body);
         }
+        // Roads laid or taken up by anything else, the panel's course or its Take up roads, are what it edits from then.
+        else if (Roads.Generation != _generation) Adopt(body);
 
         if (AskCircuit is { } given)
         {
@@ -181,6 +186,22 @@ internal sealed class RoadEditor
         if (_modeBefore is not { } mode) return;
         KsaWorld.RestoreViewMode(mode);
         _modeBefore = null;
+    }
+
+    // Takes the roads that are laid for the circuit being edited, or an empty one with none laid: a new
+    // circuit over laid roads would take them up, and points left from roads since taken up are of nothing.
+    private void Adopt(Celestial body)
+    {
+        Circuit? laid = Roads.CircuitOn(body);
+        Start(laid ?? new Circuit { Name = "Circuit", Body = body.Id });
+        _stretches = [];
+        _lengthM = 0.0;
+        if (laid is not null)
+        {
+            (_laidFor, _laidFine) = (Now, true);
+            Measure(body);
+        }
+        _generation = Roads.Generation;
     }
 
     private void Start(Circuit circuit)
@@ -287,7 +308,7 @@ internal sealed class RoadEditor
                     ImGui.SameLine(0f, -1f);
                 }
                 if (ImGui.Button("Delete point", null)) DeleteSelected();
-                ImGui.TextDisabled("click the ground to carry the road on,\nanother point to join them,\nthis point again to let go of it");
+                ImGui.TextDisabled("click the ground to carry the road on,\nanother point to join them,\nCtrl and another point to pick that one,\nthis point again to let go of it");
             }
             else
             {
@@ -579,7 +600,8 @@ internal sealed class RoadEditor
             _selected = 0;
             return;
         }
-        if (_selected != 0) _history.Do(Now.Connect(_selected, node));
+        // With Ctrl held another point is only picked, not joined to the one picked before.
+        if (_selected != 0 && !ImGui.GetIO().KeyCtrl) _history.Do(Now.Connect(_selected, node));
         _selected = node;
     }
 
@@ -713,11 +735,34 @@ internal sealed class RoadEditor
         if (ReferenceEquals(_laidFor, Now) && (_laidFine || !fine)) return;
 
         Celestial body = _body!;
-        Roads.Lay(body, Now, LiftM, fine ? FineSpacingM : CoarseSpacingM, whole: fine, touched: fine ? null : Touched());
+
+        // Laid whole, a circuit is worked out beside the game first, which a long one takes a second over; the
+        // points and lines drawn over it are the circuit's own and move at once.
+        Roads.Prepared? prepared = null;
+        if (fine)
+        {
+            if (_coming is not { } coming || !ReferenceEquals(coming.For, Now))
+            {
+                _coming = coming = (Now, Roads.Prepare(body, Now, LiftM, FineSpacingM));
+                Measure(body);
+            }
+            if (!coming.Work.IsCompleted) return;
+            _coming = null;
+            if (coming.Work.IsCompletedSuccessfully) prepared = coming.Work.Result;
+            else Log.Warn($"the circuit could not be worked out beside the game, so it is laid in it: {coming.Work.Exception?.GetBaseException().Message}");
+        }
+        Roads.Lay(body, Now, LiftM, fine ? FineSpacingM : CoarseSpacingM, whole: fine, touched: fine ? null : Touched(), prepared: prepared);
         if (fine) Roads.ClearClutter(ClutterMarginM);
         _laidFor = Now;
         _laidFine = fine;
+        _generation = Roads.Generation;
 
+        Measure(body);
+    }
+
+    // The roads as lines to pick from and their length, which roads laid before the editor opened need too.
+    private void Measure(Celestial body)
+    {
         _stretches = RoadLayout.Of(Now, body.GetDirCcfFromLatLon, body.MeanRadius, CoarseSpacingM);
         _lengthM = 0.0;
         foreach (RoadLayout.Stretch s in _stretches)
