@@ -772,6 +772,13 @@ internal static partial class KsaWorld
         }
     }
 
+    /// <summary>Whether the main view is the first-person one out of a seat.</summary>
+    public static bool ViewIsFrom(IVASeat seat)
+    {
+        try { return Program.MainViewport is { Mode: CameraMode.IVA } viewport && ReferenceEquals(viewport.IvaController.Seat, seat); }
+        catch { return false; }
+    }
+
     public static CameraMode? MainViewMode
     {
         get

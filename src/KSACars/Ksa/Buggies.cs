@@ -1070,8 +1070,11 @@ internal sealed class Buggies
         }
 
         // On the driver's head while there is one at the wheel, by its head bone as it was last posed;
-        // shrunk to nothing in the seat with nobody in it.
-        DriverHands.HeadPose? head = DriverSeat(e) is { Renderable: { } seated } && ReferenceEquals(seated, e.HandsOn) ? e.Hands?.Head : null;
+        // shrunk to nothing in the seat with nobody in it, and with the camera in it: KSA hides the
+        // kitten's own head from a view out of its seat, and that view is inside the helmet.
+        IVASeat? driverSeat = DriverSeat(e);
+        DriverHands.HeadPose? head = driverSeat is { Renderable: { } seated } && ReferenceEquals(seated, e.HandsOn)
+                                     && !KsaWorld.ViewIsFrom(driverSeat) ? e.Hands?.Head : null;
         foreach (Part? gear in e.HeadGear)
         {
             if (head is null)
