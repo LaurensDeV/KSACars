@@ -315,12 +315,12 @@ public sealed class RoadSurface
             if (!ribbon.Locate(place, i, out RoadRibbon.Section section, out double d, out double beyond) || !section.Deck || beyond > 0.0) continue;
 
             // Level with the deck's edge on that side, give or take what a car's side stands over it and a barrier's height.
-            double side = d < 0.0 ? -1.0 : 1.0;
-            double over = height - (section.Height + (side * section.HalfWidth * section.BankTan));
+            double side = d < section.Shift ? -1.0 : 1.0;
+            double over = height - section.HeightAt(section.Edge(side));
             if (over < -BarrierUnderM || over > BarrierOverM || Math.Abs(over) >= nearest) continue;
 
             nearest = Math.Abs(over);
-            pastM = Math.Abs(d) - section.HalfWidth;
+            pastM = Math.Abs(d - section.Shift) - section.HalfWidth;
             ribbon.Chart.Compass(section.At, out _, out double3 east, out double3 north);
             outward = Vec.Unit((east * section.Left.E) + (north * section.Left.N)) * side;
         }

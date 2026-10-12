@@ -28,7 +28,7 @@ internal sealed class RoadRibbon
     public const double MostToeM = 24.0;
 
     /// <summary>
-    /// A bend's radius is to be at least this many times the half width and the verge. At once that,
+    /// A bend's radius is to be at least this many times what the asphalt reaches to its inside and the verge. At once that,
     /// the inside of the verge has no length left and the surface folds over itself.
     /// </summary>
     public const double RadiusFloor = 1.25;
@@ -44,11 +44,18 @@ internal sealed class RoadRibbon
     /// <param name="Slope">Its climb for each metre along, and <paramref name="Bend"/> how fast that changes.</param>
     /// <param name="BankTan">The tangent of the lean, the left edge up positive, and <paramref name="BankRate"/> how fast it changes.</param>
     /// <param name="ToeLeft">How far out from the left edge the surface ends.</param>
+    /// <param name="Shift">How far the middle of the asphalt is to the left of the centre line, and <paramref name="ShiftRate"/> how fast that changes.</param>
     public readonly record struct Section(double S, Plan At, Plan Heading, double Curvature, double Height, double Slope, double Bend,
                                           double BankTan, double BankRate, double HalfWidth, double HalfRate,
-                                          bool Deck, double ToeLeft, double ToeRight)
+                                          bool Deck, double ToeLeft, double ToeRight, double Shift = 0.0, double ShiftRate = 0.0)
     {
         public Plan Left => Heading.Left();
+
+        /// <summary>How far to the left of the centre line an edge of the asphalt is: the left one for 1, the right for -1, and its middle for 0.</summary>
+        public double Edge(double side) => Shift + (side * HalfWidth);
+
+        /// <summary>The height of the asphalt that far to the left of the centre line, about which it leans.</summary>
+        public double HeightAt(double d) => Height + (d * BankTan);
     }
 
     public RoadChart Chart { get; }
@@ -100,13 +107,15 @@ internal sealed class RoadRibbon
             profile.Height(s, out double height, out _, out _);
             profile.Bank(s, out double bank, out _);
             profile.HalfWidth(s, out double half, out _);
-            double left = height + (half * bank), right = height - (half * bank);
-            double underLeft = leftGround?[i] ?? terrainAt(s, half), underRight = rightGround?[i] ?? terrainAt(s, -half);
+            profile.Shift(s, out double shift, out _);
+            double leftAt = shift + half, rightAt = shift - half;
+            double left = height + (leftAt * bank), right = height + (rightAt * bank);
+            double underLeft = leftGround?[i] ?? terrainAt(s, leftAt), underRight = rightGround?[i] ?? terrainAt(s, rightAt);
 
             high[i] = Math.Max(left - underLeft, right - underRight) > DeckOverM;
-            _toeLeft[i] = Toe(left, underLeft, out_ => terrainAt(s, half + out_));
-            _toeRight[i] = Toe(right, underRight, out_ => terrainAt(s, -half - out_));
-            widest = Math.Max(widest, half);
+            _toeLeft[i] = Toe(left, underLeft, out_ => terrainAt(s, leftAt + out_));
+            _toeRight[i] = Toe(right, underRight, out_ => terrainAt(s, rightAt - out_));
+            widest = Math.Max(widest, half + Math.Abs(shift));
             furthest = Math.Max(furthest, Math.Max(_toeLeft[i], _toeRight[i]));
         }
         ReachM = widest + furthest;
@@ -150,13 +159,15 @@ internal sealed class RoadRibbon
             double s = i * each;
             profile.Bank(s, out double bank, out _);
             profile.HalfWidth(s, out double half, out _);
+            profile.Shift(s, out double shift, out _);
 
             // Against the leaning section: ground under the raised edge may stand that much higher before it is through the road.
-            left[i] = terrain(s, half);
-            right[i] = terrain(s, -half);
-            double most = Math.Max(left[i] - (half * bank), right[i] + (half * bank));
-            most = Math.Max(most, terrain(s, 0.0));
-            most = Math.Max(most, Math.Max(terrain(s, 0.5 * half) - (0.5 * half * bank), terrain(s, -0.5 * half) + (0.5 * half * bank)));
+            double Under(double d) => terrain(s, d) - (d * bank);
+            left[i] = terrain(s, shift + half);
+            right[i] = terrain(s, shift - half);
+            double most = Math.Max(left[i] - ((shift + half) * bank), right[i] - ((shift - half) * bank));
+            most = Math.Max(most, Math.Max(Under(0.0), Under(shift)));
+            most = Math.Max(most, Math.Max(Under(shift + (0.5 * half)), Under(shift - (0.5 * half))));
             if (i < highest.Length) highest[i] = most;
             else highest[0] = Math.Max(highest[0], most);
         }
@@ -268,12 +279,14 @@ internal sealed class RoadRibbon
         Profile.Height(s, out double height, out double slope, out double bend);
         Profile.Bank(s, out double bank, out double bankRate);
         Profile.HalfWidth(s, out double half, out double halfRate);
+        Profile.Shift(s, out double shift, out double shiftRate);
 
         double along = s / _sideStepM;
         int i = Math.Clamp((int)Math.Floor(along), 0, _deck.Length - 1);
         double t = Math.Clamp(along - i, 0.0, 1.0);
         return new Section(s, on.At, on.Heading, on.Curvature, height, slope, bend, bank, bankRate, half, halfRate, _deck[i],
-                           _toeLeft[i] + ((_toeLeft[i + 1] - _toeLeft[i]) * t), _toeRight[i] + ((_toeRight[i + 1] - _toeRight[i]) * t));
+                           _toeLeft[i] + ((_toeLeft[i + 1] - _toeLeft[i]) * t), _toeRight[i] + ((_toeRight[i + 1] - _toeRight[i]) * t),
+                           shift, shiftRate);
     }
 
     /// <summary>
@@ -286,7 +299,7 @@ internal sealed class RoadRibbon
     /// <param name="acrossRise">Its rise for each metre to the left.</param>
     public bool Surface(in Section at, double d, double beyondM, out double height, out double outM, out double alongRise, out double acrossRise)
     {
-        double side = d < 0.0 ? -1.0 : 1.0, beside = Math.Abs(d) - at.HalfWidth;
+        double side = d < at.Shift ? -1.0 : 1.0, beside = Math.Abs(d - at.Shift) - at.HalfWidth;
         outM = Math.Max(Math.Max(beside, beyondM), 0.0);
         if (!(beside > 0.0))
         {
@@ -298,7 +311,7 @@ internal sealed class RoadRibbon
         {
             height = alongRise = acrossRise = 0.0;
             if (at.Deck || beside > (side > 0.0 ? at.ToeLeft : at.ToeRight)) return false;
-            height = at.Height + (side * at.HalfWidth * at.BankTan) - Drop(beside);
+            height = at.HeightAt(at.Edge(side)) - Drop(beside);
             SideRises(at, side, Fall(beside), out alongRise, out acrossRise);
         }
         if (!(beyondM > 0.0)) return true;
@@ -322,7 +335,10 @@ internal sealed class RoadRibbon
     /// </summary>
     public static void SideRises(in Section at, double side, double fall, out double alongRise, out double acrossRise)
     {
-        alongRise = at.Slope + (side * ((at.HalfRate * at.BankTan) + (at.HalfWidth * at.BankRate))) + (at.HalfRate * fall);
+        // The edge is at the shift and the half width to its side: it moves to the left by the one's rate and the
+        // other's to its side, and out from the road by the half width's rate and the shift's to its side.
+        alongRise = at.Slope + ((at.ShiftRate + (side * at.HalfRate)) * at.BankTan) + (at.Edge(side) * at.BankRate)
+                    + ((at.HalfRate + (side * at.ShiftRate)) * fall);
         acrossRise = -side * fall;
     }
 
@@ -350,10 +366,12 @@ internal sealed class RoadRibbon
     /// Where the run turns tighter than <see cref="RadiusFloor"/> allows the road on it, each stretch
     /// with its least radius and the one it needs. Which road a stretch is on is <see cref="Spans"/>'s to say.
     /// </summary>
-    public List<RoadLine.Tight> TooTight() => Line.TooTight(s =>
+    public List<RoadLine.Tight> TooTight() => Line.TooTight((s, turning) =>
     {
         Profile.HalfWidth(s, out double half, out _);
-        return RadiusFloor * (half + VergeM);
+        Profile.Shift(s, out double shift, out _);
+        // The edge on the inside of the bend, which is as far from the line as the asphalt reaches to that side.
+        return RadiusFloor * (half + (Math.Sign(turning) * shift) + VergeM);
     });
 
     public int LookupCount => _lookup.Length;

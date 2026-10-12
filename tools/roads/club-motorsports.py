@@ -5,9 +5,10 @@
     ./tools/roads/club-motorsports.py --print    # the turns and the heights, and nothing written
 
 The line, its heights and how far its asphalt reaches either side are club-motorsports.csv, which says
-where each is from. A circuit's points are taken from it closer together where it bends, each in the
-middle of the asphalt there and the road as wide as the asphalt is, its paved runoff at a bend counted
-in; and each is as high above the ground as the real track is above its lowest place, since KSA's ground
+where each is from. A circuit's points are taken from it closer together where it bends, each on the
+mapped line, and the road is as wide as the asphalt is there, its paved runoff at a bend counted in, and
+shifted to the side the asphalt reaches further to: the middle of the asphalt swerves where a runoff
+starts, and a road laid about that swerve folds on the inside of the bend. Each point is as high above the ground as the real track is above its lowest place, since KSA's ground
 cannot be shaped: on level ground the lap climbs and falls as the real one does, on fill and on decks.
 The flat one is the same line on the ground.
 """
@@ -29,18 +30,9 @@ LEAST_M, MOST_M = 20.0, 40.0
 
 
 def line():
-    """The middle of the asphalt every 10 m, its height and its width: the mapped line moved to halfway between its edges."""
+    """The mapped line every 10 m, its height, the asphalt's width there and how far its middle is to the left of the line."""
     rows = [r for r in csv.reader(l for l in (HERE / "club-motorsports.csv").read_text().splitlines() if not l.startswith("#"))][1:]
-    mapped = [tuple(float(v) for v in r) for r in rows]
-    n, out = len(mapped), []
-    for i, (e, north, z, left, right) in enumerate(mapped):
-        (ax, ay), (bx, by) = mapped[i - 1][:2], mapped[(i + 1) % n][:2]
-        along = math.hypot(bx - ax, by - ay)
-        # To the left of the way it is driven.
-        lx, ly = -(by - ay) / along, (bx - ax) / along
-        off = 0.5 * (left - right)
-        out.append((e + lx * off, north + ly * off, z, left + right))
-    return out
+    return [(e, north, z, left + right, 0.5 * (left - right)) for e, north, z, left, right in (tuple(float(v) for v in r) for r in rows)]
 
 
 def radius(pts, i):
@@ -88,8 +80,18 @@ def circuit(name, raised):
         nodes.append(node)
     count = len(nodes)
     wide = [round(min(max(pts[i][3], 2.0), 40.0), 1) for i in picked]
-    roads = [{"from": k + 1, "to": (k + 1) % count + 1, "from_width_m": wide[k], "to_width_m": wide[(k + 1) % count]} for k in range(count)]
-    return {"version": 3, "name": name, "body": "Earth", "radius_m": 6371000, "at": AT, "width_m": WIDTH_M,
+    shift = [round(pts[i][4], 1) for i in picked]
+    roads = []
+    for k in range(count):
+        to = (k + 1) % count
+        road = {"from": k + 1, "to": to + 1, "from_width_m": wide[k], "to_width_m": wide[to]}
+        # Every road runs the way the lap is driven, so its left is the csv's.
+        if shift[k]:
+            road["from_shift_m"] = shift[k]
+        if shift[to]:
+            road["to_shift_m"] = shift[to]
+        roads.append(road)
+    return {"version": 5, "name": name, "body": "Earth", "radius_m": 6371000, "at": AT, "width_m": WIDTH_M,
             "route": [k + 1 for k in range(count)] + [1], "nodes": nodes, "roads": roads}
 
 

@@ -170,7 +170,7 @@ internal sealed class RoadProfile
     /// <summary>What an end of a run is held to at a junction's mouth: its height over the body's mean radius, and its climb for each metre along the run.</summary>
     public readonly record struct Pin(double HeightM, double Slope);
 
-    private readonly double[] _knot, _halfWidth, _heightM;
+    private readonly double[] _knot, _halfWidth, _shift, _heightM;
     private readonly MonotoneCurve _above, _bank;
     private readonly RoadGround _ground;
     private readonly double _liftM;
@@ -186,12 +186,16 @@ internal sealed class RoadProfile
     /// <param name="bankDeg">The lean at each point, raising the left edge of one travelling along the run.</param>
     /// <param name="widthM">The road's width at each point.</param>
     /// <param name="bankRateStart">How fast the tangent of the lean changes at an open run's first point (1/m), where that is given; and so at its last.</param>
+    /// <param name="shiftM">How far the middle of the asphalt is to the left of the line at each point, or nothing where it is on it.</param>
     public RoadProfile(double[] knotS, double[] heightM, double[] bankDeg, double[] widthM, bool closed,
-                       double liftM, RoadGround? ground = null, double? bankRateStart = null, double? bankRateEnd = null)
+                       double liftM, RoadGround? ground = null, double? bankRateStart = null, double? bankRateEnd = null,
+                       double[]? shiftM = null)
     {
         _knot = knotS;
         Closed = closed;
         _halfWidth = [.. widthM.Select(w => 0.5 * w)];
+        // The line stays on the asphalt, this far in from an edge at least: a row of the road's triangles has a vertex on it.
+        _shift = [.. _halfWidth.Select((half, i) => shiftM is null ? 0.0 : Math.Clamp(shiftM[i], LineInsideM - half, half - LineInsideM))];
         _liftM = liftM;
         _ground = ground ?? RoadGround.Level(0.0);
 
@@ -209,7 +213,7 @@ internal sealed class RoadProfile
 
     private RoadProfile(RoadProfile from, RoadGround ground, Pin? start, Pin? end)
     {
-        (_knot, _halfWidth, _heightM, _bank, Closed) = (from._knot, from._halfWidth, from._heightM, from._bank, from.Closed);
+        (_knot, _halfWidth, _shift, _heightM, _bank, Closed) = (from._knot, from._halfWidth, from._shift, from._heightM, from._bank, from.Closed);
         (_liftM, _ground, _above) = (from._liftM, ground, from._above);
         if (Closed || (start is null && end is null)) return;
 
@@ -268,6 +272,20 @@ internal sealed class RoadProfile
         double t = span > 0.0 ? Math.Clamp((s - _knot[i]) / span, 0.0, 1.0) : 0.0;
         double change = _halfWidth[i + 1] - _halfWidth[i];
         half = _halfWidth[i] + (change * t * t * (3.0 - (2.0 * t)));
+        rate = span > 0.0 ? change * 6.0 * t * (1.0 - t) / span : 0.0;
+    }
+
+    /// <summary>How far in from either edge of its asphalt a road's line is kept.</summary>
+    public const double LineInsideM = 1.0;
+
+    /// <summary>How far the middle of the asphalt is to the left of the line at <paramref name="s"/>, and how fast that changes.</summary>
+    public void Shift(double s, out double shift, out double rate)
+    {
+        int i = Road(s);
+        double span = _knot[i + 1] - _knot[i];
+        double t = span > 0.0 ? Math.Clamp((s - _knot[i]) / span, 0.0, 1.0) : 0.0;
+        double change = _shift[i + 1] - _shift[i];
+        shift = _shift[i] + (change * t * t * (3.0 - (2.0 * t)));
         rate = span > 0.0 ? change * 6.0 * t * (1.0 - t) / span : 0.0;
     }
 

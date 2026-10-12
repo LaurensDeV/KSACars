@@ -11,6 +11,26 @@ public class RoadWarningsTests
         return RoadWarning.Of(c, RoadLaying.Laid(c, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM), TrackWorld.DirOf);
     }
 
+    public static TheoryData<string> Shipped
+    {
+        get
+        {
+            DirectoryInfo? at = new(AppContext.BaseDirectory);
+            while (at is not null && !Directory.Exists(Path.Combine(at.FullName, "src", "KSACars", "Circuits"))) at = at.Parent;
+            Assert.NotNull(at);
+            return [.. Directory.GetFiles(Path.Combine(at.FullName, "src", "KSACars", "Circuits"), "*.json")];
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Shipped))]
+    public void ACourseTheModShipsHasNothingWrongWithIt(string file)
+    {
+        Circuit? circuit = Circuit.FromJson(File.ReadAllText(file), out string why, out _);
+        Assert.True(circuit is not null, why);
+        Assert.Empty(Of(w => circuit!).Select(x => x.Text));
+    }
+
     [Fact]
     public void AnOrdinaryRoadHasNothingWrongWithIt()
     {

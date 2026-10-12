@@ -122,7 +122,7 @@ internal static class RoadTessellation
         double turn = Math.Atan2(Plan.Cross(before, at.Heading), Plan.Dot(before, at.Heading));
         if (Math.Abs(turn) <= RoadLine.KinkRad) return;
 
-        double each = Math.Sqrt(8.0 * PlanToleranceM / (at.HalfWidth + RoadRibbon.VergeM));
+        double each = Math.Sqrt(8.0 * PlanToleranceM / (Reach(at) + RoadRibbon.VergeM));
         int steps = Math.Max(1, (int)Math.Ceiling(Math.Abs(turn) / each));
         for (int j = 1; j <= steps; j++)
         {
@@ -137,13 +137,13 @@ internal static class RoadTessellation
     private static double Step(RoadRibbon ribbon, int arc, double s, double room)
     {
         RoadRibbon.Section at = ribbon.At(arc, s);
-        double step = MostStepM, squeezed = Math.Abs(at.Curvature) * at.HalfWidth;
+        double step = MostStepM, squeezed = Math.Abs(at.Curvature) * Reach(at);
 
         // The inside edge turns harder than the centre line, by how much of the bend's radius the half width is.
         double edge = squeezed < 0.95 ? Math.Abs(at.Curvature) / (1.0 - squeezed) : double.PositiveInfinity;
         if (edge > 0.0) step = Math.Min(step, Math.Min(Math.Sqrt(8.0 * PlanToleranceM / edge), MostTurnRad / edge));
         if (Math.Abs(at.Bend) > 0.0) step = Math.Min(step, Math.Sqrt(8.0 * HeightToleranceM / Math.Abs(at.Bend)));
-        double twist = at.HalfWidth * Math.Abs(at.BankRate);
+        double twist = Reach(at) * Math.Abs(at.BankRate);
         if (twist > 0.0) step = Math.Min(step, Math.Sqrt(8.0 * HeightToleranceM / twist));
         step = Math.Clamp(step, LeastStepM, MostStepM);
 
@@ -164,13 +164,13 @@ internal static class RoadTessellation
     {
         RoadRibbon.Section to = ribbon.At(arc, from.S + step);
         double turn = Math.Abs(Math.Atan2(Plan.Cross(from.Heading, to.Heading), Plan.Dot(from.Heading, to.Heading)));
-        double squeezed = Math.Max(Math.Abs(from.Curvature) * from.HalfWidth, Math.Abs(to.Curvature) * to.HalfWidth);
+        double squeezed = Math.Max(Math.Abs(from.Curvature) * Reach(from), Math.Abs(to.Curvature) * Reach(to));
         if (squeezed < 0.95 && turn / (1.0 - squeezed) > MostTurnRad) return false;
 
         // And the way it faces, which a crest or a change of lean turns where the road runs straight.
         for (int side = -1; side <= 1; side++)
         {
-            if (Vec.AngleBetween(Facing(ribbon, from, side * from.HalfWidth), Facing(ribbon, to, side * to.HalfWidth)) > MostTurnRad) return false;
+            if (Vec.AngleBetween(Facing(ribbon, from, from.Edge(side)), Facing(ribbon, to, to.Edge(side))) > MostTurnRad) return false;
         }
 
         for (int k = 1; k <= 3; k++)
@@ -179,13 +179,13 @@ internal static class RoadTessellation
             RoadRibbon.Section at = ribbon.At(arc, from.S + (step * t));
             for (int side = -1; side <= 1; side++)
             {
-                Plan a = from.At + (from.Left * (side * from.HalfWidth)), b = to.At + (to.Left * (side * to.HalfWidth));
-                Plan on = at.At + (at.Left * (side * at.HalfWidth));
+                Plan a = from.At + (from.Left * from.Edge(side)), b = to.At + (to.Left * to.Edge(side));
+                Plan on = at.At + (at.Left * at.Edge(side));
                 Plan off = on - (a + ((b - a) * t));
                 if (Math.Abs(Plan.Dot(off, at.Left)) > 0.8 * PlanToleranceM) return false;
 
-                double ha = from.Height + (side * from.HalfWidth * from.BankTan), hb = to.Height + (side * to.HalfWidth * to.BankTan);
-                double h = at.Height + (side * at.HalfWidth * at.BankTan);
+                double ha = from.HeightAt(from.Edge(side)), hb = to.HeightAt(to.Edge(side));
+                double h = at.HeightAt(at.Edge(side));
                 if (Math.Abs(h - (ha + ((hb - ha) * t))) > 0.8 * HeightToleranceM) return false;
             }
         }
@@ -195,7 +195,7 @@ internal static class RoadTessellation
         // along the road, and where the road climbs or its lean changes it is not at the height
         // halfway between the two either.
         RoadRibbon.Section middle = ribbon.At(arc, from.S + (0.5 * step));
-        ReadOnlySpan<(double From, double To)> cuts = [(from.HalfWidth, 0.0), (0.0, -to.HalfWidth)];
+        ReadOnlySpan<(double From, double To)> cuts = [(from.Edge(1.0), to.Edge(0.0)), (from.Edge(0.0), to.Edge(-1.0))];
         foreach ((double da, double db) in cuts)
         {
             Plan off = (((from.At + (from.Left * da)) + (to.At + (to.Left * db))) * 0.5) - middle.At;
@@ -207,6 +207,9 @@ internal static class RoadTessellation
         }
         return true;
     }
+
+    // The most the asphalt reaches from the centre line, to whichever side that is.
+    private static double Reach(in RoadRibbon.Section at) => at.HalfWidth + Math.Abs(at.Shift);
 
     private static double3 Facing(RoadRibbon ribbon, in RoadRibbon.Section at, double d) =>
         ribbon.Normal(at, d, at.Height + (d * at.BankTan), at.Slope + (d * at.BankRate), at.BankTan);
@@ -253,8 +256,8 @@ internal static class RoadTessellation
 
     private static double Lateral(in RoadRibbon.Section at, double d)
     {
-        double beside = Math.Abs(d) - at.HalfWidth;
-        return beside > 0.0 ? at.Height + (Math.Sign(d) * at.HalfWidth * at.BankTan) - RoadRibbon.Drop(beside) : at.Height + (d * at.BankTan);
+        double beside = Math.Abs(d - at.Shift) - at.HalfWidth;
+        return beside > 0.0 ? at.HeightAt(at.Edge(Math.Sign(d - at.Shift))) - RoadRibbon.Drop(beside) : at.HeightAt(d);
     }
 
     // A row of a road on the ground, moved `beyond` on past the end of its run and sunk by what the
@@ -263,11 +266,11 @@ internal static class RoadTessellation
     {
         double ahead = section.S > 0.5 * ribbon.LengthM ? 1.0 : -1.0;
         RoadRibbon.Section at = beyond != 0.0 || alongFall != 0.0 ? section with { At = section.At + (section.Heading * (ahead * beyond)) } : section;
-        double half = at.HalfWidth, vergeLeft = Math.Min(at.ToeLeft, RoadRibbon.VergeM), vergeRight = Math.Min(at.ToeRight, RoadRibbon.VergeM);
+        double left = at.Edge(1.0), right = at.Edge(-1.0), vergeLeft = Math.Min(at.ToeLeft, RoadRibbon.VergeM), vergeRight = Math.Min(at.ToeRight, RoadRibbon.VergeM);
         ReadOnlySpan<double> across =
         [
-            half + at.ToeLeft, half + vergeLeft, half + vergeLeft, half, half, 0.0,
-            -half, -half, -half - vergeRight, -half - vergeRight, -half - at.ToeRight,
+            left + at.ToeLeft, left + vergeLeft, left + vergeLeft, left, left, at.Edge(0.0),
+            right, right, right - vergeRight, right - vergeRight, right - at.ToeRight,
         ];
         ReadOnlySpan<double> falls =
         [
@@ -298,8 +301,8 @@ internal static class RoadTessellation
 
     private static Row DeckRow(RoadRibbon ribbon, in RoadRibbon.Section at)
     {
-        double half = at.HalfWidth;
-        ReadOnlySpan<double> across = [half, 0.0, -half, -half, -half, -half, half, half, half];
+        double leftAt = at.Edge(1.0), rightAt = at.Edge(-1.0);
+        ReadOnlySpan<double> across = [leftAt, at.Edge(0.0), rightAt, rightAt, rightAt, rightAt, leftAt, leftAt, leftAt];
         ReadOnlySpan<bool> under = [false, false, false, false, true, true, true, true, false];
 
         Row row = new(new double3[9], new double3[9], new float2[9]);
@@ -350,14 +353,14 @@ internal static class RoadTessellation
             double turn = Math.Abs(line.TurnAt(arc));
             if (turn <= RoadLine.KinkRad) continue;
 
-            double outside = at.HalfWidth * turn, kinkAt = arc == 0 ? line.LengthM : line.StartOf(arc);
+            double outside = Reach(at) * turn, kinkAt = arc == 0 ? line.LengthM : line.StartOf(arc);
             whole += outside;
             if (at.S > kinkAt + 1e-9) drawn += outside;
             else if (Math.Abs(at.S - kinkAt) <= 1e-9)
             {
                 Plan after = ribbon.At(arc, line.StartOf(arc)).Heading;
                 double left = Math.Abs(Math.Atan2(Plan.Cross(at.Heading, after), Plan.Dot(at.Heading, after)));
-                drawn += at.HalfWidth * (turn - Math.Min(left, turn));
+                drawn += Reach(at) * (turn - Math.Min(left, turn));
             }
         }
         return drawn;
@@ -400,8 +403,8 @@ internal static class RoadTessellation
 
         static double3 At(RoadRibbon ribbon, in RoadRibbon.Section at, int side, double beyond, double over)
         {
-            double d = side * (at.HalfWidth + beyond);
-            return ribbon.Point(at, d, at.Height + (side * at.HalfWidth * at.BankTan) + over);
+            double d = at.Edge(side) + (side * beyond);
+            return ribbon.Point(at, d, at.HeightAt(at.Edge(side)) + over);
         }
     }
 
@@ -841,21 +844,21 @@ internal static class RoadTessellation
         if (deck)
         {
             Row row = DeckRow(ribbon, at);
-            double half = at.HalfWidth, top = at.Height, under = top - RoadRibbon.DeckThickM;
+            double left = at.Edge(1.0), right = at.Edge(-1.0), top = at.Height, under = top - RoadRibbon.DeckThickM;
             chunk.Cap([row.At[1], row.At[0], row.At[7], row.At[4], row.At[2]],
-                      [Flat(0.0, top), Flat(half, top), Flat(half, under), Flat(-half, under), Flat(-half, top)], facing, Kind.Deck);
+                      [Flat(at.Edge(0.0), top), Flat(left, top), Flat(left, under), Flat(right, under), Flat(right, top)], facing, Kind.Deck);
             return;
         }
 
         if (!runEnds)
         {
             Row ground = GroundRow(ribbon, at);
-            double half = at.HalfWidth, vergeLeft = Math.Min(at.ToeLeft, RoadRibbon.VergeM), vergeRight = Math.Min(at.ToeRight, RoadRibbon.VergeM);
+            double left = at.Edge(1.0), right = at.Edge(-1.0), vergeLeft = Math.Min(at.ToeLeft, RoadRibbon.VergeM), vergeRight = Math.Min(at.ToeRight, RoadRibbon.VergeM);
 
             // From the left foot over the road to the right one. A fan from the centre will not do: where
             // the road leans, its low edge is a hollow in this outline and the fan's triangle bridges it,
             // a wedge of wall a hand above the asphalt at the edge a car cuts closest to.
-            double[] across = [half + at.ToeLeft, half + vergeLeft, half, 0.0, -half, -half - vergeRight, -half - at.ToeRight];
+            double[] across = [left + at.ToeLeft, left + vergeLeft, left, at.Edge(0.0), right, right - vergeRight, right - at.ToeRight];
             RoadRibbon.Section here = at;
             chunk.Curtain([ground.At[0], ground.At[2], ground.At[4], ground.At[5], ground.At[6], ground.At[8], ground.At[10]],
                           [.. across.Select(d => Flat(d, Lateral(here, d)))], facing, Kind.Earth);

@@ -213,15 +213,15 @@ internal sealed class RoadLine
 
     /// <summary>
     /// Where the line's radius is less than <paramref name="neededAt"/> says a road there needs,
-    /// looked for every <paramref name="stepM"/>. Inside that radius the inner edge of the road folds
-    /// over itself.
+    /// looked for every <paramref name="stepM"/>, a place given with the way the line turns there, to the
+    /// left positive. Inside that radius the inner edge of the road folds over itself.
     /// </summary>
-    public List<Tight> TooTight(Func<double, double> neededAt, double stepM = 0.5)
+    public List<Tight> TooTight(Func<double, double, double> neededAt, double stepM = 0.5)
     {
         List<Tight> found = [];
         for (int arc = 0; arc < _arcs.Length; arc++)
         {
-            if (Math.Abs(TurnAt(arc)) > KinkRad) found.Add(new Tight(_start[arc], _start[arc], 0.0, neededAt(_start[arc])));
+            if (Math.Abs(TurnAt(arc)) > KinkRad) found.Add(new Tight(_start[arc], _start[arc], 0.0, neededAt(_start[arc], TurnAt(arc))));
 
             double length = _arcs[arc].LengthM;
             int steps = Math.Max(1, (int)Math.Ceiling(length / Math.Max(stepM, 0.01)));
@@ -229,7 +229,7 @@ internal sealed class RoadLine
             for (int i = 0; i <= steps; i++)
             {
                 double s = _start[arc] + (length * i / steps);
-                double bend = Math.Abs(At(arc, s).Curvature), needed = neededAt(s);
+                double turning = At(arc, s).Curvature, bend = Math.Abs(turning), needed = neededAt(s, turning);
                 if (bend * needed > 1.0)
                 {
                     double radius = 1.0 / bend;

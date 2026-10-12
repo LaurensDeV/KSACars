@@ -162,7 +162,8 @@ internal sealed class Route
                 // Just short of each end, so a closed run's last point is not its first come round again.
                 double s = Math.Clamp(from + ((to - from) * i / steps), Math.Min(from, to) + 1e-9, Math.Max(from, to) - 1e-9);
                 RoadRibbon.Section section = on.At(s);
-                line.Add(on.Point(section, 0.0, section.Height));
+                // Down the middle of the asphalt, which is not the road's own line where the road is wider to one side.
+                line.Add(on.Point(section, section.Shift, section.HeightAt(section.Shift)));
                 halfWidths.Add(section.HalfWidth);
                 banks.Add(to >= from ? section.BankTan : -section.BankTan);
             }

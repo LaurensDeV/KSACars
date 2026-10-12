@@ -336,12 +336,13 @@ public class CircuitFormatTests
     {
         Circuit c = new Circuit { Name = "Banked" }
             .AddNode(0.0, 0.0, out int a).Extend(a, 0.0, Deg(300), out int b).Extend(b, Deg(200), Deg(300), out int d)
-            .SetBank(b, a, 9.0).SetBank(b, d, -4.0).SetEndWidth(a, b, 14.0).SetEndWidth(d, b, 7.0)
+            .SetBank(b, a, 9.0).SetBank(b, d, -4.0).SetEndWidth(a, b, 14.0).SetEndWidth(d, b, 7.0).SetEndShift(b, a, 2.5)
             .SetJunctionRadius(b, 12.0).SetGroundSmooth(45.0).SetHeight(d, 3.0);
 
         string json = c.ToJson();
-        Assert.Contains("\"version\": 4", json);
+        Assert.Contains("\"version\": 5", json);
         Assert.Contains("\"to_bank_deg\":9", json);
+        Assert.Contains("\"to_shift_m\":2.5", json);
         Assert.Contains("\"ground_smooth_m\": 45", json);
         Assert.Contains("\"junction_radius_m\":12", json);
 
@@ -356,6 +357,8 @@ public class CircuitFormatTests
         Assert.Equal(14.0, Circuit.EndWidth(back.Roads[0], a));
         Assert.Null(Circuit.EndWidth(back.Roads[0], b));
         Assert.Equal(7.0, Circuit.EndWidth(back.Roads[1], d));
+        Assert.Equal(2.5, Circuit.EndShift(back.Roads[0], b));
+        Assert.Null(Circuit.EndShift(back.Roads[1], b));
         Assert.Equal(12.0, back.Find(b)!.JunctionRadiusM);
         Assert.Equal(45.0, back.GroundSmoothM);
     }

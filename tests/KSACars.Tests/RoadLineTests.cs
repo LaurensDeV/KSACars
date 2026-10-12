@@ -238,9 +238,9 @@ public class RoadLineTests
             RoadArc.Straight(new Plan(r, r), new Plan(r, 80)),
         ], false);
 
-        Assert.Empty(line.TooTight(_ => 10.0));
+        Assert.Empty(line.TooTight((_, _) => 10.0));
 
-        RoadLine.Tight tight = Assert.Single(line.TooTight(_ => 1.25 * (10.0 + 1.5)));
+        RoadLine.Tight tight = Assert.Single(line.TooTight((_, _) => 1.25 * (10.0 + 1.5)));
         Assert.InRange(tight.FromS, 50.0, 50.6);
         Assert.InRange(tight.ToS, 49.4 + (0.5 * Math.PI * r), 50.1 + (0.5 * Math.PI * r));
         Assert.InRange(tight.LeastRadiusM, 11.9, 12.0);
@@ -252,7 +252,7 @@ public class RoadLineTests
     {
         RoadLine line = RoadLine.Through([new Plan(0, 0), new Plan(90, 0), new Plan(135, 78)], false);
 
-        RoadLine.Tight kink = Assert.Single(line.TooTight(_ => 8.0));
+        RoadLine.Tight kink = Assert.Single(line.TooTight((_, _) => 8.0));
         Assert.Equal(90.0, kink.FromS, 9);
         Assert.Equal(90.0, kink.ToS, 9);
         Assert.Equal(0.0, kink.LeastRadiusM);

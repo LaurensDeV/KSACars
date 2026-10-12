@@ -21,7 +21,7 @@ namespace KSACars;
 /// </summary>
 internal sealed record Circuit
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 
     /// <summary>The body's radius a file's metres are taken on where nothing says: Earth's, and a file read with what it was written with comes back the same whatever that is.</summary>
     public const double DefaultRadiusM = 6_371_000.0;
@@ -161,10 +161,13 @@ internal sealed record Circuit
     /// set by hand; without one it is worked out from the roads that meet there. A bank is how far
     /// the road leans at that end, in degrees, raising the left edge of one travelling from
     /// <paramref name="From"/> to <paramref name="To"/>; a width at an end is the road's there, and it
-    /// eases from one to the other.
+    /// eases from one to the other. A shift at an end is how far the middle of the asphalt is to the
+    /// left of the road's line there, travelling the same way: a road wider to one side of its line
+    /// than to the other, as one with a paved runoff outside a bend is.
     /// </summary>
     public sealed record Road(int From, int To, double? WidthM = null, Place? FromHandle = null, Place? ToHandle = null,
-                              double? FromBankDeg = null, double? ToBankDeg = null, double? FromWidthM = null, double? ToWidthM = null)
+                              double? FromBankDeg = null, double? ToBankDeg = null, double? FromWidthM = null, double? ToWidthM = null,
+                              double? FromShiftM = null, double? ToShiftM = null)
     {
         public bool Joins(int a, int b) => (From == a && To == b) || (From == b && To == a);
 
@@ -178,6 +181,10 @@ internal sealed record Circuit
     /// <summary>The width set for a road's end at <paramref name="node"/>, or none where it is the road's own.</summary>
     public static double? EndWidth(Road road, int node) =>
         (road.From == node ? road.FromWidthM : road.ToWidthM) is { } w ? Math.Clamp(w, MinWidthM, MaxWidthM) : null;
+
+    /// <summary>The shift set for a road's end at <paramref name="node"/>, as the road is saved, or none where its asphalt is about its line.</summary>
+    public static double? EndShift(Road road, int node) =>
+        (road.From == node ? road.FromShiftM : road.ToShiftM) is { } o ? Math.Clamp(o, -0.5 * MaxWidthM, 0.5 * MaxWidthM) : null;
 
     /// <summary>The bank set for a road's end at <paramref name="node"/>, as the road is saved, or none where it is level.</summary>
     public static double? EndBankDeg(Road road, int node) =>
@@ -267,6 +274,16 @@ internal sealed record Circuit
         };
     }
 
+    /// <summary>How far the middle of the asphalt is to the left of the road's line at its <paramref name="at"/> end, travelling from its first point to its second, or none for on it.</summary>
+    public Circuit SetEndShift(int at, int other, double? shiftM)
+    {
+        double? shift = shiftM is { } o ? Math.Clamp(o, -0.5 * MaxWidthM, 0.5 * MaxWidthM) : null;
+        return this with
+        {
+            Roads = [.. Roads.Select(r => !r.Joins(at, other) ? r : r.From == at ? r with { FromShiftM = shift } : r with { ToShiftM = shift })],
+        };
+    }
+
     public Circuit SetWidth(int a, int b, double? widthM) => this with
     {
         Roads = [.. Roads.Select(r => r.Joins(a, b) ? r with { WidthM = widthM is { } w ? Math.Clamp(w, MinWidthM, MaxWidthM) : null } : r)],
@@ -289,8 +306,8 @@ internal sealed record Circuit
         return with_ with
         {
             Roads = [.. Roads.Where(r => !ReferenceEquals(r, road)),
-                     road with { To = mid, ToHandle = null, ToBankDeg = null, ToWidthM = null },
-                     road with { From = mid, FromHandle = null, FromBankDeg = null, FromWidthM = null }],
+                     road with { To = mid, ToHandle = null, ToBankDeg = null, ToWidthM = null, ToShiftM = null },
+                     road with { From = mid, FromHandle = null, FromBankDeg = null, FromWidthM = null, FromShiftM = null }],
         };
     }
 
@@ -369,7 +386,8 @@ internal sealed record Circuit
     private sealed record SavedPlace(double EastM, double NorthM);
 
     private sealed record SavedRoad(int From, int To, double? WidthM, SavedPlace? FromHandle, SavedPlace? ToHandle,
-                                    double? FromBankDeg, double? ToBankDeg, double? FromWidthM, double? ToWidthM);
+                                    double? FromBankDeg, double? ToBankDeg, double? FromWidthM, double? ToWidthM,
+                                    double? FromShiftM = null, double? ToShiftM = null);
 
     /// <summary>
     /// The circuit as its file: the place of its first point, and each point a line, as metres east
@@ -414,7 +432,7 @@ internal sealed record Circuit
             : null!), last: false);
         Lines("roads", Roads.Select(r => new SavedRoad(r.From, r.To, Set(r.WidthM),
             r.FromHandle is { } f ? At(f.LatDeg, f.LonDeg) : null, r.ToHandle is { } t ? At(t.LatDeg, t.LonDeg) : null,
-            Set(r.FromBankDeg), Set(r.ToBankDeg), Set(r.FromWidthM), Set(r.ToWidthM))), last: true);
+            Set(r.FromBankDeg), Set(r.ToBankDeg), Set(r.FromWidthM), Set(r.ToWidthM), Set(r.FromShiftM), Set(r.ToShiftM))), last: true);
         text.Append("}\n");
         return text.ToString();
     }
@@ -478,6 +496,8 @@ internal sealed record Circuit
                 ToBankDeg = Kept(r.ToBankDeg, -MaxBankDeg, MaxBankDeg),
                 FromWidthM = Kept(r.FromWidthM, MinWidthM, MaxWidthM),
                 ToWidthM = Kept(r.ToWidthM, MinWidthM, MaxWidthM),
+                FromShiftM = Kept(r.FromShiftM, -0.5 * MaxWidthM, 0.5 * MaxWidthM),
+                ToShiftM = Kept(r.ToShiftM, -0.5 * MaxWidthM, 0.5 * MaxWidthM),
             });
         }
         List<Loop> loops = [.. (read.Loops ?? []).Where(l => l is not null && l.From != l.To && nodes.Any(n => n.Id == l.From) && nodes.Any(n => n.Id == l.To)
@@ -511,7 +531,7 @@ internal sealed record Circuit
             Nodes = [.. file.Nodes.Where(n => n is not null).Select(n => On(n.EastM, n.NorthM) is var (lat, lon)
                 ? new Node(n.Id, lat, lon, n.Corner ?? 1.0, n.HeightM ?? 0.0, n.JunctionRadiusM) : null!)],
             Roads = [.. file.Roads.Where(x => x is not null).Select(x => new Road(x.From, x.To, x.WidthM, Handle(x.FromHandle), Handle(x.ToHandle),
-                x.FromBankDeg, x.ToBankDeg, x.FromWidthM, x.ToWidthM))],
+                x.FromBankDeg, x.ToBankDeg, x.FromWidthM, x.ToWidthM, x.FromShiftM, x.ToShiftM))],
         };
     }
 

@@ -18,7 +18,7 @@ namespace KSACars;
 internal static class RoadLaying
 {
     /// <param name="Line">The road's centre line on its surface, from the body's centre.</param>
-    /// <param name="HalfWidth">Half the road's width where it is widest.</param>
+    /// <param name="HalfWidth">The most the road's asphalt reaches from its line: half its width where it is widest and about its line.</param>
     /// <param name="AboveGroundM">How far the surface is above the ground at each point of the line.</param>
     /// <param name="Ribbon">The surface the line was taken from, or none for a line made by hand.</param>
     public sealed record Strip(double3[] Line, double HalfWidth, double LengthM, bool Closed, double[] AboveGroundM, RoadRibbon? Ribbon = null);
@@ -124,7 +124,7 @@ internal static class RoadLaying
             // One value at each point of the run. Where two roads meet at one, what either sets there
             // holds, the mean of the two if both do, and otherwise the road is level and as wide as
             // the mean of the two roads. An end at a junction is at its mouth, and leans as the plane does.
-            double[] knot = new double[legs + 1], height = new double[legs + 1], bank = new double[legs + 1], width = new double[legs + 1];
+            double[] knot = new double[legs + 1], height = new double[legs + 1], bank = new double[legs + 1], width = new double[legs + 1], shift = new double[legs + 1];
             RoadRibbon.Span[] spans = new RoadRibbon.Span[legs];
             for (int k = 0; k <= legs; k++)
             {
@@ -137,14 +137,18 @@ internal static class RoadLaying
                 width[k] = Mean(before is null ? null : Circuit.EndWidth(before.Road, node), after is null ? null : Circuit.EndWidth(after.Road, node))
                            ?? Mean(before is null ? null : circuit.WidthOf(before.Road), after is null ? null : circuit.WidthOf(after.Road))
                            ?? circuit.WidthM;
+                shift[k] = Mean(Shift(before, node), Shift(after, node)) ?? 0.0;
                 if (k < legs) spans[k] = new RoadRibbon.Span(run.Legs[k].From, run.Legs[k].To, line.StartOf(k), line.StartOf(k + 1));
             }
 
             double? startRate = null, endRate = null;
             if (start is not null) (bank[0], startRate) = Lean(start, line.At(0, 0.0));
             if (end is not null) (bank[^1], endRate) = Lean(end, line.At(line.Count - 1, line.LengthM));
+            // A junction's mouth is about its road's line, so a road comes to one with its asphalt on it.
+            if (start is not null) shift[0] = 0.0;
+            if (end is not null) shift[^1] = 0.0;
 
-            RoadProfile profile = new(knot, height, bank, width, run.Closed, liftM, null, startRate, endRate);
+            RoadProfile profile = new(knot, height, bank, width, run.Closed, liftM, null, startRate, endRate, shift);
             pending.Add(new Pending(line, profile, spans, RoadRibbon.Look(line, profile, Terrain, spacingM, circuit.GroundSmoothM), start, startArm, end, endArm));
         }
 
@@ -215,6 +219,9 @@ internal static class RoadLaying
     private static double? Bank(RoadLayout.Leg? leg, int node) =>
         leg is not null && Circuit.EndBankDeg(leg.Road, node) is { } bank ? (leg.Forward ? bank : -bank) : null;
 
+    private static double? Shift(RoadLayout.Leg? leg, int node) =>
+        leg is not null && Circuit.EndShift(leg.Road, node) is { } shift ? (leg.Forward ? shift : -shift) : null;
+
     private static double? Mean(double? a, double? b) => a is { } x && b is { } y ? 0.5 * (x + y) : a ?? b;
 
     /// <summary>
@@ -244,7 +251,7 @@ internal static class RoadLaying
                                                            i == steps ? from + length : from + (length * i / steps));
                     line.Add(ribbon.Point(section, 0.0, section.Height));
                     above.Add(section.Height - groundAt(Vec.Unit(line[^1])));
-                    widest = Math.Max(widest, section.HalfWidth);
+                    widest = Math.Max(widest, section.HalfWidth + Math.Abs(section.Shift));
                 }
             }
             strips.Add(new Strip([.. line], widest, ribbon.LengthM, ribbon.Closed, [.. above], ribbon));

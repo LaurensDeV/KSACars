@@ -21,12 +21,14 @@ public class RoadRibbonTests
         return circuit;
     }
 
-    // A road that climbs, turns both ways, leans into its bends and changes width, over ground that rolls.
+    // A road that climbs, turns both ways, leans into its bends, changes width and is wider to one side of its line
+    // and then the other, over ground that rolls.
     private static (TrackWorld World, Circuit Circuit) Winding()
     {
         TrackWorld world = TrackWorld.Earth((e, n) => (1.5 * Math.Sin(e / 40.0)) + (0.8 * Math.Cos(n / 25.0)) + (0.02 * e));
         Circuit c = Through(world, 10.0, (0, 0, 0), (120, 0, 1), (220, 60, 3), (300, 160, 3), (420, 180, 0.5), (520, 120, 0));
-        c = c.SetBank(2, 1, 5.0).SetBank(3, 2, 8.0).SetBank(3, 4, 8.0).SetBank(4, 5, -6.0).SetEndWidth(3, 4, 14.0).SetEndWidth(5, 4, 7.0);
+        c = c.SetBank(2, 1, 5.0).SetBank(3, 2, 8.0).SetBank(3, 4, 8.0).SetBank(4, 5, -6.0).SetEndWidth(3, 4, 14.0).SetEndWidth(5, 4, 7.0)
+            .SetEndShift(2, 1, 1.5).SetEndShift(3, 2, 3.0).SetEndShift(3, 4, 3.0).SetEndShift(4, 3, -2.0).SetEndShift(4, 5, -2.0);
         return (world, c);
     }
 
@@ -99,12 +101,13 @@ public class RoadRibbonTests
             double s = ribbon.Spans[point].FromS;
             RoadRibbon.Section before = ribbon.At(point - 1, s), after = ribbon.At(point, s);
             Near.Equal(0.0, Vec.AngleBetween(Facing(s - 1e-6, 0.0), Facing(s + 1e-6, 0.0)), 1e-6);
-            foreach (double d in new[] { -3.0, 3.0 })
+            foreach (double d in new[] { after.Shift - 3.0, after.Shift + 3.0 })
             {
                 double turned = Vec.AngleBetween(Facing(s - 1e-6, d), Facing(s + 1e-6, d));
                 double crease = Math.Abs((after.Slope + (d * after.BankRate)) * d * (after.Curvature - before.Curvature));
                 Assert.True(turned <= (1.5 * crease) + 1e-6, $"the facing jumps by {turned} rad at point {point}, {d} m across, where {crease} is the crease");
-                Assert.True(turned < 1e-3, $"the facing jumps by {turned} rad at point {point}, {d} m across");
+                // The crease grows with how far from the line it is, and a road shifted to one side is further from it.
+                Assert.True(turned < 1e-3 * Math.Max(1.0, Math.Abs(d) / 3.0), $"the facing jumps by {turned} rad at point {point}, {d} m across");
             }
         }
 
@@ -112,19 +115,19 @@ public class RoadRibbonTests
         double most = 0.0;
         foreach (double share in new[] { -0.9, 0.0, 0.9 })
         {
-            double3 last = Facing(2.0, share * ribbon.At(2.0).HalfWidth);
+            double3 last = Facing(2.0, ribbon.At(2.0).Edge(share));
             for (double s = 2.01; s < ribbon.LengthM - 2.0; s += 0.01)
             {
-                double3 here = Facing(s, share * ribbon.At(s).HalfWidth);
+                double3 here = Facing(s, ribbon.At(s).Edge(share));
                 most = Math.Max(most, Vec.AngleBetween(last, here));
                 last = here;
             }
         }
         for (double s = 10.0; s < ribbon.LengthM - 10.0; s += 7.3)
         {
-            double half = ribbon.At(s).HalfWidth - 0.05;
-            double3 last = Facing(s, -half);
-            for (double d = -half + 0.01; d <= half; d += 0.01)
+            double from = ribbon.At(s).Edge(-1.0) + 0.05, to = ribbon.At(s).Edge(1.0) - 0.05;
+            double3 last = Facing(s, from);
+            for (double d = from + 0.01; d <= to; d += 0.01)
             {
                 double3 here = Facing(s, d);
                 most = Math.Max(most, Vec.AngleBetween(last, here));
@@ -344,6 +347,41 @@ public class RoadRibbonTests
         Assert.False(surface.TryHeightOver(world.Dir(50.0, 0.0) * (world.RadiusM + 0.3), out _));
         Assert.True(surface.TryLocate(world.Dir(190.0, 6.0) * (world.RadiusM + 1.2), null, out _, out double outM));
         Near.Equal(1.0, outM, 1e-6);
+    }
+
+    [Fact]
+    public void ARoadShiftedToOneSideHasItsAsphaltThatFarFromItsLineAndItsVergeFromThere()
+    {
+        TrackWorld world = TrackWorld.Earth();
+        Circuit c = Through(world, 10.0, (0, 0, 0), (200, 0, 0), (400, 0, 0)).SetEndShift(2, 1, 3.0).SetEndShift(2, 3, 3.0);
+        RoadRibbon ribbon = Assert.Single(Lay(world, c));
+        RoadRibbon.Section at = ribbon.At(200.0);
+        Assert.Equal(3.0, at.Shift, 6);
+
+        // Asphalt from 2 m to the right of the line to 8 m to the left of it, and nothing on it out past either.
+        foreach ((double d, double outM) in new[] { (7.9, 0.0), (-1.9, 0.0), (0.0, 0.0), (8.5, 0.5), (-2.5, 0.5) })
+        {
+            Assert.True(ribbon.Surface(at, d, 0.0, out _, out double past, out _, out _));
+            Assert.Equal(outM, past, 6);
+        }
+        Assert.Equal(0.0, ribbon.At(0.0).Shift, 6);
+        Assert.Equal(0.0, ribbon.At(400.0).Shift, 6);
+    }
+
+    // What a bend needs is by what the road reaches to its inside: less with its width to the outside, more with it inside.
+    [Fact]
+    public void ABendIsOnlyTooTightForWhatTheRoadReachesToItsInside()
+    {
+        TrackWorld world = TrackWorld.Earth();
+        Circuit bend = Through(world, 20.0, (0, 0, 0), (40, 0, 0), (40, 6, 0), (0, 6, 0));
+        double Needed(double shift) => Assert.Single(Lay(world, bend.SetEndShift(2, 1, shift).SetEndShift(2, 3, shift).SetEndShift(3, 2, shift).SetEndShift(3, 4, shift)))
+            .TooTight().Max(t => t.NeededM);
+
+        // It turns to the left, so a shift to the left is to its inside.
+        double about = RoadRibbon.RadiusFloor * (10.0 + RoadRibbon.VergeM);
+        Assert.Equal(about, Needed(0.0), 6);
+        Assert.Equal(about - (RoadRibbon.RadiusFloor * 6.0), Needed(-6.0), 6);
+        Assert.Equal(about + (RoadRibbon.RadiusFloor * 6.0), Needed(6.0), 6);
     }
 
     [Fact]

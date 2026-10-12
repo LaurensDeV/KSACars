@@ -43,12 +43,14 @@ public class RoadTessellationTests
         return closed ? circuit.Connect(last, first) : circuit;
     }
 
-    // A road that climbs, turns both ways, leans into its bends and changes width, over ground that rolls.
+    // A road that climbs, turns both ways, leans into its bends, changes width and is wider to one side of its line
+    // and then the other, over ground that rolls.
     private static Built Winding()
     {
         TrackWorld world = TrackWorld.Earth((e, n) => (1.5 * Math.Sin(e / 40.0)) + (0.8 * Math.Cos(n / 25.0)) + (0.02 * e));
         Circuit c = Through(world, 10.0, false, (0, 0, 0), (120, 0, 1), (220, 60, 3), (300, 160, 3), (420, 180, 0.5), (520, 120, 0));
-        return Build(world, c.SetBank(2, 1, 5.0).SetBank(3, 2, 8.0).SetBank(3, 4, 8.0).SetBank(4, 5, -6.0).SetEndWidth(3, 4, 14.0).SetEndWidth(5, 4, 7.0));
+        return Build(world, c.SetBank(2, 1, 5.0).SetBank(3, 2, 8.0).SetBank(3, 4, 8.0).SetBank(4, 5, -6.0).SetEndWidth(3, 4, 14.0).SetEndWidth(5, 4, 7.0)
+            .SetEndShift(2, 1, 1.5).SetEndShift(3, 2, 3.0).SetEndShift(3, 4, 3.0).SetEndShift(4, 3, -2.0).SetEndShift(4, 5, -2.0));
     }
 
     // Two straights and two half circles, five kilometres round, on ground that rolls a little.
@@ -241,7 +243,7 @@ public class RoadTessellationTests
             foreach (double3 end in new[] { weld.At[p], weld.At[q] })
             {
                 (RoadRibbon.Section at, double d) = Foot(ribbon, end);
-                bool edge = Math.Abs(Math.Abs(d) - at.HalfWidth) < 1e-3, runEnd = !ribbon.Closed && (at.S < 1e-3 || at.S > ribbon.LengthM - 1e-3);
+                bool edge = Math.Abs(Math.Abs(d - at.Shift) - at.HalfWidth) < 1e-3, runEnd = !ribbon.Closed && (at.S < 1e-3 || at.S > ribbon.LengthM - 1e-3);
                 Assert.True(edge || runEnd, $"the asphalt has an open edge {d:F3} m across, {at.S:F2} m along");
                 along &= edge && !runEnd;
             }
@@ -249,7 +251,7 @@ public class RoadTessellationTests
             // Between two rows the mesh's edge is straight and the road's is not: no further apart than is allowed.
             if (!along) continue;
             (RoadRibbon.Section middle, double across) = Foot(ribbon, (weld.At[p] + weld.At[q]) * 0.5);
-            furthest = Math.Max(furthest, Math.Abs(Math.Abs(across) - middle.HalfWidth));
+            furthest = Math.Max(furthest, Math.Abs(Math.Abs(across - middle.Shift) - middle.HalfWidth));
         }
         Assert.True(furthest <= RoadTessellation.PlanToleranceM, $"{name}: the asphalt's edge is {furthest * 1000.0:F2} mm from the road's");
         Assert.True(name is "Speedway" or "winding" ? furthest > 1e-4 : furthest >= 0.0, $"{name}: {furthest * 1000.0:F3} mm");
