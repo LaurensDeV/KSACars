@@ -190,6 +190,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Hover.cs` | the rockets under the car and the ones on top firing together — **thrust that carries the car's weight and brakes any climb or fall**, so it hangs where it is |
 | `Sim/Hatch.cs` | the iris over each thruster — **where each of its six blades is, how it is turned and how big it is drawn** as it opens, and when its rocket may fire |
 | `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
+| `Sim/Gamepad.cs` | a gamepad as a car's controls: the triggers as throttle and brake, the left stick as steer and the right as the pitch and roll keys, **each with its dead centre taken out and the rest stretched to full**, added to the keys, and which buttons went down since the read before |
+| `Sim/ChaseView.cs` | a view that stays behind a car: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, and a stick to look round from there |
 | `Sim/TerrainRay.cs` | where a ray from the eye first goes under the ground, walked out along it — **not the mean sphere's hit**, which lands behind a hill seen side-on |
 | `Sim/TerrainMask.cs` | the stretch of a line that lies below a body's highest ground, which is all of it the terrain ray has to walk |
 | `Sim/CursorAim.cs` | the cursor, from window pixels to the framebuffer pixels a camera's ray is asked for in |
@@ -199,7 +201,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/BridgeCommand.cs` | one command dropped into the bridge's folder, read — **text in**, so every refusal is testable here |
 | `Sim/ITerrainHeights.cs` | the seam the ground under a hub is read through |
 | `Sim/PadSurface.cs` | the top of a structure standing on the ground, as the first of its boxes and cylinders a line dropped from a hub meets — **the height field knows nothing of a launch pad** |
-| `Sim/Circuit.cs` | **a set of roads as it is saved**: points on a body by latitude and longitude, the roads that join them, each point's corner strength and height, any handle set by hand, and a bank and a width at each end of a road — its edits, each answering a new circuit so the old one is the undo, the same circuit moved to another place or body, and its JSON, **which is one place and every point as metres from it** |
+| `Sim/Circuit.cs` | **a set of roads as it is saved**: points on a body by latitude and longitude, the roads that join them, each point's corner strength and height, any handle set by hand, and a bank, a width and a shift to one side at each end of a road — its edits, each answering a new circuit so the old one is the undo, the same circuit moved to another place or body, and its JSON, **which is one place and every point as metres from it** |
 | `Sim/CircuitHistory.cs` | a circuit being edited and every state it has been through, for undo and redo — **a drag is many changes and one step** |
 | `Sim/RoadLayout.cs` | a circuit's roads as centre lines: one cubic curve a road, with the handle nobody set worked out from what meets at the point — **two roads go through, a side road at a junction leaves straight** |
 | `Sim/GodView.cs` | a view from above that is not tied to a craft: a place on the ground looked at, from how far, from which heading and how steeply, and how it is panned, turned and zoomed |
@@ -241,15 +243,18 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/RacingLine.cs` | **the line to drive, drawn ahead of the car being flown**, from the panel's Racing line: the route driver's own racing line and speeds for that car, a stretch of arrowheads written once and each colour's material told every frame which of them to draw |
 | `Ksa/RuntimeMesh.cs` | a mesh made while the game runs: room taken once in the three buffers KSA's static meshes share, cut into meshes that are each written over in place, any number in one submission, and drawn by KSA's own renderer as a `StaticMeshRenderable` for each material it has. **One patch has been seen in game**, the bridge's `road` with `mesh_test`; a road's meshes have not |
 | `Ksa/Roads.cs` | a circuit laid on a body: every run and every junction as one surface each, answered to a wheel asking what is under it, made into the triangles `RoadDrawing` draws and `RoadColliders` gives the physics, a dragged road's meshes written no more than ten times a second, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
-| `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
+| `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, or with Ctrl held only picks it, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
 | `Ksa/CircuitLibrary.cs` | the circuits a player has, one JSON file each under `<KSA user dir>/KSACars/Circuits/` — outside any save, which KSA wipes on every write — and the ones the mod ships beside its DLL, read where the player has none of that name |
-| `Ksa/Courses.cs` | **a circuit laid where the car being flown is, for a player**: its first point at the car, its first road the way the car faces, and the car stood on its start; asked from the panel and done from the frame hook |
+| `Ksa/Courses.cs` | **a circuit laid where the car being flown is, for a player**: its first point at the car, its first road the way the car faces, and the car stood on its start; asked from the panel, worked out beside the game and laid from the frame hook once that is done |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap; it also reads where the head bone has the head, for the helmet |
 | `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, a course to lay and the line to drive, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
+| `Ksa/GamepadInput.cs` | the first gamepad SDL or GLFW knows, **read from the frame hook and handed to the physics window**, for the car being flown alone; KSA reads a gamepad for its menus only. Its buttons do what the boost, RCS and engine keys and the panel's Unflip and headlights do. **A Steam Controller has been seen read through SDL; no axis or button has been checked** |
+| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown and turned by a gamepad's right stick: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends; on while a gamepad is read unless the panel's Chase camera says otherwise |
+| `Ksa/SdlPad.cs` | a gamepad through SDL where a `Native/SDL3` is beside the mod, for the pads GLFW cannot see, a Steam Controller among them; without it `GamepadInput` reads GLFW's. **Steam, while it runs, also turns a Steam Controller's buttons into keys**, which the mod cannot stop |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
 | `Ksa/LaunchPads.cs` | a body's launch pads as the colliders KSA stands on each, posed as KSA poses them, so a wheel on a pad is sprung against the pad |
 | `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
@@ -262,6 +267,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
 | `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
 | `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository. A road has no mesh here, and its asphalt and earth are written by `tools/model/road-textures.py` |
+| `src/KSACars/Native/` | `SDL3.dll`, SDL's own Windows build of release 3.4.18, under the zlib licence beside it, **the one binary in the archive that is not the mod's**; a Linux install has none and reads GLFW's gamepads |
 | `src/KSACars/Circuits/` | the courses the mod ships, written by `tools/roads/club-motorsports.py`: **their line is OpenStreetMap's, under the ODbL, credited in `README.md`** |
 | `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py`, `tools/eldorado-sounds.py` and `tools/f2004-sounds.py`. **The F2004's four are CC BY-SA 3.0, credited in `README.md`**; the rest are CC0 |
 | `src/KSACars/mod.toml` | serves as both the content-mod and StarMap manifest |
@@ -281,7 +287,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 526 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 536 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -494,7 +500,8 @@ visor are subparts ending `Helmet` and `HelmetVisor`, the last two in the part's
 pose, which `DriverHands` reads off the skeleton after the seated animation. Their mesh is in the
 kitten's own model space with the head as it was bound, X to its left, Y up and Z ahead, in metres,
 where KSA's matrix is in centimetres: a hundred times the identity with the head unmoved. With nobody
-at the wheel both are shrunk to nothing in the seat. The visor is a `PartModelGlass`, one skin facing
+at the wheel both are shrunk to nothing in the seat, and with the first-person view in that seat too:
+KSA hides the kitten's own head from it, and its camera is at the helmet's chin bar. The visor is a `PartModelGlass`, one skin facing
 out, and the driver's eyes show through it. A car has a helmet if its part has those subparts;
 `docs/F2004-REFERENCES.md` has what it was modelled on and how it is fitted.
 
@@ -539,6 +546,17 @@ keeping its lean as its left edge up from its first point to its second, so the 
 way through the point keeps the opposite; at a junction it has the corners' radius in the lean's place,
 a junction being one plane.
 
+**A road can be wider to one side of its line than to the other.** Each end of a road has a shift, how far
+the middle of its asphalt is to the left of its line travelling from its first point to its second, eased
+from one end to the other as the width is, and a file with one is version 5. The line stays where it was
+drawn, so a paved runoff outside a bend is width to that side and the inside edge is as far from the line
+as before: laid about the middle of all its asphalt, a road swerves where a runoff starts and folds on the
+inside of the bend, which is what Club Motorsports did. Every row of the surface is still square to the
+line and leans about it; `RoadRibbon.Section.Edge` is where each edge is, the tight-bend rule counts what
+is to the bend's inside, and a route runs down the middle of the asphalt. The line is kept a metre inside
+either edge, and a road comes to a junction about its line. **No shifted road has been seen in game, and
+the editor has no control for it**: a shift is the file's, and is kept through an edit.
+
 **One surface a run, which the wheels ask and the triangles are made from.** `Sim/RoadRibbon.cs` is a run's
 centre line on a flat chart of the circuit (`Sim/RoadChart.cs`), measured by its own length
 (`Sim/RoadLine.cs`), with the profile along it. Past the asphalt's edge a verge falls at 1 in 15 for
@@ -546,7 +564,8 @@ centre line on a flat chart of the circuit (`Sim/RoadChart.cs`), measured by its
 above the ground the road is a deck with nothing beside it, and a dip under that height shorter than
 20 m between two decks is a deck too. Past an end that is not a deck the whole section carries on ahead,
 sunk by the same fall; an end at a junction stops square at its mouth.
-`RoadRibbon.TooTight` says where a bend's radius is under 1.25 times the half width and the verge,
+`RoadRibbon.TooTight` says where a bend's radius is under 1.25 times what the asphalt reaches to the bend's
+inside and the verge,
 inside which the surface is close to folding over itself; nothing stops a circuit being drawn so, but
 the editor says so. The surface's slope has no step on the centre line; off it there is
 a crease of a few hundredths of a degree at a point where a climbing road's curvature steps, the centre
@@ -665,15 +684,17 @@ once, the whole of a lap under 3 km, and every frame tells each of four flat mat
 indices to draw (`RuntimeMesh.Draws`), since writing a mesh waits for the graphics card, up to 33 ms when
 it was done eight times a second. Each colour has six draws, a run past them is left out, and the roads
 keep to 24 fewer draws a view while the line is drawn. It is switched from the panel's Racing line, on a
-developer's install, or the bridge's `road` with `racing_line`. The plan is the cautious driver's with
-`Push` 0.3, and takes a crest for one to be jumped where the circuit's file has it in `jumps`. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
+developer's install, or the bridge's `road` with `racing_line`. The plan is the route driver's with
+`Push` 1, all the grip and nearly all the brakes its model has, on a line kept 0.3 m inside the edges where
+the driver keeps 0.9, and takes a crest for one to be jumped where the circuit's file has it in `jumps`. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
 
 `tools/roads/club-motorsports.py` writes a real course, Club Motorsports in New Hampshire: its centre line
 from OpenStreetMap, its heights from the USGS's lidar and how far its asphalt reaches either side measured
-on the USGS's aerial pictures, in `club-motorsports.csv` with where each is from, as 107 points each in the
-middle of the asphalt and as high above level ground as the real track is above its lowest place, 59.5 m,
+on the USGS's aerial pictures, in `club-motorsports.csv` with where each is from, as 108 points each on
+the mapped line and as high above level ground as the real track is above its lowest place, 59.5 m,
 so the lap climbs as the real one does, on fill and decks; and the same line flat on the ground. The road
-is as wide at each point as the asphalt is there, 12 m to 40 m, a bend's paved runoff counted in; beside a
+is as wide at each point as the asphalt is there, 12 m to 40 m, a bend's paved runoff counted in, and
+shifted to the side the asphalt reaches further to; beside a
 straight nothing past 8 m is, since what is wide there is the pit lane.
 
 `tools/roads/extreme-circuits.py` writes `Insane`, a 6 km lap drawn with its `Lap` class by driving it:
@@ -731,6 +752,15 @@ many junctions takes more: the ladder of 23 km and 38 junctions is 99 meshes of 
 says so once. KSA has 256 draws a view and throws past them from inside its render, which closes the
 game; 56 places are 224 at most, and `Sim/RoadDrawList.cs` holds a view to 200 whatever the pool is,
 less what the line to drive takes.
+
+**A circuit laid whole is worked out beside the game.** `Roads.Prepare` reads the ground, works out the
+surfaces, the warnings and every mesh on a thread of its own, and `Roads.Lay` given that only hands them to
+the wheels, the renderer and the physics: worked out in the frame, a 4 km course stopped the game for a
+third of a second to a second, at every edit and at every course laid. KSA's physics workers read the
+ground's height from their own threads, which is what says it may be read from this one. `Courses` and the
+editor lay so; the bridge's `road` still lays in the frame, and its `course` waits for the work. A route
+over laid roads is made from the surfaces as they were laid, where it used to lay the circuit a second time.
+**None of this has been seen in game.**
 
 **A mesh is written from the frame hook, never from the render hook, and all of a laying in one
 submission**, because each submission waits for the graphics card. While a road is dragged the wheels'
@@ -810,7 +840,7 @@ nothing where it leaves the ground and 4 pi over its length at the top, and carr
 so the way out clears the way in. A circuit has `loops`, each from the point one road ends at to the
 point another starts at, with its length; the second point is to be `RoadLoop.Reach` ahead of the first
 and to its left by more than the road's width, and `RoadLoop.Of` stands the loop on the first road's end
-as that road arrives. The file is version 4 for it. `WheelGround.Read` takes the loops, and a wheel on
+as that road arrives. A file with loops is version 4 or later. `WheelGround.Read` takes the loops, and a wheel on
 one is sprung along the loop's own facing under that wheel and not along one plane through all four: a
 loop turns a seventh of a radian between a car's axles, and with one plane the nose closed on the road
 at that share of the car's speed while its dampers saw it leaving. A loop presses a car at four to six
@@ -869,7 +899,11 @@ considering: `docs/BLOCKED-ON-KSA.md` has what goes. A cleared bit stops a
 collider being built but leaves one already standing, unseen, so every change has KSA build its clutter
 colliders again, by the setting held off for a moment as a change of rock weight does. **The masks are
 only written from the physics window**, by `Roads.SyncClutter`: KSA's physics workers read them while they
-run, KSA writes them only while the workers are parked, and a write from the GUI pass races them. The bridge's
+run, KSA writes them only while the workers are parked, and a write from the GUI pass races them. **Which
+instances the roads cover is worked out beside the game**, on a thread of its own that touches nothing of
+KSA's and gives up once roads are laid again, and only the bits it found are written in the window: found
+in the window it stopped the game for 3 to 7 seconds a laying of a 4 km course. Road more than
+`Roads.ClutterUnderM`, 60 m, above the ground is left out of the search, and what stands under it stays. The bridge's
 `road` with `probe_clutter` measures the reckoned positions against KSA's own. KSA writes those bits into a save, so a game saved with a road laid keeps the clearing.
 
 ## Adding a car

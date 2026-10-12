@@ -12,6 +12,22 @@ none of it has been seen as **KSACars** yet:
 - [x] The F2004 loads, textured, sits level at its modelled height on all four wheels with its uprights
       found, seats a kitten whose hands are solved onto the wheel, and pulls away and turns (bridge,
       `TARGET PRACTICE`, 2026-10-07; before its power, downforce and the game's drag were changed)
+- [x] A Steam Controller drives the car being flown, read through SDL with Steam closed: `gamepad: Steam Controller`
+      in the log, and the car driven with it (Laurens, 2026-10-12). With Steam running its desktop layout also
+      turns the buttons into keys, so Start pauses the game
+- [ ] Each gamepad button on its own: A, X, Y, Start, the bumpers, D-pad up, and the D-pad and left stick in the air
+- [ ] An Xbox pad, through GLFW with no SDL beside the mod
+- [ ] The chase camera: behind the car, tilted with a slope the right way, looking into a corner, and the right
+      stick looking round; and the view's frame put back when the panel's Chase camera is cleared
+- [ ] The F2004's helmet gone from the first-person view out of its seat, and back in every other view
+- [ ] The line to drive at `Push` 1 and 0.3 m inside the edges: where it goes red against where a car has to brake
+- [x] A circuit laid whole is worked out beside the game: a 10 km high road placed in the editor with 32 ms of it
+      in a frame, where it was 8 s (log, 2026-10-12: `prepared_ms 665, solids_ms 21, shown_ms 11`, clutter
+      `found in 2957 ms beside the game, taken in 0 ms`), and Laurens found it smooth
+- [ ] A course laid from the panel while the game carries on, the car stood on its start once it is laid
+- [ ] Club Motorsports as regenerated, its runoff to one side: no warning in the editor, and its bends as drawn
+- [ ] The editor: a length that is not 0 m over roads laid before it opened, its points gone with Take up roads,
+      and Ctrl with a click picking a point without joining
 - [ ] The F2004 with KSA's drag off: a coast-down with `game_drag` true and false, and its top speed
 - [ ] The Eldorado and the buggy with KSA's drag off: top speed, a boost on wheels, a flight and a landing
 - [ ] The F2004's rain light, faint with the lamps on and bright under the brakes

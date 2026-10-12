@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-235 types and 526 members across 12 assemblies.
+239 types and 536 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -145,6 +145,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 Cross(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 Unpack(ref Brutal.Numerics.float3, Float)`
+- `Brutal.Numerics.double3 get_UnitX()`
+- `Brutal.Numerics.double3 get_UnitZ()`
 - `Brutal.Numerics.double3 get_Zero()`
 - `Brutal.Numerics.double3 op_Addition(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 op_Division(Brutal.Numerics.double3, double)`
@@ -246,6 +248,16 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `int Y`
 
 ## Brutal.Glfw
+
+### Brutal.GlfwApi.Glfw
+
+- `bool GetGamepadState(int, ref Brutal.GlfwApi.GlfwGamepadState)`
+- `bool JoystickIsGamepad(int)`
+- `string GetGamepadName(int)`
+
+### Brutal.GlfwApi.GlfwGamepadState
+
+*referenced as a type only*
 
 ### Brutal.GlfwApi.GlfwKey
 
@@ -503,6 +515,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void SetFollow(KSA.IFollowable, bool, bool, bool)`
 
 ### KSA.CameraMode
+
+*referenced as a type only*
+
+### KSA.CameraReferenceFrame
 
 *referenced as a type only*
 
@@ -776,6 +792,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.IGameViewport
 
 - `KSA.FixedController get_FixedController()`
+- `KSA.IVAController get_IvaController()`
 - `KSA.OrbitController get_OrbitController()`
 - `float get_IvaAudio()`
 - `void SetCameraMode(KSA.CameraMode)`
@@ -807,6 +824,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.IPosition
 
 - `Brutal.Numerics.double3 GetPositionEcl()`
+
+### KSA.IVAController
+
+- `KSA.IVASeat Seat`
 
 ### KSA.IVASeat
 
@@ -959,6 +980,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.OrbitView
 
+- `KSA.CameraReferenceFrame ReferenceFrame`
 - `double Azimuth`
 - `double DistancePower`
 - `double Elevation`
@@ -1043,6 +1065,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.QuaternionEx
 
+- `Brutal.Numerics.doubleQuat AngleAxis(double, Brutal.Numerics.double3)`
 - `Brutal.Numerics.doubleQuat CreateFromXyzRadians(Brutal.Numerics.double3)`
 - `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
 
@@ -1220,6 +1243,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.Situation get_Situation()`
 - `KSA.ThrusterMapFlags GetThrusterFlags()`
 - `KSA.Vehicle CreateVehicle(KSA.CelestialSystem, Brutal.Numerics.doubleQuat, Brutal.Numerics.double3, KSA.IParentBody, string, KSA.Part, KSA.Orbit)`
+- `System.Nullable`1<Brutal.Numerics.doubleQuat> GetEnu2Cce()`
 - `System.ReadOnlySpan`1<KSA.IVASeat> get_Crew()`
 - `bool AreAllEnginesInactive()`
 - `bool GetSprintInput()`

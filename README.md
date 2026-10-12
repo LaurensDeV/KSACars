@@ -85,6 +85,23 @@ The Eldorado also flies, on four rockets under its floor, worked with the keys y
 With the rockets lit and the downward thrusters on together, the car hovers: it holds its height, and
 the pitch and yaw keys still lean it across the ground.
 
+A gamepad drives a car too, beside the keys, with the triggers and the stick as far as you move them:
+
+| Gamepad | |
+| --- | --- |
+| right trigger | throttle |
+| left trigger | brake, then reverse |
+| left stick | steer; in the air, bank left or right |
+| right stick | in the air, lean forward or back and turn left or right |
+| A | hold for the tail rockets |
+| X | switch the downward thrusters |
+| Y | unflip |
+| Start | light and cut the rockets |
+| right / left bumper | rocket throttle up / down |
+| D-pad up | headlights: off, dipped, main beam |
+
+An Xbox pad needs nothing. A Steam Controller is read by the mod itself, through SDL, and wants Steam
+closed: while Steam runs it also turns the controller's buttons into keys, so Start pauses the game.
 
 The Eldorado can carry a **scoop** on its nose, chosen from the **Fast & Purrious** panel under **Scoop size** —
 **Default** at 3.4 m across, the 6 m **XL**, or the 10 m **XXL** — for shoving rocks about.
@@ -139,6 +156,8 @@ resolve an SDK from `~/.dotnet`; `source tools/env.sh` if you want bare `dotnet`
 MIT. The engine recordings are CC0; `tools/audio/README.md` has where each came from.
 
 ## Credits
+
+Gamepads are read with [SDL](https://libsdl.org), shipped as `Native/SDL3.dll` under the zlib licence beside it.
 
 The Ferrari F2004's engine sounds (`Sounds/KSACars_F1_*.wav`) are adapted from
 [*Red Bull-Cosworth RB1 (2005)*](https://commons.wikimedia.org/wiki/File:Red_Bull-Cosworth_RB1_(2005).ogg)
