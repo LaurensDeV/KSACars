@@ -385,6 +385,7 @@ internal sealed class Bridge
         {
             Courses.Lay(course);
             Courses.Update();
+            Courses.Finish();
             return Done(new() { ["course"] = Courses.Laid, ["message"] = Courses.Message, ["laid"] = Roads.Any });
         }
         if (command.Has("loop_stand") || command.Flag("loop_where", false))

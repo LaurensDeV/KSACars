@@ -22,9 +22,10 @@ internal static class Roads
     // How often the meshes with a place in the pool are chosen again, where there are more meshes than places.
     private const double RestockSeconds = 2.0;
 
-    private sealed record Ribbon(double3[] SurfaceCcf, double HalfWidth, double LengthM, bool Closed);
+    private sealed record Ribbon(double3[] SurfaceCcf, double HalfWidth, double LengthM, bool Closed, double[]? AboveGroundM = null);
 
-    private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM, RoadLoop[] Loops);
+    private sealed record Laid(Celestial Body, Ribbon[] Ribbons, RoadSurface Surface, Circuit Circuit, double LiftM, double SpacingM, RoadLoop[] Loops,
+                               RoadLaying.Network Network);
 
     private const string LoopKey = "loop:";
 
@@ -82,8 +83,9 @@ internal static class Roads
         body = laid.Body;
         surface = laid.Surface;
         Celestial on = laid.Body;
-        return Route.Of(laid.Circuit, on.GetDirCcfFromLatLon, on.MeanRadius, dir => on.GetTerrainHeightFromDirCcf(dir, accurate: true),
-                        laid.LiftM, laid.SpacingM, through, offsetM, out why, turnRadiusM, raceInsideM, nudgesM);
+        // Over the surfaces as they were laid: laying them again for a route read the ground of the whole circuit a second time.
+        return Route.Of(laid.Circuit, on.GetDirCcfFromLatLon, on.MeanRadius, laid.Network, laid.SpacingM, through, offsetM, out why,
+                        turnRadiusM, raceInsideM, nudgesM);
     }
 
     /// <summary>
@@ -174,12 +176,34 @@ internal static class Roads
     /// </summary>
     public static void SyncClutter()
     {
-        if (!_clutterStale) return;
-        _clutterStale = false;
         try
         {
-            RestoreClutter();
-            ClutterTaken = _clutterMarginM is { } margin ? TakeClutter(margin) : [];
+            if (_clutterStale)
+            {
+                _clutterStale = false;
+                _clutterJob = null;
+                RestoreClutter();
+                ClutterTaken = [];
+                if (_clutterMarginM is { } margin) SeekClutter(margin);
+            }
+
+            if (_clutterJob is not { IsCompleted: true } job) return;
+            _clutterJob = null;
+            if (!job.IsCompletedSuccessfully)
+            {
+                if (job.Exception?.GetBaseException() is { } failed and not OperationCanceledException)
+                {
+                    Log.Warn($"could not find what clutter stands on the roads: {failed.Message}");
+                }
+                return;
+            }
+            ClutterFound found = job.Result;
+            if (found.Generation != _generation || !ReferenceEquals(found.Road, _laid)) return;
+
+            System.Diagnostics.Stopwatch took = System.Diagnostics.Stopwatch.StartNew();
+            ClutterTaken = TakeClutter(found);
+            Log.Info($"clutter under the roads: found in {found.Ms:F0} ms beside the game, taken in {took.Elapsed.TotalMilliseconds:F0} ms, "
+                     + string.Join(", ", ClutterTaken.Select(kv => $"{kv.Key} {kv.Value}")));
         }
         catch (Exception e)
         {
@@ -190,34 +214,61 @@ internal static class Roads
     // What this road cleared of each kind of clutter, so it can be put back: only the bits that were set.
     private static readonly List<(KeyHash Body, int Ecotype, CubeCellGrid.Cell Cell, uint[] Bits)> _cleared = [];
 
-    // Takes the grass, trees and rocks off the laid roads through KSA's own per-cell mask, which is also
-    // what its colliders are built from, and says how many it took of each kind.
-    private static Dictionary<string, int> TakeClutter(double marginM)
-    {
-        Dictionary<string, int> taken = [];
-        if (_laid is not { } road) return taken;
-        if (Program.GetPlanetRenderer()?.GroundClutterRenderer is not { } renderer) return taken;
-        KeyHash hash = road.Body.Hash;
-        if (!renderer.PlanetEcotypeRenderData.TryGetValue(hash, out ClutterEcotypeRenderData[]? ecotypes)) return taken;
+    // A kind of clutter as the search needs it, read off KSA in the physics window.
+    private sealed record ClutterKind(int Index, string Name, int Resolution);
 
+    private sealed record ClutterFound(int Generation, Laid Road, List<(ClutterKind Kind, (int Face, int X, int Y) Cell, uint[] Bits)> Cells, double Ms);
+
+    // The search for what stands on the roads last laid, on a thread of its own: seconds of work for a long road.
+    private static Task<ClutterFound>? _clutterJob;
+
+    /// <summary>Road further above the ground than this has nothing standing through it, and what is under it is left.</summary>
+    public const double ClutterUnderM = 60.0;
+
+    // Starts the search for the grass, trees and rocks on the laid roads. Only what KSA has is read here.
+    private static void SeekClutter(double marginM)
+    {
+        if (_laid is not { } road) return;
+        if (Program.GetPlanetRenderer()?.GroundClutterRenderer is not { } renderer) return;
+        if (!renderer.PlanetEcotypeRenderData.TryGetValue(road.Body.Hash, out ClutterEcotypeRenderData[]? ecotypes)) return;
+
+        List<ClutterKind> kinds = [];
+        for (int e = 0; e < ecotypes.Length; e++)
+        {
+            if (ecotypes[e] is { } ecotype) kinds.Add(new ClutterKind(e, ecotype.EcotypeName, ecotype.CubeCellGrid.GridResolution));
+        }
+        int generation = _generation;
+        double radius = road.Body.MeanRadius;
+        _clutterJob = Task.Run(() => FindClutter(road, kinds, marginM, radius, generation));
+    }
+
+    // Which of each kind's instances the roads cover, as the bits of KSA's per-cell mask. Nothing of KSA's
+    // is touched: this runs beside the game, and gives up once the roads have been laid again.
+    private static ClutterFound FindClutter(Laid road, List<ClutterKind> kinds, double marginM, double radiusM, int generation)
+    {
+        System.Diagnostics.Stopwatch took = System.Diagnostics.Stopwatch.StartNew();
+        List<(ClutterKind, (int, int, int), uint[])> cells = [];
         foreach (Ribbon ribbon in road.Ribbons)
         {
-            double3[] line = new double3[ribbon.SurfaceCcf.Length];
-            for (int i = 0; i < line.Length; i++) line[i] = Vec.Unit(ribbon.SurfaceCcf[i]);
-
-            for (int e = 0; e < ecotypes.Length; e++)
+            List<double3> line = [];
+            for (int i = 0; i < ribbon.SurfaceCcf.Length; i++)
             {
-                if (ecotypes[e] is not { } ecotype) continue;
-                int count = 0;
+                if (ribbon.AboveGroundM is { } above && i < above.Length && above[i] > ClutterUnderM) continue;
+                line.Add(Vec.Unit(ribbon.SurfaceCcf[i]));
+            }
+            if (line.Count == 0) continue;
 
+            foreach (ClutterKind kind in kinds)
+            {
                 // Whatever is near enough to be looked at is asked of the roads' own outline: as wide as the road is
                 // there, the shape a junction is, and with a bank's foot. Under a deck the ground is still ground, and
                 // only what would stand up through the deck goes: all of it but the grass.
                 // Everything but grass: KSA's shrubs are small trees, and stand through a deck two metres up as a tree does.
-                bool tall = !ecotype.EcotypeName.Contains("Grass", StringComparison.OrdinalIgnoreCase);
-                double near = marginM / road.Body.MeanRadius;
+                bool tall = !kind.Name.Contains("Grass", StringComparison.OrdinalIgnoreCase);
+                double near = marginM / radiusM;
                 bool Covered(double3 at)
                 {
+                    if (_generation != generation) throw new OperationCanceledException();
                     double3 east = Vec.Unit(Vec.Cross(Math.Abs(at.Z) < 0.9 ? new double3(0, 0, 1) : new double3(1, 0, 0), at)), north = Vec.Cross(at, east);
                     bool Under(double3 dir)
                     {
@@ -239,28 +290,45 @@ internal static class Roads
                     return false;
                 }
 
-                foreach (((int face, int x, int y), uint[] bits) in
-                         ClutterGrid.Under(line, road.Body.MeanRadius, (2.0 * ribbon.HalfWidth) + RoadRibbon.MostToeM + marginM,
-                                           ecotype.CubeCellGrid.GridResolution, Covered))
+                foreach (((int, int, int) cell, uint[] bits) in
+                         ClutterGrid.Under(line, radiusM, (2.0 * ribbon.HalfWidth) + RoadRibbon.MostToeM + marginM, kind.Resolution, Covered))
                 {
-                    CubeCellGrid.Cell cell = new(x, y, face);
-                    GroundClutterRenderer.ExclusionData mask = ecotype.PlacementData.GetExclusionData(cell);
-                    for (int w = 0; w < bits.Length; w++)
-                    {
-                        bits[w] &= mask[w];
-                        mask[w] &= ~bits[w];
-                        count += System.Numerics.BitOperations.PopCount(bits[w]);
-                    }
-                    ecotype.PlacementData.ExcludeCell(cell, mask);
-                    renderer.QueueExclusionUpload(hash, e, cell);
-                    _cleared.Add((hash, e, cell, bits));
+                    cells.Add((kind, cell, bits));
                 }
-                taken[ecotype.EcotypeName] = taken.GetValueOrDefault(ecotype.EcotypeName) + count;
             }
+        }
+        return new ClutterFound(generation, road, cells, took.Elapsed.TotalMilliseconds);
+    }
+
+    // Takes what was found off the roads through KSA's own per-cell mask, which is also what its colliders
+    // are built from, and says how many it took of each kind. In the physics window.
+    private static Dictionary<string, int> TakeClutter(ClutterFound found)
+    {
+        Dictionary<string, int> taken = [];
+        if (Program.GetPlanetRenderer()?.GroundClutterRenderer is not { } renderer) return taken;
+        KeyHash hash = found.Road.Body.Hash;
+        if (!renderer.PlanetEcotypeRenderData.TryGetValue(hash, out ClutterEcotypeRenderData[]? ecotypes)) return taken;
+
+        foreach ((ClutterKind kind, (int face, int x, int y), uint[] bits) in found.Cells)
+        {
+            if (kind.Index >= ecotypes.Length || ecotypes[kind.Index] is not { } ecotype) continue;
+            CubeCellGrid.Cell cell = new(x, y, face);
+            GroundClutterRenderer.ExclusionData mask = ecotype.PlacementData.GetExclusionData(cell);
+            int count = 0;
+            for (int w = 0; w < bits.Length; w++)
+            {
+                bits[w] &= mask[w];
+                mask[w] &= ~bits[w];
+                count += System.Numerics.BitOperations.PopCount(bits[w]);
+            }
+            ecotype.PlacementData.ExcludeCell(cell, mask);
+            renderer.QueueExclusionUpload(hash, kind.Index, cell);
+            _cleared.Add((hash, kind.Index, cell, bits));
+            taken[kind.Name] = taken.GetValueOrDefault(kind.Name) + count;
         }
         // The mask stops a collider being built; one already standing stays until KSA builds them all again.
         if (taken.Values.Any(n => n > 0)) KsaWorld.RebuildClutterColliders();
-        CheckPlacement(road.Body);
+        CheckPlacement(found.Road.Body);
         return taken;
     }
 
@@ -367,8 +435,9 @@ internal static class Roads
     /// through <paramref name="touched"/> are made again, when <see cref="Update"/> next finds it time.
     /// </param>
     /// <param name="touched">The circuit's points a drag has moved the roads at.</param>
+    /// <param name="prepared">The same circuit worked out beforehand by <see cref="Prepare"/>, for a whole laying that then only hands it over.</param>
     public static (int Points, double LowM, double HighM) Lay(Celestial body, Circuit circuit, double liftM, double spacingM, bool whole,
-                                                               IReadOnlyCollection<int>? touched = null)
+                                                               IReadOnlyCollection<int>? touched = null, Prepared? prepared = null)
     {
         _clutterMarginM = null;
         _clutterStale = true;
@@ -392,12 +461,15 @@ internal static class Roads
         }
 
         Interlocked.Increment(ref _generation);
-        RoadLaying.Network network = RoadLaying.Laid(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
-        List<RoadLaying.Strip> strips = RoadLaying.Strips(network.Ribbons, Ground, spacingM);
+        Prepared? ready = whole && prepared is not null && ReferenceEquals(prepared.Circuit, circuit) && ReferenceEquals(prepared.Body, body)
+                          && prepared.LiftM == liftM && prepared.SpacingM == spacingM ? prepared : null;
+        if (ready is not null) (points, low, high) = (ready.Points, ready.LowM, ready.HighM);
+        RoadLaying.Network network = ready?.Network ?? RoadLaying.Laid(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
+        List<RoadLaying.Strip> strips = ready?.Strips ?? RoadLaying.Strips(network.Ribbons, Ground, spacingM);
 
         // What is cleared of clutter is a width either side of a line: a junction's asphalt as a line in
         // from each mouth to its point, as wide as the road and the rounding of its corners.
-        List<Ribbon> lines = [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed))];
+        List<Ribbon> lines = [.. strips.Select(s => new Ribbon(s.Line, s.HalfWidth, s.LengthM, s.Closed, s.AboveGroundM))];
         foreach (RoadJunction junction in network.Junctions)
         {
             foreach (RoadJunction.Arm arm in junction.Arms)
@@ -412,14 +484,17 @@ internal static class Roads
             if (RoadLoop.Of(loop, network.Ribbons, out string noLoop) is { } placed) loops.Add(placed);
             else Log.Warn(noLoop);
         }
-        _laid = strips.Count > 0 ? new Laid(body, [.. lines], RoadLaying.Surface(strips), circuit, liftM, spacingM, [.. loops]) : null;
+        _laid = strips.Count > 0 ? new Laid(body, [.. lines], ready?.Surface ?? RoadLaying.Surface(strips), circuit, liftM, spacingM, [.. loops], network) : null;
         Refused = network.Refused;
-        if (whole) Warnings = RoadWarning.Of(circuit, network, body.GetDirCcfFromLatLon);
+        if (whole) Warnings = ready?.Warnings ?? RoadWarning.Of(circuit, network, body.GetDirCcfFromLatLon);
 
         if (whole)
         {
             _pending = null;
-            Mesh(body, network, null);
+            _laidMs = took.Elapsed.TotalMilliseconds;
+            (_groundAsked, _groundRead) = (points, lattice is null ? points : lattice.Reads - before);
+            _preparedMs = ready?.Ms ?? 0.0;
+            Mesh(body, network, null, ready);
         }
         else
         {
@@ -430,6 +505,58 @@ internal static class Roads
     }
 
     private static (Celestial Body, RoadLaying.Network Network, HashSet<int> Touched)? _pending;
+
+    // How long the last whole laying took before its meshes were made: the ground read and the surfaces worked out.
+    private static double _laidMs, _preparedMs;
+    private static int _groundAsked, _groundRead;
+
+    /// <summary>
+    /// A circuit worked out as it would be laid, with nothing of it laid: the ground read, its surfaces, what
+    /// is wrong with it and every mesh. A whole laying given it only hands these to the wheels, the renderer
+    /// and the physics.
+    /// </summary>
+    public sealed record Prepared(Celestial Body, Circuit Circuit, double LiftM, double SpacingM, RoadLaying.Network Network,
+                                  List<RoadLaying.Strip> Strips, RoadSurface? Surface, IReadOnlyList<RoadWarning> Warnings,
+                                  Dictionary<RoadRibbon, List<RoadMeshData>> RunMeshes, Dictionary<int, RoadMeshData> JunctionMeshes,
+                                  int Points, double LowM, double HighM, double Ms);
+
+    /// <summary>
+    /// Works a circuit out beside the game, which a long one takes a second over. KSA's own physics workers
+    /// read the ground's height from their threads, and nothing else of KSA's is asked here.
+    /// </summary>
+    public static Task<Prepared> Prepare(Celestial body, Circuit circuit, double liftM, double spacingM) => Task.Run(() =>
+    {
+        System.Diagnostics.Stopwatch took = System.Diagnostics.Stopwatch.StartNew();
+        int points = 0;
+        double low = double.PositiveInfinity, high = double.NegativeInfinity;
+        double Ground(double3 dir)
+        {
+            double ground = body.GetTerrainHeightFromDirCcf(dir, accurate: true);
+            low = Math.Min(low, ground);
+            high = Math.Max(high, ground);
+            points++;
+            return ground;
+        }
+
+        RoadLaying.Network network = RoadLaying.Laid(circuit, body.GetDirCcfFromLatLon, body.MeanRadius, Ground, liftM, spacingM);
+        List<RoadLaying.Strip> strips = RoadLaying.Strips(network.Ribbons, Ground, spacingM);
+        Dictionary<RoadRibbon, List<RoadMeshData>> runs = new(ReferenceEqualityComparer.Instance);
+        Dictionary<int, RoadMeshData> junctions = [];
+
+        // One that cannot be made is left out here, and the laying tries it again to say why.
+        foreach (RoadRibbon ribbon in network.Ribbons)
+        {
+            try { runs[ribbon] = RoadTessellation.Mesh(ribbon, RoadDrawList.Fit); }
+            catch (Exception) { }
+        }
+        foreach (RoadJunction junction in network.Junctions)
+        {
+            try { junctions[junction.Node] = RoadTessellation.Mesh(junction); }
+            catch (Exception) { }
+        }
+        return new Prepared(body, circuit, liftM, spacingM, network, strips, strips.Count > 0 ? RoadLaying.Surface(strips) : null,
+                            RoadWarning.Of(circuit, network, body.GetDirCcfFromLatLon), runs, junctions, points, low, high, took.Elapsed.TotalMilliseconds);
+    });
 
     /// <summary>How long the last laying took, its meshes apart, and how many times it read KSA's terrain.</summary>
     public static (double Ms, int TerrainReads) LastLay { get; private set; }
@@ -562,7 +689,7 @@ internal static class Roads
     // drag touched, only the runs through those and the junctions they stop at, drawn in place of the
     // same ones before and the physics left as it was. A road whose triangles cannot be made or drawn
     // is still a surface under a wheel.
-    private static void Mesh(Celestial body, RoadLaying.Network network, HashSet<int>? touched)
+    private static void Mesh(Celestial body, RoadLaying.Network network, HashSet<int>? touched, Prepared? prepared = null)
     {
         SinceRedraw.Restart();
         bool whole = touched is null;
@@ -580,7 +707,7 @@ internal static class Roads
             if (touched is not null && shown.Contains(KeyOf(ribbon)) && !ribbon.Spans.Any(s => touched.Contains(s.From) || touched.Contains(s.To))) continue;
             try
             {
-                List<RoadMeshData> meshes = RoadTessellation.Mesh(ribbon, RoadDrawList.Fit);
+                List<RoadMeshData> meshes = prepared?.RunMeshes.GetValueOrDefault(ribbon) ?? RoadTessellation.Mesh(ribbon, RoadDrawList.Fit);
                 runs.Add(new RoadDrawing.Run(KeyOf(ribbon), meshes));
                 made[ribbon] = meshes;
             }
@@ -598,7 +725,7 @@ internal static class Roads
             if (touched is not null && !touched.Contains(junction.Node) && !junction.Arms.Any(a => a.Ribbon is { } r && made.ContainsKey(r))) continue;
             try
             {
-                junctions[junction.Node] = (junction, RoadTessellation.Mesh(junction));
+                junctions[junction.Node] = (junction, prepared?.JunctionMeshes.GetValueOrDefault(junction.Node) ?? RoadTessellation.Mesh(junction));
             }
             catch (Exception e)
             {
@@ -646,6 +773,8 @@ internal static class Roads
             }
         }
 
+        double meshedMs = SinceRedraw.Elapsed.TotalMilliseconds;
+
         // One solid for all that is joined: a hull crossing a mouth is on triangles that share an edge.
         List<RoadCollider> colliders = [];
         if (whole)
@@ -673,6 +802,7 @@ internal static class Roads
             }
         }
         foreach (string key in shown.Where(k => k.StartsWith(LoopKey, StringComparison.Ordinal))) gone.Remove(key);
+        double solidMs = SinceRedraw.Elapsed.TotalMilliseconds;
         RoadDrawing.Show(body, runs, others: !whole, EyeCcf(body), TakesGoneRuns ? gone : null);
         HashSet<string> now = [.. network.Ribbons.Select(KeyOf)];
         StaleRuns = RoadDrawing.ShownKeys().Count(k => !k.StartsWith(JunctionKey, StringComparison.Ordinal) && !now.Contains(k));
@@ -681,6 +811,8 @@ internal static class Roads
         bool hooked = RoadColliders.Installed;
         _status = new()
         {
+            ["prepared_ms"] = Math.Round(_preparedMs), ["laid_ms"] = Math.Round(_laidMs), ["ground_asked"] = _groundAsked, ["ground_read"] = _groundRead, ["meshed_ms"] = Math.Round(meshedMs), ["solids_ms"] = Math.Round(solidMs - meshedMs),
+            ["shown_ms"] = Math.Round(SinceRedraw.Elapsed.TotalMilliseconds - solidMs),
             ["junctions"] = network.Junctions.Count, ["junctions_refused"] = network.Refused.Count,
             ["collider_meshes"] = hooked ? colliders.Count : 0, ["collider_triangles"] = hooked ? colliders.Sum(c => c.Triangles) : 0,
             ["collider_most_triangles"] = hooked && colliders.Count > 0 ? colliders.Max(c => c.Triangles) : 0,

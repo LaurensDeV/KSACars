@@ -73,7 +73,19 @@ internal sealed class Route
     /// <param name="raceInsideM">More than nothing, and the route is the racing line that keeps this far inside each edge: see <see cref="RacingLine"/>.</param>
     public static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, Func<double3, double> groundAt,
                             double liftM, double spacingM, IReadOnlyList<int>? through, double offsetM, out string why,
-                            double turnRadiusM = 0.0, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null)
+                            double turnRadiusM = 0.0, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null) =>
+        Of(circuit, dirOf, radiusM, () => RoadLaying.Laid(circuit, dirOf, radiusM, groundAt, liftM, spacingM), spacingM, through, offsetM, out why,
+           turnRadiusM, raceInsideM, nudgesM);
+
+    /// <summary>The same over roads that are already laid, which reads no ground.</summary>
+    public static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, RoadLaying.Network network,
+                            double spacingM, IReadOnlyList<int>? through, double offsetM, out string why,
+                            double turnRadiusM = 0.0, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null) =>
+        Of(circuit, dirOf, radiusM, () => network, spacingM, through, offsetM, out why, turnRadiusM, raceInsideM, nudgesM);
+
+    private static Route? Of(Circuit circuit, Func<double, double, double3> dirOf, double radiusM, Func<RoadLaying.Network> network,
+                             double spacingM, IReadOnlyList<int>? through, double offsetM, out string why,
+                             double turnRadiusM, double raceInsideM, IReadOnlyList<double>? nudgesM)
     {
         why = "";
         List<int> path = through is { Count: > 0 } ? [.. through] : Following(circuit, dirOf, radiusM);
@@ -83,7 +95,7 @@ internal sealed class Route
             return null;
         }
 
-        RoadLaying.Network laid = RoadLaying.Laid(circuit, dirOf, radiusM, groundAt, liftM, spacingM);
+        RoadLaying.Network laid = network();
         List<RoadRibbon> ribbons = laid.Ribbons;
         List<double3> line = [];
         List<double> halfWidths = [], banks = [];
