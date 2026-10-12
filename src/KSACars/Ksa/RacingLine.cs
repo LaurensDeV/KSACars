@@ -25,8 +25,12 @@ internal static class RacingLine
     // The arrowheads written at once, which is 3 km of road.
     private const int StretchArrows = 1024;
 
-    // The share the plan's driver takes of what it leaves spare: a line for hands on a keyboard, not for the watch.
-    private const double Push = 0.3;
+    // The share the plan's driver takes of what it leaves spare: all of it, since the line is what the
+    // car can do and not what a careful driver would.
+    private const double Push = 1.0;
+
+    // What the line keeps between a tyre and the road's edge, where the route driver keeps more for its own wandering.
+    private const double EdgeM = 0.3;
 
     // Further from the line than this the car is looked for anew along the whole of it, not just ahead of where it was.
     private const double LostM = 40.0;
@@ -193,7 +197,7 @@ internal static class RacingLine
     private static Plan? Planned(Vehicle craft, BuggyProfile profile)
     {
         if (Roads.RouteOver(null, 0.0, Autopilot.TurnRadius(profile), out Celestial? body, out RoadSurface? surface, out string why,
-                            Autopilot.RaceInside(profile)) is not { } route || body is null || !ReferenceEquals(craft.Parent, body))
+                            Autopilot.RaceInside(profile) - Autopilot.RaceMarginM + EdgeM) is not { } route || body is null || !ReferenceEquals(craft.Parent, body))
         {
             _noPlan = string.IsNullOrEmpty(why) ? "the roads are on another body" : why;
             return null;
