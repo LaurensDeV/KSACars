@@ -15,7 +15,16 @@ cd "$REPO_ROOT" || exit 1
 
 fail=0
 
-if hits="$(git ls-files | grep -E '\.(dll|pdb)$')"; then
+# The one binary here that is not KSA's and is meant to ship: SDL's own Windows build, under the zlib
+# licence beside it. It is let through by its digest, so nothing else can ride in under its name.
+SDL=src/KSACars/Native/SDL3.dll
+SDL_SHA256=2b4b128d8d510cc2d442693cf848c050d700d43dc667afe9e5fd82b0570d667e
+if [[ -f "$SDL" ]] && [[ "$(sha256sum "$SDL" | cut -d' ' -f1)" != "$SDL_SHA256" ]]; then
+    echo "error: $SDL is not the SDL build this repository ships (release 3.4.18, win32-x64)" >&2
+    fail=1
+fi
+
+if hits="$(git ls-files | grep -E '\.(dll|pdb)$' | grep -vxF "$SDL")"; then
     echo "$hits" | sed 's/^/  /'
     echo "error: game assemblies must not be committed - see .gitignore" >&2
     fail=1
