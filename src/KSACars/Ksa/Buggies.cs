@@ -604,6 +604,15 @@ internal sealed class Buggies
         e.Input = ReadInput(craft);
         e.Turn = ReadTurn(craft);
         bool boost = craft.GetSprintInput();
+        PadDrive? pad = GamepadInput.For(craft);
+        if (pad is { } asked)
+        {
+            // The stick leans a car that is off the ground; on it the triggers alone are the throttle.
+            double lean = e.AirborneSeconds > 0.0 ? asked.Lean : 0.0;
+            e.Input = Gamepad.Merge(e.Input, asked.Input with { Throttle = asked.Input.Throttle + lean });
+            e.Turn = Math.Clamp(e.Turn + asked.Turn, -1.0, 1.0);
+            boost |= asked.Boost;
+        }
         if (Held.TryGetValue(craft, out (DriveInput Input, double Turn, bool Boost, double Seconds) held))
         {
             e.Input = held.Input;
@@ -619,6 +628,8 @@ internal sealed class Buggies
         // KSA's own engine keys: start and shutdown light and cut the rockets, and the throttle keys move
         // the mod's throttle, because KSA pins its own at full on a craft with no engine.
         (bool more, bool less) = KsaWorld.ThrottleKeys(craft);
+        more |= pad is { ThrottleUp: true };
+        less |= pad is { ThrottleDown: true };
         if (dt > 0.0) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
         e.Lit = e.Drive.Profile.HasRockets && (KsaWorld.EngineOn(craft) ?? e.Lit);
         e.HatchWanted[(int)ThrusterGroup.Lift] = e.Lit;

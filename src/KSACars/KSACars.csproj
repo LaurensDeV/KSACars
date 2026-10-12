@@ -49,6 +49,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <!-- The courses the mod comes with, written by tools/roads/club-motorsports.py. -->
+    <None Update="Native\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Circuits\**\*.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

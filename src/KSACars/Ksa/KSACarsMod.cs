@@ -129,11 +129,14 @@ public sealed class KSACarsMod
             return;
         }
 
+        GamepadInput.Poll();
+
         // Every frame rather than on the clock: the springs step inside the engine's own physics
         // window, so this only has to find the cars and show where their wheels ended up.
         KsaWorld.InvalidateCensus();
         _buggies.Sync(KsaWorld.Vehicles);
         _buggies.Pose();
+        ChaseCamera.Update();
         _buggySound.Update(_buggies, 1f);
         _rocketSound.Update(_buggies);
     }
