@@ -2,7 +2,7 @@
 
 Everything here comes out of the shipped assemblies of **KSA build 2026.9.10.5438**, read with
 `tools/apidump`, or out of the StarMap sources, and was rechecked against **2026.9.22.5482**,
-**2026.10.7.5541** and **2026.10.10.5554** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
+**2026.10.7.5541**, **2026.10.10.5554** and **2026.10.13.5602** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
 none of this is documented by RocketWerkz, and **it will drift between game builds**. Re-run
 the dumper rather than trusting this file after an update.
 
@@ -213,7 +213,9 @@ eva.UpdatePerFrameData();
   distance by the craft's radius over the kitten's, which from a large craft leaves the view
   kilometres off; keep the kitten's own `OrbitView.DistancePower` instead.
 - **A kitten dies at 125 g**, filtered over `radius / 200` seconds: `EffectiveMaxGLoad` is 50 g for
-  anything under 5 m, times 2.5 for a kitten (`PhysicsBubble.DetectStructuralFailure`). It is then
+  anything under 5 m, times 2.5 for a kitten (`PhysicsBubble.DetectStructuralFailure`). **And at
+  20 m/s of fall stopped in one step**, since 2026.10.13.5602: on the ground or the sea,
+  `DetectKittenImpact` compares its downward speed over the ground with the step before's. It is then
   marked KIA and kept on the roster's LOST tab. `PartFailure` ignores kittens entirely.
 
 ### Per-frame buffers are not readable from a StarMap hook

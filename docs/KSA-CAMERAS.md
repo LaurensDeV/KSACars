@@ -20,7 +20,7 @@ moved with it. A citation is still a pointer rather than a proof: check before r
 Grounded **only** in the decompiled engine at
 `../ksa-game-assemblies/current/src`.
 All citations are relative to that root. Nothing here is taken from any mod's own code or docs.
-Build: **2026.10.10.5554**. Line numbers move on every KSA update, so a citation that does not land
+Build: **2026.10.13.5602**. Line numbers move on every KSA update, so a citation that does not land
 on what it claims means this file is behind the corpus, not that the corpus is wrong.
 
 > **Its citations and its viewport sections are against 2026.8.22.5348, and section 2 in particular
@@ -36,6 +36,12 @@ on what it claims means this file is behind the corpus, not that the corpus is w
 > `PositionEcl`. Rechecked, citations not re-derived.
 > 2026.10.10.5554 changed no camera or controller file; `Program.cs` gained two profiler calls, which moves
 > its citations past line 2197 by one or two lines and leaves `Program.OnFrame`'s order alone.
+> Rechecked, citations not re-derived.
+> 2026.10.13.5602 changed one controller line: `OrbitController`'s chase frame is `Vehicle.GetHelm2Cce`,
+> the same rotation `GetCtrl2Cce` was, every `Ctrl` member of `Vehicle` being `Helm` now. A viewport
+> has a new state flag, `InsideVehicle`, set through `IViewport.SetInsideVehicle`, and
+> `ViewportEx.RendersInterior` is true in the IVA mode or with it; `PartTreeRenderData` asks that where
+> it asked for the IVA mode. `Program.OnFrame`'s order is as it was, its citations past line 2353 moved on by 79.
 > Rechecked, citations not re-derived.
 > 2026.9.4.5400 replaced the `Viewport` class with `IViewport` / `ViewportBase` /
 > `GameViewport` and moved the list into `ViewportRegistry` — so every `Viewport.cs:N` citation
