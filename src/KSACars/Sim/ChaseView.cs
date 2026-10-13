@@ -50,6 +50,35 @@ public static class ChaseView
     public static double Ease(double value, double towards, double seconds, double dt) =>
         value + ((towards - value) * (1.0 - Math.Exp(-Math.Max(dt, 0.0) / seconds)));
 
+    /// <summary>The speed at which the view is as wide, as far back and as low as it goes, m/s.</summary>
+    public const double FullSpeedMs = 65.0;
+
+    /// <summary>What a car at full speed adds to the view: degrees of field of view, a share of its distance, and radians it drops by.</summary>
+    public const double MostFovDeg = 22.0, MostPull = 0.25, MostDropRad = 0.07;
+
+    /// <summary>The share of full speed past which the view shakes, and by how much at all of it, rad.</summary>
+    public const double ShakeFrom = 0.7, MostShakeRad = 0.005;
+
+    /// <summary>
+    /// How much of what speed does to the view a car going at one has, 0 to 1: nothing standing, all of it at
+    /// <see cref="FullSpeedMs"/>, and eased at both ends so neither pulling away nor the last of the speed jerks it.
+    /// </summary>
+    public static double SpeedShare(double speedMs)
+    {
+        double t = Math.Clamp(Math.Abs(speedMs) / FullSpeedMs, 0.0, 1.0);
+        return t * t * (3.0 - (2.0 * t));
+    }
+
+    /// <summary>
+    /// How far the view is thrown off its heading and its elevation at a time, rad: two beats that never
+    /// fall in step, slow enough to come through the spring KSA turns its camera by.
+    /// </summary>
+    public static (double Azimuth, double Elevation) Shake(double share, double seconds)
+    {
+        double over = Math.Clamp((share - ShakeFrom) / (1.0 - ShakeFrom), 0.0, 1.0), size = MostShakeRad * over * over;
+        return (size * Math.Sin(seconds * 2.0 * Math.PI * 5.3), size * 0.6 * Math.Sin((seconds * 2.0 * Math.PI * 7.9) + 1.0));
+    }
+
     /// <summary>The view's elevation a frame on with a stick pushed away, which lowers it, or pulled back.</summary>
     public static double Tilt(double elevation, double stickY, double dt) =>
         Math.Clamp(elevation - (stickY * StickRadPerSec * dt), HighestRad, LowestRad);

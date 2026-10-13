@@ -88,4 +88,26 @@ public class GamepadTests
         Assert.Equal(ChaseView.MostLeadRad, ChaseView.Lead(100.0));
         Assert.Equal(0.0, ChaseView.Lead(0.0));
     }
+
+    [Fact]
+    public void SpeedDoesNothingToTheViewOfACarStandingAndAllItDoesAtFullSpeed()
+    {
+        Assert.Equal(0.0, ChaseView.SpeedShare(0.0));
+        Assert.Equal(1.0, ChaseView.SpeedShare(ChaseView.FullSpeedMs));
+        Assert.Equal(1.0, ChaseView.SpeedShare(3.0 * ChaseView.FullSpeedMs));
+        Assert.Equal(ChaseView.SpeedShare(30.0), ChaseView.SpeedShare(-30.0));
+        Assert.True(ChaseView.SpeedShare(20.0) < ChaseView.SpeedShare(40.0));
+    }
+
+    [Fact]
+    public void TheViewShakesOnlyNearFullSpeedAndNeverByMoreThanItsMost()
+    {
+        for (double t = 0.0; t < 3.0; t += 0.013)
+        {
+            Assert.Equal((0.0, 0.0), ChaseView.Shake(ChaseView.ShakeFrom, t));
+            (double azimuth, double elevation) = ChaseView.Shake(1.0, t);
+            Assert.InRange(Math.Abs(azimuth), 0.0, ChaseView.MostShakeRad);
+            Assert.InRange(Math.Abs(elevation), 0.0, ChaseView.MostShakeRad);
+        }
+    }
 }

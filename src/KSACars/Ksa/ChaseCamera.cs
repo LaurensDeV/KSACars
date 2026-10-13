@@ -21,6 +21,16 @@ internal static class ChaseCamera
     private static double _heading;
     private static double _turnRate;
 
+    // The view's own heading, apart from the shake written with it.
+    private static double _azimuth;
+
+    // What speed does to the view, eased; and the field of view and the distance as the player has them,
+    // with what was last written of each, so a change of the player's is told from one of this.
+    private static double _speed, _clock;
+    private static Camera? _camera;
+    private static float _fovDeg, _fovWritten;
+    private static double _distance, _distanceWritten;
+
     /// <summary>The panel's choice; with none made the view chases while a gamepad is being read.</summary>
     public static bool? Chosen { get; set; }
 
@@ -58,7 +68,10 @@ internal static class ChaseCamera
                 _view = view;
                 _frameBefore = view.ReferenceFrame;
                 _tilt = Math.Min(view.Elevation, ChaseView.StartElevationRad);
-                (_slope, _turnRate, _heading) = (0.0, 0.0, double.NaN);
+                (_slope, _turnRate, _heading, _speed, _azimuth) = (0.0, 0.0, double.NaN, 0.0, view.Azimuth);
+                _camera = camera;
+                _fovDeg = _fovWritten = FovDeg(camera);
+                _distance = _distanceWritten = view.DistancePower;
             }
             view.ReferenceFrame = CameraReferenceFrame.Surface;
 
@@ -80,11 +93,25 @@ internal static class ChaseCamera
                     _turnRate = ChaseView.Ease(_turnRate, rate, 0.25, dt);
                 }
                 _heading = heading;
-                view.Azimuth = ChaseView.Follow(view.Azimuth, heading + ChaseView.Lead(_turnRate), -lookX, dt);
+                _azimuth = ChaseView.Follow(_azimuth, heading + ChaseView.Lead(_turnRate), -lookX, dt);
                 // Nose down is a view turned down with it, so a road falling away stays in the picture.
                 _slope = ChaseView.Ease(_slope, Math.Asin(Math.Clamp(Vec.Dot(ahead, up), -1.0, 1.0)), ChaseView.FollowSeconds, dt);
             }
-            view.Elevation = Math.Clamp(_tilt + _slope, -Math.PI / 2.0, Math.PI / 2.0);
+
+            // Speed widens the view, lets the car run away from it and brings it down towards the road.
+            _speed = ChaseView.Ease(_speed, ChaseView.SpeedShare(car.SpeedMs), 0.4, dt);
+            if (!KsaWorld.IsPaused) _clock += dt;
+            (double shakeAzimuth, double shakeElevation) = ChaseView.Shake(_speed, _clock);
+            view.Azimuth = _azimuth + shakeAzimuth;
+            view.Elevation = Math.Clamp(_tilt + _slope + (ChaseView.MostDropRad * _speed) + shakeElevation, -Math.PI / 2.0, Math.PI / 2.0);
+
+            if (Math.Abs(FovDeg(camera) - _fovWritten) > 0.05f) _fovDeg = FovDeg(camera);
+            _fovWritten = Math.Min(_fovDeg + (float)(ChaseView.MostFovDeg * _speed), Camera.MAXIMUM_FOV);
+            camera.SetFieldOfView(_fovWritten);
+
+            double pull = 1.0 + (ChaseView.MostPull * _speed);
+            if (Math.Abs(view.DistancePower - _distanceWritten) > 1e-6) _distance = view.DistancePower / pull;
+            view.DistancePower = _distanceWritten = _distance * pull;
         }
         catch (Exception e)
         {
@@ -94,9 +121,16 @@ internal static class ChaseCamera
         }
     }
 
+    private static float FovDeg(Camera camera) => (float)(camera.GetFieldOfView() * 180.0 / Math.PI);
+
     private static void Release()
     {
-        if (_view is { } view) view.ReferenceFrame = _frameBefore;
-        _view = null;
+        if (_view is { } view)
+        {
+            view.ReferenceFrame = _frameBefore;
+            view.DistancePower = _distance;
+            _camera?.SetFieldOfView(_fovDeg);
+        }
+        (_view, _camera) = (null, null);
     }
 }
