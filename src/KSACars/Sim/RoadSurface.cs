@@ -242,6 +242,48 @@ public sealed class RoadSurface
         return true;
     }
 
+    // A step of the walk along a ray: no longer than this, and never further down than a deck is thick.
+    private const double RayStepM = 2.0;
+
+    /// <summary>
+    /// Where a ray first comes down onto a laid road's asphalt, walked out along it from
+    /// <paramref name="from"/> m to <paramref name="to"/> m: how far along that is, and the way the
+    /// asphalt faces there. A ray that comes up under a deck does not meet it. What a pointer is put on
+    /// a road with, the ground's own ray going through a deck to what is under it.
+    /// </summary>
+    public bool TryRay(double3 origin, double3 direction, double from, double to, out double range, out double3 facing)
+    {
+        range = double.NaN;
+        facing = default;
+        double3 dir = Vec.Unit(direction);
+        if (_chart is null || !Vec.IsFinite(origin) || !Vec.IsFinite(dir) || !(to > from)) return false;
+
+        double before = Math.Max(from, 0.0);
+        for (double t = before; t <= to;)
+        {
+            double3 at = origin + (dir * t);
+            if (TryLocate(at, null, out double over, out double outM, out double3? faces) && outM <= EdgeM && over <= 0.0
+                && faces is { } face && Vec.Dot(dir, face) < 0.0)
+            {
+                // Between the sample before, which was over it, and this one.
+                double lo = before, hi = t;
+                for (int i = 0; i < 24 && hi - lo > 1e-3; i++)
+                {
+                    double mid = 0.5 * (lo + hi);
+                    if (TryLocate(origin + (dir * mid), null, out double m, out double o) && o <= EdgeM && m <= 0.0) hi = mid;
+                    else lo = mid;
+                }
+                (range, facing) = (hi, face);
+                return true;
+            }
+
+            before = t;
+            double fall = Math.Abs(Vec.Dot(dir, Vec.Unit(at)));
+            t += Math.Min(RayStepM, 0.8 * StepM / Math.Max(fall, 1e-6));
+        }
+        return false;
+    }
+
     /// <summary>What of the roads is over a place on the ground.</summary>
     public enum Cover
     {

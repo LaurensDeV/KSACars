@@ -578,4 +578,30 @@ public class RoadSurfaceSweepTests
             }
         }
     }
+
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(8.0)]
+    public void APointersRayComesDownOnTheAsphaltAndNotOnTheGroundUnderIt(double heightM)
+    {
+        Laid laid = Lay(Bend(200.0, 0.0, 1.0, 8.0, heightM, heightM, heightM), 2.0);
+        double3 up = DirOf(0, 0), east = new(0, 1, 0), north = new(0, 0, 1);
+        double top = R + Lift + heightM;
+
+        // from above and to one side, at a place on the road 30 m east of its middle and a metre north of its line
+        double3 aim = (up * top) + (east * 30.0) + (north * 1.0);
+        double3 eye = aim + (up * 40.0) - (east * 60.0) - (north * 25.0);
+        Assert.True(laid.Surface.TryRay(eye, aim - eye, 0.0, 500.0, out double range, out double3 facing), "the ray met no road");
+        double3 hit = eye + (Vec.Unit(aim - eye) * range);
+        Assert.True(Vec.Len(hit - aim) < 0.05, $"{Vec.Len(hit - aim):F3} m from where it was aimed");
+        Assert.True(Vec.Dot(facing, up) > 0.999, "the asphalt of a level road faces up");
+
+        // from under it, looking up: a deck is not met from below, and a road on the ground has nothing under it
+        double3 under = (up * (R - 5.0)) + (east * 30.0);
+        Assert.False(laid.Surface.TryRay(under, up, 0.0, 100.0, out _, out _), "met from underneath");
+
+        // and beside the road the ray goes by
+        double3 beside = aim + (north * 40.0);
+        Assert.False(laid.Surface.TryRay(beside + (up * 40.0), -up, 0.0, 100.0, out _, out _), "met 40 m off the road");
+    }
 }

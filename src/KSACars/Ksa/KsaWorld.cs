@@ -626,6 +626,26 @@ internal static partial class KsaWorld
     }
 
     /// <summary>
+    /// How a body turns, as a vector along its axis in radians a second. Its components are the same in
+    /// the frame that turns with the body as in the one that does not, the turn being about it.
+    /// </summary>
+    public static double3 SpinOf(Celestial body)
+    {
+        try { return ((IParentBody)body).GetAngularVelocityCci(); }
+        catch { return Vec.Zero; }
+    }
+
+    /// <summary>Whether the brake key, Space, is down and nobody is typing.</summary>
+    public static bool BrakeKeyDown
+    {
+        get
+        {
+            try { return !Brutal.ImGuiApi.ImGui.GetIO().WantTextInput && Brutal.ImGuiApi.ImGui.IsKeyDown(Brutal.ImGuiApi.ImGuiKey.Space); }
+            catch { return false; }
+        }
+    }
+
+    /// <summary>
     /// Gravitational acceleration at <paramref name="positionEcl"/> from the craft's parent body, in Ecl.
     /// Zero if the parent or its gravity parameter is unavailable.
     /// </summary>

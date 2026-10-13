@@ -42,8 +42,8 @@ public static class Headlights
     public const float BrakeBoost = 4f;
 
     /// <summary>The brakes are on when the driver asks for the opposite of the way the car is rolling.</summary>
-    public static bool Braking(double throttle, double forwardSpeed) =>
-        (throttle < 0.0 && forwardSpeed > 0.5) || (throttle > 0.0 && forwardSpeed < -0.5);
+    public static bool Braking(double throttle, double forwardSpeed, double brake = 0.0) =>
+        brake > 0.0 || (throttle < 0.0 && forwardSpeed > 0.5) || (throttle > 0.0 && forwardSpeed < -0.5);
 
     /// <summary>A brake lens's colour: as given while braking, an eighth as bright otherwise.</summary>
     public static uint BrakeLens(uint rgb, bool braking) =>

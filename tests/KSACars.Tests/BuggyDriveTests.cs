@@ -294,6 +294,30 @@ public class BuggyDriveTests
         Assert.True(rig.Velocity.Y < 0.6, $"still at {rig.Velocity.Y:F1} m/s after six seconds of brake");
     }
 
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(0.0)]
+    [InlineData(-1.0)]
+    public void TheBrakeStopsItAndHoldsItWhateverTheThrottle(double throttle)
+    {
+        Rig rig = new(1.0 / 60.0);
+        rig.Settle();
+        for (int i = 0; i < 240; i++) rig.Step(new DriveInput(1.0, 0.0));
+        double before = rig.Velocity.Y;
+        Assert.True(before > 5.0, $"only at {before:F1} m/s before the brake");
+
+        double slowest = double.MaxValue;
+        for (int i = 0; i < 360; i++)
+        {
+            rig.Step(new DriveInput(throttle, 0.0, Brake: 1.0));
+            slowest = Math.Min(slowest, rig.Velocity.Y);
+        }
+
+        Assert.InRange(rig.Velocity.Y, -0.05, 0.05);
+        // it rocks back on its springs as it stops, and no further
+        Assert.True(slowest > -0.2, $"rolled back at {slowest:F2} m/s under the brake");
+    }
+
     // Over a crest a car is off all four wheels for a step or two, and KSA's drag coming back there is a
     // two-g jab at speed. Flying, or with a rocket lit, that drag is the only one the car has.
     [Fact]

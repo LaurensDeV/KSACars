@@ -10,7 +10,8 @@ public readonly record struct WheelContact(bool Valid, double HubHeight, double3
 
 /// <param name="Throttle">-1 full reverse or brake, +1 full forward.</param>
 /// <param name="Steer">-1 full right, +1 full left.</param>
-public readonly record struct DriveInput(double Throttle, double Steer);
+/// <param name="Brake">0 off, 1 all the brakes on all four, whichever way the car rolls; the engine is cut while it is on.</param>
+public readonly record struct DriveInput(double Throttle, double Steer, double Brake = 0.0);
 
 /// <summary>What a step asks of the craft: an impulse through its centre of mass and one about it, body frame.</summary>
 public readonly record struct DriveImpulse(double3 Linear, double3 Angular);
@@ -137,7 +138,7 @@ public sealed class BuggyDrive(BuggyProfile profile)
         double3 linear = Vec.Zero;
         double3 angular = Vec.Zero;
 
-        double drive = DriveForce(input.Throttle, mass, gravity);
+        double drive = input.Brake > 0.0 ? 0.0 : DriveForce(input.Throttle, mass, gravity);
         int drivenOnGround = 0;
         for (int i = 0; i < n; i++)
         {
@@ -207,7 +208,7 @@ public sealed class BuggyDrive(BuggyProfile profile)
             double pressed = load + (share[i] * down);
             double limit = grip * pressed;
 
-            double fAlong = LongitudinalForce(corner, input.Throttle, drive, drivenOnGround, vAlong, m, pressed, dt);
+            double fAlong = LongitudinalForce(corner, input.Throttle, input.Brake, drive, drivenOnGround, vAlong, m, pressed, dt);
             double fSide = -vSide * m * Settle / dt;
 
             // Holding the line comes first and pushing gets what is left: a tyre that spends its grip on
@@ -412,9 +413,15 @@ public sealed class BuggyDrive(BuggyProfile profile)
         return 0.0;
     }
 
-    private double LongitudinalForce(BuggyCorner corner, double throttle, double drive, int drivenOnGround,
+    private double LongitudinalForce(BuggyCorner corner, double throttle, double brake, double drive, int drivenOnGround,
                                      double vAlong, double m, double load, double dt)
     {
+        // The brake itself: it stops the wheel and no more, so a car standing on a slope is held there.
+        if (brake > 0.0)
+        {
+            return -Math.Sign(vAlong) * Math.Min(Profile.BrakeG * load * Math.Min(brake, 1.0), Math.Abs(vAlong) * m / dt);
+        }
+
         // Pressing against the way the car is rolling is braking, on all four.
         bool braking = (throttle > 0.0 && ForwardSpeed < -0.5) || (throttle < 0.0 && ForwardSpeed > 0.5);
         if (braking)

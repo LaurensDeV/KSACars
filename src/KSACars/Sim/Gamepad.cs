@@ -74,7 +74,8 @@ public static class Gamepad
 
     /// <summary>The keys and the pad together, so either drives and neither has to be let go of.</summary>
     public static DriveInput Merge(DriveInput keys, DriveInput pad) =>
-        new(Math.Clamp(keys.Throttle + pad.Throttle, -1.0, 1.0), Math.Clamp(keys.Steer + pad.Steer, -1.0, 1.0));
+        new(Math.Clamp(keys.Throttle + pad.Throttle, -1.0, 1.0), Math.Clamp(keys.Steer + pad.Steer, -1.0, 1.0),
+            Math.Max(keys.Brake, pad.Brake));
 
     /// <summary>The buttons that went down since the read before.</summary>
     public static PadButtons Pressed(PadButtons before, PadButtons now) => now & ~before;
