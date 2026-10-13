@@ -63,7 +63,8 @@ def main():
     lined(rng)
     trim(rng)
     race_line()
-    print("wrote KSACars_Road_*.png, KSACars_RoadLined_*.png, KSACars_RoadEarth_*.png KSACars_RoadTrim_*.png and KSACars_RaceLine_*.png")
+    paint()
+    print("wrote KSACars_Road_*.png, KSACars_RoadLined_*.png, KSACars_RoadEarth_*.png KSACars_RoadTrim_*.png, KSACars_RaceLine_*.png and KSACars_RoadPaint_*.png")
 
 
 def race_line():
@@ -104,6 +105,14 @@ def trim(rng):
     colour = np.where(kerbside, kerb, concrete) + grain[..., None]
     rough = np.where(across[None, :] < 0.5, 170.0, 215.0) + grain
     write("KSACars_RoadTrim", colour, rough)
+
+
+def paint():
+    """A start's paint: white in the left half and black in the right, flat, so a quad anywhere in a half is that colour."""
+    wide, high = 64, 16
+    left = (np.arange(wide) < wide // 2)[None, :, None]
+    colour = np.where(left, np.array([214.0, 212.0, 204.0])[None, None, :], np.array([16.0, 16.0, 18.0])[None, None, :])
+    write("KSACars_RoadPaint", np.broadcast_to(colour, (high, wide, 3)), np.full((high, wide), 150.0))
 
 
 def lined(rng):

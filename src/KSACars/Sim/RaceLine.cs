@@ -134,7 +134,8 @@ internal static class RaceLine
                 reach = Math.Max(reach, Vec.Len(from));
                 positions[v + c] = new float3((float)from.X, (float)from.Y, (float)from.Z);
                 normals[v + c] = new float3((float)arrow.Facing.X, (float)arrow.Facing.Y, (float)arrow.Facing.Z);
-                uvs[v + c] = new float2(0.5f, 0.5f);
+                // A place of its own each: with one for all four KSA draws the arrowhead speckled with holes.
+                uvs[v + c] = new float2(c == 1 ? 0.1f : c == 3 ? 0.9f : 0.5f, c == 0 ? 0.9f : c == 2 ? 0.3f : 0.1f);
             }
             // Anticlockwise seen from above, the side KSA draws: tip, left, notch and tip, notch, right.
             (indices[n], indices[n + 1], indices[n + 2]) = (v, v + 1, v + 2);

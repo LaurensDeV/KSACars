@@ -30,6 +30,12 @@
     <Normal       Path="Textures/KSACars_RoadTrim_Normal.png"  Category="Default" />
     <AoRoughMetal Path="Textures/KSACars_RoadTrim_PBR.png"     Category="Default" />
   </PbrMaterial>
+  <!-- A course's start: white in the left half of the picture and black in the right, a quad being one or the other. -->
+  <PbrMaterial Id="KSACars_RoadPaint_Material">
+    <Diffuse      Path="Textures/KSACars_RoadPaint_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadPaint_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadPaint_PBR.png"     Category="Default" />
+  </PbrMaterial>
   <!-- The line to drive, a material a colour: blue for a car under the speed a place allows, then yellow, orange and red. -->
   <PbrMaterial Id="KSACars_RaceLine0_Material">
     <Diffuse      Path="Textures/KSACars_RaceLine0_Diffuse.png" Category="Default" />
@@ -1118,10 +1124,21 @@
 
     <!--
       The driver's helmet and its visor, which the mod puts on the driver's head each frame. Last in
-      the list: a save pairs a part's subparts with these by their place in it.
+      the list: a save pairs a part's subparts with these by their place in it. Declared as they are
+      with nobody at the wheel, shrunk away in the seat, so the editor and its thumbnail show none.
     -->
-    <SubPart Id="KSACars_F1_Helmet" InstanceOf="KSACars_F1Helmet_SubPart" />
-    <SubPart Id="KSACars_F1_HelmetVisor" InstanceOf="KSACars_F1HelmetVisor_SubPart" />
+    <SubPart Id="KSACars_F1_Helmet" InstanceOf="KSACars_F1Helmet_SubPart">
+      <Transform>
+        <Position X="0.12000" Y="0.20000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_HelmetVisor" InstanceOf="KSACars_F1HelmetVisor_SubPart">
+      <Transform>
+        <Position X="0.12000" Y="0.20000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
 
     <Connector Id="_f1ConnectorAft">
       <Transform>
