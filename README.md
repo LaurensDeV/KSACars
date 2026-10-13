@@ -64,6 +64,7 @@ the editor, or launch one straight from the vehicle list. Fill its seats in the 
 | --- | --- | --- |
 | pitch | W / S | throttle, and brake then reverse |
 | yaw | A / D | steer |
+| | Space | brake, on all four wheels: it stops the car and holds it, and never reverses |
 
 The car changes gear on its own. The engine is heard while you are driving it.
 
@@ -83,7 +84,8 @@ The Eldorado also flies, on four rockets under its floor, worked with the keys y
 | toggle RCS | R | switch the downward thrusters, which press the car onto the ground for grip |
 
 With the rockets lit and the downward thrusters on together, the car hovers: it holds its height, and
-the pitch and yaw keys still lean it across the ground.
+the pitch and yaw keys still lean it across the ground. Let go of them and it comes to rest over the
+place it is at.
 
 A gamepad drives a car too, beside the keys, with the triggers and the stick as far as you move them:
 
@@ -110,7 +112,7 @@ rocks without a scoop too. The panel's **Rock weight** slider sets how heavy roc
 stone, so by default they weigh 2% of that.
 
 The panel's **Move craft with the mouse** picks a craft up with one click and sets it down wherever
-you click next.
+you click next. Click a laid road and a car is stood on its asphalt, a raised road's deck included.
 
 A car is not destroyed by a hard landing, a collision or the sea; it bounces.
 
@@ -123,7 +125,22 @@ are in one, has an **Unflip** button that sets it back on its wheels where it li
 ### A course to race on
 
 The panel has a **Course** list. Choose one and press **Lay here**: the course is laid on the ground with
-its start where your car is, running the way the car faces, and the car is stood on the start line.
+its start where your car is, running the way the car faces, and the car is stood on pole: a chequered
+start line is painted across the road ahead of it and a grid behind.
+**Add opponent** puts a copy of your car in the next box of the grid with a kitten driving; it sets off
+when you do and laps the course, about as hard as **Opponent pace** says: each opponent is a driver of
+its own, a little quicker or slower and on its own line. They practise whatever course is laid, yours
+included: a few seconds after you add the first opponent the panel says what lap they have found so
+far, and it goes on improving for up to a minute. They drive to the best there is when they set off. What they learn of a course is kept, so the next time you lay it they know it already. It slows behind a car in its way but does not
+overtake unless there is a straight and room for it, though they go round a car that is standing wherever it is. One that is knocked off the road drives itself back on, and one on its roof is set on its
+wheels first; only an opponent that cannot get back is put back on the road.
+
+Hide the game's interface (F2 by default) and a racing display takes its place: your speed, your lap
+and its time with your last and best laps, how far up or down on your best you are at each checkpoint,
+your position among the cars on the course, and a map of the course that turns as you do. **Laps** in
+the panel sets how many laps the lap counter counts to. A lap only counts if you drive the whole of it:
+there are checkpoints round the course, the next one a post ahead of you with its distance and a yellow dot on the map, and if you cut across and
+miss one the display says so and your lap and position wait until you go back through it.
 **Take up roads** removes it and puts back the grass, trees and rocks that stood under it. **Racing line**
 draws arrowheads along the fastest line ahead of you: blue while you are under the speed the next corner
 allows, then yellow, orange and red as you need to brake.

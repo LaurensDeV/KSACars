@@ -9,7 +9,7 @@ tyres and engine are this mod's: a **beach buggy** on long-travel coil-overs, an
 Eldorado** convertible that floats on its springs and leans into a turn, and a red **2004 Ferrari F2004**
 on wings and springs that move an inch. All carry kittens: the driver's
 hands hold the steering wheel and turn it, and either can get out on EVA. A car is driven with the pitch
-and yaw keys, like anything else in KSA.
+and yaw keys, like anything else in KSA, and braked with Space.
 
 ## Read this first
 
@@ -187,11 +187,11 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Barrier.cs` | a car's side against a deck's barrier, as a push of the mod's own: **what speed it has into the wall taken away and a share of that push rubbing it along**, held short of the solid wall, whose friction is the ground's and stops a car that leans on it |
 | `Sim/Boost.cs` | two rockets on the tail as one push along the car's own forward, through its centre of mass — a fixed acceleration whatever the gravity, which is what moves a rock where the tyres have nothing to push against |
 | `Sim/Downforce.cs` | rockets on the bonnet and the boot that press the car onto the ground — a push along its own down through the centre of mass, and **the load the springs are sized off while it is on**, so the car rides at its usual height |
-| `Sim/Hover.cs` | the rockets under the car and the ones on top firing together — **thrust that carries the car's weight and brakes any climb or fall**, so it hangs where it is |
+| `Sim/Hover.cs` | the rockets under the car and the ones on top firing together — **thrust that carries the car's weight and brakes any climb or fall**, so it hangs where it is, and what holds it over the ground while the planet turns: the frame's own accelerations taken out and, with no lean asked, its speed across the ground braked |
 | `Sim/Hatch.cs` | the iris over each thruster — **where each of its six blades is, how it is turned and how big it is drawn** as it opens, and when its rocket may fire |
 | `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
 | `Sim/Gamepad.cs` | a gamepad as a car's controls: the triggers as throttle and brake, the left stick as steer and the right as the pitch and roll keys, **each with its dead centre taken out and the rest stretched to full**, added to the keys, and which buttons went down since the read before |
-| `Sim/ChaseView.cs` | a view that stays behind a car: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, and a stick to look round from there |
+| `Sim/ChaseView.cs` | a view that stays behind a car: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, a stick to look round from there, and what speed does to it: a wider field of view, further back, lower, and a shake near 65 m/s |
 | `Sim/TerrainRay.cs` | where a ray from the eye first goes under the ground, walked out along it — **not the mean sphere's hit**, which lands behind a hill seen side-on |
 | `Sim/TerrainMask.cs` | the stretch of a line that lies below a body's highest ground, which is all of it the terrain ray has to walk |
 | `Sim/CursorAim.cs` | the cursor, from window pixels to the framebuffer pixels a camera's ray is asked for in |
@@ -210,13 +210,18 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RoadRibbon.cs` | **a run of roads as one surface**: where it is a distance along and across, the way it faces there, and for any place how far along and across that is — the asphalt leaning by its bank, a verge and an embankment down into the ground past its edge, or a deck with nothing beside it where it is more than 4 m up |
 | `Sim/RoadTessellation.cs` | a ribbon as triangles, **the ones the game draws and collides with**: rows of vertices across the road, closer where it bends, climbs or twists, joined into meshes of about 100 m or of as much as a place in the pool holds, with the asphalt, the earth and a deck's sides apart, each vertex facing as the surface does and given twice only at a crease; and a junction as a mesh that **takes each run's last row for its own at the mouth**, several junctions to a mesh where they are near |
 | `Sim/RoadLoop.cs` | **a loop, which a height over the ground cannot say**: road that leaves the ground level, goes over upside down and comes back level to one side, its bend nothing at its foot and the most over its top; for a wheel how far off its asphalt it is the way that faces, where a circuit's roads put it, its triangles and the steering that carries a car round it |
-| `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it, or a junction's plane, and the way that faces, **a road more than a deck's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank |
+| `Sim/RoadSurface.cs` | the roads as something a wheel can be over: its height above the ribbon's own surface under it, or a junction's plane, and the way that faces, **a road more than a deck's half metre overhead being a bridge**, so the road beneath is the one answered, and asphalt answered before any road's verge or bank, and where a pointer's ray comes down on the asphalt |
 | `Sim/RoadCollider.cs` | the meshes of runs and junctions that are joined as **the one solid KSA's physics is given for them**: every triangle about one origin, listed so that it is solid from the side it is drawn from, and narrowed from where each vertex was worked out so two meshes' triangles share their corners |
 | `Sim/RoadDrawList.cs` | which of a circuit's meshes are drawn: how much one place in the pool holds and how many places there are, **the nearest meshes given the places when there are too few and the nearest drawn when a view has too few draws**, a mesh's triangles in the order of the two materials, and the ledger of which places are out |
 | `Sim/RoadWarnings.cs` | what is wrong with a circuit as it is laid, for whoever is drawing it: a junction that could not be made or has a road too short for its corners, a bend tighter than its width turns in, and a grade past what each kind of car climbs |
 | `Sim/Route.cs` | a line to drive along and how far along it a car is: the roads' centre lines through a circuit's points in order, a metre a sample, with the bend, the slope and the bend of the climb at each, a curve across each junction from the mouth come in by to the one left by, a kink rounded inside the asphalt and from its outside edge where the car turns too wide for less, and a set distance to one side. **Progress is looked for a little ahead of where it was and nowhere else**, which is what tells a route from the road it crosses |
 | `Sim/Autopilot.cs` | a driver that follows a route: pure pursuit from the rear axle, **the angle it wants turned into a steer input through `BuggyDrive.SteerLock`**, a speed held to what each bend, crest and dip allows and braked for in time, and a lap that ends itself with a reason — finished, off the road, flipped, stuck, out of time — and a summary of what it saw. The same driver in the tests and in the game |
+| `Sim/RaceBoard.cs` | what a race is to a display of it: how far each car has gone round a closed route, **the checkpoints it has been driven through in order, so a lap cannot be had by cutting across**, the lap and the place in the order that gives, and where a place is on a map that turns with one car |
+| `Sim/LapRig.cs` | **a car lapped with nothing of the game**: `TrackRig`, a free body on a sphere stepped as `Buggies` steps a car, with `TrackWorld` its ground and `TrackCar` the car as the engine has it; what the suite drives and what an opponent practises in |
+| `Sim/Practice.cs` | an opponent's practice of a course: every bend quicker until a lap goes wrong, then the driver's settings one at a time, then the pace at 24 places, **each way kept only if it is clean and quicker and tried every way a searched lap is**, some 300 laps of the rig |
+| `Sim/Rival.cs` | what makes a route driver an opponent: **a driver of its own for a seed**, its pace, what it makes of each of 24 places round the lap and where it puts its car across the road, the same every time; and the speed it holds behind a car in its way |
 | `Sim/RaceLine.cs` | the line to drive as arrowheads on the road ahead of a car: where each lies, on the road's own surface, and **its colour from the car's speed now against what the route allows there**, as runs of one colour that are each a draw |
+| `Sim/StartGrid.cs` | a course's start as paint on its asphalt: a chequered band between two white lines across the road ahead of the pole, from one edge line to the other, and behind it the boxes of a grid in two columns, **every corner on the road's own surface and a quad white or black by which half of one picture it is in** |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/RoadProfile.cs` | what a road is along its length apart from where it goes: **its height as a curve through its points' heights that climbs steadily where they do and never overshoots**, its lean and its width, an end at a junction held to the height, the climb and the lean it is given, with the steepest grade and the tightest crest or dip of each road |
 | `Sim/RoadGround.cs` | the ground along a road, **smoothed and never buried**: at or above every sample of the ground and the line between two, with no step in its slope, level ground and a steady slope left as they are and a bump filled over |
@@ -226,8 +231,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/MeshPatch.cs` | **an experiment**: a curved square as vertices, normals, UVs and triangles, in a right-handed frame of its own and wound the way KSA draws, for the bridge's one mesh made while the game runs |
 | `Sim/Vec.cs` | vector helpers, and `Plan`, a place or a step on a chart |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
-| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the ten patches, and once a frame finds the cars, poses their wheels and plays their engines |
-| `Ksa/PhysicsHook.cs` | **one of the ten places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the eleven patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the eleven places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
 | `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
 | `Ksa/SeatedCrewHook.cs` | the second patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
 | `Ksa/LightsHook.cs` | the third patch — **the headlamps submitted where KSA submits a craft's own lights**, a postfix on `PartTree.UpdateRenderData`; KSA clears its light list after the GUI pass, so a light from any StarMap hook is never drawn |
@@ -238,9 +243,13 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/HudHook.cs` | the eighth patch, on two methods — **KSA's HUD told a flying car has engines**: its engine panel, where the throttle is read, shown on a craft with no `EngineController`, and its "No active engines" alert withheld |
 | `Ksa/RailsHook.cs` | the ninth patch, on a private method — **a car whose rockets are burning kept off its orbit**: KSA rails a craft above the atmosphere unless an engine of its own fires, and on rails nothing written to its velocity is read |
 | `Ksa/RoadDrawHook.cs` | the tenth patch — **the roads submitted where a static mesh's draw survives**, a postfix on `SuperMeshRenderSystem.ClearBuckets`, which KSA calls for each viewport straight before drawing into it; a draw made any earlier is cleared by that call |
+| `Ksa/Practising.cs` | **practice run beside the game**, for the course that is laid and the car that is to race on it: what the rig needs read in the frame hook, the search on a thread of its own, and what it finds kept under `<KSA user dir>/KSACars/Laps/` |
+| `Ksa/RaceHudHook.cs` | the eleventh patch, on a private method — **the racing display drawn with KSA's interface hidden**, a postfix on `Program.DrawFps`, the one call KSA still makes inside its ImGui frame with F2 on; if KSA moves it there is no display |
+| `Ksa/RaceHud.cs` | **the racing display**: the flown car's speed, its lap out of the laps set, its place among the cars on the course and a map of the course about the car with the way it faces at the top, drawn only while KSA's interface is hidden; where every car is along the course is kept from the frame hook |
 | `Ksa/RoadColliders.cs` | triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each run of a laid road is one mesh, in the bubbles within three kilometres of any of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
 | `Ksa/RoadDrawing.cs` | **the roads as they are drawn**: each mesh of a laid circuit written into a place of its own in a pool of `RuntimeMesh`es that only grows, to 56 places, and handed to KSA's renderer for each view in asphalt and in earth, turned as the body is about the mesh's own origin; the nearest drawn where there are more meshes than places |
 | `Ksa/RacingLine.cs` | **the line to drive, drawn ahead of the car being flown**, from the panel's Racing line: the route driver's own racing line and speeds for that car, a stretch of arrowheads written once and each colour's material told every frame which of them to draw |
+| `Ksa/StartLine.cs` | **the start painted on a laid course**: `StartGrid`'s mesh written once a laying has stood half a second, a dragged road being laid again every frame, and drawn with the roads in one material |
 | `Ksa/RuntimeMesh.cs` | a mesh made while the game runs: room taken once in the three buffers KSA's static meshes share, cut into meshes that are each written over in place, any number in one submission, and drawn by KSA's own renderer as a `StaticMeshRenderable` for each material it has. **One patch has been seen in game**, the bridge's `road` with `mesh_test`; a road's meshes have not |
 | `Ksa/Roads.cs` | a circuit laid on a body: every run and every junction as one surface each, answered to a wheel asking what is under it, made into the triangles `RoadDrawing` draws and `RoadColliders` gives the physics, a dragged road's meshes written no more than ten times a second, and the clutter under it switched off through KSA's exclusion mask and put back when the road is taken up |
 | `Ksa/RoadEditor.cs` | **a circuit drawn on the ground with the mouse**, from the panel's Build roads: a click on the ground carries the road on from the point selected, a click on another point joins them, or with Ctrl held only picks it, a click on a road puts a point in it, and a point, a handle or the knob that sets a point's height is dragged. Its view is its own, panned, turned and zoomed with the mouse; the roads are laid again on every change, and all their meshes and their colliders when a drag ends |
@@ -253,21 +262,23 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/GamepadInput.cs` | the first gamepad SDL or GLFW knows, **read from the frame hook and handed to the physics window**, for the car being flown alone; KSA reads a gamepad for its menus only. Its buttons do what the boost, RCS and engine keys and the panel's Unflip and headlights do. **A Steam Controller has been seen read through SDL; no axis or button has been checked** |
-| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown and turned by a gamepad's right stick: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends; on while a gamepad is read unless the panel's Chase camera says otherwise |
+| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown and turned by a gamepad's right stick: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends, as are the field of view and the distance that speed changes; on while a gamepad is read unless the panel's Chase camera says otherwise |
 | `Ksa/SdlPad.cs` | a gamepad through SDL where a `Native/SDL3` is beside the mod, for the pads GLFW cannot see, a Steam Controller among them; without it `GamepadInput` reads GLFW's. **Steam, while it runs, also turns a Steam Controller's buttons into keys**, which the mod cannot stop |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
 | `Ksa/LaunchPads.cs` | a body's launch pads as the colliders KSA stands on each, posed as KSA poses them, so a wheel on a pad is sprung against the pad |
 | `Ksa/KsaWorld.cs` | most KSA contact is funnelled here — keep it that way |
 | `Ksa/KsaWorld.Pointing.cs` | the part of it the craft mover needs: the cursor's ray and the ground it meets, where a craft is on screen, and gizmo rings and lines |
-| `Ksa/CraftMover.cs` | **picks a craft up with one click and sets it down with the next**, from the panel — through `Vehicle.TeleportToLocation`, so it arrives resting on the ground. Carried over from KSArmory with its helpers |
+| `Ksa/CraftMover.cs` | **picks a craft up with one click and sets it down with the next**, from the panel — through `Vehicle.TeleportToLocation`, so it arrives resting on the ground, and a car set down on a laid road is then stood on its asphalt. Carried over from KSArmory with its helpers |
 | `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, set a driver going round a circuit, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
 | `Ksa/Laps.cs` | the laps being driven by `Autopilot`, a car each, **kept outside `Buggies.Entry`**: stepped from the physics window, and from the frame hook ended when the car is gone or the roads are laid again, and filed under the bridge's folder as a summary and a line a step |
-| `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn` |
+| `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn`, or a second car of the one part another is, **from the part's template**, since a player's library has no car in it |
+| `Ksa/Opponents.cs` | **cars that race the one being flown**, from the panel's Add opponent: a copy of the flown car in the next box of the grid, a kitten at its wheel, driven by `Autopilot` from when the player's car sets off. A driver knows nothing of any other car |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has |
 | `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
 | `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository. A road has no mesh here, and its asphalt and earth are written by `tools/model/road-textures.py` |
 | `src/KSACars/Native/` | `SDL3.dll`, SDL's own Windows build of release 3.4.18, under the zlib licence beside it, **the one binary in the archive that is not the mod's**; a Linux install has none and reads GLFW's gamepads |
+| `src/KSACars/Circuits/Laps/` | a lap of a shipped course by a car, searched for in the rig and written by `tools/roads/personal-best.py --ship`, which an opponent's pace is a share of the way to |
 | `src/KSACars/Circuits/` | the courses the mod ships, written by `tools/roads/club-motorsports.py`: **their line is OpenStreetMap's, under the ODbL, credited in `README.md`** |
 | `src/KSACars/Sounds/` | the engines, cut from recordings by `tools/buggy-sounds.py`, `tools/eldorado-sounds.py` and `tools/f2004-sounds.py`. **The F2004's four are CC BY-SA 3.0, credited in `README.md`**; the rest are CC0 |
 | `src/KSACars/mod.toml` | serves as both the content-mod and StarMap manifest |
@@ -287,7 +298,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 536 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 555 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -425,6 +436,22 @@ springs carry it. `Ksa/BoostHook.cs` hears the key.
 pushes with one that cancels gravity and brakes the climb rate, so the car holds its height wherever it
 is; the lift throttle does nothing then, and the keys still lean it across the ground.
 
+**A hover is held over the ground, which the planet would turn away under.** Near a body KSA steps a
+craft in the frame that turns with it and gives one off the ground that frame's accelerations: thrown out
+from the axis, 1.7 cm/s2 across the ground at 45 degrees on Earth, and turned by its own speed.
+`Hover.Hold` takes both out, from `Hover.FrameAccel`, and with neither lean key held brakes the car's
+speed across the ground, so a car let go of comes to rest over a place and stays there. Only in a hover
+with no wheel and no collider down; a car flying on its lift rockets alone drifts as it did.
+`HoverTests.ThePlanetDoesNotTurnAwayUnderAHover` slides 120 m in two minutes without it. **Not yet seen
+in game.**
+
+**Space is the brake, on all four wheels, and it holds.** The pitch key against the way a car rolls
+brakes and then reverses; `DriveInput.Brake` stops the wheels and no more, cuts the engine while it is
+on, and holds a standing car. `KsaWorld.BrakeKeyDown` reads the key off ImGui in the frame hook, for the
+car being flown, and not while a text field has the keyboard: a vehicle's `OnKey` knows no brake, and a
+key read there is never let go when a window takes the keyboard. The key is not rebindable. **Not yet
+seen in game.**
+
 **Under time warp the springs are left out and the rockets carry on.** A physics step is the frame times
 the warp, and past a tenth of a second the springs would overshoot, so the car rests on its colliders.
 The thrust is a plain push, and the hold that keeps the car level and the hover's braking are written as
@@ -500,14 +527,14 @@ visor are subparts ending `Helmet` and `HelmetVisor`, the last two in the part's
 pose, which `DriverHands` reads off the skeleton after the seated animation. Their mesh is in the
 kitten's own model space with the head as it was bound, X to its left, Y up and Z ahead, in metres,
 where KSA's matrix is in centimetres: a hundred times the identity with the head unmoved. With nobody
-at the wheel both are shrunk to nothing in the seat, and with the first-person view in that seat too:
+at the wheel both are shrunk to nothing in the seat, which is also how the part declares them, so the editor and its thumbnail show none, and with the first-person view in that seat too:
 KSA hides the kitten's own head from it, and its camera is at the helmet's chin bar. The visor is a `PartModelGlass`, one skin facing
 out, and the driver's eyes show through it. A car has a helmet if its part has those subparts;
 `docs/F2004-REFERENCES.md` has what it was modelled on and how it is fitted.
 
-**Ten patches; eight are on public methods and pinned.** Each of those has a `PinTheSignature` that is
+**Eleven patches; eight are on public methods and pinned.** Each of those has a `PinTheSignature` that is
 never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
-tracks it and a KSA change to it is a build error. `LensColourHook` and `RailsHook` each patch a private method, which
+tracks it and a KSA change to it is a build error. `LensColourHook`, `RailsHook` and `RaceHudHook` each patch a private method, which
 cannot be pinned: each checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
 nothing extra.
 
@@ -656,8 +683,12 @@ than the springs carry of what the turn presses on them. Pitch, roll and a wheel
 measured against the asphalt's face, so a slope or a bank is not read as a car in the air.
 
 **A lap can be driven for the watch.** `Route.RacingLine` moves the route across the road to where it
-turns least, keeping `Autopilot.RaceInside` of asphalt outside the car, by relaxing the line's bend with
-its points far apart and then closer; a bend is then taken faster than its own radius allows, since the
+turns least, keeping `Autopilot.RaceInside` of asphalt outside the car: the line whose own bend squared,
+over its own length, is least within those bounds, found by an interior-point method to within 5 mm in
+12 to 19 rounds, 10 ms for 3.6 km. It is reckoned from the road's own line with the asphalt's shift a
+point, not from the middle of the asphalt, which swerves where a width changes: reckoned from that, the
+line had fifteen kinks round Club Motorsports that no road has, the tightest 14 m where it is now 42, and
+the F2004 lapped it in 84.7 s where it now takes 77.3. A bend is then taken faster than its own radius allows, since the
 speeds come from the line's bends and not the road's. `Autopilot.Push` takes the shares the driver leaves
 spare, of grip, brakes, crests and dips, from their cautious values towards nearly all there is, and
 `JumpZones` are stretches of the route where a crest is not slowed for, for a jump that is meant; in the
@@ -687,6 +718,175 @@ keep to 24 fewer draws a view while the line is drawn. It is switched from the p
 developer's install, or the bridge's `road` with `racing_line`. The plan is the route driver's with
 `Push` 1, all the grip and nearly all the brakes its model has, on a line kept 0.3 m inside the edges where
 the driver keeps 0.9, and takes a crest for one to be jumped where the circuit's file has it in `jumps`. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
+
+**A laid course has a start painted on it.** `Sim/StartGrid.cs` puts a white line, two rows of 0.6 m
+chequers and a second white line across the asphalt, between the white lines its own picture has inside its edges, 9.5 m along the route from its first
+point, and behind that ten boxes 8 m apart in two columns, the pole's to the left; an open course has no
+road behind its start and only the pole's box, and a road under 7 m wide one column. `Ksa/StartLine.cs`
+draws it as one mesh in one material, 2 cm over the asphalt and under the racing line's arrowheads,
+for whatever circuit is laid, and `Courses` stands the car in the pole's box, 5 m along. It is paint: a
+lap is still timed from the route's own start, 9.5 m before the line.
+
+**An opponent is the route driver in a second car.** The panel's Add opponent, while roads are laid,
+has `Ksa/Opponents.cs` make a copy of the flown car (`CraftSpawner.SpawnLike`), set it down by the next
+box of the grid behind the pole, seat a kitten, stand it in the box, and start a lap of
+`Autopilot`'s on the racing line once the flown car passes 1 m/s; Opponent pace, 70% unless moved, is
+taken as each sets off. An opponent goes when its course is taken up or laid again, and has no engine sound.
+
+**No two opponents drive alike, and the same one drives the same every race.** `Sim/Rival.cs` makes a
+driver of an opponent's number: a pace within 0.12 of the one asked, a `Tuning.Pace` of 0.97 to 1 at 24
+places round the lap as a walk from one to the next, so it is sure through a run of bends and not at one
+place, and its line up to 0.4 m off the racing line at 24 places. **They are gridded from the quickest
+to the slowest** (`Rival.Gridded`): nine raced by hand before any went round a car, with the slowest
+ahead, lapped in 89.5 to 97.5 s, each as slow as the one before it and a little more, where the lap they
+had practised was 80.6.
+
+**An opponent's pace is a share of the way from the driver's cautious settings to quicker ones, and how
+quick those are depends on what is known of the course.** `Rival.Drive` is that, and there are three
+things it may know, the first there is of them being taken:
+
+- **A lap the car has practised of this course**, here: `Ksa/Practising.cs`, below. All of it at full pace.
+- **A lap the mod comes with**, `Circuits/Laps/<course>/<car>.json`, which `personal-best.py --ship` writes
+  from a search and `CircuitLibrary.LapOf` reads if the course a player gets by that name is the one the
+  lap was searched on, by its file's SHA-256: its settings, its pace at 24 places and its line, 0.55 of
+  the way at the most, past which a driver with bends of its own leaves the road. Only Club Motorsports
+  has one, for the F2004, and taken whole it no longer laps cleanly: it was searched for before the
+  driver was last changed.
+- **Nothing**: `Rival.Racing`, the same for every car and every course.
+
+**`Rival.Racing` is the driver with what it knows of the car in its plan.** `Autopilot.Tuning.Model` 0 is
+the driver as a lap for the watch has it: a stop planned at a share of the brakes' own g, taken from what
+a bend leaves of its share of the grip, and the pedals full on or off either side of the speed wanted.
+Model 1 plans a stop on what presses the tyres, wings and all, on the tyres' own circle, with the air's
+drag: the F2004 stops at 4.5 g at 70 m/s where its brakes' g says 1.1, and a car in a bend still has
+brakes. Model 2 also presses the pedals as far as gives the acceleration the plan asks, where the car
+coasted a third of a lap between full throttle and full brake. `Racing` is model 2 with 0.92 of the grip,
+0.8 of the brakes and a bend's tightness averaged over 7 m, a racing line's bend spiking for a few metres
+where a road's width changes. The F2004 lapped Club Motorsports in 84.7 s with it where the driver's own
+settings took 94.3, on the racing line as it then was; on the line as it is those are 77.3 and 84.0, the
+Eldorado's 127.2 and 129.5 and the buggy's 153.2 and 154.2, and every car laps
+the suite's circuits cleanly, with 6% less grip too. A lap for the watch, the bridge's `lap` and
+`personal-best.py` still drive model 0 unless told otherwise, with `model=2` in a tune.
+
+**An opponent practises the course it is to race on.** `Sim/Practice.cs` laps a car in the rig in three
+ways, round and round until a round finds nothing or 300 laps are up. First every bend 0.04 quicker than
+the try before, until a lap is not clean or two have been slower. Then the driver's own settings one at a
+time, of which how far ahead it looks, what a bend's tightness is averaged over, and its shares of a dip,
+the brakes and the tyres are worth having, and its shares of the grip, a crest and tipping are not. Then
+the pace at 24 places round the lap, all raised together and then lowered: a lap that goes wrong holds
+the places round where it did, and a clean one keeps the places whose own stretches were quicker. A way
+is kept only if it is clean and quicker, and one that is kept is first lapped every way a searched lap
+is, four kinds of step, two with 6% less grip and four with every other place 3% slower, without which an
+opponent with bends of its own left the road on one of the suite's circuits. **Round Club Motorsports the
+F2004 comes to 73.9 s from 77.3 racing blind, the Eldorado to 120.9 from 127.2 and the buggy to 149.1
+from 153.2; round the flat course the F2004 comes to 70.9 from 74.0.** A third of a minute to a minute of
+one core, most of the gain in the first quarter of it.
+
+`Ksa/Practising.cs` runs it on a thread of its own, below the game's in priority, when the first opponent
+is asked for: what it needs of the game is read in the frame hook, the car's mass, centre of mass and
+inertia as the engine has them, gravity and the air, and the thread is given those, the laid
+`RoadSurface`, which is swapped whole and never changed, and ground a kilometre down, a car on asphalt
+never meeting the ground. It gives up when roads are laid again. Each lap it finds is the opponents' at
+once and is kept, in `<KSA user dir>/KSACars/Laps/`, as a `.part.json` until the practice is done, so one
+that was cut short is carried on from. The file's name is a hash of the course as its file has it, how
+long its roads came out and how much they climb where it is laid, the body, the car, its weight and a
+`Practising.Version`, which is changed by hand when the driver, the line or the rig changes what a lap
+means: not of where the course is, a course laid at the car never being in the same place twice. An
+opponent takes whatever there is when it sets off, and one put back on the road has what there is then.
+**In game the first of the three ways alone has been run**, on the line as it was: 80.6 s for 82.7 blind
+in 2.4 s. The rest has not been raced.
+
+**The rig is in the mod, since practice needs it.** `Sim/LapRig.cs` is `TrackRig`, `TrackWorld` and
+`TrackCar`, which the suite has always driven; the cars' own numbers for the tests are
+`tests/KSACars.Tests/TrackCars.cs`. A rig that practises keeps no log of its steps.
+
+**A route is worked out once for a laying.** A racing line is 80 to 100 ms to relax for 3.6 km of course,
+on the game's thread, and every opponent asked for its own again each time it was set off, put back or
+righted: `Roads.RouteOver` now keeps the routes asked of the roads that are laid by what was asked, a
+route not being changed once made, and an opponent's is worked out while it waits on the grid, one car a
+frame.
+
+**An opponent holds back behind a car in its way, and goes round it where it can.** Each frame `Opponents`
+looks 250 m ahead of each opponent for a car within 2.2 m of its side, the flown one among them, measured
+along the opponent's own route (`Autopilot.Along`) and not in a straight line, by which a car round a bend
+is off to one side until it is too near to stop for, and `Rival.FollowCap` gives the driver the most it
+may go at (`Autopilot.CapMs`): the car's own speed and what 8 m/s2 still brakes off in the room there is,
+keeping 5 m and half a second, or 14 m behind a car that is standing. A driver held so is told each frame
+that it is waiting, or it would take itself for stuck.
+
+**Going round is a line to one side that the driver is given.** `Autopilot.SideM` is how far to the left
+of its route a driver is to run: eased across at 2 m/s or 8% of the car's speed, 35% under 12 m/s, held
+to what leaves `RaceInside` of asphalt outside the car, and with the speed a bend allows brought down
+for the tighter turn. `Rival.Pass` decides it, with a `Rival.Passing` an opponent for what it is in the
+middle of: behind a car at least 4 m/s slower, on a stretch straight enough for the whole pass, it goes
+3 m to the side with more room and no third car in it, is no longer held by that car once it is 2.5 m
+to its side, and comes back to its line 9 m past; if the straight, the speed or the room goes before it
+is level it drops in behind again and waits 3 s. **A car slower than 3 m/s is standing, and is gone
+round wherever it is**, a bend among them, 4.5 m aside or as far as the road has, since it may be across
+the road, at 9 m/s and slower the nearer it is while not yet clear of it. **The room to one side is asked
+of as much road as the pass takes** (`Rival.RoomOver`), 15 m past a standing car: asked of the next 150 m,
+as it first was, there is never any on a racing line, which runs out to one edge or the other somewhere
+in any stretch that long, and a field raced by hand queued behind a car standing on a road 13 m wide. `PassingTests` races two rigs
+on one road: every pair of cars past on a straight 3 m apart, an F2004 past an Eldorado it comes upon at
+60 m/s without lifting, and a standing car gone round on a straight, from 14 m behind it and in a bend.
+**None of it has been seen in game**, and what feeds it there, `Opponents.InTheWay`, cannot be run
+without the game. The car that is passed does nothing about it, and a road that narrows with two cars
+level is not tried.
+
+**An opponent off the road drives itself back on, and is put back only if it cannot.** Off the asphalt
+the route driver makes for its line at 5 m/s, and a lap ends `OffRoad` after `Autopilot.OffRoadFor`:
+a second for a lap that is being measured, a quarter of a minute for an opponent. One on its roof is
+set on its wheels where it lies (`Buggies.Right`) and drives on from there, once in twenty seconds of
+racing. **One that is not moving is not left to try**: under 0.5 m/s for 2.5 s with no car in its way,
+it is put back, as is one still off the road after that quarter of a minute or over a second time. It
+brakes for 30 frames and is stood on the road at the nearest place of the route on from where it left
+that has no car within 8 m, twelve places being tried, and set off again: waiting for the one place to
+clear, two cars that stopped together each waited for the other for good. One the driver takes for stuck behind a car that holds it under 3 m/s is
+waiting, and is set off again where it stands. `RivalTests.ThrownOffTheRoadADriverGivenTheTimeDrivesItselfBackOn` is the
+first of these in the rig. **Seen in game**: nine opponents raced by hand set off without touching
+one another, on routes of 3,562 to 3,570 m, and one run into from behind at 27 m/s was put back on the
+road and racing 4.6 s later, when an opponent had a second off the asphalt and no more. An opponent has
+not been seen driving itself back on, set on its wheels, or watched slowing behind a car.
+
+**Two cars that collide leave together.** KSA's contact between two craft is plastic: in five hits logged
+in that race the flown car and the one it ran into each changed by half their closing speed in one step. `Laps.Update`
+runs on every install for it, and a lap's summary is filed only on a developer's. **Seen in game**: two
+F2004s on the grid of Club Motorsports Flat set off with the flown one and lapped at up to 67 m/s on the
+asphalt; a car in another's way, the panel's own buttons and an install with no `developer` file have not been.
+
+**With KSA's interface hidden, F2, a racing display is drawn in its place.** `Ksa/RaceHud.cs` shows the
+flown car's speed in km/h, its lap out of the panel's Laps, the lap's time, its place among the cars on the course, and a
+map 320 m about the car that turns as the car does, the other cars on it as dots. Every car's place along
+a route down the middle of the laid roads is kept each frame in a `RaceBoard.Tally`.
+
+**A lap is every checkpoint in order and the line again.** A course has a checkpoint about every 300 m,
+4 at the least and 24 at the most, the painted line the first, and none of them is drawn on the road. One
+counts when a car is driven over it: forwards, within 3 m of the asphalt, and by less than 60 m between
+two frames, so a car found again further on, having cut across or been put there, has not been through
+what is between. Its lap and its place then stand at the checkpoint it missed, the display says MISSED
+CHECKPOINT, and the map marks the one it is due at in yellow, until it goes back and drives over it. The
+one it is due at is also a post on the screen, a line 14 m up from the road there with how far off it is
+and CHECKPOINT over it, or LAP or FINISH at the line: two places of the body put on the screen by KSA's
+camera, drawn with the display and so only with the interface hidden.
+`RaceBoardTests` has a car that cuts 400 m behind one that did not.
+
+**A lap is timed from line to line, in the game's own seconds, and each checkpoint against the best lap.**
+The tally keeps when the car was over each checkpoint, taken between two frames by how far through the
+way between them the checkpoint is, so a lap is timed to less than a frame. The display is laid out as a
+racing game's is: the laps at the top left with the race's time, the lap's and the best lap's in a box
+under them, the place at the top right, the map at the bottom left, the speed and the gear at the bottom right, on a disc the map's size and as far from its corner, inside a rev counter, nearly a whole circle
+clockwise from seven o'clock, numbered in thousands of revs with a needle on its rim and the last of it red, and at the top in the middle, for four seconds after a checkpoint, how much earlier or later
+than on the best lap the car was there, green or red; at the line that is the whole lap against the best
+before it. Nothing is kept past the session, and a pause stops the clock. No StarMap hook is inside KSA's ImGui frame while the interface is hidden, so it is
+drawn from `Ksa/RaceHudHook.cs`, a postfix on the private `Program.DrawFps`, onto the foreground list.
+It is on unless the panel's Racing display is cleared, shows nothing while the interface is up, and is in
+a screenshot KSA takes, which hides the interface to take it. The laps are what the lap is shown out of
+and nothing more: no race starts or ends. **Not yet seen in game.**
+
+**A quad drawn over a road needs a place in its picture for each corner.** With one texture coordinate
+for all four, KSA's static mesh shader drew the start, and the racing line's arrowheads, speckled with
+holes at any height over the asphalt; spread over the picture they are solid. `docs/KSA-MODDING-NOTES.md`
+has it.
 
 `tools/roads/club-motorsports.py` writes a real course, Club Motorsports in New Hampshire: its centre line
 from OpenStreetMap, its heights from the USGS's lidar and how far its asphalt reaches either side measured
@@ -723,7 +923,7 @@ darker wear of tyres either side of it; a kink counts as the length of its outsi
 run's dashes are stretched to come out whole. That picture is 1024 texels across and 128 along, because
 KSA filters a part's texture with no regard for the angle it is seen at, and a square one loses its lines
 at thirty metres. The other two have no way along them and tile by where a vertex is on the chart.
-`tools/model/road-textures.py` writes all four materials' textures.
+`tools/model/road-textures.py` writes all four materials' textures, and the start's paint.
 
 **A bend has kerbs and a deck has barriers.** Round a bend tighter than `RoadTessellation.KerbRadiusM`,
 150 m, the verge either side of a road on the ground is drawn as a kerb, red and white 0.75 m each: the
@@ -1027,7 +1227,7 @@ what the game does with them: every mesh fits its place in the pool, the meshes 
 view are the nearest, and a run's solid is every triangle of its meshes, solid from the side it is drawn
 from, with no edge left open where two meshes meet.
 
-`TrackRig` is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
+`TrackRig`, in `Sim/LapRig.cs`, is the same car as a free body on a sphere with ground of the test's own, stepped as `Buggies`
 steps it: `WheelGround`, `BuggyDrive.Step`, then gravity. On a bare sphere it
 is the flat `Rig` to a micron. Its hull is four points, one under each hub at the height the car's lowest
 collider ends, stopped dead at the ground or a road: it does not rub, has no nose, belly or roof, and

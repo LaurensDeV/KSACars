@@ -243,6 +243,13 @@ Suffixes on positions and velocities mean the frame:
 | `Asmb` / `Body` | vehicle assembly and body frames |
 | `Ego` | **camera-relative render frame** |
 
+**Near a body the physics is stepped in `Ccf`, with the turning frame's accelerations put in.** A bubble
+within the body's physics radius is `BubbleFrame.Ccf`, and `PhysicsStates.ComputeDerivatives` adds
+`-w x (w x r)` to every craft in it and `-2 w x v` to one with no contact; a craft with any contact has
+the first turned along its own radius, so nothing standing on the ground slides. So a craft held up off
+the ground and nothing else is thrown towards the equator, 1.7 cm/s2 at 45 degrees on Earth, which is
+what `Hover.Hold` takes out.
+
 `Ego` is a **pure translation** of `Ecl` — `Camera.EclToEgo(p)` is literally `p - camera.PositionEcl`,
 with no rotation. That means you can do all your maths in `Ecl` and convert once at draw time.
 
@@ -869,6 +876,12 @@ mesh has `IndexCount` 0 still takes a draw command if it is drawn, so one with n
 `StaticMeshRenderable.Draw` also files a shadow caster about the transform's translation, of the mesh's
 `BoundingRadius` times the longest of the transform's axes. Any number of copies can go through one
 `StagingPool` and one command buffer, which is one wait for the graphics card for all of them.
+
+**A triangle whose corners all have one texture coordinate is drawn speckled with holes.** Seen in game on
+2026.10.13.5602: a flat-coloured quad over a road, every corner at `(0.25, 0.5)`, had asphalt showing
+through it a pixel here and there, more of them with distance, and the same half a metre over the road as
+2 cm over it, so it is not the road it fights. With the corners spread over the picture the quad is solid.
+Why is not read out of the shader; what is known is that every mesh the mod draws needs real coordinates.
 
 `SplineRenderer.AddTube`, called from inside `Universe.UpdateRenderData`, sweeps a lit tube along
 camera-relative samples, but its section is a regular polygon of one radius and its normals are radial, so

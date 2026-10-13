@@ -19,7 +19,82 @@ none of it has been seen as **KSACars** yet:
 - [ ] An Xbox pad, through GLFW with no SDL beside the mod
 - [ ] The chase camera: behind the car, tilted with a slope the right way, looking into a corner, and the right
       stick looking round; and the view's frame put back when the panel's Chase camera is cleared
+- [ ] What speed does to the chase camera: the view wider, further back and lower by 65 m/s, a shake past 55,
+      and the field of view and the distance as they were on leaving the car or the chase
 - [ ] The F2004's helmet gone from the first-person view out of its seat, and back in every other view
+- [ ] The F2004's helmet gone from its thumbnail and from the car in the vehicle editor, and still on the
+      driver's head in flight
+- [ ] A hover let go of comes to rest over a place and stays over it for minutes, at 1x and under warp, and
+      still moves across the ground while a lean key is held
+- [ ] Space brakes the car being flown from speed without reversing, holds it on a slope, lights the brake
+      lamps, and is let go when a window takes the keyboard
+- [ ] The craft mover sets a car down on a road on the ground and on a raised deck, standing on the asphalt
+      where the ring was drawn, from near and from kilometres off; and a craft that is no car goes to the
+      ground as before
+- [x] A course's start (2026.10.13.5602, bridge `road` with `course`, Club Motorsports Flat): the chequered
+      line between the road's edge lines ahead of the F2004, solid white and black 2 cm over the asphalt, the
+      pole's box round the car, and the racing line's arrowheads solid over it
+- [x] Opponents (2026.10.13.5602, bridge `road` with `opponent`): two copies of the F2004 made from its part's
+      template, stood in the second and third boxes of Club Motorsports Flat's grid, set off when the flown
+      car did and lapping at up to 67 m/s, none off the asphalt in 27 s
+- [x] Opponents from the panel's buttons (Laurens, 2026.10.13.5602): three added and raced by hand. Each
+      collided with the flown car or another, lost up to 23 m/s in a step, ended its lap `OffRoad` and stood
+      where it stopped, which is what holding back and being put back on the road were then written for
+- [x] Nine opponents at once (Laurens, 2026.10.13.5602, Club Motorsports Flat): a full grid set off together
+      with no opponent touching another, each on a line of its own, 3,562 to 3,570 m round, all nine still
+      lapping two minutes on at 30 to 77 m/s, at steps of 21 ms on average and 33 at most
+- [x] An opponent put back (same race): Opponent 9, run into from behind at 27 m/s, was `OffRoad` 1.7 s later,
+      and 2.9 s after that stood on the road 16 m away and racing again
+- [x] A collision between two cars is KSA's and is plastic (same race, five of them): the flown car and the
+      one it ran into each changed by half their closing speed in one step, 4.4 to 13.9 m/s, and left together
+- [x] F2004 opponents on a course with no lap (Laurens, 2026.10.13.5602, Club Motorsports Flat, nine of them at
+      full pace): seven ran four laps of 86.7 to 88.1 s each, the rig's 87, five of them with no wheel off
+      the asphalt; two were rammed or rammed the flown car where it stood, and one of those and another were
+      then taken for stuck every five seconds while they waited behind it
+- [x] Practice in game (Laurens, 2026.10.13.5602, Club Motorsports Flat, the F2004 as the engine has it): 82.7 s
+      blind and 80.6 s practised at 1.14 of its pace, 22 laps of the rig in 2.4 s; nine opponents set off in
+      the same millisecond, steps of 21 ms on average with ten cars
+- [x] Opponents in a train (same race): with drivers 0.93 to 1 of the pace and in no order, laps of 89.5 to
+      97.5 s, slower box by box, against the 80.6 they had practised
+- [ ] Opponents gridded quickest first: laps near what they practised, and no queue behind a slow one
+- [ ] Practice: the panel's line and the log's after the first opponent is added, how long it took, the lap it
+      found against the laps the opponents then drive, the frame time while it runs, and a course laid a
+      second time known at once from its kept file
+- [ ] The driver's model 2 in game: opponents' laps against the rig's 84.7 s blind and 80.3 s practised on Club
+      Motorsports in the F2004, and whether they stay on the road at the game's steps
+- [ ] Nine opponents set off with no pause in the picture, and one put back with none
+- [ ] Two opponents that stop together both put back on the road
+- [x] Opponents queued behind the flown car across the road in a bend (Laurens, 2026.10.13.5602): none went
+      round it, a pass then being for a straight only, which is what going round a standing car was written for
+- [ ] Practice in full in game: the panel's lap falling as it goes, the F2004's against the rig's 70.9 s on the
+      flat course, the opponents' own laps against it, the frame time while it runs, and a course laid a
+      second time at the car known at once
+- [x] Opponents queued behind the flown car standing on the road a second time (Laurens, same build as the
+      new line): the room to go round was asked of the next 150 m of a line that hugs the edges
+- [ ] Opponents going round a car standing across the road, one after another from the queue behind it
+- [ ] An opponent passing a slower one, and the flown car, on a straight; and dropping back in when it cannot
+- [ ] The new racing line in game: the arrowheads' line against the old, and opponents' laps against the rig's
+      77.3 s blind and 76.4 practised on Club Motorsports
+- [ ] An opponent slowing for a car round a bend, and waiting behind a parked car without being set off again
+- [ ] The racing display with the interface hidden: speed, lap, position and the map turning with the car and
+      showing the others; nothing with the interface up; and gone with the panel's switch cleared
+- [ ] The lap's clock, the last and best laps, and the green or red split at each checkpoint from the second lap on
+- [ ] The post at the next checkpoint: standing on the road, its distance counting down, LAP and FINISH at the line
+- [ ] Checkpoints: a lap counted at the line after a whole lap, the yellow dot moving on round the map, and
+      MISSED CHECKPOINT after cutting across, cleared by going back through it
+- [ ] Opponents at 70% and at full pace on Club Motorsports in the F2004: their lap times against the rig's 83
+      to 86 s, whether they stay on the road at the game's steps, and the log's "towards a lap of" line
+- [ ] F2004 opponents on a course with no lap, Club Motorsports Flat among them: the rig has them at 87 s there
+- [ ] Opponents in the Eldorado and the buggy
+- [ ] An opponent seen slowing behind the flown car and behind another opponent, and stopping behind a parked one
+- [ ] An opponent knocked off the road driving itself back on, one on its roof set on its wheels and driving
+      on, one standing still for 2.5 s put back on the road, and one waiting behind a parked car left where it is
+- [ ] Opponents: their driver seen at the wheel, a whole lap, Remove opponents and Take up roads taking them
+      away, and an install with no `developer` file
+- [ ] A course's start: the grid's other nine boxes behind the car, on a banked or raised start, and gone
+      when the roads are taken up
+- [ ] KSA 2026.10.13.5602: a car spawned, seated, driven, its hands on the rim, and one kitten out with the
+      other still drawn; `Roads.CheckPlacement`'s line in the log with a road laid
 - [ ] The line to drive at `Push` 1 and 0.3 m inside the edges: where it goes red against where a car has to brake
 - [x] A circuit laid whole is worked out beside the game: a 10 km high road placed in the editor with 32 ms of it
       in a frame, where it was 8 s (log, 2026-10-12: `prepared_ms 665, solids_ms 21, shown_ms 11`, clutter
