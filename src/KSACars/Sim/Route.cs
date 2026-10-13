@@ -98,7 +98,7 @@ internal sealed class Route
         RoadLaying.Network laid = network();
         List<RoadRibbon> ribbons = laid.Ribbons;
         List<double3> line = [];
-        List<double> halfWidths = [], banks = [];
+        List<double> halfWidths = [], banks = [], shifts = [];
 
         // A loop is no road: the roads before it are one stretch, it is another, and the roads after it a third.
         List<Sample[]> stretches = [];
@@ -106,11 +106,12 @@ internal sealed class Route
         bool Stretch()
         {
             if (line.Count < 2) return line.Count == 0;
-            if (Along([.. line], [.. halfWidths], false, offsetM, turnRadiusM, [.. banks], raceInsideM) is not { } part) return false;
+            if (Along([.. line], [.. halfWidths], false, offsetM, turnRadiusM, [.. banks], raceInsideM, null, [.. shifts]) is not { } part) return false;
             stretches.Add(part._samples);
             line.Clear();
             halfWidths.Clear();
             banks.Clear();
+            shifts.Clear();
             return true;
         }
 
@@ -125,6 +126,7 @@ internal sealed class Route
                 line.Add(across[i]);
                 halfWidths.Add(into.HalfWidth + ((outOf.HalfWidth - into.HalfWidth) * i / (across.Count - 1)));
                 banks.Add(0.0);
+                shifts.Add(0.0);
             }
         }
 
@@ -174,10 +176,12 @@ internal sealed class Route
                 // Just short of each end, so a closed run's last point is not its first come round again.
                 double s = Math.Clamp(from + ((to - from) * i / steps), Math.Min(from, to) + 1e-9, Math.Max(from, to) - 1e-9);
                 RoadRibbon.Section section = on.At(s);
-                // Down the middle of the asphalt, which is not the road's own line where the road is wider to one side.
-                line.Add(on.Point(section, section.Shift, section.HeightAt(section.Shift)));
+                // The road's own line, and how far from it the middle of the asphalt is: that middle swerves
+                // wherever the road widens to one side, and what is measured across from a line that swerves is nowhere it says.
+                line.Add(on.Point(section, 0.0, section.Height));
                 halfWidths.Add(section.HalfWidth);
                 banks.Add(to >= from ? section.BankTan : -section.BankTan);
+                shifts.Add(to >= from ? section.Shift : -section.Shift);
             }
         }
 
@@ -190,6 +194,7 @@ internal sealed class Route
                 line.RemoveAt(line.Count - 1);
                 halfWidths.RemoveAt(halfWidths.Count - 1);
                 banks.RemoveAt(banks.Count - 1);
+                shifts.RemoveAt(shifts.Count - 1);
             }
             if (!Stretch() || stretches.Count == 0)
             {
@@ -204,8 +209,9 @@ internal sealed class Route
             line.RemoveAt(line.Count - 1);
             halfWidths.RemoveAt(halfWidths.Count - 1);
             banks.RemoveAt(banks.Count - 1);
+            shifts.RemoveAt(shifts.Count - 1);
         }
-        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM, nudgesM) is not { } route)
+        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM, nudgesM, [.. shifts]) is not { } route)
         {
             why = "the route has no length";
             return null;
@@ -277,8 +283,9 @@ internal sealed class Route
     /// <paramref name="turnRadiusM"/> is more than that the line swings to the outside of the road
     /// before the kink and back after it, which is the only other room there is.</para>
     /// </summary>
+    /// <param name="middlesM">How far to the left of the line the middle of the asphalt is at each of its points, where the road is wider to one side: the route runs there, and a racing line keeps to the asphalt about it.</param>
     public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0,
-                               double[]? banks = null, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null)
+                               double[]? banks = null, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null, double[]? middlesM = null)
     {
         int pieces = closed ? line.Length : line.Length - 1;
         if (pieces < 1 || halfWidths.Length != line.Length) return null;
@@ -292,7 +299,7 @@ internal sealed class Route
         int count = closed ? steps : steps + 1;
         double3[] at = new double3[count];
         double[] half = new double[count];
-        double[] bank = new double[count];
+        double[] bank = new double[count], mid = new double[count];
         for (int i = 0, piece = 0; i < count; i++)
         {
             double s = length * i / steps;
@@ -303,6 +310,7 @@ internal sealed class Route
             at[i] = line[piece] + ((line[next] - line[piece]) * t);
             half[i] = halfWidths[piece] + ((halfWidths[next] - halfWidths[piece]) * t);
             if (banks is not null && banks.Length == line.Length) bank[i] = banks[piece] + ((banks[next] - banks[piece]) * t);
+            if (middlesM is not null && middlesM.Length == line.Length) mid[i] = middlesM[piece] + ((middlesM[next] - middlesM[piece]) * t);
         }
 
         // No car turns on the spot, so a kink is rounded: between a point either side of it the line is
@@ -348,6 +356,7 @@ internal sealed class Route
             }
         }
 
+        double3[] drawn = kinks.Count > 0 ? [.. at] : at;
         if (kinks.Exists(k => k.OutM > 0.0))
         {
             double3[] swung = new double3[count];
@@ -366,10 +375,26 @@ internal sealed class Route
         }
 
         double[] left = new double[count];
-        Array.Fill(left, offsetM);
+        for (int i = 0; i < count; i++) left[i] = mid[i] + offsetM;
         if (raceInsideM > 0.0)
         {
-            left = RacingLine(at, half, closed, raceInsideM);
+            // Round a kink the line so far is not where the road was drawn, and the asphalt is still about where it was drawn.
+            double[] asphalt = mid;
+            if (kinks.Count > 0)
+            {
+                asphalt = [.. mid];
+                foreach ((int middle, int span, _, double outM) in kinks)
+                {
+                    int round = span + (outM > 0.0 ? (int)Math.Ceiling(Math.Max(SwingOver * outM, LeastSwingM) / each) : 0) + 1;
+                    for (int j = -round; j <= round; j++)
+                    {
+                        if (!closed && (middle + j < 0 || middle + j >= count)) continue;
+                        int i = Wrapped(middle + j);
+                        asphalt[i] = mid[i] - LeftOf(drawn, at[i], middle + j - round, middle + j + round, closed);
+                    }
+                }
+            }
+            left = RacingLine(at, half, closed, raceInsideM, asphalt);
 
             // Moved to the left by as much as is asked at each of as many places evenly along it, and between
             // them in proportion: a line learnt, where the one that turns least is not the quickest. Still on the road.
@@ -380,14 +405,19 @@ internal sealed class Route
                     double place = (double)i / count * nudgesM.Count;
                     int k = (int)place % nudgesM.Count, next = closed ? (k + 1) % nudgesM.Count : Math.Min(k + 1, nudgesM.Count - 1);
                     double most = Math.Max(half[i] - raceInsideM, 0.0);
-                    left[i] = Math.Clamp(left[i] + nudgesM[k] + ((nudgesM[next] - nudgesM[k]) * (place - Math.Floor(place))), -most, most);
+                    left[i] = Math.Clamp(left[i] + nudgesM[k] + ((nudgesM[next] - nudgesM[k]) * (place - Math.Floor(place))), asphalt[i] - most, asphalt[i] + most);
                 }
             }
         }
-        if (offsetM != 0.0 || raceInsideM > 0.0)
+        if (offsetM != 0.0 || raceInsideM > 0.0 || Array.Exists(mid, m => m != 0.0))
         {
+            // As high as the middle of the asphalt there, wherever across it the line is.
             double3[] moved = new double3[count];
-            for (int i = 0; i < count; i++) moved[i] = at[i] + (Vec.Cross(Vec.Unit(at[i]), Heading(at, i, 1, closed)) * left[i]);
+            for (int i = 0; i < count; i++)
+            {
+                double3 up = Vec.Unit(at[i]);
+                moved[i] = at[i] + (Vec.Cross(up, Heading(at, i, 1, closed)) * left[i]) + (up * (bank[i] * mid[i]));
+            }
             at = moved;
         }
 
@@ -429,60 +459,245 @@ internal sealed class Route
                 vertical = bends / level;
             }
             samples[i] = new Sample(at[i], along[i], heading[i], Vec.Cross(up, heading[i]),
-                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], -left[i], bank[i]);
+                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], mid[i] - left[i], bank[i]);
         }
         return new Route(samples, total, closed);
     }
 
     /// <summary>
-    /// How far to the left of the centre line a car runs at each point to turn as little as it can
-    /// with <paramref name="insideM"/> of road kept between it and either edge: out to the edge
+    /// How far to the left of a line along the road a car runs at each point to turn as little as it
+    /// can with <paramref name="insideM"/> of road kept between it and either edge: out to the edge
     /// before a bend, across its inside and out again, which is what lets a bend be taken faster
     /// than its own radius allows.
     ///
-    /// <para>The line whose points, a step apart, are nearest to lying straight: each is moved across
-    /// the road to where the bend at it and at the two either side of it is least, over and over,
-    /// first with the points far apart, where a whole bend is a few of them, and then closer.</para>
+    /// <para>The line whose bend, squared and summed over its own length, is least. That is the bend
+    /// the line itself has, seen from above, and not how far its points are from lying straight: on
+    /// the inside of a bend the points are closer together than the road's, and a kink between
+    /// points close together is hardly out of line at all.</para>
+    ///
+    /// <para>It is solved for and not relaxed towards: each round is the line that is best for the
+    /// lengths and facings of the round before, with every point held inside its edges by a push
+    /// that grows as the room runs out and is eased from round to round until only a point at an
+    /// edge feels it. Some twenty rounds, each a sum over the points and five bands to solve.</para>
     /// </summary>
-    public static double[] RacingLine(double3[] centre, double[] half, bool closed, double insideM)
+    /// <param name="middleM">How far to the left of the line the middle of the asphalt is at each point, or nothing where the line is it.</param>
+    public static double[] RacingLine(double3[] centre, double[] half, bool closed, double insideM, double[]? middleM = null)
     {
-        int count = centre.Length;
-        double3[] across = new double3[count];
-        for (int i = 0; i < count; i++) across[i] = Vec.Cross(Vec.Unit(centre[i]), Heading(centre, i, 1, closed));
+        int n = centre.Length;
+        double[] x = new double[n];
+        if (n < 6) return x;
+        int Wrap(int i) => ((i % n) + n) % n;
 
-        double[] left = new double[count];
-        for (int stride = 16; stride >= 1; stride /= 2)
+        double[] along = new double[n + 1];
+        for (int i = 0; i < n; i++) along[i + 1] = along[i] + Vec.Len(centre[(i + 1) % n] - centre[i]);
+
+        double3[] across = new double3[n];
+        double[] low = new double[n], high = new double[n];
+        bool[] free = new bool[n];
+        int frees = 0;
+        for (int i = 0; i < n; i++)
         {
-            int n = closed ? count / stride : ((count - 1) / stride) + 1;
-            if (n < 6) continue;
-            int At(int k) => closed ? ((k % n) + n) % n * stride : Math.Clamp(k, 0, n - 1) * stride;
-            double3 Point(int k) => centre[At(k)] + (across[At(k)] * left[At(k)]);
+            across[i] = Vec.Cross(Vec.Unit(centre[i]), Heading(centre, i, 1, closed));
 
-            for (int sweep = 0; sweep < RaceSweeps; sweep++)
+            // A stretch with ends leaves and arrives in the middle of the road and along it.
+            double most = closed || (i >= 2 && i < n - 2) ? Math.Max(half[i] - insideM, 0.0) : 0.0;
+            double middle = middleM is null ? 0.0 : middleM[i];
+            (low[i], high[i]) = (middle - most, middle + most);
+
+            // Lines beside a bend run together towards the middle of its turn, and past it one would
+            // go backwards: so no nearer that than leaves a line this share of the road's own length.
+            int before = closed ? i - RaceFoldOver : Math.Max(i - RaceFoldOver, 0), after = closed ? i + RaceFoldOver : Math.Min(i + RaceFoldOver, n - 1);
+            double3 from = Heading(centre, Wrap(before), 1, closed), to = Heading(centre, Wrap(after), 1, closed);
+            double over = along[Wrap(after)] - along[Wrap(before)];
+            if (after >= n || before < 0) over += along[n];
+            double bend = over > 0.0 ? Math.Atan2(Vec.Dot(Vec.Cross(from, to), Vec.Unit(centre[i])), Vec.Dot(from, to)) / over : 0.0;
+            double fold = (1.0 - RaceLeastApart) / Math.Max(Math.Abs(bend), 1e-9);
+            if (bend > 0.0 && fold < high[i]) high[i] = Math.Max(fold, Math.Min(middle, high[i]));
+            if (bend < 0.0 && -fold > low[i]) low[i] = Math.Min(-fold, Math.Max(middle, low[i]));
+
+            x[i] = Math.Clamp(middle, low[i], high[i]);
+            free[i] = high[i] - low[i] > RaceLeastRoomM;
+            if (free[i]) frees++;
+        }
+        if (frees == 0) return x;
+
+        double[] above = new double[n], below = new double[n], step = new double[n], upper = new double[n], lower = new double[n];
+        double[] h0 = new double[n], h1 = new double[n], h2 = new double[n], g = new double[n];
+        double[] m0 = new double[n], m1 = new double[n], m2 = new double[n];
+        double[] d = new double[n], l1 = new double[n], l2 = new double[n], yp = new double[n], yq = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            if (!free[i]) continue;
+            double room = high[i] - low[i];
+            x[i] = Math.Clamp(x[i], low[i] + (RaceStartsIn * room), high[i] - (RaceStartsIn * room));
+            above[i] = RaceHoldsOff / (high[i] - x[i]);
+            below[i] = RaceHoldsOff / (x[i] - low[i]);
+        }
+
+        // A lap's last two points are joined to its first two, and without them the sums are five bands.
+        int core = closed ? n - 2 : n;
+        void Solve(double[] v)
+        {
+            for (int i = 0; i < core; i++)
             {
-                for (int k = closed ? 0 : 2; k < (closed ? n : n - 2); k++)
+                if (i >= 1) v[i] -= l1[i - 1] * v[i - 1];
+                if (i >= 2) v[i] -= l2[i - 2] * v[i - 2];
+            }
+            for (int i = core - 1; i >= 0; i--)
+            {
+                v[i] /= d[i];
+                if (i + 1 < core) v[i] -= l1[i] * v[i + 1];
+                if (i + 2 < core) v[i] -= l2[i] * v[i + 2];
+            }
+        }
+
+        for (int round = 0; round < RaceRounds; round++)
+        {
+            // The bend at a point is what its neighbours are out of line by, across the line as it now
+            // runs, over the square of how far apart they now are; and it counts for that far of line.
+            Array.Clear(h0);
+            Array.Clear(h1);
+            Array.Clear(h2);
+            Array.Clear(g);
+            for (int i = closed ? 0 : 1; i < (closed ? n : n - 1); i++)
+            {
+                int p = Wrap(i - 1), q = Wrap(i + 1);
+                double3 run = Vec.RejectFrom((centre[q] + (across[q] * x[q])) - (centre[p] + (across[p] * x[p])), centre[i]);
+                double apart = 0.5 * Vec.Len(run);
+                if (!(apart > 0.0)) continue;
+                double3 normal = Vec.Cross(Vec.Unit(centre[i]), run * (0.5 / apart));
+                apart = Math.Max(apart, RaceLeastApart * 0.5 * Vec.Len(centre[q] - centre[p]));
+                double w = 1.0 / (apart * apart * apart);
+                double a = Vec.Dot(normal, across[p]), b = -2.0 * Vec.Dot(normal, across[i]), c = Vec.Dot(normal, across[q]);
+                double bent = Vec.Dot(normal, centre[p] - (centre[i] * 2.0) + centre[q]);
+                h0[p] += w * a * a;
+                h0[i] += w * b * b;
+                h0[q] += w * c * c;
+                h1[p] += w * a * b;
+                h1[i] += w * b * c;
+                h2[p] += w * a * c;
+                g[p] += w * bent * a;
+                g[i] += w * bent * b;
+                g[q] += w * bent * c;
+            }
+
+            double holds = 0.0;
+            for (int i = 0; i < n; i++)
+            {
+                if (free[i]) holds += (above[i] * (high[i] - x[i])) + (below[i] * (x[i] - low[i]));
+            }
+            holds /= 2 * frees;
+            double aim = Math.Max(RaceEases * holds, RaceHeld);
+
+            for (int i = 0; i < n; i++)
+            {
+                if (!free[i])
                 {
-                    int i = At(k);
-                    double3 before = Point(k - 2) - (Point(k - 1) * 2.0) + centre[i];
-                    double3 here = Point(k - 1) + Point(k + 1) - (centre[i] * 2.0);
-                    double3 after = centre[i] - (Point(k + 1) * 2.0) + Point(k + 2);
-                    double most = Math.Max(half[i] - insideM, 0.0);
-                    left[i] = Math.Clamp(((2.0 * Vec.Dot(here, across[i])) - Vec.Dot(before, across[i]) - Vec.Dot(after, across[i])) / 6.0, -most, most);
+                    (m0[i], m1[i], m2[i], step[i]) = (1.0, 0.0, 0.0, 0.0);
+                    continue;
                 }
+                int a = Wrap(i - 2), b = Wrap(i - 1), c = Wrap(i + 1), e = Wrap(i + 2);
+                double pull = g[i] + ((h0[i] + RaceToMiddle) * x[i]) + (h2[a] * x[a]) + (h1[b] * x[b]) + (h1[i] * x[c]) + (h2[i] * x[e]);
+                double up = high[i] - x[i], down = x[i] - low[i];
+                m0[i] = h0[i] + RaceToMiddle + (above[i] / up) + (below[i] / down);
+                m1[i] = free[c] ? h1[i] : 0.0;
+                m2[i] = free[e] ? h2[i] : 0.0;
+                step[i] = -pull - (aim / up) + (aim / down);
             }
 
-            // The points between, for the next pass to start from.
-            if (stride == 1) break;
-            for (int k = 0; k < (closed ? n : n - 1); k++)
+            for (int i = 0; i < core; i++)
             {
-                int a = At(k), b = At(k + 1);
-                for (int j = 1; j < stride && a + j < count; j++) left[a + j] = left[a] + ((left[b] - left[a]) * j / stride);
+                d[i] = m0[i];
+                if (i >= 1) d[i] -= l1[i - 1] * l1[i - 1] * d[i - 1];
+                if (i >= 2) d[i] -= l2[i - 2] * l2[i - 2] * d[i - 2];
+                l2[i] = i + 2 < core ? m2[i] / d[i] : 0.0;
+                l1[i] = i + 1 < core ? (m1[i] - (i >= 1 ? l2[i - 1] * l1[i - 1] * d[i - 1] : 0.0)) / d[i] : 0.0;
             }
+            Solve(step);
+            if (closed)
+            {
+                // The last two from what is left of their own sums with the rest taken out, and the rest from those.
+                int p = n - 2, q = n - 1;
+                Array.Clear(yp);
+                Array.Clear(yq);
+                (yp[n - 4], yp[n - 3], yp[0]) = (m2[n - 4], m1[n - 3], m2[p]);
+                (yq[n - 3], yq[0], yq[1]) = (m2[n - 3], m1[q], m2[q]);
+                Solve(yp);
+                Solve(yq);
+                double WithP(double[] v) => (m2[n - 4] * v[n - 4]) + (m1[n - 3] * v[n - 3]) + (m2[p] * v[0]);
+                double WithQ(double[] v) => (m2[n - 3] * v[n - 3]) + (m1[q] * v[0]) + (m2[q] * v[1]);
+                double pp = m0[p] - WithP(yp), pq = m1[p] - WithP(yq), qq = m0[q] - WithQ(yq);
+                double rp = step[p] - WithP(step), rq = step[q] - WithQ(step);
+                double det = (pp * qq) - (pq * pq);
+                (step[p], step[q]) = (((qq * rp) - (pq * rq)) / det, ((pp * rq) - (pq * rp)) / det);
+                for (int i = 0; i < core; i++) step[i] -= (yp[i] * step[p]) + (yq[i] * step[q]);
+            }
+
+            // As far as leaves every point inside its edges and every push a push.
+            double far = 1.0, farPush = 1.0;
+            for (int i = 0; i < n; i++)
+            {
+                if (!free[i]) continue;
+                double up = high[i] - x[i], down = x[i] - low[i];
+                if (step[i] > 0.0) far = Math.Min(far, RaceShortOf * up / step[i]);
+                if (step[i] < 0.0) far = Math.Min(far, RaceShortOf * down / -step[i]);
+                upper[i] = (aim / up) - above[i] + (above[i] / up * step[i]);
+                lower[i] = (aim / down) - below[i] - (below[i] / down * step[i]);
+                if (upper[i] < 0.0) farPush = Math.Min(farPush, RaceShortOf * above[i] / -upper[i]);
+                if (lower[i] < 0.0) farPush = Math.Min(farPush, RaceShortOf * below[i] / -lower[i]);
+            }
+            double went = 0.0;
+            for (int i = 0; i < n; i++)
+            {
+                if (!free[i]) continue;
+                x[i] += far * step[i];
+                above[i] += farPush * upper[i];
+                below[i] += farPush * lower[i];
+                went = Math.Max(went, Math.Abs(far * step[i]));
+            }
+            if (went < RaceSettledM && holds < 2.0 * RaceHeld) break;
+        }
+        return x;
+    }
+
+    // The most rounds a line is given, and how little its furthest-moved point moves in the round that is its last, m.
+    private const int RaceRounds = 60;
+    private const double RaceSettledM = 0.005;
+
+    // The least a line's points may be apart, as a share of the road's own, and how many points either side a road's bend is measured over for it.
+    private const double RaceLeastApart = 0.5;
+    private const int RaceFoldOver = 3;
+
+    // A point with less room than this between its edges is not moved, m; one that is starts no nearer an edge than this share of its room.
+    private const double RaceLeastRoomM = 0.01, RaceStartsIn = 0.1;
+
+    // The push off an edge is this over the room left, to start with; each round it is eased to this share of itself, and no
+    // further than to this, which holds a point that leans on an edge some hundredth of a millimetre off it; and a round goes
+    // no more than this share of the way to an edge, or to no push at all.
+    private const double RaceHoldsOff = 0.05, RaceEases = 0.2, RaceHeld = 1e-7, RaceShortOf = 0.95;
+
+    // What draws a point to the middle of the road where no bend says where across it to be: next to nothing, and without it a straight road has no answer.
+    private const double RaceToMiddle = 1e-9;
+
+    // How far to the left of a line of points a place is, by the nearest of the stretches between two of them.
+    private static double LeftOf(double3[] line, double3 place, int from, int to, bool closed)
+    {
+        int count = line.Length;
+        double least = double.PositiveInfinity, left = 0.0;
+        for (int k = from; k < to; k++)
+        {
+            if (!closed && (k < 0 || k + 1 >= count)) continue;
+            double3 a = line[((k % count) + count) % count], b = line[(((k + 1) % count) + count) % count];
+            double3 run = Vec.RejectFrom(b - a, a), off = Vec.RejectFrom(place - a, a);
+            double length2 = Vec.Len2(run);
+            double3 away = off - (run * (length2 > 0.0 ? Math.Clamp(Vec.Dot(off, run) / length2, 0.0, 1.0) : 0.0));
+            double far = Vec.Len2(away);
+            if (far >= least) continue;
+            least = far;
+            left = Math.Sqrt(far) * Math.Sign(Vec.Dot(Vec.Cross(Vec.Unit(a), run), away));
         }
         return left;
     }
-
-    private const int RaceSweeps = 200;
 
     // The way the line runs at a point, level there: from the point before it to the one after.
     private static double3 Heading(double3[] at, int i, int reach, bool closed)
