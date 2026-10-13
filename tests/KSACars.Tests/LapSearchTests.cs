@@ -24,11 +24,17 @@ public class LapSearchTests
     public void EveryCandidateIsLappedAndTimed()
     {
         if (Environment.GetEnvironmentVariable("KSACARS_CANDIDATES") is not { Length: > 0 } file) return;
-        string circuitFile = Environment.GetEnvironmentVariable("KSACARS_CIRCUIT")!;
-        Circuit circuit = Circuit.FromJson(File.ReadAllText(circuitFile), out string why, out _) ?? throw new InvalidOperationException(why);
+        // One circuit, or several with ';' between them: a way is then timed round all of them, and clean only if it is on every one.
         TrackCar car = TrackCar.Of(Environment.GetEnvironmentVariable("KSACARS_CAR") ?? "F2004");
         TrackWorld world = TrackWorld.Earth();
-        AutopilotTests.Track track = new(world, circuit, world.Surface(circuit));
+        (Circuit Circuit, AutopilotTests.Track Track)[] courses =
+        [
+            .. Environment.GetEnvironmentVariable("KSACARS_CIRCUIT")!.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(path =>
+            {
+                Circuit circuit = Circuit.FromJson(File.ReadAllText(path), out string why, out _) ?? throw new InvalidOperationException(why);
+                return (circuit, new AutopilotTests.Track(world, circuit, world.Surface(circuit)));
+            }),
+        ];
 
         string[] lines = [.. File.ReadAllLines(file).Where(l => l.Trim().Length > 0)];
         string[] results = new string[lines.Length];
@@ -40,10 +46,14 @@ public class LapSearchTests
             {
                 Autopilot.Tuning tune = new Autopilot.Tuning().With(parts[1], out string bad) ?? throw new InvalidOperationException(bad);
                 double inside = double.Parse(parts[2], CultureInfo.InvariantCulture), push = double.Parse(parts[3], CultureInfo.InvariantCulture);
-                Route route = Route.Of(circuit, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM, null, 0.0,
-                                       out string noRoute, Autopilot.TurnRadius(car.Profile), inside, Nudges(parts)) ?? throw new InvalidOperationException(noRoute);
                 double worst = 0.0, sum = 0.0;
                 string fault = "";
+                foreach ((Circuit circuit, AutopilotTests.Track track) in courses)
+                {
+                if (fault.Length > 0) break;
+                double worstHere = 0.0, sumHere = 0.0;
+                Route route = Route.Of(circuit, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM, null, 0.0,
+                                       out string noRoute, Autopilot.TurnRadius(car.Profile), inside, Nudges(parts)) ?? throw new InvalidOperationException(noRoute);
                 foreach (double[] steps in Steps)
                 {
                     AutopilotTests.Lap lap = AutopilotTests.Drive(car, track, route, steps[0], laps: 2, timeout: 400.0,
@@ -53,8 +63,8 @@ public class LapSearchTests
                     else if (s.OffAsphaltSeconds > 0.0) fault = "off the asphalt";
                     else if (lap.HullSteps > 0) fault = "hull down";
                     if (fault.Length > 0) break;
-                    worst = Math.Max(worst, s.LastLapSeconds);
-                    sum += s.LastLapSeconds;
+                    worstHere = Math.Max(worstHere, s.LastLapSeconds);
+                    sumHere += s.LastLapSeconds;
                 }
                 TrackCar slippery = car with { Profile = car.Profile with { FrontGrip = car.Profile.FrontGrip * LessGrip, RearGrip = car.Profile.RearGrip * LessGrip } };
                 Autopilot.Tuning asBefore = tune with { GripShare = tune.GripShare / LessGrip };
@@ -64,6 +74,9 @@ public class LapSearchTests
                     AutopilotTests.Lap lap = AutopilotTests.Drive(slippery, track, route, steps[0], laps: 2, timeout: 400.0,
                                                                   pattern: steps.Length > 1 ? steps : null, push: push, tune: asBefore);
                     if (lap.End != LapEnd.Finished || lap.Summary.OffAsphaltSeconds > 0.0 || lap.HullSteps > 0) fault = "not clean on less grip";
+                }
+                worst += worstHere;
+                sum += sumHere;
                 }
                 results[i] = fault.Length > 0 ? $"{parts[0].Trim()}|fault|{fault}" : string.Create(CultureInfo.InvariantCulture, $"{parts[0].Trim()}|{worst:F3}|{sum / Steps.Length:F3}");
             }

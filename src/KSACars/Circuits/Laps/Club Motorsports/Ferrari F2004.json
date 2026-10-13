@@ -1,0 +1,10 @@
+{
+ "course": "Club Motorsports",
+ "car": "Ferrari F2004",
+ "seconds": 76.39,
+ "circuit_sha256": "0805d0646df7ee2a022d6f0f3cbdf326b4b6a40c27cfe9489c30e75bf85cf1a7",
+ "inside_m": 1.635,
+ "tune": "grip_share=0.92,brake_share=0.8,tip_share=0.6,crest_share=0.6,dip_share=0.35,look_ahead_seconds=0.4,least_look_ahead_m=4,most_look_ahead_m=60,brake_on_ms=0.3,brake_on_share=0.04,brake_off_ms=0.1,brake_lead_seconds=0.1,full_throttle_under_ms=2,dip_brake_share=0.3,brake_band_ms=0,least_brake=0.1,model=2,tyre_share=0.9,pedal_seconds=0.12,curve_over_m=7,pace=1.04",
+ "line_m": [],
+ "most": 1
+}

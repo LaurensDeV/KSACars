@@ -103,7 +103,7 @@ internal static class Laps
     public static bool Start(Vehicle craft, IReadOnlyList<int>? through, int laps, double speedMs, double offsetM, double timeoutSeconds,
                              bool place, bool keepRows, bool jumps, out string why, bool racing = false, double push = 0.0,
                              IReadOnlyList<(double From, double To)>? jumpZones = null, Autopilot.Tuning? tune = null, double insideM = 0.0,
-                             IReadOnlyList<double>? nudgesM = null)
+                             IReadOnlyList<double>? nudgesM = null, double offRoadSeconds = Autopilot.OffRoadSeconds)
     {
         if (Buggies.Of(craft) is not { } car)
         {
@@ -128,7 +128,7 @@ internal static class Laps
 
         LapRow[]? rows = keepRows ? new LapRow[MostRows] : null;
         Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air, laps, speedMs,
-                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new() };
+                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new(), OffRoadFor = offRoadSeconds };
 
         if (place) Place(craft, profile, route, surface!);
 
@@ -147,10 +147,13 @@ internal static class Laps
 
 
     /// <summary>Stands a car on the road where a route starts, square on the asphalt's own face and facing along it.</summary>
-    public static void Place(Vehicle craft, BuggyProfile profile, Route route, RoadSurface surface)
+    /// <param name="alongM">How far along the route, or as far as its rear wheels need where none is given.</param>
+    /// <param name="leftM">How far to the left of the route's line.</param>
+    public static void Place(Vehicle craft, BuggyProfile profile, Route route, RoadSurface surface, double? alongM = null, double leftM = 0.0)
     {
         // Far enough along that the rear wheels are on the road where it starts at a dead end.
-        (double3 on, double3 roadUp, double3 ahead) = route.Standing(Math.Min(1.5 * BuggyDrive.Wheelbase(profile), route.LengthM));
+        (double3 on, double3 roadUp, double3 ahead) = route.Standing(Math.Min(alongM ?? (1.5 * BuggyDrive.Wheelbase(profile)), route.LengthM));
+        on += Vec.Cross(roadUp, ahead) * leftM;
         double3 radial = Vec.Unit(on);
         if (surface.TryLocate(on + radial, null, out double over, out _, out double3? facing))
         {
@@ -161,6 +164,38 @@ internal static class Laps
         }
         Buggies.Stand(craft, on, roadUp, ahead);
     }
+
+    /// <summary>Holds a car's driver to a speed, for a car in its way, or to none with infinity.</summary>
+    public static void Cap(Vehicle craft, double capMs)
+    {
+        if (All.TryGetValue(craft, out Lap? lap)) lap.Pilot.CapMs = capMs;
+    }
+
+    /// <summary>Asks a car's driver to run so far to the left of its route, to go round a car.</summary>
+    public static void Side(Vehicle craft, double sideM)
+    {
+        if (All.TryGetValue(craft, out Lap? lap)) lap.Pilot.SideM = sideM;
+    }
+
+    /// <summary>The driver of a car's lap, running or over, for what it knows of the road ahead; null with none.</summary>
+    public static Autopilot? Pilot(Vehicle craft) => All.TryGetValue(craft, out Lap? lap) ? lap.Pilot : null;
+
+    /// <summary>How far on along a car's route a place is and how far to its left; false if the car has no lap or has not been stepped.</summary>
+    public static bool Along(Vehicle craft, double3 pointCcf, double reachM, out double aheadM, out double sideM)
+    {
+        (aheadM, sideM) = (0.0, 0.0);
+        return All.TryGetValue(craft, out Lap? lap) && lap.Pilot.Along(pointCcf, reachM, out aheadM, out sideM);
+    }
+
+    /// <summary>Tells a car's driver it is standing because it is held back, and not stuck.</summary>
+    public static void Waiting(Vehicle craft)
+    {
+        if (All.TryGetValue(craft, out Lap? lap)) lap.Pilot.Waiting();
+    }
+
+    /// <summary>How a car's lap ended, or null while it runs or if it has driven none.</summary>
+    public static LapEnd? Ended(Vehicle craft) =>
+        All.TryGetValue(craft, out Lap? lap) && lap.Pilot.End != LapEnd.Running ? lap.Pilot.End : null;
 
     /// <summary>Ends a car's lap where it is; false if it has none running.</summary>
     public static bool Stop(Vehicle craft)
@@ -199,10 +234,16 @@ internal static class Laps
 
                 // Before it is written: a summary that cannot be is not tried again every frame.
                 lap.Filed = true;
+                string what = $"lap: {lap.Name} {lap.Pilot.End} {lap.Pilot.Why} after {lap.Pilot.Summary.Seconds:F1} s and {lap.Pilot.Summary.ProgressM:F0} m";
+                // The bridge's folder is a developer's: a player's opponent leaves its lap in the log alone.
+                if (!Build.Developer)
+                {
+                    Log.Info(what);
+                    continue;
+                }
                 Directory.CreateDirectory(Folder);
                 File.WriteAllText(lap.Stem + ".json", JsonSerializer.Serialize(Report(lap), JsonOptions));
-                Log.Info($"lap: {lap.Name} {lap.Pilot.End} {lap.Pilot.Why} after {lap.Pilot.Summary.Seconds:F1} s and "
-                         + $"{lap.Pilot.Summary.ProgressM:F0} m; filed as {lap.Stem}.json");
+                Log.Info($"{what}; filed as {lap.Stem}.json");
             }
             if (gone is not null)
             {

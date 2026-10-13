@@ -35,7 +35,7 @@ internal static class Roads
     public static bool Any => _laid is not null;
 
     /// <summary>Whether the render hook has anything to hand over.</summary>
-    public static bool AnyDrawn => RoadDrawing.Any || _patch is not null || RacingLine.Any;
+    public static bool AnyDrawn => RoadDrawing.Any || _patch is not null || RacingLine.Any || StartLine.Any;
 
     private static int _generation;
 
@@ -68,7 +68,7 @@ internal static class Roads
     /// <summary>
     /// A line to drive along the roads that are laid, through the circuit's points in
     /// <paramref name="through"/> or, with none, round from its first road; with the body they are on
-    /// and their surface. Null with the reason. Not for the physics window: it reads the ground anew.
+    /// and their surface. Null with the reason. Not for the physics window: the first time a route is asked it is worked out.
     /// </summary>
     public static Route? RouteOver(IReadOnlyList<int>? through, double offsetM, double turnRadiusM, out Celestial? body, out RoadSurface? surface,
                                    out string why, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null)
@@ -83,10 +83,41 @@ internal static class Roads
         body = laid.Body;
         surface = laid.Surface;
         Celestial on = laid.Body;
+
+        // A racing line is 80 ms to work out for 3.6 km of course, and every opponent asks for its own
+        // again each time it is set off: the same question of the same roads is answered once.
+        string key = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{(through is null ? "" : string.Join(',', through))}|{offsetM:R}|{turnRadiusM:R}|{raceInsideM:R}|{(nudgesM is null ? "" : string.Join(';', nudgesM.Select(n => n.ToString("R", System.Globalization.CultureInfo.InvariantCulture))))}");
+        lock (Routes)
+        {
+            if (!ReferenceEquals(_routesOf, laid))
+            {
+                Routes.Clear();
+                _routesOf = laid;
+            }
+            if (Routes.TryGetValue(key, out Route? kept))
+            {
+                why = "";
+                return kept;
+            }
+        }
         // Over the surfaces as they were laid: laying them again for a route read the ground of the whole circuit a second time.
-        return Route.Of(laid.Circuit, on.GetDirCcfFromLatLon, on.MeanRadius, laid.Network, laid.SpacingM, through, offsetM, out why,
-                        turnRadiusM, raceInsideM, nudgesM);
+        Route? route = Route.Of(laid.Circuit, on.GetDirCcfFromLatLon, on.MeanRadius, laid.Network, laid.SpacingM, through, offsetM, out why,
+                                turnRadiusM, raceInsideM, nudgesM);
+        if (route is not null)
+        {
+            lock (Routes)
+            {
+                if (ReferenceEquals(_routesOf, laid) && Routes.Count < MostRoutes) Routes[key] = route;
+            }
+        }
+        return route;
     }
+
+    // The routes asked of the roads that are laid, by what was asked. A route is not changed once made, so one serves every car that asks the same.
+    private static readonly Dictionary<string, Route> Routes = [];
+    private static object? _routesOf;
+    private const int MostRoutes = 64;
 
     /// <summary>
     /// How far this mod's reckoning of where KSA put each piece of clutter is from where KSA says it
@@ -983,6 +1014,15 @@ internal static class Roads
         catch (Exception e)
         {
             RacingLine.Stop($"drawing the racing line threw: {e.GetBaseException().GetType().Name}: {e.GetBaseException().Message}");
+        }
+
+        try
+        {
+            StartLine.Draw(viewport);
+        }
+        catch (Exception e)
+        {
+            StartLine.Stop($"drawing the start threw: {e.GetBaseException().GetType().Name}: {e.GetBaseException().Message}");
         }
     }
 }

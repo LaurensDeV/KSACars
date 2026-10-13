@@ -25,6 +25,9 @@ internal static class Courses
     /// <summary>The name of the course that is laid, or nothing.</summary>
     public static string? Laid { get; private set; }
 
+    /// <summary>The course that is laid as its file has it, which is the same wherever and whichever way it is laid; null with none laid from a file.</summary>
+    public static string? LaidShape { get; private set; }
+
     /// <summary>Asks for a circuit of the library to be laid at the car being flown.</summary>
     public static void Lay(string name) => (_asked, _takeUp) = (name, false);
 
@@ -43,7 +46,7 @@ internal static class Courses
             {
                 (_asked, _takeUp, _coming) = (null, false, null);
                 Roads.Clear();
-                (Laid, Message) = (null, "roads taken up");
+                (Laid, LaidShape, Message) = (null, null, "roads taken up");
                 return;
             }
             if (_asked is { } name)
@@ -103,11 +106,15 @@ internal static class Courses
         Roads.ClearClutter(ClutterMarginM);
         if (!Roads.Any) return "the roads could not be laid here";
         Laid = name;
+        // The course as its file has it, wherever it is laid: what a lap practised on it is kept by.
+        LaidShape = CircuitLibrary.Load(name, out _)?.ToJson();
 
         BuggyProfile profile = car.Drive.Profile;
         if (Roads.RouteOver(null, 0.0, Autopilot.TurnRadius(profile), out _, out RoadSurface? surface, out _) is { } route && surface is not null)
         {
-            Laps.Place(craft, profile, route, surface);
+            // In the pole's box of the grid painted there.
+            Route.Sample pole = route.Samples[route.IndexAt(StartGrid.PoleM)];
+            Laps.Place(craft, profile, route, surface, StartGrid.PoleM, pole.CentreM + StartGrid.Column(0, pole.HalfWidth));
         }
         Log.Info($"course: {name} laid at {lat:F5}, {lon:F5} on {prepared.Body.Id}, turned {turn:F0} deg");
         return "";

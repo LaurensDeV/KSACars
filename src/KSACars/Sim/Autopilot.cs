@@ -151,13 +151,14 @@ internal sealed class Autopilot
     private readonly BuggyProfile _profile;
     private readonly Route _route;
     private readonly RoadSurface? _road;
-    private readonly double _mass, _gravity, _air, _wheelbase, _stopAt, _timeout;
+    private readonly double _mass, _gravity, _air, _wheelbase, _stopAt, _timeout, _inside;
     private readonly int _lapsWanted;
     private readonly LapRow[]? _rows;
     private double[]? _limit;
 
     private LapSummary _summary;
     private int _index = -1;
+    private double _s, _cross, _side;
     private bool _braking;
     private double _crossSum, _flight, _offFor, _flippedFor, _markProgress, _markTime, _lapStarted;
 
@@ -178,6 +179,7 @@ internal sealed class Autopilot
         _timeout = timeoutSeconds;
         _rows = rows;
         _wheelbase = BuggyDrive.Wheelbase(profile);
+        _inside = RaceInside(profile);
         CruiseMs = cruiseMs > 0.0 ? Math.Min(cruiseMs, profile.TopSpeed) : profile.TopSpeed;
 
         _stopAt = route.Closed ? double.PositiveInfinity : Math.Max(route.LengthM - _wheelbase - ShortOfEndM, 0.0);
@@ -214,6 +216,25 @@ internal sealed class Autopilot
         public double LeastBrake { get; init; } = 0.1;
 
         /// <summary>
+        /// How much of the car the driver's plan knows. 0, a stop is planned at a share of the brakes'
+        /// own g, taken from what the bend leaves of its share of the grip, and the pedals are full on
+        /// or off either side of the speed wanted. 1, a stop is planned on what presses the tyres,
+        /// wings and all, and on the tyres' own circle, with the air's drag counted: a car with wings
+        /// stops several times harder at speed than its brakes' g says, and one in a bend still has
+        /// brakes. 2, and the pedals are pressed as far as gives the acceleration the plan asks.
+        /// </summary>
+        public double Model { get; init; }
+
+        /// <summary>With <see cref="Model"/> 1, the share of the tyres' grip a stop in a bend is planned on.</summary>
+        public double TyreShare { get; init; } = 0.9;
+
+        /// <summary>With <see cref="Model"/> 2, how soon the car is to be at the speed wanted, s: the pedals' gain.</summary>
+        public double PedalSeconds { get; init; } = 0.12;
+
+        /// <summary>What a bend's tightness is averaged over, m: a line's bend spikes for a few metres where a road's width changes, and the car does not turn that. Nothing, and each metre's own.</summary>
+        public double CurveOverM { get; init; }
+
+        /// <summary>
         /// What the speed each bend allows is multiplied by, at as many places evenly round the route as
         /// there are numbers here and between them in proportion: a lap learnt corner by corner, where
         /// one share of the grip for all of it is held to what its hardest corner bears. None, and it is 1.
@@ -226,6 +247,47 @@ internal sealed class Autopilot
             double at = (share - Math.Floor(share)) * Pace.Count;
             int i = (int)at % Pace.Count;
             return Pace[i] + ((Pace[(i + 1) % Pace.Count] - Pace[i]) * (at - Math.Floor(at)));
+        }
+
+        /// <summary>
+        /// These settings a share of the way to <paramref name="other"/>'s, each on its own: nothing of
+        /// the way is these and all of it the other's. A pace either has none of is 1.
+        /// </summary>
+        public Tuning Toward(Tuning other, double share)
+        {
+            double t = Math.Clamp(share, 0.0, 1.0);
+            double Mix(double a, double b) => a + ((b - a) * t);
+            int places = Math.Max(Pace.Count, other.Pace.Count);
+            double[] pace = new double[places];
+            for (int i = 0; i < places; i++)
+            {
+                double at = (i + 0.0) / places;
+                pace[i] = Mix(PaceAt(at), other.PaceAt(at));
+            }
+            return new Tuning
+            {
+                GripShare = Mix(GripShare, other.GripShare), BrakeShare = Mix(BrakeShare, other.BrakeShare), TipShare = Mix(TipShare, other.TipShare),
+                CrestShare = Mix(CrestShare, other.CrestShare), DipShare = Mix(DipShare, other.DipShare),
+                LookAheadSeconds = Mix(LookAheadSeconds, other.LookAheadSeconds), LeastLookAheadM = Mix(LeastLookAheadM, other.LeastLookAheadM),
+                MostLookAheadM = Mix(MostLookAheadM, other.MostLookAheadM), BrakeOnMs = Mix(BrakeOnMs, other.BrakeOnMs),
+                BrakeOnShare = Mix(BrakeOnShare, other.BrakeOnShare), BrakeOffMs = Mix(BrakeOffMs, other.BrakeOffMs),
+                BrakeLeadSeconds = Mix(BrakeLeadSeconds, other.BrakeLeadSeconds), FullThrottleUnderMs = Mix(FullThrottleUnderMs, other.FullThrottleUnderMs),
+                DipBrakeShare = Mix(DipBrakeShare, other.DipBrakeShare), BrakeBandMs = Mix(BrakeBandMs, other.BrakeBandMs),
+                LeastBrake = Mix(LeastBrake, other.LeastBrake), Pace = pace,
+                Model = Math.Max(Model, other.Model), TyreShare = Mix(TyreShare, other.TyreShare), PedalSeconds = Mix(PedalSeconds, other.PedalSeconds), CurveOverM = Mix(CurveOverM, other.CurveOverM),
+            };
+        }
+
+        /// <summary>These settings as <see cref="With"/> reads them, every one of them, so that a lap that is kept is the lap that was driven.</summary>
+        public string Written()
+        {
+            string N(double v) => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+            string all = $"grip_share={N(GripShare)},brake_share={N(BrakeShare)},tip_share={N(TipShare)},crest_share={N(CrestShare)},dip_share={N(DipShare)},"
+                       + $"look_ahead_seconds={N(LookAheadSeconds)},least_look_ahead_m={N(LeastLookAheadM)},most_look_ahead_m={N(MostLookAheadM)},"
+                       + $"brake_on_ms={N(BrakeOnMs)},brake_on_share={N(BrakeOnShare)},brake_off_ms={N(BrakeOffMs)},brake_lead_seconds={N(BrakeLeadSeconds)},"
+                       + $"full_throttle_under_ms={N(FullThrottleUnderMs)},dip_brake_share={N(DipBrakeShare)},brake_band_ms={N(BrakeBandMs)},least_brake={N(LeastBrake)},"
+                       + $"model={N(Model)},tyre_share={N(TyreShare)},pedal_seconds={N(PedalSeconds)},curve_over_m={N(CurveOverM)}";
+            return Pace.Count == 0 ? all : all + ",pace=" + string.Join(';', Pace.Select(N));
         }
 
         /// <summary>The settings named in "grip_share=0.95,brake_lead_seconds=0.05", the rest as they are here; null with the name that is not one.</summary>
@@ -274,6 +336,10 @@ internal sealed class Autopilot
                     case "dipbrakeshare": tuned = tuned with { DipBrakeShare = v }; break;
                     case "brakebandms": tuned = tuned with { BrakeBandMs = v }; break;
                     case "leastbrake": tuned = tuned with { LeastBrake = v }; break;
+                    case "model": tuned = tuned with { Model = v }; break;
+                    case "tyreshare": tuned = tuned with { TyreShare = v }; break;
+                    case "pedalseconds": tuned = tuned with { PedalSeconds = v }; break;
+                    case "curveoverm": tuned = tuned with { CurveOverM = v }; break;
                     default:
                         why = $"'{sides[0]}' is not one of the driver's settings";
                         return null;
@@ -296,6 +362,97 @@ internal sealed class Autopilot
 
     /// <summary>Stretches of the route, in metres along it, where a crest or a dip is not slowed for: a jump that is meant.</summary>
     public IReadOnlyList<(double From, double To)> JumpZones { get; init; } = [];
+
+    /// <summary>
+    /// How long every wheel may be off the asphalt before the lap ends for it. Off the road the driver
+    /// makes for its line at a crawl, so one given longer drives itself back on.
+    /// </summary>
+    public double OffRoadFor { get; init; } = OffRoadSeconds;
+
+    /// <summary>
+    /// How far on along the route from this car a place is, and how far to its left, looking no
+    /// further than <paramref name="reachM"/>: what says a car round a bend is in the way, where a
+    /// straight line from one to the other says it is off to one side. False before the first step.
+    /// </summary>
+    public bool Along(double3 point, double reachM, out double aheadM, out double sideM)
+    {
+        (aheadM, sideM) = (0.0, 0.0);
+        int at = _index;
+        if (at < 0) return false;
+        _route.Locate(point, ref at, reachM, out double s, out double cross);
+        aheadM = s - _s;
+        if (_route.Closed && aheadM < -0.5 * _route.LengthM) aheadM += _route.LengthM;
+        sideM = cross - _cross;
+        return true;
+    }
+
+    /// <summary>Told that the car is standing because it is held back, so that it is not taken for stuck.</summary>
+    public void Waiting() => _markTime = _summary.Seconds;
+
+    /// <summary>The most the driver goes at whatever the road allows, for a car in its way. Set from outside while it drives.</summary>
+    public double CapMs { get; set; } = double.PositiveInfinity;
+
+    /// <summary>
+    /// How far to the left of its route the driver is to run, m, to go round a car. Set from outside
+    /// while it drives; the driver moves across no faster than <see cref="SideRateMs"/> and no
+    /// further than leaves <see cref="RaceInside"/> of asphalt outside it.
+    /// </summary>
+    public double SideM { get; set; }
+
+    /// <summary>How fast the line is moved across the road, m/s, and the most of the car's speed that is.</summary>
+    public const double SideRateMs = 2.0, SideSlope = 0.08, SideSlowMs = 12.0, SideSlopeSlow = 0.35;
+
+    /// <summary>How far to the left of its route the driver is aiming now.</summary>
+    public double SideNowM => _side;
+
+    /// <summary>How far to the left of its route the car is.</summary>
+    public double CrossM => _cross;
+
+    /// <summary>The speed the driver would hold now with no car in its way, m/s.</summary>
+    public double FreeMs { get; private set; }
+
+    // The plan's speeds are for the route's own bends, and a line beside it is tighter on one side
+    // and joined by a swerve: a bend is taken slower by twice the share the offset is of its radius.
+    private const double SideBendShare = 2.0, SideLeastShare = 0.5;
+
+    /// <summary>How far on a stretch with no bend in it is looked for.</summary>
+    public const double StraightLookM = 600.0;
+
+    /// <summary>
+    /// The road ahead for a car that would leave its line: how far to the left and to the right of
+    /// the route its middle may go over the next <paramref name="overM"/>, and how far on the route
+    /// first bends by more than <paramref name="straightPerM"/>. False before the first step.
+    /// </summary>
+    public bool RoadAhead(double overM, double straightPerM, out double leftM, out double rightM, out double straightM)
+    {
+        (leftM, rightM, straightM) = (0.0, 0.0, 0.0);
+        int at = _index;
+        if (at < 0) return false;
+        ReadOnlySpan<Route.Sample> samples = _route.Samples;
+        (leftM, rightM) = (double.PositiveInfinity, double.PositiveInfinity);
+        bool bent = false;
+        double gone = 0.0;
+        for (int i = at, guard = 0; guard < samples.Length && gone <= StraightLookM && (!bent || gone <= overM); guard++)
+        {
+            Route.Sample s = samples[i];
+            if (gone <= overM)
+            {
+                (double lo, double hi) = Room(s);
+                (leftM, rightM) = (Math.Min(leftM, hi), Math.Min(rightM, -lo));
+            }
+            bent |= Math.Abs(s.Curvature) > straightPerM || s.LoopM > 0.0;
+            if (!bent) straightM = gone;
+            int next = i + 1 < samples.Length ? i + 1 : 0;
+            if (next == 0 && !_route.Closed) break;
+            gone += Vec.Len(samples[next].At - s.At);
+            i = next;
+        }
+        return true;
+    }
+
+    // How far right and left of the route a car's middle may be at a sample; the route itself always may.
+    private (double Lo, double Hi) Room(in Route.Sample s) =>
+        (Math.Min(s.CentreM - s.HalfWidth + _inside, 0.0), Math.Max(s.CentreM + s.HalfWidth - _inside, 0.0));
 
     private double Pushed(double share, double most) => share + ((most - share) * Math.Clamp(Push, 0.0, 1.0));
 
@@ -368,9 +525,29 @@ internal sealed class Autopilot
         // What a spring carries over its share of the weight at a compression is that times its rate.
         double spring = 2.0 * Math.PI * _profile.SpringHz;
         double dip = Pushed(Tune.DipShare, 0.8) * _profile.BumpTravel * spring * spring;
+        double[] bend = new double[limit.Length];
+        {
+            int half = (int)Math.Round(0.5 * Tune.CurveOverM / Route.SpacingM);
+            for (int i = 0; i < bend.Length; i++)
+            {
+                double sum = 0.0;
+                int n = 0;
+                for (int k = -half; k <= half; k++)
+                {
+                    int j = i + k;
+                    if (_route.Closed) j = ((j % bend.Length) + bend.Length) % bend.Length;
+                    else if (j < 0 || j >= bend.Length) continue;
+                    sum += samples[j].Curvature;
+                    n++;
+                }
+                bend[i] = n > 0 ? sum / n : samples[i].Curvature;
+            }
+        }
+        double tyres = Tune.TyreShare * Math.Min(_profile.FrontGrip, _profile.RearGrip);
+        double drag = _mass > 0.0 ? 0.5 * _air * _profile.DragAreaM2 / _mass : 0.0;
         for (int i = 0; i < limit.Length; i++)
         {
-            Route.Sample s = samples[i];
+            Route.Sample s = samples[i] with { Curvature = bend[i] };
             double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
             bool jumps = JumpsAt(s.S);
             double crest = jumps ? 0.0 : Math.Max(-s.Vertical, 0.0);
@@ -408,7 +585,7 @@ internal sealed class Autopilot
             for (int i = _route.Closed ? last : last - 1; i >= 0; i--)
             {
                 int next = (i + 1) % limit.Length;
-                Route.Sample s = samples[i];
+                Route.Sample s = samples[i] with { Curvature = bend[i] };
                 double piece = Vec.Len(samples[next].At - s.At);
                 double level = 1.0 / Math.Sqrt(1.0 + (s.Slope * s.Slope));
                 bool jumps = JumpsAt(s.S);
@@ -426,6 +603,16 @@ internal sealed class Autopilot
 
                     // Gravity along the road is with the brakes up a hill and against them down one.
                     double slowing = Math.Max(Math.Min(most, spare) + (_gravity * s.Slope * level), 0.0);
+                    if (Tune.Model >= 1.0)
+                    {
+                        // The brakes hold by what presses the tyres, wings and all, on the tyres' own circle, and the air slows the car too.
+                        double press = Math.Max((_gravity * level) + ((wings - crest) * over * over), 0.0);
+                        double circle = Banked(tyres, s) * press;
+                        double left = Math.Sqrt(Math.Max((circle * circle) - (turning * turning), 0.0));
+                        double pedal = Pushed(Tune.BrakeShare, 0.92) * _profile.BrakeG * press;
+                        if (gently) pedal = Math.Min(pedal, GentleBrakeG * _gravity);
+                        slowing = Math.Max(Math.Min(pedal, left) + (drag * over * over) + (_gravity * s.Slope * level), 0.0);
+                    }
                     from = Math.Sqrt((limit[next] * limit[next]) + (2.0 * slowing * piece));
                 }
                 limit[i] = Math.Min(limit[i], from);
@@ -524,12 +711,26 @@ internal sealed class Autopilot
             _summary.LastLapSeconds = _summary.Seconds - _lapStarted;
             _lapStarted = _summary.Seconds;
         }
+        (_s, _cross) = (s, cross);
         Route.Sample here = _route.Samples[_index];
         double progress = (_summary.Laps * _route.LengthM) + s;
 
         double reach = Math.Clamp(Tune.LookAheadSeconds * rolling, Math.Max(1.5 * _wheelbase, Tune.LeastLookAheadM), Tune.MostLookAheadM);
         reach = Math.Max(reach, 3.0 * rolling * dt);
-        double3 to = Vec.RejectFrom(_route.Ahead(_index, s, reach) - rear, radial);
+        double3 aim = _route.Ahead(_index, s, reach);
+        double asked = SideM;
+        if (asked != 0.0 || _side != 0.0)
+        {
+            double on = s + reach;
+            if (_route.Closed && on >= _route.LengthM) on -= _route.LengthM;
+            Route.Sample there = _route.Samples[_route.IndexAt(on)];
+            // At a creep a car can steer across far more steeply than at speed, which is what gets it out from behind one that is standing.
+            double move = Math.Min(SideRateMs, (Math.Abs(rolling) < SideSlowMs ? SideSlopeSlow : SideSlope) * Math.Abs(rolling)) * dt;
+            (double lo, double hi) = Room(there);
+            _side = there.LoopM > 0.0 ? 0.0 : Math.Clamp(_side + Math.Clamp(asked - _side, -move, move), lo, hi);
+            aim += there.Across * _side;
+        }
+        double3 to = Vec.RejectFrom(aim - rear, radial);
         double3 nose = Vec.Unit(Vec.RejectFrom(ahead, radial));
         double range = Vec.Len(to);
         double bearing = range > 0.0 ? Math.Atan2(Vec.Dot(Vec.Cross(nose, to), radial), Vec.Dot(nose, to)) : 0.0;
@@ -560,6 +761,21 @@ internal sealed class Autopilot
             wanted = Math.Min(wanted, limit[next]);
             i = next;
         }
+        if (_side != 0.0)
+        {
+            double bend = 0.0, gone = 0.0;
+            for (int i = _index, guard = 0; guard < limit.Length && gone <= reach; guard++)
+            {
+                bend = Math.Max(bend, Math.Abs(_route.Samples[i].Curvature));
+                int next = i + 1 < limit.Length ? i + 1 : _route.Closed ? 0 : i;
+                if (next == i) break;
+                gone += Vec.Len(_route.Samples[next].At - _route.Samples[i].At);
+                i = next;
+            }
+            wanted *= Math.Clamp(1.0 - (SideBendShare * Math.Abs(_side) * bend), SideLeastShare, 1.0);
+        }
+        FreeMs = wanted;
+        wanted = Math.Min(wanted, CapMs);
 
         // Off the road it comes back slowly and does not charge across the grass; turned away from the
         // route it is turning round.
@@ -586,6 +802,29 @@ internal sealed class Autopilot
         // With a band, the brake is pressed by how far over the speed wanted the car is, and all of it only that far over.
         double pressed = Tune.BrakeBandMs > 0.0 ? Math.Clamp((rolling - wanted) / Tune.BrakeBandMs, Tune.LeastBrake, 1.0) : 1.0;
         double throttle = _braking ? -pressed : Math.Clamp((wanted - rolling) / Tune.FullThrottleUnderMs, 0.0, 1.0);
+        if (Tune.Model >= 2.0 && !arrived)
+        {
+            // The acceleration that has the car at the speed wanted a moment on, and the pedal that gives it.
+            double level = 1.0 / Math.Sqrt(1.0 + (here.Slope * here.Slope));
+            double wingsNow = BuggyDrive.WingLoad(_profile, rolling, _air, _mass);
+            double press = Math.Max((_gravity * level) + wingsNow, 0.1);
+            double dragNow = _mass > 0.0 ? 0.5 * _air * _profile.DragAreaM2 * rolling * rolling / _mass : 0.0;
+            double resist = dragNow + (_profile.RollingResistance * press) + (_gravity * here.Slope * level * Vec.Dot(nose, here.Tangent));
+            double need = ((wanted - rolling) / Math.Max(Tune.PedalSeconds, dt)) + resist;
+            double pull = _profile.PowerW > 0.0 ? Math.Min(_profile.LaunchAccelG * _gravity, _profile.PowerW / (_mass * Math.Max(rolling, 1.0))) : _profile.LaunchAccelG * _gravity * Math.Max(1.0 - (rolling / _profile.TopSpeed), 0.05);
+            if (need >= 0.0 || rolling < LeastBrakeMs)
+            {
+                if (_braking) Brake(false);
+                throttle = Math.Clamp(need / Math.Max(pull, 0.1), 0.0, 1.0);
+            }
+            else
+            {
+                double pedal = -need / (_profile.BrakeG * press);
+                // Under a little of the pedal the air and the tyres' rolling are left to it.
+                if (pedal < 0.03) { if (_braking) Brake(false); throttle = 0.0; }
+                else { if (!_braking) Brake(true); throttle = -Math.Clamp(pedal, 0.0, 1.0); }
+            }
+        }
         // Nor is it braked there: the speed it has is what holds it on.
         if (looping) throttle = Math.Clamp((wanted - rolling) / Tune.FullThrottleUnderMs, 0.0, 1.0);
 
@@ -648,8 +887,9 @@ internal sealed class Autopilot
         _summary.DistanceM += speed * dt;
         _summary.ProgressM = Math.Max(_summary.ProgressM, progress);
         _summary.LongestStepSeconds = Math.Max(_summary.LongestStepSeconds, dt);
-        _summary.MaxCrossM = Math.Max(_summary.MaxCrossM, Math.Abs(cross));
-        _crossSum += Math.Abs(cross) * dt;
+        // From the line it is asked to be on.
+        _summary.MaxCrossM = Math.Max(_summary.MaxCrossM, Math.Abs(cross - _side));
+        _crossSum += Math.Abs(cross - _side) * dt;
         _summary.MaxSpeed = Math.Max(_summary.MaxSpeed, speed);
         _summary.MaxRollDeg = Math.Max(_summary.MaxRollDeg, Math.Abs(roll));
         _summary.MaxPitchDeg = Math.Max(_summary.MaxPitchDeg, Math.Abs(pitch));
@@ -665,7 +905,7 @@ internal sealed class Autopilot
 
         if (stopped || (_route.Closed && _summary.Laps >= _lapsWanted)) Finish(LapEnd.Finished);
         else if (_flippedFor >= FlippedSeconds) Finish(LapEnd.Flipped);
-        else if (_offFor >= OffRoadSeconds) Finish(LapEnd.OffRoad);
+        else if (_offFor >= OffRoadFor) Finish(LapEnd.OffRoad);
         else if (_summary.Seconds - _markTime >= StuckSeconds) Finish(LapEnd.Stuck);
         else if (_summary.Seconds >= _timeout) Finish(LapEnd.TimedOut);
 

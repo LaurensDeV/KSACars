@@ -44,9 +44,6 @@ internal sealed class Bridge
     /// </summary>
     public void Update(double dtPlayer, double dtSim)
     {
-        // Ahead of the queue, which a step holds for as long as the world runs.
-        Laps.Update(dtPlayer);
-
         try
         {
             if (_running is not null && _current is not null)
@@ -380,6 +377,14 @@ internal sealed class Bridge
         if (KsaWorld.ControlledVehicle is not { } flown || KsaWorld.ParentBody(flown) is not { } body)
         {
             return Failed("no body under the craft");
+        }
+        if (command.Has("opponent"))
+        {
+            if (command.Has("pace")) Opponents.Pace = Math.Clamp(command.Number("pace", Opponents.Pace), 0.0, 1.0);
+            if (command.Flag("opponent", true)) Opponents.Add();
+            else Opponents.Clear();
+            Opponents.Update();
+            return Done(new() { ["opponents"] = Opponents.Count, ["message"] = Opponents.Message });
         }
         if (command.String("course") is { Length: > 0 } course)
         {

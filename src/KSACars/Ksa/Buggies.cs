@@ -182,6 +182,9 @@ internal sealed class Buggies
     /// <summary>The car a craft is, or null when it is not one.</summary>
     public static Entry? Of(Vehicle craft) => Active.GetValueOrDefault(craft);
 
+    /// <summary>Every car in the world. For the frame hook, where the cars are found.</summary>
+    public static IReadOnlyCollection<Entry> Cars => Active.Values;
+
     /// <summary>
     /// Sets a car back on its wheels where it lies, at its next physics step. <paramref name="tip"/>
     /// turns it onto its roof instead, for the bridge to have something to right.
@@ -225,7 +228,7 @@ internal sealed class Buggies
                   beam.Intensity, ELightFlags.CastsShadows | ELightFlags.SoftShadows, in asmb2Ego, viewport);
 
             BeamShape tail = Headlights.Tail;
-            bool braking = Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed);
+            bool braking = Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed, e.Input.Brake);
             float brake = braking ? Headlights.BrakeBoost : 1f;
             Shine(e, e.Drive.Profile.TailLamps, Headlights.Aim(up, -forward, tail.DipRad), tail, Headlights.TailColour,
                   tail.Intensity * brake, ELightFlags.None, in asmb2Ego, viewport);
@@ -348,7 +351,7 @@ internal sealed class Buggies
             foreach ((string suffix, uint rgb) in e.Drive.Profile.BrakeLenses)
             {
                 if (!id.EndsWith(e.Drive.Profile.SubpartPrefix + suffix, StringComparison.Ordinal)) continue;
-                return Headlights.BrakeLens(rgb, Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed));
+                return Headlights.BrakeLens(rgb, Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed, e.Input.Brake));
             }
             return null;
         }
@@ -613,6 +616,7 @@ internal sealed class Buggies
             e.Turn = Math.Clamp(e.Turn + asked.Turn, -1.0, 1.0);
             boost |= asked.Boost;
         }
+        if (BrakeHeld && ReferenceEquals(craft, KsaWorld.ControlledVehicle)) e.Input = e.Input with { Brake = 1.0 };
         if (Held.TryGetValue(craft, out (DriveInput Input, double Turn, bool Boost, double Seconds) held))
         {
             e.Input = held.Input;
@@ -882,6 +886,12 @@ internal sealed class Buggies
         LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
                                   groundUpBody, spinBody, gravity, dt);
         dv += hovering ? Hover.Push(up, groundUpBody, e.Climb, gravity, dt) : lift.Velocity + Downforce.Push(pressed, up, dt);
+        // KSA turns the planet's frame under a craft off the ground, and nothing else holds a hover over a place.
+        if (hovering && airborne && !e.Scraping)
+        {
+            double3 frame = Hover.FrameAccel(KsaWorld.SpinOf(body), positionCcf, velocityCcf).Transform(ccf2Body);
+            dv += Hover.Hold(velocityBody, groundUpBody, frame, e.Input.Throttle != 0.0 || e.Input.Steer != 0.0, dt);
+        }
         dv += Boost.Push(e.Boosting, forward, dt);
         dw += lift.Spin;
         if (!Vec.IsFinite(dv) || !Vec.IsFinite(dw)) return;
@@ -903,6 +913,12 @@ internal sealed class Buggies
         // rebuilt from it the car is left standing still in space while the planet turns away at 400 m/s.
         if (railed) craft.TakeOffRails();
     }
+
+    /// <summary>
+    /// Whether the brake key is down, for the car being flown: read in the frame hook, where the
+    /// keyboard is, and taken in the physics window.
+    /// </summary>
+    public static volatile bool BrakeHeld;
 
     /// <summary>
     /// How far ahead of itself the physics engine looks for what each car's hull will touch, where

@@ -51,6 +51,7 @@ public sealed class KSACarsMod
         HudHook.Install();
         RailsHook.Install();
         RoadDrawHook.Install();
+        RaceHudHook.Install();
         RoadColliders.Install();
 
         if (Build.Developer) _bridge = new Bridge();
@@ -69,6 +70,9 @@ public sealed class KSACarsMod
             // The fallback, and a no-op on every frame the GUI pass ran. See StepOnce.
             StepOnce();
 
+            // On every install: a player's opponents are laps too.
+            Laps.Update(dtPlayer);
+
             // After the step, so a command sees this frame's world.
             _bridge?.Update(dtPlayer, KsaWorld.InFlightScene && !KsaWorld.IsPaused ? KsaWorld.SimStepSeconds : 0.0);
 
@@ -76,6 +80,9 @@ public sealed class KSACarsMod
             Courses.Update();
             Roads.Update();
             RacingLine.Update();
+            StartLine.Update();
+            Opponents.Update();
+            RaceHud.Update();
         }
         catch (Exception e)
         {
@@ -130,6 +137,7 @@ public sealed class KSACarsMod
         }
 
         GamepadInput.Poll();
+        Buggies.BrakeHeld = KsaWorld.BrakeKeyDown;
 
         // Every frame rather than on the clock: the springs step inside the engine's own physics
         // window, so this only has to find the cars and show where their wheels ended up.
@@ -158,6 +166,7 @@ public sealed class KSACarsMod
         HudHook.Remove();
         RailsHook.Remove();
         RoadDrawHook.Remove();
+        RaceHudHook.Remove();
             RoadColliders.Remove();
         Log.Info("unloaded");
 
@@ -186,6 +195,7 @@ public sealed class KSACarsMod
         HudHook.Remove();
         RailsHook.Remove();
         RoadDrawHook.Remove();
+        RaceHudHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

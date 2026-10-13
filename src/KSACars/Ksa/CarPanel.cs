@@ -135,6 +135,32 @@ internal static class CarPanel
             }
             if (Courses.Message.Length > 0) ImGui.TextDisabled(Courses.Message);
 
+            // A car to race, on the grid behind this one, which sets off when this one does.
+            if (Roads.Any)
+            {
+                if (ImGui.Button("Add opponent", null)) Opponents.Add();
+                if (Opponents.Count > 0)
+                {
+                    ImGui.SameLine(0f, -1f);
+                    if (ImGui.Button("Remove opponents", null)) Opponents.Clear();
+                }
+                float pace = (float)(Opponents.Pace * 100.0);
+                ImGui.SetNextItemWidth(170f);
+                if (ImGui.SliderFloat("Opponent pace", ref pace, 0f, 100f, "%.0f%%", ImGuiSliderFlags.None)) Opponents.Pace = pace / 100.0;
+                if (Opponents.Message.Length > 0) ImGui.TextDisabled(Opponents.Message);
+                if (Practising.Message.Length > 0) ImGui.TextDisabled(Practising.Message);
+
+                // Speed, lap, place and a map, for when everything else is hidden.
+                bool hud = RaceHud.Enabled;
+                if (ImGui.Checkbox("Racing display with the interface hidden", ref hud)) RaceHud.Enabled = hud;
+                if (hud)
+                {
+                    int laps = RaceHud.Laps;
+                    ImGui.SetNextItemWidth(170f);
+                    if (ImGui.SliderInt("Laps", ref laps, 1, 20)) RaceHud.Laps = laps;
+                }
+            }
+
             // Drawing roads is unfinished, so only a developer's install offers it.
             if (Build.Developer)
             {

@@ -119,7 +119,8 @@ public class AutopilotTests
     internal static Lap Drive(TrackCar car, Track track, Route route, double dt, int laps = 1, double cruise = 0.0,
                               double timeout = 300.0, double after = 0.0, Action<TrackRig, Autopilot>? each = null,
                               double[]? pattern = null, LapRow[]? rows = null, bool jumps = false, double push = 0.0,
-                              IReadOnlyList<(double, double)>? jumpZones = null, Autopilot.Tuning? tune = null)
+                              IReadOnlyList<(double, double)>? jumpZones = null, Autopilot.Tuning? tune = null,
+                              double offRoadFor = Autopilot.OffRoadSeconds)
     {
         TrackRig rig = new(car, track.World, track.Road);
         (double3 at, _, double3 ahead) = route.Standing(1.5 * BuggyDrive.Wheelbase(car.Profile));
@@ -130,7 +131,7 @@ public class AutopilotTests
         rig.Dt = dt;
         rig.Pattern = pattern;
 
-        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new() };
+        Autopilot pilot = new(car.Profile, route, track.Road, car.MassKg, track.World.Gravity, track.World.Air, laps, cruise, timeout, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new(), OffRoadFor = offRoadFor };
         rig.Driver = pilot;
         for (int guard = 0; pilot.End == LapEnd.Running && guard < 2_000_000 && rig.Finite; guard++)
         {
@@ -354,11 +355,13 @@ public class AutopilotTests
     }
 
     // Thrown sideways, to the outside of the bend, eight seconds into two laps of the 50 m ring.
-    private static Lap Kicked(TrackCar car, double kick, out bool kicked)
+    private static Lap Kicked(TrackCar car, double kick, out bool kicked) => Kicked(car, kick, out kicked, Autopilot.OffRoadSeconds);
+
+    internal static Lap Kicked(TrackCar car, double kick, out bool kicked, double offRoadFor)
     {
         Track ring = Ring(50.0);
         bool done = false;
-        Lap lap = Drive(car, ring, RouteOn(ring), 1.0 / 60.0, laps: 2, timeout: 200.0, each: (rig, pilot) =>
+        Lap lap = Drive(car, ring, RouteOn(ring), 1.0 / 60.0, laps: 2, timeout: 200.0, offRoadFor: offRoadFor, each: (rig, pilot) =>
         {
             if (done || pilot.Summary.Seconds < 8.0) return;
             done = true;

@@ -5,6 +5,7 @@ Searches for a faster lap of one circuit by one car, in the headless rig.
     ./tools/roads/personal-best.py Sprint                  # carry on from the best so far
     ./tools/roads/personal-best.py Sprint --rounds 30
     ./tools/roads/personal-best.py Sprint --show           # the best so far, as the game's lap wants it
+    ./tools/roads/personal-best.py "Club Motorsports" --ship   # the best so far, beside the course the mod comes with
 
 A way of driving is the driver's settings (Autopilot.Tuning) and how far inside the road's edge its
 racing line keeps. Each round tries a couple of dozen near the best one, all at once, and a way only
@@ -15,6 +16,7 @@ tools/roads/pb/<circuit>.json, so a search can be stopped and carried on.
 """
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -55,6 +57,29 @@ def tuned(way):
     return plain + ",pace=" + ";".join(f"{way[f'pace_{k:02}']:.4g}" for k in range(PACES))
 
 
+# A car as the search names it, and as the game does: a shipped lap is filed under the second.
+CARS = {"F2004": "Ferrari F2004", "Eldorado": "Cadillac Eldorado", "Manx": "Beach Buggy"}
+
+
+def ship(circuit, car, state):
+    """The best so far as the lap the mod comes with of that course by that car, which its opponents drive towards."""
+    course = REPO / "src" / "KSACars" / "Circuits" / f"{circuit}.json"
+    if not course.exists():
+        raise SystemExit(f"{course} is not a course the mod comes with")
+    if course.read_bytes() != (library() / f"{circuit}.json").read_bytes():
+        raise SystemExit("the course in the library, which the lap was searched for on, is not the one the mod comes with")
+    way = state["best"]
+    out = course.parent / "Laps" / circuit / f"{CARS[car]}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({
+        "course": circuit, "car": CARS[car], "seconds": round(state["time"], 3),
+        "circuit_sha256": hashlib.sha256(course.read_bytes()).hexdigest(),
+        "inside_m": round(way["inside_m"], 4), "tune": tuned(way),
+        "line_m": [round(way[f"nudge_{k:02}"], 3) for k in range(NUDGES)],
+    }, indent=1) + "\n")
+    print(f"wrote {out.relative_to(REPO)}: {state['time']:.3f} s")
+
+
 def library():
     user = subprocess.run([str(REPO / "tools" / "ksa-user-dir.sh")], capture_output=True, text=True, check=True).stdout.strip()
     return pathlib.Path(user) / "KSACars" / "Circuits"
@@ -69,7 +94,8 @@ def timed(circuit, car, ways):
     with tempfile.TemporaryDirectory() as tmp:
         file = pathlib.Path(tmp) / "candidates.txt"
         file.write_text("\n".join(line(str(i), w) for i, w in enumerate(ways)) + "\n")
-        env = dict(os.environ, KSACARS_CANDIDATES=str(file), KSACARS_CIRCUIT=str(library() / f"{circuit}.json"), KSACARS_CAR=car)
+        courses = ";".join(str(library() / f"{c}.json") for c in circuit.split(";"))
+        env = dict(os.environ, KSACARS_CANDIDATES=str(file), KSACARS_CIRCUIT=courses, KSACARS_CAR=car)
         run = subprocess.run([str(REPO / "tools" / "test.sh"), "--filter", "LapSearchTests"], capture_output=True, text=True, env=env)
         out = pathlib.Path(str(file) + ".out")
         if not out.exists():
@@ -81,9 +107,14 @@ def timed(circuit, car, ways):
         return results
 
 
-def near(best, rng, spread):
+# What of a way is the driver's and not one circuit's: a search round several circuits moves these alone.
+GENERAL = [k for k in SETTINGS if not k.startswith(("pace_", "nudge_"))]
+
+
+def near(best, rng, spread, keys=None):
+    keys = keys or list(SETTINGS)
     way = dict(best)
-    for k in rng.sample(list(SETTINGS), rng.choice((1, 1, 2, 3, 5, len(SETTINGS)))):
+    for k in rng.sample(keys, rng.choice((1, 1, 2, 3, 5, len(keys)))):
         _, low, high = SETTINGS[k]
         scale = (high - low) * spread
         way[k] = min(high, max(low, way[k] + rng.gauss(0.0, scale)))
@@ -92,19 +123,27 @@ def near(best, rng, spread):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("circuit")
+    ap.add_argument("circuit", help="a circuit, or several with ';' between them: then one way of driving for all of them is searched for, "
+                                    "its time their sum, and what is one circuit's own, the pace and the line at places round it, is left alone")
     ap.add_argument("--car", default="F2004")
     ap.add_argument("--rounds", type=int, default=12)
     ap.add_argument("--each", type=int, default=28, help="ways tried a round")
     ap.add_argument("--heat", type=float, default=1.0, help="how far from the best a round looks, as a multiple: a search that has settled looks close")
     ap.add_argument("--show", action="store_true")
+    ap.add_argument("--ship", action="store_true", help="write the best so far beside the course in src/KSACars/Circuits/Laps and stop")
     ap.add_argument("--recheck", action="store_true", help="time the best so far again first, after a change to what counts as clean")
     ap.add_argument("--seed", type=int)
     args = ap.parse_args()
 
-    kept = REPO / "tools" / "roads" / "pb" / f"{args.circuit}-{args.car}.json"
+    several = ";" in args.circuit
+    kept = REPO / "tools" / "roads" / "pb" / (f"general-{args.car}.json" if several else f"{args.circuit}-{args.car}.json")
     kept.parent.mkdir(exist_ok=True)
     state = json.loads(kept.read_text()) if kept.exists() else {"best": None, "time": None, "rounds": []}
+    if args.ship:
+        if not state["best"]:
+            raise SystemExit("no lap yet")
+        ship(args.circuit, args.car, state)
+        return
     if args.show:
         if not state["best"]:
             raise SystemExit("no lap yet")
@@ -140,7 +179,7 @@ def main():
     for _ in range(args.rounds):
         n = len(state["rounds"])
         spread = args.heat * 0.12 * (0.5 ** (min(n, 40) / 14.0)) * rng.choice((0.4, 1.0, 1.0, 2.0))
-        ways = [near(state["best"], rng, spread) for _ in range(args.each)]
+        ways = [near(state["best"], rng, spread, GENERAL if several else None) for _ in range(args.each)]
         results = timed(args.circuit, args.car, ways)
         clean = [(r[0], w) for r, w in zip(results, ways) if r and r[0] is not None]
         faults = len(ways) - len(clean)

@@ -28,6 +28,34 @@ internal static class CircuitLibrary
         }
     }
 
+    /// <summary>
+    /// The lap the mod comes with of a course by a car, if it has one and it is of the course a player
+    /// would be given by that name: one of their own of the name is another course, whatever it is called.
+    /// </summary>
+    public static Rival.Learnt? LapOf(string course, string car)
+    {
+        try
+        {
+            string lap = Path.Combine(Shipped, "Laps", course, car + ".json");
+            if (!File.Exists(lap)) return null;
+            if (Rival.Read(File.ReadAllText(lap), out string why) is not { } learnt)
+            {
+                Log.Warn($"the lap of '{course}' by {car} could not be read: {why}");
+                return null;
+            }
+
+            string path = Path.Combine(Folder, Circuit.FileName(course));
+            if (!File.Exists(path)) path = Path.Combine(Shipped, Circuit.FileName(course));
+            if (!File.Exists(path)) return null;
+            string sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path)));
+            return string.Equals(sha, learnt.CircuitSha256, StringComparison.OrdinalIgnoreCase) ? learnt : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The circuit of that name, or null with the reason.</summary>
     public static Circuit? Load(string name, out string why)
     {
