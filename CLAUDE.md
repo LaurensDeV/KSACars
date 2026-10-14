@@ -916,6 +916,12 @@ on one road: every pair of cars past on a straight 3 m apart, an F2004 past an E
 **Seen in game**: a car stopped at the road's edge gone round by two opponents and one put back past it.
 A pass of a moving car has not been watched, and a road that narrows with two cars level is not tried.
 
+**An opponent stopped with its nose against a car standing across its way backs away from it** (`Opponents`,
+`PinnedSeconds`): after 1.5 s under 0.5 m/s with a standing car within 7 m ahead and in its path, its lap is
+stopped, it is held in reverse for 60 frames and set off again, to go round the car from there. Going round
+needs room to steer out, which a car against another's door has not, and it took itself for waiting behind
+it for good. **Not yet seen in game.**
+
 **An opponent off the road drives itself back on, and is put back only if it cannot.** Off the asphalt
 the route driver makes for its line at 5 m/s, and a lap ends `OffRoad` after `Autopilot.OffRoadFor`:
 a second for a lap that is being measured, a quarter of a minute for an opponent. One on its roof is
