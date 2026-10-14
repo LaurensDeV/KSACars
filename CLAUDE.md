@@ -865,6 +865,12 @@ is level, for 0.4 s and not a frame, it drops in behind again and waits 3 s. **A
 gone round wherever it is, a bend among them, as a standing one is: 3 m aside and no faster than 12 m/s
 over its speed until clear of it where there is no straight for the pass. Waiting for a straight as long
 as the pass takes at the driver's own speed, a field followed a car driven slowly in front of it for good.
+**Its nose alongside a moving car, a driver has the place** (`Rival.AlongsideHoldM`, `HoldSideM`): less
+than 4 m behind its middle and a metre to the side it is going round, it neither gives the pass up nor is
+held back by that car, which a car moved across into it touches. A car that moves across in front of each
+try still keeps a field behind it: `OvertakeScenarios`' blockers, which move across towards a driver's line
+0.3 to 0.6 s after it at 2.5 to 5 m/s, are passed in 6 of 50 runs, and staying at their tail and taking
+whichever side opens made it 7 with 34 runs touching. **Not yet seen in game.**
 **No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
 ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
