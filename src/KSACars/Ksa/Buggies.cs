@@ -51,6 +51,7 @@ internal sealed class Buggies
         /// <summary>Where the car was in the body's own frame as its last physics step began, the way it faced and how fast it was going over the ground.</summary>
         public double3 PlaceCcf;
         public double3 AheadCcf;
+        public double3 VelocityCcf;
         public double SpeedMs;
         public bool PlaceValid;
         public double SpringLift { get; set; }
@@ -699,7 +700,7 @@ internal sealed class Buggies
         doubleQuat body2Phys = states.Kinematic.Body2Phys;
         double3 spinBody = states.Kinematic.AngularVelocityPhys.Transform(body2Phys.Inverse());
         double3 velocityBody = velocityCcf.Transform(ccf2Body);
-        (e.PlaceCcf, e.SpeedMs, e.PlaceValid) = (positionCcf, Vec.Len(velocityCcf), true);
+        (e.PlaceCcf, e.VelocityCcf, e.SpeedMs, e.PlaceValid) = (positionCcf, velocityCcf, Vec.Len(velocityCcf), true);
 
         double3 com = craft.CenterOfMassAsmb;
         doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;

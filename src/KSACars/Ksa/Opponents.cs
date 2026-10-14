@@ -353,7 +353,7 @@ internal static class Opponents
         foreach (Buggies.Entry other in Buggies.Cars)
         {
             if (ReferenceEquals(other.Craft, car.Craft) || !other.PlaceValid) continue;
-            if (Rival.See(other.Craft, pilot, mine.PlaceCcf, mine.AheadCcf, other.PlaceCcf, other.AheadCcf, other.SpeedMs, LookM) is not { } seen) continue;
+            if (Rival.See(other.Craft, pilot, mine.PlaceCcf, mine.AheadCcf, other.PlaceCcf, other.AheadCcf, other.VelocityCcf, LookM, mine.SpeedMs) is not { } seen) continue;
             // An opponent held to a crawl by a car in its own way is queued behind it, and is followed rather than gone round.
             bool queued = Cars.Any(c => ReferenceEquals(c.Craft, other.Craft) && c.Stage == Stage.Racing && c.Cap < WaitingMs);
             Seen.Add(seen with { Queued = queued });
@@ -362,7 +362,8 @@ internal static class Opponents
 
         // With no driver, or one not yet stepped, nothing is known of the road: no room either side is no pass.
         double free = pilot?.FreeMs ?? 0.0, left = 0.0, right = 0.0, straight = 0.0;
-        pilot?.RoadAhead(Rival.RoomOver(cars, mine.SpeedMs), Rival.StraightPerM(Math.Max(free, mine.SpeedMs)), out left, out right, out straight);
+        if (pilot is not null) pilot.SqueezeM = Rival.Squeeze(cars, free);
+        pilot?.RoadAhead(Rival.RoomOver(cars, mine.SpeedMs), Rival.StraightPerM(Math.Max(free, mine.SpeedMs)), out left, out right, out straight, Rival.RoomFrom(cars, mine.SpeedMs));
         return Rival.Pass(car.Passing, cars, mine.SpeedMs, free, pilot?.CrossM ?? 0.0, left, right, straight, dt, pilot is null ? null : pilot.BrakeAt);
     }
 

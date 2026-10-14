@@ -406,12 +406,25 @@ internal sealed class Autopilot
     /// further than <paramref name="reachM"/>: what says a car round a bend is in the way, where a
     /// straight line from one to the other says it is off to one side. False before the first step.
     /// </summary>
-    public bool Along(double3 point, double reachM, out double aheadM, out double sideM)
+    public bool Along(double3 point, double reachM, out double aheadM, out double sideM) => Along(point, reachM, 0.0, out aheadM, out sideM, out _, out _, out _);
+
+    /// <summary>
+    /// The same, with the way the route runs there, how far to the left of the road's middle the place
+    /// is, and how far a place keeping to its lane moves left of the route for every metre on it goes,
+    /// over the next <paramref name="onM"/>.
+    /// </summary>
+    public bool Along(double3 point, double reachM, double onM, out double aheadM, out double sideM, out double3 tangent, out double roadM, out double driftPerM)
     {
-        (aheadM, sideM) = (0.0, 0.0);
+        (aheadM, sideM, tangent, roadM, driftPerM) = (0.0, 0.0, Vec.Zero, 0.0, 0.0);
         int at = _index;
         if (at < 0) return false;
         _route.Locate(point, ref at, reachM, out double s, out double cross);
+        ReadOnlySpan<Route.Sample> samples = _route.Samples;
+        tangent = samples[at].Tangent;
+        roadM = cross - samples[at].CentreM;
+        double on = Math.Max(onM, 4.0), then = s + on;
+        if (_route.Closed) then %= _route.LengthM;
+        driftPerM = then < _route.LengthM ? (samples[_route.IndexAt(then)].CentreM - samples[at].CentreM) / on : 0.0;
         aheadM = s - _s;
         if (_route.Closed && aheadM < -0.5 * _route.LengthM) aheadM += _route.LengthM;
         sideM = cross - _cross;
@@ -452,10 +465,10 @@ internal sealed class Autopilot
 
     /// <summary>
     /// The road ahead for a car that would leave its line: how far to the left and to the right of
-    /// the route its middle may go over the next <paramref name="overM"/>, and how far on the route
-    /// first bends by more than <paramref name="straightPerM"/>. False before the first step.
+    /// the route its middle may go between <paramref name="fromM"/> and <paramref name="overM"/> on, and
+    /// how far on the route first bends by more than <paramref name="straightPerM"/>. False before the first step.
     /// </summary>
-    public bool RoadAhead(double overM, double straightPerM, out double leftM, out double rightM, out double straightM)
+    public bool RoadAhead(double overM, double straightPerM, out double leftM, out double rightM, out double straightM, double fromM = 0.0)
     {
         (leftM, rightM, straightM) = (0.0, 0.0, 0.0);
         int at = _index;
@@ -467,7 +480,7 @@ internal sealed class Autopilot
         for (int i = at, guard = 0; guard < samples.Length && gone <= StraightLookM && (!bent || gone <= overM); guard++)
         {
             Route.Sample s = samples[i];
-            if (gone <= overM)
+            if (gone <= overM && gone >= Math.Min(fromM, overM))
             {
                 (double lo, double hi) = Room(s);
                 (leftM, rightM) = (Math.Min(leftM, hi), Math.Min(rightM, -lo));
@@ -479,12 +492,26 @@ internal sealed class Autopilot
             gone += Vec.Len(samples[next].At - s.At);
             i = next;
         }
+        if (double.IsPositiveInfinity(leftM) || double.IsPositiveInfinity(rightM)) (leftM, rightM) = (Room(samples[at]).Hi, -Room(samples[at]).Lo);
         return true;
     }
 
     // How far right and left of the route a car's middle may be at a sample; the route itself always may.
     private (double Lo, double Hi) Room(in Route.Sample s) =>
-        (Math.Min(s.CentreM - s.HalfWidth + _inside, 0.0), Math.Max(s.CentreM + s.HalfWidth - _inside, 0.0));
+        (Math.Min(s.CentreM - s.HalfWidth + Inside, 0.0), Math.Max(s.CentreM + s.HalfWidth - Inside, 0.0));
+
+    // How far inside the road's edge the car's middle keeps when it is asked to the side.
+    private double Inside => _inside - Math.Clamp(SqueezeM, 0.0, RaceMarginM - SqueezedMarginM);
+
+    /// <summary>
+    /// How much nearer the road's edge than its racing line's margin the driver may go when it is asked
+    /// to the side, m, and no nearer than <see cref="SqueezedMarginM"/> of a tyre to it: room to go
+    /// round a car standing or crawling, at a speed that does not need the margin. Set from outside.
+    /// </summary>
+    public double SqueezeM { get; set; }
+
+    /// <summary>The least asphalt kept outside a tyre when squeezed, m.</summary>
+    public const double SqueezedMarginM = 0.3;
 
     private double Pushed(double share, double most) => share + ((most - share) * Math.Clamp(Push, 0.0, 1.0));
 

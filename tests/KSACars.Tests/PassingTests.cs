@@ -197,8 +197,10 @@ public class PassingTests(ITestOutputHelper output)
         Rival.Passing state = new();
         Look(state, [Car("slow", 30.0, 0.0, 20.0)]);
 
-        // the straight runs out with the car still ahead: it drops back, on the side it is on
+        // the straight runs out with the car still ahead: a moment on, it drops back, on the side it is on
         (double side, double cap) = Look(state, [Car("slow", 6.0, -3.0, 20.0)], speed: 24.0, free: 30.0, cross: 3.0, straight: 20.0);
+        Assert.False(state.Back);
+        (side, cap) = Look(state, [Car("slow", 6.0, -3.0, 20.0)], speed: 24.0, free: 30.0, cross: 3.0, straight: 20.0, dt: Rival.UnfitSeconds);
         Assert.True(state.Back);
         Assert.Equal(Rival.PassSideM, side, 9);
         Assert.Equal(20.0 - Rival.DropMs, cap, 9);
@@ -291,9 +293,10 @@ public class PassingTests(ITestOutputHelper output)
         // As Opponents looks: every other car as this one's driver sees it, the road ahead, and what to do about it.
         public Rival.Seen[] Look(IEnumerable<Runner> others, double dt)
         {
-            Rival.Seen[] seen = [.. others.Select(o => Rival.See(o, Pilot, Rig.Position, Facing, o.Rig.Position, o.Facing, Vec.Len(o.Rig.Velocity), 250.0)).OfType<Rival.Seen>()];
+            Rival.Seen[] seen = [.. others.Select(o => Rival.See(o, Pilot, Rig.Position, Facing, o.Rig.Position, o.Facing, o.Rig.Velocity, 250.0, Vec.Len(Rig.Velocity))).OfType<Rival.Seen>()];
             double free = Pilot.FreeMs, left = 0.0, right = 0.0, straight = 0.0;
-            Pilot.RoadAhead(Rival.RoomOver(seen, Vec.Len(Rig.Velocity)), Rival.StraightPerM(Math.Max(free, Vec.Len(Rig.Velocity))), out left, out right, out straight);
+            Pilot.SqueezeM = Rival.Squeeze(seen, free);
+            Pilot.RoadAhead(Rival.RoomOver(seen, Vec.Len(Rig.Velocity)), Rival.StraightPerM(Math.Max(free, Vec.Len(Rig.Velocity))), out left, out right, out straight, Rival.RoomFrom(seen, Vec.Len(Rig.Velocity)));
             (Pilot.SideM, Pilot.CapMs) = Rival.Pass(Passing, seen, Vec.Len(Rig.Velocity), free, Pilot.CrossM, left, right, straight, dt);
             return seen;
         }
@@ -400,7 +403,7 @@ public class PassingTests(ITestOutputHelper output)
         double least = double.PositiveInfinity;
         for (double t = 0.0; t < 30.0; t += 1.0 / 60.0)
         {
-            Rival.Seen[] seen = [.. new[] { Rival.See(slow, fast.Pilot, fast.Rig.Position, fast.Facing, slow.Rig.Position, slow.Facing, Vec.Len(slow.Rig.Velocity), 250.0) }.OfType<Rival.Seen>()];
+            Rival.Seen[] seen = [.. new[] { Rival.See(slow, fast.Pilot, fast.Rig.Position, fast.Facing, slow.Rig.Position, slow.Facing, slow.Rig.Velocity, 250.0) }.OfType<Rival.Seen>()];
             (fast.Pilot.SideM, fast.Pilot.CapMs) = Rival.Pass(fast.Passing, seen, Vec.Len(fast.Rig.Velocity), fast.Pilot.FreeMs, fast.Pilot.CrossM, Room, Room, 0.0, 1.0 / 60.0);
             if (seen.Length == 1) least = Math.Min(least, seen[0].AheadM);
             slow.Step();
@@ -522,8 +525,9 @@ public class PassingTests(ITestOutputHelper output)
         Rival.Seen[] standing = [Car("standing", 20.0, 0.0, 0.5)];
         Look(state, standing, speed: 5.0);
         Assert.NotEqual(0, state.Side);
-        // the room goes: behind a standing car there is no dropping back to, so the pass is over and another may be begun soon
-        (_, double cap) = Look(state, standing, speed: 5.0, left: 0.5, right: 0.5);
+        // the room goes, for more than a moment: behind a standing car there is no dropping back to, so the pass is over and another may be begun soon
+        Look(state, standing, speed: 5.0, left: 0.5, right: 0.5);
+        (_, double cap) = Look(state, standing, speed: 5.0, left: 0.5, right: 0.5, dt: Rival.UnfitSeconds);
         Assert.Equal(0, state.Side);
         Assert.InRange(state.Rest, 0.0, Rival.StandingRestSeconds);
         Assert.True(cap > 0.0, "held to a standstill behind it");
@@ -578,7 +582,7 @@ public class PassingTests(ITestOutputHelper output)
         (double side, double cap) = Look(state, standing, speed: 2.0, left: 9.0, right: 1.0);
         Assert.Equal(1, state.Side);
         // out past both, and moving: neither holds it at a standstill
-        Assert.True(side >= 2.5 + Rival.StandingSideM - 1e-9, $"{side:F1} m out, which is not past the second car");
+        Assert.True(side >= 2.5 + Rival.StandingPassM - 1e-9, $"{side:F1} m out, which is not past the second car");
         Assert.True(cap >= 1.0, $"held to {cap:F1} m/s");
 
         // with no room past the second, it is not begun on that side
