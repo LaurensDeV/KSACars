@@ -220,7 +220,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RaceBoard.cs` | what a race is to a display of it: how far each car has gone round a closed route, **the checkpoints it has been driven through in order, so a lap cannot be had by cutting across**, the lap and the place in the order that gives, and where a place is on a map that turns with one car |
 | `Sim/LapRig.cs` | **a car lapped with nothing of the game**: `TrackRig`, a free body on a sphere stepped as `Buggies` steps a car, with `TrackWorld` its ground and `TrackCar` the car as the engine has it; what the suite drives and what an opponent practises in |
 | `Sim/Practice.cs` | an opponent's practice of a course: every bend quicker until a lap goes wrong, then the driver's settings one at a time, then the pace at 24 places, **each way kept only if it is clean and quicker and tried every way a searched lap is**, some 300 laps of the rig |
-| `Sim/Rival.cs` | what makes a route driver an opponent: **a driver of its own for a seed**, its pace, what it makes of each of 24 places round the lap and where it puts its car across the road, the same every time; and the speed it holds behind a car in its way |
+| `Sim/Rival.cs` | what makes a route driver an opponent: **a driver of its own for a seed**, its pace, what it makes of each of 24 places round the lap and where it puts its car across the road, the same every time; and the speed it holds behind another opponent in its way |
+| `Sim/Lanes.cs` | **where across the road an opponent runs and how fast while a player's car is near**: a handful of lanes, each tried at a few speeds and rolled 3 s ahead against every car, the cheapest in time lost, touching and leaving the road taken; an overtake of a player's car slower than the road allows, and a push past one that holds it up |
 | `Sim/RaceLine.cs` | the line to drive as arrowheads on the road ahead of a car: where each lies, on the road's own surface, and **its colour from the car's speed now against what the route allows there**, as runs of one colour that are each a draw |
 | `Sim/StartGrid.cs` | a course's start as paint on its asphalt: a chequered band between two white lines across the road ahead of the pole, from one edge line to the other, and behind it the boxes of a grid in two columns, **every corner on the road's own surface and a quad white or black by which half of one picture it is in** |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
@@ -830,7 +831,7 @@ righted: `Roads.RouteOver` now keeps the routes asked of the roads that are laid
 route not being changed once made, and an opponent's is worked out while it waits on the grid, one car a
 frame.
 
-**An opponent holds back behind a car in its way, and goes round it where it can.** Each frame `Opponents`
+**An opponent holds back behind another opponent in its way, and goes round it where it can.** Each frame `Opponents`
 looks 250 m ahead of each opponent for a car within 2.2 m of its side, the flown one among them, measured
 along the opponent's own route (`Autopilot.Along`) and not in a straight line, by which a car round a bend
 is off to one side until it is too near to stop for, and `Rival.FollowCap` gives the driver the most it
@@ -839,7 +840,8 @@ may go at (`Autopilot.CapMs`): the car's own speed and what 0.6 of its own brake
 2 s of a car coming backwards; nearer than 5 m, as behind a car that cut in, it drops back. Braking for a
 car at 8 m/s2, an F2004 that brakes at 16 to 45 held back so far that it was never near enough to begin
 a pass, and a field raced in the rig was a procession that lost 5 s a lap to it. A driver held so is told each frame
-that it is waiting, or it would take itself for stuck.
+that it is waiting, or it would take itself for stuck. That and the rest of this paragraph and the next is
+how opponents race one another; a player's car near an opponent is `Sim/Lanes.cs`', below.
 
 **A car is reckoned as wide as it is turned, where it has lately been and where it is going** (`Rival.See`,
 `Rival.Reckon`). `See` gives a car's speed as its velocity along the road where it is, so one reversing is
@@ -867,16 +869,7 @@ over its speed until clear of it where there is no straight for the pass. Waitin
 as the pass takes at the driver's own speed, a field followed a car driven slowly in front of it for good.
 **Its nose alongside a moving car, a driver has the place** (`Rival.AlongsideHoldM`, `HoldSideM`): less
 than 4 m behind its middle and a metre to the side it is going round, it neither gives the pass up nor is
-held back by that car, which a car moved across into it touches. A car that moves across in front of each
-try still keeps a field behind it: `OvertakeScenarios`' blockers, which move across towards a driver's line
-0.3 to 0.6 s after it at 2.5 to 5 m/s, are passed in 6 of 50 runs, and staying at their tail and taking
-whichever side opens made it 7 with 34 runs touching. **So a player's car is barged by** (`Rival.BargeAfterSeconds`, `Seen.Player`): one in an opponent's path
-for 1.5 s while slower than 0.9 of what the road allows it is passed on the side with more road, the pass
-never given up, at up to 12 m/s over its speed and not held back by it, so a player moved across into it is
-pushed. Opponents never barge one another. Waiting for two passes to be covered first did not do: a player
-in the middle of the road never let a pass begin. In `OvertakeScenarios`, where every scripted car is a
-player's, every blocker is passed and a slow or brake-checking one is now touched in up to 6 runs of 10.
-**Not yet seen in game.**
+held back by that car, which a car moved across into it touches.
 **No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
 ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
@@ -899,6 +892,35 @@ may be gone round on either side, crossing behind it. **Cars side by side are go
 them on its side, is held by none of them, and creeps at the pace the nearest not yet cleared sets. Going
 round the nearer of two, the other was where it would go and in front of where it was, and in a race the
 player drove five opponents stood in a queue behind the two for good.
+
+**A player's car is never something an opponent waits behind** (`Sim/Lanes.cs`). While one is within what
+the driver brakes in and 3 s of its speed ahead, or alongside, `Rival.Pass` hands the choice to the lanes
+and for a second after: up to 11 lanes across the road and one just clear of either side of each of the
+three nearest cars, each tried at free speed, at each of the two nearest cars' speed, following each, at
+a push past a player's, at its own speed, at a creep and at a stop, and rolled 3 s ahead in 0.2 s steps against every car carried on
+as `Rival.Reckon` reckons it, slowing for what the road allows ahead of it; the cheapest in seconds lost,
+touching (50 s), coming near, running outside the road's room where the car is, and moving off the line is
+taken, and kept unless something is 0.1 s better. The road's room is asked a step at a time along the
+roll, since a lane is an offset from a route that runs across the road: asked as the least over the
+stretch, a racing line at one edge and then the other left 0.6 m either side and no lane at all. Steering
+round is cheap and a speed under the road's is what is left where no lane is clear. **An overtake**
+(`Lanes.Memory.Who`) is of a player's car 3 m/s slower than the road allows the driver, now or by the next
+bend it brakes for: the driver follows it 2.5 m and 0.2 s back and a touch beside it is a rub of 6 s and
+2 s for every m/s, where one into its tail is still a crash; given up once the plan has held the driver
+behind it for 0.6 s, with 3 s before the next. **A player's car slower than 0.9 of what the road allows
+that holds the driver under that for 0.6 s is pushed past** (`Lanes.Pushing`): the driver aims at 0.6 of
+the way across its tail on the side with more road and closes on it at what still meets it at 4 m/s over
+its speed, since KSA's contact between two cars is plastic and each changes by half the closing speed;
+stopped, crawling, blocking or driven the wrong way, the player cannot stop an opponent. Another
+opponent is never pushed or rubbed, and one the rules would not go round is the whole road to the lanes.
+Through the first 8 s every car is the whole road. One call is 47 us with one car near, 78 with three and
+154 with nine. In `OvertakeScenarios`, every run of every scenario passes the player and none is stuck:
+over its 340 runs the time lost is 376 s where the rules took 898, the median time within 40 m behind a
+player 1.6 s where it was 2.8 and the median held under the road's pace 0 where it was 1.4, the runs off
+the asphalt 1 where they were 19, and the runs touching a player 85 where they were 120, two opponents
+never touching; but the longest within 40 m behind is 12.8 s where it was 10.3, behind a player in a bend
+going nearly as fast, and the longest held 7.0 s where it was 6.9, behind a blocker into a bend and one
+of a queue of three behind another opponent. **Not yet seen in game.**
 
 **A driver keeps a car's width from a car alongside** (`Rival.KeepLane`): the side it runs at comes no
 nearer than 2.4 m, middle to middle, to a car within 7 m ahead or behind, and where it is nearer already,
@@ -1338,6 +1360,8 @@ script on Club Motorsports Flat and a straight: slow on the line, the middle or 
 across the road, reversing, braking and speeding up, two abreast and one with three opponents queued
 behind, at four places round the lap and at 21 and 33 ms steps, and writes what each lost, how near it came
 and whether it touched to `OVERTAKE_OUT`; it asks nothing, and nothing in it touches anything.
+`OVERTAKE_HELDOUT=1` runs variants nothing was tuned on, at other places, speeds and amplitudes, and
+`APlayersCarOnAStraightCannotHoldAnOpponentUp` asks of four of its runs that each costs under 1.5 s.
 `./tools/roads/rig-laps.sh "Z "` laps every car round the circuit files the game reads, in seconds and
 with a CSV of every step for a car named, which is where a circuit is driven before the game is; it
 asks nothing of a lap, because a wall no car climbs is a fair thing to draw. `tools/bepurig` is the
