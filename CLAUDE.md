@@ -916,7 +916,14 @@ the way across its tail on the side with more road, or clear of the side of one 
 against its corner where not, and closes on it at what still meets it at 4 m/s over its speed, since KSA's contact between two cars is plastic and each changes by half the closing speed;
 stopped, crawling, blocking or driven the wrong way, the player cannot stop an opponent. A car that has swung across the road is
 taken to be anywhere in that swing the driver goes only while it goes the driver's way: a car driven the
-wrong way along a racing line sweeps the road as the line does, and every lane past it was a crash. Another
+wrong way along a racing line sweeps the road as the line does, and every lane past it was a crash. A car
+coming the other way is never pushed nor counted as holding the driver up, and is met with half the room
+to its side and no more along it for the closing speed. In the look ahead the driver makes back for its
+line once past every car it was getting past: held to its lane past the car, a lane round one met at a
+bend's entry ran off where the line crossed to the apex, and only a crawl was ever clean. A car driven the
+wrong way into a bend's entry now costs 0.1 to 1 s where it cost up to 3.6, and is never touched, and runs touching
+a player fell from 85 to 61 of 340; but in three to five more runs a wheel is off the asphalt for 0.3 to
+0.5 s going by. Another
 opponent is never pushed or rubbed, and one the rules would not go round is the whole road to the lanes.
 One call is 47 us with one car near, 78 with three and
 154 with nine. In `OvertakeScenarios`, every run of every scenario passes the player and none is stuck:
