@@ -16,7 +16,7 @@ public class OvertakeScenarios(ITestOutputHelper output)
     // A scripted car: where it is along the route and across it, which way it faces against the route, and its speed along and across.
     private sealed class Scripted
     {
-        public double S, Lat, Yaw, Along, Across, Road;
+        public double S, Lat, Yaw, Along, Across, Road, Aim;
         public bool YawSet;
         public double3 Place, Facing, Velocity;
     }
@@ -151,6 +151,21 @@ public class OvertakeScenarios(ITestOutputHelper output)
         (p.Along, p.Across, p.Lat, p.Yaw, p.YawSet) = (-ms, 0.0, lat, 0.0, true);
     };
 
+    // Where across the route the nearest opponent behind a blocker is, or NaN with none within reach: what a blocker moves across towards.
+    [ThreadStatic] private static double _chaserLat;
+
+    // A player keeping an opponent behind it: it moves across towards the opponent's line, a little late and no faster than a car is moved across.
+    private static Behave Block(double ms, double rateMs, double lagSeconds) => (t, dt, p, r) =>
+    {
+        Route.Sample here = At(r, p.S);
+        double edge = here.HalfWidth - 1.2;
+        p.Aim = double.IsNaN(_chaserLat) ? p.Aim : dt > 0.0 ? p.Aim + ((_chaserLat - p.Aim) * Math.Min(dt / lagSeconds, 1.0)) : _chaserLat;
+        double want = Math.Clamp(p.Aim, here.CentreM - edge, here.CentreM + edge);
+        double lat = dt > 0.0 ? p.Lat + Math.Clamp(want - p.Lat, -rateMs * dt, rateMs * dt) : p.Lat;
+        p.Across = dt > 0.0 ? (lat - p.Lat) / dt : 0.0;
+        (p.Along, p.Lat) = (Slow(r, p.S, ms), lat);
+    };
+
     private static Behave BrakeCheck(double hi, double lo, double period) => (t, dt, p, r) =>
     {
         double want = Slow(r, p.S, (t % period) < 0.5 * period ? hi : lo);
@@ -190,6 +205,10 @@ public class OvertakeScenarios(ITestOutputHelper output)
                 yield return new("reverse5-middle", c, at, 0.0, [Reverse(5.0, Middle)], [0.0]);
                 yield return new("brakecheck30/8", c, at, 19.0, [BrakeCheck(30.0, 8.0, 8.0)], [0.0]);
                 yield return new("brakecheck20/3", c, at, 11.0, [BrakeCheck(20.0, 3.0, 6.0)], [0.0]);
+                foreach ((double v, double rate, double lag) in new[] { (15.0, 3.0, 0.3), (30.0, 3.0, 0.3), (30.0, 5.0, 0.3), (20.0, 2.5, 0.6), (30.0, 2.5, 0.6) })
+                {
+                    yield return new(FormattableString.Invariant($"block{v:F0}/{rate:F1}/{lag:F1}"), c, at, v, [Block(v, rate, lag)], [0.0]);
+                }
                 yield return new("abreast12", c, at, 12.0, [Constant(12.0, s => s.CentreM + 2.2), Constant(12.0, s => s.CentreM - 2.2)], [0.0, 0.0]);
                 yield return new("queue3-slow10", c, at, 10.0, [Constant(10.0, Line)], [0.0], 3);
             }
@@ -253,6 +272,15 @@ public class OvertakeScenarios(ITestOutputHelper output)
             FreeOff[FormattableString.Invariant($"{course.Name}|{s0:F1}|{lat:F1}|{dt:F4}|{seed}")] = o.Pilot.Summary.OffAsphaltSeconds;
             return times;
         });
+    }
+
+    // Where across the route an opponent is, if it is behind a scripted car and within 80 m of it.
+    private static double? See(Opp o, Scripted p, double3 place)
+    {
+        double3 up = Vec.Unit(p.Place), ahead = Vec.Unit(Vec.RejectFrom(p.Facing, up));
+        double3 to = Vec.RejectFrom(place - p.Place, up);
+        double along = Vec.Dot(to, ahead);
+        return along < -2.0 && along > -80.0 ? p.Lat + Vec.Dot(to, Vec.Cross(up, ahead)) : null;
     }
 
     // Seen as the game sees it: Opponents hands See the other car's place, facing and speed.
@@ -333,6 +361,11 @@ public class OvertakeScenarios(ITestOutputHelper output)
             foreach (Opp o in opps) if (double.IsNaN(o.Gone0)) o.Gone0 = o.Pilot.Summary.ProgressM;
             for (int i = 0; i < players.Length; i++)
             {
+                _chaserLat = double.NaN;
+                foreach (Opp o in opps)
+                {
+                    if (See(o, players[i], o.Rig.Position) is { } behind) _chaserLat = behind;
+                }
                 sc.Players[i](t, dt, players[i], route);
                 players[i].S += players[i].Along * dt;
                 Place(players[i], route, dt);

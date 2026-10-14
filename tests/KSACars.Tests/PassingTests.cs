@@ -605,4 +605,21 @@ public class PassingTests(ITestOutputHelper output)
         Look(near, [Car("slow", 25.0, 0.0, 40.0)], speed: 41.0, free: 50.0, straight: 0.0);
         Assert.Equal(0, near.Side);
     }
+
+    [Fact]
+    public void ItsNoseAlongsideItHoldsItsPlaceWhenTheCarMovesAcrossIntoIt()
+    {
+        // going by on the car's left, its nose 2 m behind the car's middle and 2.5 m to its side
+        Rival.Passing state = new();
+        Look(state, [Car("slow", 30.0, 0.0, 20.0)], speed: 30.0, free: 50.0);
+        Assert.Equal(1, state.Side);
+        // the car moves across towards it, leaving no room on that side: it is not given up, nor is the driver held back by it
+        for (int i = 0; i < 60; i++)
+        {
+            (_, double cap) = Look(state, [Car("slow", 2.0, -1.2, 20.0)], speed: 30.0, free: 50.0, cross: 2.5, left: 0.5);
+            Assert.True(double.IsPositiveInfinity(cap), $"held to {cap:F1} m/s alongside it");
+        }
+        Assert.Equal(1, state.Side);
+        Assert.False(state.Back);
+    }
 }

@@ -476,6 +476,12 @@ internal static class Rival
 
     private static bool Crawling(double leadMs, double freeMs) => leadMs >= StandingMs && leadMs < CrawlShare * freeMs;
 
+    /// <summary>
+    /// Less than this far behind a moving car's middle, and this far to the side of it it is going round,
+    /// a driver's nose is alongside it: it holds its place and is no longer held back by that car.
+    /// </summary>
+    public const double AlongsideHoldM = 4.0, HoldSideM = 1.0;
+
     /// <summary>Slowing faster than this, m/s2, the car being gone round is braking, and a driver not yet out from behind it is held back by it.</summary>
     public const double LeadBrakingMs2 = 3.0;
 
@@ -603,6 +609,12 @@ internal static class Rival
         double side = Math.Clamp(Outside(cars, car, crossM, state.Side, standing ? StandingPassM : PassSideM), -rightM, leftM);
         double others = Held(cars, state.Who, crossM, side, speedMs, brakeAt, car);
 
+        // Its nose alongside a moving car, a driver has the place: it keeps its line and goes on, and a car moved across into it touches it.
+        if (!standing && car.AheadM < AlongsideHoldM && car.AheadM > -PassClearM && state.Side * -car.SideM >= HoldSideM)
+        {
+            (state.Unfit, state.Back) = (0.0, false);
+            return (side, others);
+        }
         bool fits = ClearOf(cars, car, crossM, side);
         bool open = freeMs - lead >= PassKeepMs && others >= lead + PassKeepMs
                     && (standing || crawling || freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) <= straightM);
