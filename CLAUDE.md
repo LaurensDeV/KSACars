@@ -912,9 +912,11 @@ bend it brakes for: the driver follows it 2.5 m and 0.2 s back and a touch besid
 2 s for every m/s, where one into its tail is still a crash; given up once the plan has held the driver
 behind it for 0.6 s, with 3 s before the next. **A player's car slower than 0.9 of what the road allows
 that holds the driver under that for 0.6 s is pushed past** (`Lanes.Pushing`): the driver aims at 0.6 of
-the way across its tail on the side with more road and closes on it at what still meets it at 4 m/s over
-its speed, since KSA's contact between two cars is plastic and each changes by half the closing speed;
-stopped, crawling, blocking or driven the wrong way, the player cannot stop an opponent. Another
+the way across its tail on the side with more road, or clear of the side of one standing where the road has room and
+against its corner where not, and closes on it at what still meets it at 4 m/s over its speed, since KSA's contact between two cars is plastic and each changes by half the closing speed;
+stopped, crawling, blocking or driven the wrong way, the player cannot stop an opponent. A car that has swung across the road is
+taken to be anywhere in that swing the driver goes only while it goes the driver's way: a car driven the
+wrong way along a racing line sweeps the road as the line does, and every lane past it was a crash. Another
 opponent is never pushed or rubbed, and one the rules would not go round is the whole road to the lanes.
 One call is 47 us with one car near, 78 with three and
 154 with nine. In `OvertakeScenarios`, every run of every scenario passes the player and none is stuck:
