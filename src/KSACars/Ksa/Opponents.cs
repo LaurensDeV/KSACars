@@ -389,7 +389,9 @@ internal static class Opponents
         double free = pilot?.FreeMs ?? 0.0, left = 0.0, right = 0.0, straight = 0.0;
         if (pilot is not null) pilot.SqueezeM = Rival.Squeeze(cars, free);
         pilot?.RoadAhead(Rival.RoomOver(cars, mine.SpeedMs), Rival.StraightPerM(Math.Max(free, mine.SpeedMs)), out left, out right, out straight, Rival.RoomFrom(cars, mine.SpeedMs));
-        return Rival.Pass(car.Passing, cars, mine.SpeedMs, free, pilot?.CrossM ?? 0.0, left, right, straight, dt, pilot is null ? null : pilot.BrakeAt);
+        if (pilot is null) return Rival.Pass(car.Passing, cars, mine.SpeedMs, free, 0.0, left, right, straight, dt);
+        Lanes.Road road = Lanes.RoadOf(pilot, car.Passing.Lanes, cars, mine.SpeedMs, 0.5 * BuggyDrive.Wheelbase(mine.Drive.Profile));
+        return Rival.Pass(car.Passing, cars, mine.SpeedMs, free, pilot.CrossM, left, right, straight, dt, pilot.BrakeAt, road);
     }
 
     private static readonly List<Rival.Seen> Seen = [];

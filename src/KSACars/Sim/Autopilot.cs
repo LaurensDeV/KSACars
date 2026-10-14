@@ -496,6 +496,39 @@ internal sealed class Autopilot
         return true;
     }
 
+    /// <summary>
+    /// The road ahead as <see cref="Lanes"/> rolls it: every <paramref name="stepM"/> on from the car the
+    /// speed the route allows into <paramref name="limits"/>, m/s, and how far to the right and the left of
+    /// the route the car's middle may be into <paramref name="right"/> and <paramref name="left"/>, m; and
+    /// the tightest bend over all of that, 1/m. False before the first step.
+    /// </summary>
+    public bool Ahead(Span<double> limits, Span<double> right, Span<double> left, double stepM, out double bendPerM)
+    {
+        bendPerM = 0.0;
+        int at = _index;
+        if (at < 0 || _limit is not { } limit) return false;
+        ReadOnlySpan<Route.Sample> samples = _route.Samples;
+        double gone = 0.0;
+        int filled = 0;
+        for (int i = at, guard = 0; guard < samples.Length && filled < limits.Length; guard++)
+        {
+            bendPerM = Math.Max(bendPerM, Math.Abs(samples[i].Curvature));
+            int next = i + 1 < samples.Length ? i + 1 : 0;
+            double piece = next == 0 && !_route.Closed ? double.PositiveInfinity : Vec.Len(samples[next].At - samples[i].At);
+            while (filled < limits.Length && filled * stepM <= gone + piece)
+            {
+                (double lo, double hi) = Room(samples[i]);
+                (limits[filled], right[filled], left[filled]) = (limit[i], -lo, hi);
+                filled++;
+            }
+            if (double.IsPositiveInfinity(piece)) break;
+            gone += piece;
+            i = next;
+        }
+        for (; filled < limits.Length && filled > 0; filled++) (limits[filled], right[filled], left[filled]) = (limits[filled - 1], right[filled - 1], left[filled - 1]);
+        return true;
+    }
+
     // How far right and left of the route a car's middle may be at a sample; the route itself always may.
     private (double Lo, double Hi) Room(in Route.Sample s) =>
         (Math.Min(s.CentreM - s.HalfWidth + Inside, 0.0), Math.Max(s.CentreM + s.HalfWidth - Inside, 0.0));

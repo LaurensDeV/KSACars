@@ -23,7 +23,7 @@ public class OvertakeScenarios(ITestOutputHelper output)
 
     private delegate void Behave(double t, double dt, Scripted p, Route route);
 
-    private sealed record Scenario(string Name, string Course, double PlaceM, double MeetMs, Behave[] Players, double[] StartLats, int Opponents = 1);
+    private sealed record Scenario(string Name, string Course, double PlaceM, double MeetMs, Behave[] Players, double[] StartLats, int Opponents = 1, string? Where = null);
 
     private sealed record Course(string Name, AutopilotTests.Track Track, Route Route, Dictionary<string, double> Places);
 
@@ -224,6 +224,37 @@ public class OvertakeScenarios(ITestOutputHelper output)
         }
     }
 
+    // Variants nothing was tuned on, at other places, speeds and amplitudes: OVERTAKE_HELDOUT=1 runs these instead.
+    private static IEnumerable<Scenario> HeldOut()
+    {
+        Course club = Club.Value, line = LongCourse.Value;
+        (Course Course, string Where, double At)[] places =
+        [
+            (club, "before-entry", club.Places["entry"] - 150.0), (club, "past-exit", club.Places["exit"] + 140.0),
+            (club, "straight-late", club.Places["straight"] + 120.0), (line, "straight-early", 900.0),
+        ];
+        foreach ((Course course, string where, double at) in places)
+        {
+            string c = course.Name;
+            yield return new("slow10-line", c, at, 10.0, [Constant(10.0, Line)], [0.0], Where: where);
+            yield return new("slow22-middle", c, at, 22.0, [Constant(22.0, Middle)], [0.0], Where: where);
+            yield return new("slow8-left", c, at, 8.0, [Constant(8.0, LeftEdge)], [0.0], Where: where);
+            yield return new("weave3/5s", c, at, 10.0, [Weave(10.0, 3.0, 5.0)], [0.0], Where: where);
+            yield return new("weave1/2s", c, at, 6.0, [Weave(6.0, 1.0, 2.0)], [0.0], Where: where);
+            yield return new("sideways45-right", c, at, 0.0, [Sideways(45.0, RightEdge)], [0.0], Where: where);
+            yield return new("sideways90-left", c, at, 0.0, [Sideways(90.0, LeftEdge)], [0.0], Where: where);
+            yield return new("shuffle2/5s", c, at, 0.0, [Shuffle(2.0, 5.0)], [0.0], Where: where);
+            yield return new("reverse3-left", c, at, 0.0, [Reverse(3.0, LeftEdge)], [0.0], Where: where);
+            yield return new("wrongway4-right", c, at, 0.0, [WrongWay(4.0, RightEdge)], [0.0], Where: where);
+            yield return new("wrongway10-line", c, at, 0.0, [WrongWay(10.0, Line)], [0.0], Where: where);
+            yield return new("brakecheck25/5", c, at, 15.0, [BrakeCheck(25.0, 5.0, 5.0)], [0.0], Where: where);
+            yield return new("block25/4.0/0.4", c, at, 25.0, [Block(25.0, 4.0, 0.4)], [0.0], Where: where);
+            yield return new("block12/2.0/0.2", c, at, 12.0, [Block(12.0, 2.0, 0.2)], [0.0], Where: where);
+            yield return new("abreast18", c, at, 18.0, [Constant(18.0, s => s.CentreM + 2.4), Constant(18.0, s => s.CentreM - 2.4)], [0.0, 0.0], Where: where);
+            yield return new("queue3-slow15", c, at, 15.0, [Constant(15.0, Middle)], [0.0], 3, Where: where);
+        }
+    }
+
     // ---- the race ----
 
     private sealed class Opp
@@ -233,8 +264,9 @@ public class OvertakeScenarios(ITestOutputHelper output)
         public Rival.Passing Passing = new();
         public double Gone0 = double.NaN, Still, StuckAt = double.NaN, FinishedAt = double.NaN, PassedAt = double.NaN, Follow, Contacts, ContactSeconds;
         public double MinGap = double.PositiveInfinity, MinSpeedNear = double.PositiveInfinity;
-        public int ContactEvents;
-        public bool Touching;
+        public int ContactEvents, PlayerContacts, OppContacts;
+        public double Kept, HeldBack;
+        public bool Touching, TouchingPlayer, TouchingOpp;
         public double Cap = double.PositiveInfinity;
         public double3 Facing => Rig.Attitude * new double3(0, 1, 0);
         public double Gone => Pilot.Summary.ProgressM - Gone0;
@@ -298,7 +330,10 @@ public class OvertakeScenarios(ITestOutputHelper output)
 
     public sealed record Result(string Scenario, string Course, string Where, double Dt, int Opponent, bool Passed, double PassedAt, double Lost,
                                 double FollowSeconds, double MinGapM, int ContactEvents, double ContactSeconds, double OffAsphalt, bool Stuck,
-                                string End, double MinSpeedNear);
+                                string End, double MinSpeedNear, int PlayerContacts, int OppContacts, double KeptSeconds, double HeldSeconds);
+
+    // How far an F2004's middle is ahead of where its route places it.
+    private static readonly double MiddleM = 0.5 * BuggyDrive.Wheelbase(TrackCar.F2004.Profile);
 
     private static List<Result> Run(Scenario sc, string where, double dt)
     {
@@ -323,7 +358,7 @@ public class OvertakeScenarios(ITestOutputHelper output)
 
         List<Rival.Seen> seen = [];
         string key = FormattableString.Invariant($"{sc.Name}|{sc.Course}|{where}|{dt:F3}");
-        StringBuilder? trace = Environment.GetEnvironmentVariable("OVERTAKE_TRACE") is { Length: > 0 } tr && key == tr ? new("t,opp,gone,speed,free,cap,ask,cross,side,back,who,ahead,sidem,seenms,gap,touch,left,right,straight,rest,nleft,nright,nwide,off,sidenow,cars\n") : null;
+        StringBuilder? trace = Environment.GetEnvironmentVariable("OVERTAKE_TRACE") is { Length: > 0 } tr && key == tr ? new("t,opp,gone,speed,free,cap,ask,cross,side,back,who,ahead,sidem,seenms,gap,touch,left,right,straight,rest,nleft,nright,nwide,off,sidenow,lanes,held,ot,cars\n") : null;
         for (double t = 0.0; t < Timeout; t += dt)
         {
             if (opps.All(o => !double.IsNaN(o.FinishedAt) || !double.IsNaN(o.StuckAt) || o.Pilot.End != LapEnd.Running)) break;
@@ -345,7 +380,8 @@ public class OvertakeScenarios(ITestOutputHelper output)
                 double left = 0.0, right = 0.0, straight = 0.0;
                 me.Pilot.SqueezeM = Rival.Squeeze(cars, free0);
                 me.Pilot.RoadAhead(Rival.RoomOver(cars, speed), Rival.StraightPerM(Math.Max(free0, speed)), out left, out right, out straight, Rival.RoomFrom(cars, speed));
-                (me.Pilot.SideM, me.Pilot.CapMs) = Rival.Pass(me.Passing, cars, speed, free0, me.Pilot.CrossM, left, right, straight, dt, me.Pilot.BrakeAt);
+                Lanes.Road road = Lanes.RoadOf(me.Pilot, me.Passing.Lanes, cars, speed, MiddleM);
+                (me.Pilot.SideM, me.Pilot.CapMs) = Rival.Pass(me.Passing, cars, speed, free0, me.Pilot.CrossM, left, right, straight, dt, me.Pilot.BrakeAt, road);
                 me.Cap = me.Pilot.CapMs;
                 if (me.Cap < 3.0) me.Pilot.Waiting();
 
@@ -356,12 +392,16 @@ public class OvertakeScenarios(ITestOutputHelper output)
                 if (trace is not null)
                 {
                     Rival.Seen n = cars.Length > 0 ? cars.MinBy(c => Math.Abs(c.AheadM)) : default;
-                    trace.AppendLine(FormattableString.Invariant($"{t:F3},{opps.IndexOf(me)},{me.Gone:F1},{speed:F2},{free0:F2},{Math.Min(me.Cap, 999):F2},{me.Pilot.SideM:F2},{me.Pilot.CrossM:F2},{me.Passing.Side},{(me.Passing.Back ? 1 : 0)},{(me.Passing.Who is null ? "" : me.Passing.Who is Opp ? "opp" : "player")},{n.AheadM:F2},{n.SideM:F2},{n.SpeedMs:F2},{me.MinGap:F2},{(me.Touching ? 1 : 0)},{left:F2},{right:F2},{straight:F1},{me.Passing.Rest:F2},{n.LeftM:F2},{n.RightM:F2},{n.WideM:F2},{me.Pilot.Summary.OffAsphaltSeconds:F2},{me.Pilot.SideNowM:F2},{string.Join(" ", cars.Select(c => FormattableString.Invariant($"[{c.AheadM:F1}/{c.SideM:F2}/{c.SpeedMs:F1}/{c.WideM:F2}/D{c.DriftPerM:F3}/r{c.RoadM:F2}]")))}"));
+                    trace.AppendLine(FormattableString.Invariant($"{t:F3},{opps.IndexOf(me)},{me.Gone:F1},{speed:F2},{free0:F2},{Math.Min(me.Cap, 999):F2},{me.Pilot.SideM:F2},{me.Pilot.CrossM:F2},{me.Passing.Side},{(me.Passing.Back ? 1 : 0)},{(me.Passing.Who is null ? "" : me.Passing.Who is Opp ? "opp" : "player")},{n.AheadM:F2},{n.SideM:F2},{n.SpeedMs:F2},{me.MinGap:F2},{(me.Touching ? 1 : 0)},{left:F2},{right:F2},{straight:F1},{me.Passing.Rest:F2},{n.LeftM:F2},{n.RightM:F2},{n.WideM:F2},{me.Pilot.Summary.OffAsphaltSeconds:F2},{me.Pilot.SideNowM:F2},{me.Passing.LanesFor:F1},{me.Passing.Lanes.Held:F2},{(me.Passing.Lanes.Who is null ? 0 : 1)},{string.Join(" ", cars.Select(c => FormattableString.Invariant($"[{c.AheadM:F1}/{c.SideM:F2}/{c.SpeedMs:F1}/{c.WideM:F2}/D{c.DriftPerM:F3}/r{c.RoadM:F2}]")))}"));
                 }
                 foreach (Scripted p in players)
                 {
                     if (See(p, me, p.Place, p.Facing, p.Velocity) is not { } q) continue;
                     if (q.AheadM > 0.0 && q.AheadM < 40.0) me.Follow += dt;
+                    // Kept behind it: not closing on it.
+                    if (q.AheadM > 0.0 && q.AheadM < 40.0 && speed <= Math.Max(q.SpeedMs, 0.0) + 1.0 && me.Gone > 10.0) me.Kept += dt;
+                    // Held by it: held under what the road allows, and slower than that, with it in front.
+                    if (q.AheadM > 0.0 && q.AheadM < 40.0 && me.Cap < free0 - 2.0 && speed < free0 - 2.0 && me.Gone > 10.0) me.HeldBack += dt;
                     if (double.IsNaN(me.PassedAt) && q.AheadM < -Rival.PassClearM && t > 0.5 && me.Gone > 10.0) me.PassedAt = t;
                     if (Math.Abs(q.AheadM) < 30.0 && me.Gone > 20.0) me.MinSpeedNear = Math.Min(me.MinSpeedNear, speed);
                 }
@@ -383,11 +423,15 @@ public class OvertakeScenarios(ITestOutputHelper output)
             // Footprints, every opponent against every scripted car and every other opponent.
             foreach (Opp me in opps)
             {
-                bool touching = false;
+                bool player = false, opp = false;
                 double3 up = Vec.Unit(me.Rig.Position);
-                foreach (Scripted p in players) touching |= Footprints(me, up, p.Place, p.Facing);
-                foreach (Opp other in opps) if (!ReferenceEquals(other, me)) touching |= Footprints(me, up, other.Rig.Position, other.Facing);
+                foreach (Scripted p in players) player |= Footprints(me, up, p.Place, p.Facing);
+                foreach (Opp other in opps) if (!ReferenceEquals(other, me)) opp |= Footprints(me, up, other.Rig.Position, other.Facing);
+                bool touching = player || opp;
                 if (touching && !me.Touching) me.ContactEvents++;
+                if (player && !me.TouchingPlayer) me.PlayerContacts++;
+                if (opp && !me.TouchingOpp) me.OppContacts++;
+                (me.TouchingPlayer, me.TouchingOpp) = (player, opp);
                 if (touching) me.ContactSeconds += dt;
                 me.Touching = touching;
                 if (double.IsNaN(me.FinishedAt) && me.Gone >= StartBackM + FinishOnM) me.FinishedAt = t;
@@ -403,7 +447,8 @@ public class OvertakeScenarios(ITestOutputHelper output)
             double freeOff = FreeOff.GetValueOrDefault(FormattableString.Invariant($"{course.Name}|{s0k:F1}|{latk:F1}|{dt:F4}|{k + 1}"));
             double lost = double.IsNaN(o.FinishedAt) ? double.PositiveInfinity : o.FinishedAt - free[k][(int)(StartBackM + FinishOnM)];
             results.Add(new(sc.Name, sc.Course, where, dt, k, !double.IsNaN(o.PassedAt), o.PassedAt, lost, o.Follow, o.MinGap, o.ContactEvents, o.ContactSeconds,
-                            o.Pilot.Summary.OffAsphaltSeconds - freeOff, !double.IsNaN(o.StuckAt), o.Pilot.End.ToString(), o.MinSpeedNear));
+                            o.Pilot.Summary.OffAsphaltSeconds - freeOff, !double.IsNaN(o.StuckAt), o.Pilot.End.ToString(), o.MinSpeedNear,
+                            o.PlayerContacts, o.OppContacts, o.Kept, o.HeldBack));
         }
         return results;
     }
@@ -461,17 +506,36 @@ public class OvertakeScenarios(ITestOutputHelper output)
         return Math.Sqrt((qx * qx) + (qy * qy));
     }
 
+    // A player's car turned across the line, driven the wrong way down it, two driven abreast on a 10 m road and one blocking: none of them
+    // costs an opponent on a straight more than a moment. The rules alone lost 5 to 8 s to each, slowing to a creep or held behind.
+    [Theory]
+    [InlineData("sideways-line")]
+    [InlineData("wrongway3-line")]
+    [InlineData("abreast12")]
+    [InlineData("block30/2.5/0.6")]
+    public void APlayersCarOnAStraightCannotHoldAnOpponentUp(string name)
+    {
+        Scenario sc = Scenarios().First(s => s.Name == name && s.Course == "long");
+        foreach (double dt in new[] { 0.021, 1.0 / 30.0 })
+        {
+            Result r = Run(sc, "straight", dt).Single();
+            Assert.True(r.Passed && !r.Stuck, $"{name} at {dt:F3} s: not past it");
+            Assert.True(r.Lost < 1.5, $"{name} at {dt:F3} s: lost {r.Lost:F2} s");
+            Assert.True(r.HeldSeconds < 1.0, $"{name} at {dt:F3} s: held behind it for {r.HeldSeconds:F2} s");
+        }
+    }
+
     [Fact]
     public void Overtakes()
     {
         if (Environment.GetEnvironmentVariable("OVERTAKE_RUN") != "1") return;
         string? only = Environment.GetEnvironmentVariable("OVERTAKE_ONLY");
         List<(Scenario Sc, string Where, double Dt)> runs = [];
-        foreach (Scenario sc in Scenarios())
+        foreach (Scenario sc in Environment.GetEnvironmentVariable("OVERTAKE_HELDOUT") == "1" ? HeldOut() : Scenarios())
         {
             if (only is { Length: > 0 } && !sc.Name.Contains(only, StringComparison.Ordinal)) continue;
             Course course = sc.Course == "club" ? Club.Value : LongCourse.Value;
-            string where = course.Places.First(p => p.Value == sc.PlaceM).Key;
+            string where = sc.Where ?? course.Places.First(p => p.Value == sc.PlaceM).Key;
             foreach (double dt in new[] { 0.021, 1.0 / 30.0 }) runs.Add((sc, where, dt));
         }
         ConcurrentBag<Result> all = [];
@@ -480,12 +544,12 @@ public class OvertakeScenarios(ITestOutputHelper output)
         string dir = Environment.GetEnvironmentVariable("OVERTAKE_OUT") ?? Path.GetTempPath();
         Directory.CreateDirectory(dir);
         string file = Path.Combine(dir, Environment.GetEnvironmentVariable("OVERTAKE_NAME") ?? "overtakes.csv");
-        StringBuilder csv = new("scenario,course,where,dt,opp,passed,passed_at,lost_s,follow_s,min_gap_m,contacts,contact_s,off_asphalt_s,stuck,end,min_speed_near\n");
+        StringBuilder csv = new("scenario,course,where,dt,opp,passed,passed_at,lost_s,follow_s,min_gap_m,contacts,contact_s,off_asphalt_s,stuck,end,min_speed_near,contacts_player,contacts_opp,kept_s,held_s\n");
         foreach (Result r in all.OrderBy(r => r.Scenario).ThenBy(r => r.Course).ThenBy(r => r.Where).ThenBy(r => r.Dt).ThenBy(r => r.Opponent))
         {
             csv.AppendLine(string.Join(',', r.Scenario, r.Course, r.Where, r.Dt.ToString("F3", CultureInfo.InvariantCulture), r.Opponent, r.Passed ? 1 : 0,
                                        F(r.PassedAt), F(r.Lost), F(r.FollowSeconds), F(r.MinGapM), r.ContactEvents, F(r.ContactSeconds), F(r.OffAsphalt),
-                                       r.Stuck ? 1 : 0, r.End, F(r.MinSpeedNear)));
+                                       r.Stuck ? 1 : 0, r.End, F(r.MinSpeedNear), r.PlayerContacts, r.OppContacts, F(r.KeptSeconds), F(r.HeldSeconds)));
         }
         File.WriteAllText(file, csv.ToString());
         output.WriteLine($"{all.Count} results to {file}");

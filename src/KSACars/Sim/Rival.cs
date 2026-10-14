@@ -7,8 +7,9 @@ namespace KSACars;
 /// <summary>
 /// What makes a route driver an opponent: a driver of its own for a seed, a little slower than the
 /// quickest and surer in some bends than in others; how much slower than the best lap known of a
-/// course a gap asked for is; and the speed it holds behind a car that is in its way, which a route
-/// driver alone would drive into, and when it goes round that car and on which side.
+/// course a gap asked for is; and the speed it holds behind another opponent in its way, which a route
+/// driver alone would drive into, and when it goes round that car and on which side. A player's car
+/// near it is <see cref="Lanes"/>'.
 /// </summary>
 internal static class Rival
 {
@@ -303,16 +304,18 @@ internal static class Rival
     /// be braked off in the room there is, or no limit where the car is not in the way.
     /// </summary>
     /// <param name="brakeAt">How hard the driver's car brakes at a speed, m/s2, all of it: at the leader's speed, the least it brakes at on the way down to it.</param>
-    public static double FollowCap(double aheadM, double sideM, double leaderMs, double speedMs, Func<double, double>? brakeAt = null)
+    /// <param name="gapM">The room kept behind a car that is moving, m, and <paramref name="gapSeconds"/> the seconds of the driver's own speed on top.</param>
+    public static double FollowCap(double aheadM, double sideM, double leaderMs, double speedMs, Func<double, double>? brakeAt = null,
+                                   double gapM = GapM, double gapSeconds = GapSeconds)
     {
         if (aheadM <= 0.0 || Math.Abs(sideM) > AbreastM) return double.PositiveInfinity;
         double lead = Math.Max(leaderMs, 0.0);
         // Behind a car that is standing, room to steer out from behind it: stopped at its tail there is no going round. One coming backwards takes some of it.
-        double room = aheadM - (lead < StandingMs ? StandingGapM : GapM) - (GapSeconds * Math.Max(speedMs, 0.0)) - (Math.Max(-leaderMs, 0.0) * ComingSeconds);
+        double room = aheadM - (lead < StandingMs ? StandingGapM : gapM) - (gapSeconds * Math.Max(speedMs, 0.0)) - (Math.Max(-leaderMs, 0.0) * ComingSeconds);
         double brake = brakeAt is null ? FollowBrakeMs2 : Math.Max(FollowBrakeShare * brakeAt(lead), FollowBrakeMs2);
         double cap = room <= 0.0 ? lead : Math.Sqrt((lead * lead) + (2.0 * brake * room));
         // Nearer than a car's room behind it, as when it cut in, it drops back rather than sitting on its tail.
-        if (aheadM < GapM) cap = Math.Max(lead - (BackOffPerS * (GapM - aheadM)), 0.0);
+        if (aheadM < gapM) cap = Math.Max(lead - (BackOffPerS * (gapM - aheadM)), 0.0);
         // Far enough back that it would not be braking yet, or behind a car pulling away, the car ahead is nothing to it.
         return cap > Math.Max(speedMs, 0.0) + 5.0 ? double.PositiveInfinity : cap;
     }
@@ -324,7 +327,7 @@ internal static class Rival
     /// </summary>
     public readonly record struct Seen(object Who, double AheadM, double SideM, double SpeedMs, bool Queued = false)
     {
-        /// <summary>Whether it is a player's car, and not another opponent: only a player's is barged by.</summary>
+        /// <summary>Whether it is a player's car, and not another opponent: one near is <see cref="KSACars.Lanes"/>' to go round, and it never holds a driver up for long.</summary>
         public bool Player { get; init; }
 
         /// <summary>How much further to either side a car turned across the road reaches than one facing along it, m.</summary>
@@ -379,10 +382,10 @@ internal static class Rival
         /// <summary>Seconds until another pass may be started, after one given up.</summary>
         public double Rest { get; internal set; }
 
-        /// <summary>The player's car that has kept the driver behind it, and for how many seconds lately.</summary>
-        internal object? Penner { get; set; }
+        /// <summary>What the lanes remember, and the seconds they go on deciding after the last look a player's car was near.</summary>
+        internal Lanes.Memory Lanes { get; } = new();
 
-        internal double Penned { get; set; }
+        internal double LanesFor { get; set; }
 
         /// <summary>
         /// Seconds from the start in which no pass is begun, nor one taken up for being beside a car:
@@ -490,37 +493,6 @@ internal static class Rival
     /// </summary>
     public const double AlongsideHoldM = 4.0, HoldSideM = 1.0;
 
-    /// <summary>
-    /// How long a player's car slower than <see cref="BargeShare"/> of what the road allows may keep a driver
-    /// behind it before the driver barges by, s; how much faster than it the driver then goes at it, m/s;
-    /// and how near ahead it is looked for, m. A player moving across in front of each try kept every
-    /// opponent behind for a lap, however a pass was gone about.
-    /// </summary>
-    public const double BargeAfterSeconds = 1.5, BargeShare = 0.9, BargeMs = 12.0, BargeNearM = 40.0;
-
-    // Whether the driver is barging by a car: the player's that has kept it behind long enough, still slower than the road allows.
-    private static bool Barges(Passing state, Seen car, double freeMs) =>
-        car.Player && Equals(state.Penner, car.Who) && state.Penned >= BargeAfterSeconds && car.SpeedMs >= StandingMs && car.SpeedMs < BargeShare * freeMs;
-
-    // The player's car in the driver's path, slower than the road allows, timed for as long as it is there; once long enough, that car.
-    private static Seen? Penning(Passing state, ReadOnlySpan<Seen> cars, double crossM, double freeMs, double dt)
-    {
-        Seen? pen = null;
-        foreach (Seen car in cars)
-        {
-            if (!car.Player || car.AheadM <= 0.0 || car.AheadM > BargeNearM || car.SpeedMs < StandingMs || car.SpeedMs >= BargeShare * freeMs) continue;
-            if (Apart(car, crossM, crossM) > AbreastM + PassMarginM && !Equals(car.Who, state.Penner)) continue;
-            if (pen is not { } p || car.AheadM < p.AheadM) pen = car;
-        }
-        if (pen is { } got)
-        {
-            if (!Equals(state.Penner, got.Who)) (state.Penner, state.Penned) = (got.Who, 0.0);
-            state.Penned += Math.Max(dt, 0.0);
-        }
-        else state.Penned = Math.Max(state.Penned - Math.Max(dt, 0.0), 0.0);
-        return pen is { } car2 && Barges(state, car2, freeMs) ? car2 : null;
-    }
-
     /// <summary>Slowing faster than this, m/s2, the car being gone round is braking, and a driver not yet out from behind it is held back by it.</summary>
     public const double LeadBrakingMs2 = 3.0;
 
@@ -603,13 +575,34 @@ internal static class Rival
     /// <param name="leftM">How far to the left of the route a car's middle may be over the stretch ahead, and <paramref name="rightM"/> to the right.</param>
     /// <param name="straightM">How far on the route first bends.</param>
     /// <param name="brakeAt">How hard the driver's car brakes at a speed, m/s2, or null for <see cref="FollowBrakeMs2"/>.</param>
+    /// <param name="road">What <see cref="KSACars.Lanes"/> needs of the road beyond this, or null to take it from the rest.</param>
     public static (double SideM, double CapMs) Pass(Passing state, ReadOnlySpan<Seen> cars, double speedMs, double freeMs, double crossM,
-                                                    double leftM, double rightM, double straightM, double dt, Func<double, double>? brakeAt = null)
+                                                    double leftM, double rightM, double straightM, double dt, Func<double, double>? brakeAt = null,
+                                                    Lanes.Road? road = null)
     {
         Seen[] reckoned = Reckon(state, cars, speedMs, freeMs, crossM, dt);
-        (double side, double cap) = Choose(state, reckoned, speedMs, freeMs, crossM, leftM, rightM, straightM, dt, brakeAt);
+        double step = Math.Max(dt, 0.0);
+        state.LanesFor = Lanes.Near(reckoned, speedMs, freeMs, brakeAt) ? LanesHoldSeconds : Math.Max(state.LanesFor - step, 0.0);
+        if (state.LanesFor > 0.0)
+        {
+            // The rules' pass is let go: back with them, a driver off its line beside a car takes up the side it is on.
+            state.End();
+            state.Rest = Math.Max(state.Rest - step, 0.0);
+            state.Launch = Math.Max(state.Launch - step, 0.0);
+            Lanes.Road asked = road ?? new Lanes.Road(crossM, 0.0, leftM, rightM, null, 0.0);
+            (double lane, double most) = KSACars.Lanes.Choose(state.Lanes, reckoned, state.Tracks, speedMs, freeMs, crossM, asked, straightM, state.Launch > 0.0, dt, brakeAt);
+            return (KeepLane(reckoned, crossM, lane), most);
+        }
+        state.Lanes.Forget();
+
+        // Between opponents alone, the rules: a player's car further off than the lanes look is nothing to them.
+        Seen[] others = reckoned.Any(c => c.Player) ? [.. reckoned.Where(c => !c.Player)] : reckoned;
+        (double side, double cap) = Choose(state, others, speedMs, freeMs, crossM, leftM, rightM, straightM, dt, brakeAt);
         return (KeepLane(reckoned, crossM, side), cap);
     }
+
+    /// <summary>How long the lanes go on deciding after the last look a player's car was near, s, and how near a car ahead always is, m.</summary>
+    public const double LanesHoldSeconds = 1.0, PlanNearM = 40.0;
 
     /// <summary>Half a car's width and the room kept from a car alongside, middle to middle, m, and how far ahead or behind a car is alongside.</summary>
     public const double LaneM = 2.4, AlongsideM = 7.0;
@@ -639,12 +632,6 @@ internal static class Rival
         state.Launch = Math.Max(state.Launch - Math.Max(dt, 0.0), 0.0);
         if (state.Side != 0 && (Find(cars, state.Who) is not { } still || still.AheadM < -PassClearM)) state.End();
         if (state.Side == 0) Start(state, cars, speedMs, freeMs, crossM, leftM, rightM, straightM, brakeAt);
-        // Kept behind long enough by a player's car, the driver barges by it on the side with more road.
-        if (Penning(state, cars, crossM, freeMs, dt) is { } pen && !Equals(state.Who, pen.Who))
-        {
-            double theirs = crossM + pen.SideM;
-            state.Begin(pen.Who, leftM - theirs >= theirs + rightM ? 1 : -1);
-        }
         if (state.Side == 0) return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));
 
         Seen car = Find(cars, state.Who)!.Value;
@@ -664,8 +651,7 @@ internal static class Rival
         bool open = freeMs - lead >= PassKeepMs && others >= lead + PassKeepMs
                     && (standing || crawling || freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) <= straightM);
         // Given up only when it has not fitted for a moment: the room ahead flickers as a racing line runs out to an edge and back.
-        bool barging = Barges(state, car, freeMs);
-        state.Unfit = car.AheadM > 0.0 && !barging && !(fits && (open || car.AheadM <= LevelM)) ? state.Unfit + Math.Max(dt, 0.0) : 0.0;
+        state.Unfit = car.AheadM > 0.0 && !(fits && (open || car.AheadM <= LevelM)) ? state.Unfit + Math.Max(dt, 0.0) : 0.0;
         if (state.Unfit > UnfitSeconds) state.Back = true;
         if (state.Back && standing)
         {
@@ -720,8 +706,7 @@ internal static class Rival
         double moving = PassLagSeconds + ((AbreastM + PassMarginM - outOf) / Math.Max(Math.Min(Autopilot.SideRateMs, Autopilot.SideSlope * speedMs), 0.1));
         bool apart = outOf > AbreastM + PassMarginM
                      || (slowing < LeadBrakingMs2 && car.AheadM - TuckM > PassLagShare * (speedMs - lead) * moving);
-        // Barging, it closes on the car and does not give way to it: a car moved across into it is pushed.
-        double held = apart ? double.PositiveInfinity : barging ? lead + BargeMs : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt);
+        double held = apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt);
         // Round a crawling car wherever it is, bends and all, no faster than a little over its speed until clear of it.
         if (crawling && car.AheadM > -PassClearM && outOf <= AbreastM + PassMarginM) held = Math.Min(held, lead + CrawlPassMs);
         return (side, Math.Min(others, held));
