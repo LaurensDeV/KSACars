@@ -841,7 +841,9 @@ to what leaves `RaceInside` of asphalt outside the car, and with the speed a ben
 for the tighter turn. `Rival.Pass` decides it, with a `Rival.Passing` an opponent for what it is in the
 middle of: behind a car at least 4 m/s slower, on a stretch straight enough for the whole pass, it goes
 3 m to the side with more room and no third car in it, is no longer held by that car once it is 2.5 m
-to its side, and comes back to its line 9 m past; if the straight, the speed or the room goes before it
+to its side or will be before it is up to it, unless that car is braking harder than 3 m/s2, and comes
+back to its line 9 m past: reckoned on a car keeping its speed, one braking into a bend ahead of a driver
+still behind it was run into at 18 and 24 m/s in game; if the straight, the speed or the room goes before it
 is level it drops in behind again and waits 3 s. **No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
 ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
@@ -880,7 +882,7 @@ set on its wheels where it lies (`Buggies.Right`) and drives on from there, once
 racing. **One that is not moving is not left to try**: under 0.5 m/s for 2.5 s with no car in its way,
 it is put back, as is one still off the road after that quarter of a minute or over a second time. It
 brakes for 30 frames and is stood on the road at the nearest place of the route on from where it left
-that has no car within 8 m, twelve places being tried, and set off again: waiting for the one place to
+that has no car within 8 m nor one coming up to it from up to 120 m behind, twelve places being tried, and set off again: waiting for the one place to
 clear, two cars that stopped together each waited for the other for good. One the driver takes for stuck behind a car that holds it under 3 m/s is
 waiting, and is set off again where it stands. `RivalTests.ThrownOffTheRoadADriverGivenTheTimeDrivesItselfBackOn` is the
 first of these in the rig. **Seen in game**: nine opponents raced by hand set off without touching

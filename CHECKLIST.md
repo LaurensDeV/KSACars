@@ -77,6 +77,11 @@ none of it has been seen as **KSACars** yet:
       car ahead at full lock spun by itself
 - [x] Opponents round a car stopped at the road's edge (bridge, same build): two went round it and drove on, one
       against it was put back on the road past it 2.5 s later
+- [x] Four opponents raced three times at 33 ms (bridge, same build): passes among them in the first lap each
+      time; in two races a driver still behind a car it was going round ran into it as that car braked, at 18
+      to 28 m/s, and one put back on the road was hit by a car coming up behind it at 40 m/s. With a passer held
+      back by a car braking ahead of it, and no car put back with one coming, a third race went 2.7 laps with
+      passes and no car touching another; laps of 82.6 to 85.9 s and 3 to 5 s each off the asphalt, at 33 ms
 - [x] Opponents queued behind the flown car standing on the road a second time (Laurens, same build as the
       new line): the room to go round was asked of the next 150 m of a line that hugs the edges
 - [ ] Opponents going round a car standing across the road, one after another from the queue behind it
@@ -86,8 +91,9 @@ none of it has been seen as **KSACars** yet:
 - [ ] A fluffed exit and laps of one opponent that differ, watched; and no opponent touching one beside it
       now that each keeps a lane from a car alongside
 - [ ] The blind driver at the game's own steps of 17 to 21 ms on Club Motorsports Flat: at 33 ms, the game
-      under 30 frames a second, it ran wide at 2,400 m with a wheel off the ground, where the rig at 33 ms
-      laps it cleanly
+      under 30 frames a second, it ran wide at 2,400 m, where the rig at 33 ms laps it cleanly. Over the first
+      880 m its steering was at full lock 35% of the steps and all four wheels down 43%, the front right off
+      the ground for seconds at a time; in the rig 8% and 82%. The car turns less in the game than in the rig
 - [ ] The new racing line in game: the arrowheads' line against the old, and opponents' laps against the rig's
       77.3 s blind and 76.4 practised on Club Motorsports
 - [ ] An opponent slowing for a car round a bend, and waiting behind a parked car without being set off again
