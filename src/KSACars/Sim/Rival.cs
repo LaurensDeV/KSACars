@@ -309,6 +309,16 @@ internal static class Rival
     /// <summary>How far past a car a driver is before it comes back to its line, and how far behind one before it goes back in after giving up.</summary>
     public const double PassClearM = 9.0, TuckM = 10.0;
 
+    /// <summary>
+    /// A car going at less than this share of what the road allows a driver is crawling: it is gone round
+    /// wherever it is, as a standing one is, at no more than <see cref="CrawlPassMs"/> over its speed until
+    /// clear of it. A pass of a moving car otherwise waits for a straight as long as the pass takes at the
+    /// driver's own speed, which a racing line hardly has, and a field followed a car driven slowly for good.
+    /// </summary>
+    public const double CrawlShare = 0.6, CrawlPassMs = 12.0;
+
+    private static bool Crawling(double leadMs, double freeMs) => leadMs >= StandingMs && leadMs < CrawlShare * freeMs;
+
     /// <summary>Slowing faster than this, m/s2, the car being gone round is braking, and a driver not yet out from behind it is held back by it.</summary>
     public const double LeadBrakingMs2 = 3.0;
 
@@ -412,12 +422,13 @@ internal static class Rival
         Seen car = Find(cars, state.Who)!.Value;
         double lead = Math.Max(car.SpeedMs, 0.0), theirs = crossM + car.SideM;
         bool standing = lead < StandingMs;
+        bool crawling = Crawling(lead, freeMs) && freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) > straightM;
         double side = Math.Clamp(standing ? Outside(cars, car, crossM, state.Side) : theirs + (state.Side * PassSideM), -rightM, leftM);
         double others = Held(cars, state.Who, crossM, side, speedMs, brakeAt, standing ? car : null);
 
         bool fits = standing ? ClearOf(cars, car, crossM, side) : Math.Abs(side - theirs) >= AbreastM + PassMarginM;
         bool open = freeMs - lead >= PassKeepMs && others >= lead + PassKeepMs
-                    && (standing || freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) <= straightM);
+                    && (standing || crawling || freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) <= straightM);
         if (car.AheadM > 0.0 && !(fits && (open || car.AheadM <= LevelM))) state.Back = true;
         if (state.Back && standing)
         {
@@ -453,7 +464,10 @@ internal static class Rival
         double moving = PassLagSeconds + ((AbreastM + PassMarginM - Math.Abs(car.SideM)) / Math.Max(Math.Min(Autopilot.SideRateMs, Autopilot.SideSlope * speedMs), 0.1));
         bool apart = Math.Abs(car.SideM) > AbreastM + PassMarginM
                      || (slowing < LeadBrakingMs2 && car.AheadM - TuckM > PassLagShare * (speedMs - lead) * moving);
-        return (side, Math.Min(others, apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt)));
+        double held = apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt);
+        // Round a crawling car wherever it is, bends and all, no faster than a little over its speed until clear of it.
+        if (crawling && car.AheadM > -PassClearM && Math.Abs(car.SideM) <= AbreastM + PassMarginM) held = Math.Min(held, lead + CrawlPassMs);
+        return (side, Math.Min(others, held));
     }
 
     /// <summary>How far along the road from a standing car another standing car is one obstacle with it, gone round as one, m.</summary>
@@ -546,7 +560,7 @@ internal static class Rival
         bool holds = FollowCap(slow.AheadM, 0.0, lead, speedMs, brakeAt) < freeMs;
         if (!holds && slow.AheadM - GapM > (speedMs - lead) * PassSoonSeconds) return;
         bool standing = lead < StandingMs;
-        if (!standing && freeMs * (PullOutSeconds + ((slow.AheadM + PassClearM) / Closing(speedMs, freeMs, lead))) > straightM) return;
+        if (!standing && !Crawling(lead, freeMs) && freeMs * (PullOutSeconds + ((slow.AheadM + PassClearM) / Closing(speedMs, freeMs, lead))) > straightM) return;
 
         double theirs = crossM + slow.SideM, most = -1.0;
         int best = 0;

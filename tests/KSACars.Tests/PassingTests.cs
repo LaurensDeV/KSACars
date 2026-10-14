@@ -137,7 +137,8 @@ public class PassingTests(ITestOutputHelper output)
         }
 
         Rival.Passing s = new();
-        Stays("into a bend", Look(s, slow, straight: 80.0), s);
+        // a car not far under what the road allows, which is only gone round on a straight
+        Stays("into a bend", Look(s, slow, free: 30.0, straight: 80.0), s);
         Stays("on a road too narrow for two", Look(s = new(), slow, left: 2.4, right: 2.4), s);
         Stays("behind a car hardly slower than it may go", Look(s = new(), slow, free: 20.0 + Rival.PassFasterMs - 0.5), s);
         Stays("with a car alongside on the only side with room",
@@ -197,7 +198,7 @@ public class PassingTests(ITestOutputHelper output)
         Look(state, [Car("slow", 30.0, 0.0, 20.0)]);
 
         // the straight runs out with the car still ahead: it drops back, on the side it is on
-        (double side, double cap) = Look(state, [Car("slow", 6.0, -3.0, 20.0)], speed: 24.0, cross: 3.0, straight: 20.0);
+        (double side, double cap) = Look(state, [Car("slow", 6.0, -3.0, 20.0)], speed: 24.0, free: 30.0, cross: 3.0, straight: 20.0);
         Assert.True(state.Back);
         Assert.Equal(Rival.PassSideM, side, 9);
         Assert.Equal(20.0 - Rival.DropMs, cap, 9);
@@ -390,12 +391,12 @@ public class PassingTests(ITestOutputHelper output)
     [Fact]
     public void WithNoPassingTheQuickCarStaysBehind()
     {
-        // the same two cars with the road said to bend at once: the follower's cap alone
+        // the same two cars with the road said to bend at once, the one ahead not far under what the road allows: the follower's cap alone
         AutopilotTests.Track track = Long();
         TrackCar car = TrackCar.F2004;
         Route route = AutopilotTests.RouteOn(track, car: car);
         Runner slow = new(car, track, route, 90.0, 1.0 / 60.0), fast = new(car, track, route, 30.0, 1.0 / 60.0);
-        slow.Pilot.CapMs = 15.0;
+        slow.Pilot.CapMs = 70.0;
         double least = double.PositiveInfinity;
         for (double t = 0.0; t < 30.0; t += 1.0 / 60.0)
         {
@@ -406,8 +407,8 @@ public class PassingTests(ITestOutputHelper output)
             fast.Step();
         }
         Assert.Equal(0, fast.Passing.Side);
-        Assert.InRange(least, Rival.GapM, 40.0);
-        Assert.InRange(Vec.Len(fast.Rig.Velocity), 13.0, 17.0);
+        Assert.InRange(least, Rival.GapM, 60.0);
+        Assert.True(Vec.Len(fast.Rig.Velocity) < Vec.Len(slow.Rig.Velocity) + 3.0, "faster than the car it follows");
     }
 
     [Fact]
@@ -584,5 +585,20 @@ public class PassingTests(ITestOutputHelper output)
         Rival.Passing narrow = new();
         Look(narrow, standing, speed: 2.0, left: 4.0, right: 1.0);
         Assert.NotEqual(1, narrow.Side);
+    }
+
+    [Fact]
+    public void ACarDrivenSlowlyIsGoneRoundInABendTooAndNotFlatOut()
+    {
+        // 15 m/s where the road allows 50, and no straight ahead at all
+        Rival.Passing state = new();
+        (_, double cap) = Look(state, [Car("slow", 25.0, 0.0, 15.0)], speed: 16.0, free: 50.0, straight: 0.0);
+        Assert.NotEqual(0, state.Side);
+        Assert.InRange(cap, 0.0, 15.0 + Rival.CrawlPassMs);
+
+        // one only a little slower is still followed until there is a straight
+        Rival.Passing near = new();
+        Look(near, [Car("slow", 25.0, 0.0, 40.0)], speed: 41.0, free: 50.0, straight: 0.0);
+        Assert.Equal(0, near.Side);
     }
 }
