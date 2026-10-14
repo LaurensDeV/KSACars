@@ -20,7 +20,7 @@ namespace KSACars;
 internal static class Practising
 {
     // Changed by hand when the driver or the rig changes what a kept lap means: a lap kept under another is not read.
-    private const int Version = 3;
+    private const int Version = 4;
 
     // The ground a practising car has under it where there is no road: far enough down that only the road is ever met.
     private const double NoGroundM = -1000.0;
@@ -141,7 +141,7 @@ internal static class Practising
             // What the car is to the rig, and how a first lap of it goes: what there is to go on if the rig and the game part.
             Practice.Drove first = Practice.Drive(car, world, road, loops, route, start, [0.025], Stale);
             string went = first.Clean ? FormattableString.Invariant($"is clean, {first.Seconds:F1} s")
-                                      : FormattableString.Invariant($"goes wrong {first.WrongAt:F0} m round {route.LengthM:F0} m");
+                                      : FormattableString.Invariant($"goes wrong {first.WrongAt * route.LengthM:F0} m round {route.LengthM:F0} m");
             Log.Info(FormattableString.Invariant($"practice: {profile.DisplayName} as the rig has it: {car.MassKg:F0} kg, centre of mass {car.Com.X:F2} {car.Com.Y:F2} {car.Com.Z:F2}, inertia {car.Inertia.X:F0} {car.Inertia.Y:F0} {car.Inertia.Z:F0}, gravity {world.Gravity:F2}, air {world.Air:F3}; a lap racing blind {went}"));
             Practice.Run(car, world, road, loops, route, start, Stale, Improved);
             if (Stale()) return;

@@ -31,9 +31,10 @@ internal static class Rival
     /// a little more of the grip and of the brakes taken, and a bend's tightness averaged over 7 m.
     /// Nothing in it is one car's or one course's: every car laps the suite's circuits cleanly with
     /// it, with 6% less grip too, the F2004 round Club Motorsports in 77 s where the driver's own
-    /// settings take 95.
+    /// settings take 95. It brakes 0.3 s early: its pedal lags a stop by 2 m/s, and on the edge of a
+    /// bend that was enough to run wide where gravity or the air were a little other than the rig's.
     /// </summary>
-    public static readonly Blind Racing = new(new Autopilot.Tuning { Model = 2.0, GripShare = 0.92, BrakeShare = 0.8, CurveOverM = 7.0 }, 0.0, 1.0);
+    public static readonly Blind Racing = new(new Autopilot.Tuning { Model = 2.0, GripShare = 0.92, BrakeShare = 0.8, CurveOverM = 7.0, BrakeLeadSeconds = 0.3 }, 0.0, 1.0);
 
     /// <summary>The way of racing blind of the car a profile's name is: the same for every car.</summary>
     public static Blind BlindFor(string car) => Racing;
