@@ -129,7 +129,8 @@ its start where your car is, running the way the car faces, and the car is stood
 start line is painted across the road ahead of it and a grid behind.
 **Add opponent** puts a copy of your car in the next box of the grid with a kitten driving; it sets off
 when you do and laps the course. **Opponents slower by** sets how far off the best lap they know they
-are: at 0% the quickest of them goes as fast as it can, and at 20% they are a fifth slower. Each opponent
+are: at 0% the quickest of them goes as fast as it can, and at 20% they are a fifth slower. Tick
+**Perfect opponents (full speed, no mistakes)** and every one of them drives the best lap it knows, every lap. Each opponent
 is a driver of its own, up to 4% slower than the rest, and none of them laps the same twice: now and then
 one fluffs the exit of a corner. They practise whatever course is laid, yours
 included: a few seconds after you add the first opponent the panel says what lap they have found so

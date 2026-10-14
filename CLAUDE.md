@@ -747,6 +747,11 @@ of 1.5%, drawn for that lap from the driver's number, and one lap in four fluffs
 throttle held to 0.4 for half a second to 1.2 the next time it is wanted wide open after a place drawn
 for that lap. Never quicker than the plan, so as clean as it; the same laps every race.
 
+**Perfect opponents, on the panel, takes all of that away** (`Opponents.FlatOut`, the bridge's `road` with
+`flat_out`): every opponent drives the best lap known of the course and no less, with no gap, no driver of
+its own (`Rival.FlatOut`) and every lap alike. How it holds back and goes round in traffic is kept, being
+what keeps it off other cars and not a slowness of its own.
+
 **An opponent is asked to be a share slower than the best lap known of the course, and every bend is
 taken slower by what gives that up.** The panel's Opponents slower by, 0 to 20%, is that share, and
 `Rival.Drive` gives the driver its own on top. What a lap gives up for every bend taken slower is not the
