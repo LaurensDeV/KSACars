@@ -287,9 +287,12 @@ internal static class Rival
         /// </summary>
         public double Launch { get; set; }
 
-        internal void Begin(object who, int side) => (Who, Side, Back) = (who, side, false);
+        /// <summary>The speed of the car being gone round at the last look, m/s, to tell it braking.</summary>
+        internal double LeadMs { get; set; } = double.NaN;
 
-        internal void End() => (Who, Side, Back) = (null, 0, false);
+        internal void Begin(object who, int side) => (Who, Side, Back, LeadMs) = (who, side, false, double.NaN);
+
+        internal void End() => (Who, Side, Back, LeadMs) = (null, 0, false, double.NaN);
     }
 
     /// <summary>How far apart, middle to middle, a driver means to go by a car, and how far over <see cref="AbreastM"/> it is before the car no longer holds it back.</summary>
@@ -300,6 +303,9 @@ internal static class Rival
 
     /// <summary>How far past a car a driver is before it comes back to its line, and how far behind one before it goes back in after giving up.</summary>
     public const double PassClearM = 9.0, TuckM = 10.0;
+
+    /// <summary>Slowing faster than this, m/s2, the car being gone round is braking, and a driver not yet out from behind it is held back by it.</summary>
+    public const double LeadBrakingMs2 = 3.0;
 
     /// <summary>Less than this far behind a car's middle a driver is beside it, and goes on with a pass it would otherwise give up.</summary>
     public const double LevelM = 2.0;
@@ -429,9 +435,13 @@ internal static class Rival
             double creep = clear || car.AheadM <= 0.0 ? CreepMs : Math.Clamp((car.AheadM - 5.0) * 0.45, 1.2, CreepMs);
             return (side, Math.Min(others, creep));
         }
-        // Not held either while it will be out from behind the car before it is up to it.
+        // Not held either while it will be out from behind the car before it is up to it, which is reckoned on the car
+        // keeping its speed: one braking hard ahead of a driver still behind it was run into at 18 m/s.
+        double slowing = dt > 0.0 && double.IsFinite(state.LeadMs) ? (state.LeadMs - lead) / dt : 0.0;
+        state.LeadMs = lead;
         double moving = PassLagSeconds + ((AbreastM + PassMarginM - Math.Abs(car.SideM)) / Math.Max(Math.Min(Autopilot.SideRateMs, Autopilot.SideSlope * speedMs), 0.1));
-        bool apart = Math.Abs(car.SideM) > AbreastM + PassMarginM || car.AheadM - TuckM > PassLagShare * (speedMs - lead) * moving;
+        bool apart = Math.Abs(car.SideM) > AbreastM + PassMarginM
+                     || (slowing < LeadBrakingMs2 && car.AheadM - TuckM > PassLagShare * (speedMs - lead) * moving);
         return (side, Math.Min(others, apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt)));
     }
 

@@ -552,4 +552,19 @@ public class PassingTests(ITestOutputHelper output)
         Assert.Equal(1.5, Rival.KeepLane([Car("ahead", 20.0, 2.0, 40.0)], 0.0, 1.5), 9);
         Assert.Equal(1.5, Rival.KeepLane([Car("behind", 3.0, 0.2, 40.0)], 0.0, 1.5), 9);
     }
+
+    [Fact]
+    public void StillBehindACarThatBrakesHardItIsHeldBackByIt()
+    {
+        // on its way out to the left from behind a car 30 m ahead, and reckoned to be clear of it before it is up to it
+        Rival.Passing state = new();
+        Look(state, [Car("slow", 30.0, 0.0, 40.0)], speed: 45.0, free: 70.0, left: Room, right: 0.5);
+        Assert.Equal(1, state.Side);
+        (_, double coasting) = Look(state, [Car("slow", 29.9, -0.8, 40.0)], speed: 45.0, free: 70.0, cross: 0.8, left: Room, right: 0.5);
+        Assert.True(double.IsPositiveInfinity(coasting), $"held to {coasting:F1} m/s behind a car keeping its speed");
+        // the car brakes at 15 m/s2: still behind it, the driver is held back by it
+        (_, double braking) = Look(state, [Car("slow", 29.0, -0.9, 39.75)], speed: 45.0, free: 70.0, cross: 0.9, left: Room, right: 0.5);
+        Assert.Equal(1, state.Side);
+        Assert.True(braking < 45.0, $"held to {braking:F1} m/s behind a car braking hard");
+    }
 }

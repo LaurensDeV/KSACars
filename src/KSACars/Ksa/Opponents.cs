@@ -56,6 +56,9 @@ internal static class Opponents
     private const double ClearM = 8.0;
     private const int PlacesTried = 12;
 
+    // How far back along the road a moving car makes a place no place to put a car back at: one stood 0.6 s ahead of a car at speed was hit at 40 m/s.
+    private const double ComingM = 120.0, ComingMs = 5.0;
+
     private enum Stage { Coming, Gridded, Racing, Righting, Recovering }
 
     private sealed class Car(Vehicle craft, int box, int generation, int seed)
@@ -278,7 +281,7 @@ internal static class Opponents
                 if (s >= route.LengthM) s = route.Closed ? s - route.LengthM : route.LengthM - 1.0;
                 Route.Sample there = route.Samples[route.IndexAt(s)];
                 double3 onto = there.At + (there.Across * there.CentreM);
-                if (!Buggies.Cars.Any(o => !ReferenceEquals(o.Craft, car.Craft) && o.PlaceValid && Vec.Len(o.PlaceCcf - onto) < ClearM)) clear = there;
+                if (!Buggies.Cars.Any(o => !ReferenceEquals(o.Craft, car.Craft) && o.PlaceValid && (Vec.Len(o.PlaceCcf - onto) < ClearM || Coming(o, onto, there.Tangent)))) clear = there;
             }
             if (clear is not { } near) return;
             Buggies.Hold(car.Craft, default, 0.0);
@@ -286,6 +289,17 @@ internal static class Opponents
             if (SetOff(car) is { Length: > 0 } not) Message = $"{KsaWorld.DisplayName(car.Craft)} would not start again: {not}";
         }
     }
+
+    // Whether a car is moving up the road towards a place, near enough behind it to be on it before a car put there is away.
+    private static bool Coming(Buggies.Entry other, double3 place, double3 along)
+    {
+        double3 to = place - other.PlaceCcf;
+        double behind = Vec.Dot(to, along);
+        return other.SpeedMs > ComingMs && behind > 0.0 && behind < ComingM && Vec.Len(to - (along * behind)) < ComingSideM;
+    }
+
+    // How far to the side of the road's line a car coming up behind a place counts, m: a road's width and its verges.
+    private const double ComingSideM = 25.0;
 
     // Has a car stand on its brakes, to be stood back on the road once it has.
     private static void PutBack(Car car, string why)
