@@ -66,13 +66,28 @@ none of it has been seen as **KSACars** yet:
 - [ ] Two opponents that stop together both put back on the road
 - [x] Opponents queued behind the flown car across the road in a bend (Laurens, 2026.10.13.5602): none went
       round it, a pass then being for a straight only, which is what going round a standing car was written for
-- [ ] Practice in full in game: the panel's lap falling as it goes, the F2004's against the rig's 70.9 s on the
-      flat course, the opponents' own laps against it, the frame time while it runs, and a course laid a
-      second time at the car known at once
+- [x] Practice in full in game (bridge, 2026.10.13.5602, Club Motorsports Flat, the game held to 33 ms steps): a
+      lap racing blind clean, 74.5 and 74.8 s, where the panel had said it could not lap the course; 72.5 s
+      practised in 32 s and, once practice was also made sure of at 33 ms, 73.1 s in 27 s; what a lap gives
+      up slower measured as 1.6% at 0.95 of every bend down to 36% at 0.6; and the course laid again known at
+      once from its kept file. The panel's own line and the frame time while it runs were not watched
+- [x] Six opponents raced at 33 ms steps (bridge, same build): one at the edge of the practised lap at 25 ms ran
+      wide into a tree, and in the rig every driver of that lap left the road at 33 ms, so practice now makes
+      sure of a lap there too; two side by side braking into a bend touched and both spun; one braking for a
+      car ahead at full lock spun by itself
+- [x] Opponents round a car stopped at the road's edge (bridge, same build): two went round it and drove on, one
+      against it was put back on the road past it 2.5 s later
 - [x] Opponents queued behind the flown car standing on the road a second time (Laurens, same build as the
       new line): the room to go round was asked of the next 150 m of a line that hugs the edges
 - [ ] Opponents going round a car standing across the road, one after another from the queue behind it
 - [ ] An opponent passing a slower one, and the flown car, on a straight; and dropping back in when it cannot
+- [ ] An opponent drawing up in another's slipstream and passing it, a car alike; and the flown car towed
+- [ ] Opponents slower by: the field's laps at 0%, 5% and 10% against the practised lap and what was measured
+- [ ] A fluffed exit and laps of one opponent that differ, watched; and no opponent touching one beside it
+      now that each keeps a lane from a car alongside
+- [ ] The blind driver at the game's own steps of 17 to 21 ms on Club Motorsports Flat: at 33 ms, the game
+      under 30 frames a second, it ran wide at 2,400 m with a wheel off the ground, where the rig at 33 ms
+      laps it cleanly
 - [ ] The new racing line in game: the arrowheads' line against the old, and opponents' laps against the rig's
       77.3 s blind and 76.4 practised on Club Motorsports
 - [ ] An opponent slowing for a car round a bend, and waiting behind a parked car without being set off again

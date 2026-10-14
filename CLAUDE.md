@@ -185,6 +185,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Righting.cs` | the turn and the lift that set a car on its roof or its side back on its wheels, **in the car's own frame** — the shortest turn, so it keeps its heading, and a roll rather than a somersault from flat on the roof; and the turn that stands a car on a road facing along it |
 | `Sim/Lift.cs` | four rockets under the car as one push — **thrust along the car's own up, through the centre of mass**, so it is balanced wherever the crew sit, and off the ground a hold that keeps it level or leans it the way the keys ask; and the gas each flame is drawn from |
 | `Sim/Barrier.cs` | a car's side against a deck's barrier, as a push of the mod's own: **what speed it has into the wall taken away and a share of that push rubbing it along**, held short of the solid wall, whose friction is the ground's and stops a car that leans on it |
+| `Sim/Slipstream.cs` | the still air behind a car: **the share of its drag a car following in it is spared**, most close behind and dead astern and nothing past 50 m or 1.6 m to the side, which lets one of two cars alike draw up to the other on a straight |
 | `Sim/Boost.cs` | two rockets on the tail as one push along the car's own forward, through its centre of mass — a fixed acceleration whatever the gravity, which is what moves a rock where the tyres have nothing to push against |
 | `Sim/Downforce.cs` | rockets on the bonnet and the boot that press the car onto the ground — a push along its own down through the centre of mass, and **the load the springs are sized off while it is on**, so the car rides at its usual height |
 | `Sim/Hover.cs` | the rockets under the car and the ones on top firing together — **thrust that carries the car's weight and brakes any climb or fall**, so it hangs where it is, and what holds it over the ground while the planet turns: the frame's own accelerations taken out and, with no lean asked, its speed across the ground braked |
@@ -730,26 +731,37 @@ lap is still timed from the route's own start, 9.5 m before the line.
 **An opponent is the route driver in a second car.** The panel's Add opponent, while roads are laid,
 has `Ksa/Opponents.cs` make a copy of the flown car (`CraftSpawner.SpawnLike`), set it down by the next
 box of the grid behind the pole, seat a kitten, stand it in the box, and start a lap of
-`Autopilot`'s on the racing line once the flown car passes 1 m/s; Opponent pace, 70% unless moved, is
-taken as each sets off. An opponent goes when its course is taken up or laid again, and has no engine sound.
+`Autopilot`'s on the racing line once the flown car passes 1 m/s; Opponents slower by, none unless
+moved, is taken as each sets off. An opponent goes when its course is taken up or laid again, and has no engine sound.
 
 **No two opponents drive alike, and the same one drives the same every race.** `Sim/Rival.cs` makes a
-driver of an opponent's number: a pace within 0.12 of the one asked, a `Tuning.Pace` of 0.97 to 1 at 24
-places round the lap as a walk from one to the next, so it is sure through a run of bends and not at one
-place, and its line up to 0.4 m off the racing line at 24 places. **They are gridded from the quickest
-to the slowest** (`Rival.Gridded`): nine raced by hand before any went round a car, with the slowest
-ahead, lapped in 89.5 to 97.5 s, each as slow as the one before it and a little more, where the lap they
-had practised was 80.6.
+driver of an opponent's number: a lap up to 4% slower than the gap asked of them all, and a `Tuning.Pace`
+of 0.97 to 1 at 24 places round the lap as a walk from one to the next, so it is sure through a run of
+bends and not at one place. Its line is the racing line: a line of its own, 0.4 m to one side at 24
+places, kinked the line a road's width changes and cost a driver 8 to 10 s a lap. **They are gridded from
+the quickest to the slowest** (`Rival.Gridded`): nine raced by hand before any went round a car, with the
+slowest ahead, lapped in 89.5 to 97.5 s, each as slow as the one before it and a little more.
 
-**An opponent's pace is a share of the way from the driver's cautious settings to quicker ones, and how
-quick those are depends on what is known of the course.** `Rival.Drive` is that, and there are three
-things it may know, the first there is of them being taken:
+**Nor does one lap like the last.** `Autopilot.Human` takes every bend of a lap slower by half a normal
+of 1.5%, drawn for that lap from the driver's number, and one lap in four fluffs the exit of a bend, the
+throttle held to 0.4 for half a second to 1.2 the next time it is wanted wide open after a place drawn
+for that lap. Never quicker than the plan, so as clean as it; the same laps every race.
 
-- **A lap the car has practised of this course**, here: `Ksa/Practising.cs`, below. All of it at full pace.
+**An opponent is asked to be a share slower than the best lap known of the course, and every bend is
+taken slower by what gives that up.** The panel's Opponents slower by, 0 to 20%, is that share, and
+`Rival.Drive` gives the driver its own on top. What a lap gives up for every bend taken slower is not the
+same on any two courses or cars, so each lap known is measured: `Practice.Slowed` laps it with every bend
+at 0.95 down to 0.6 of its speed, and `Rival.Slowing` reads the share for a gap between those, and at 0.4
+of the lap for a share of the bends where nothing was measured. In game the F2004's practised lap of Club
+Motorsports Flat gave up 1.6% at 0.95, 11.5% at 0.8 and 36% at 0.6. There are three laps it may be of,
+the first there is of them being taken:
+
+- **A lap the car has practised of this course**, here: `Ksa/Practising.cs`, below. Before practice
+  finds one, the blind lap, measured the same way.
 - **A lap the mod comes with**, `Circuits/Laps/<course>/<car>.json`, which `personal-best.py --ship` writes
   from a search and `CircuitLibrary.LapOf` reads if the course a player gets by that name is the one the
   lap was searched on, by its file's SHA-256: its settings, its pace at 24 places and its line, 0.55 of
-  the way at the most, past which a driver with bends of its own leaves the road. Only Club Motorsports
+  the way from the cautious driver's, past which a driver with bends of its own leaves the road. Only Club Motorsports
   has one, for the F2004, and taken whole it no longer laps cleanly: it was searched for before the
   driver was last changed.
 - **Nothing**: `Rival.Racing`, the same for every car and every course.
@@ -762,7 +774,9 @@ drag: the F2004 stops at 4.5 g at 70 m/s where its brakes' g says 1.1, and a car
 brakes. Model 2 also presses the pedals as far as gives the acceleration the plan asks, where the car
 coasted a third of a lap between full throttle and full brake. `Racing` is model 2 with 0.92 of the grip,
 0.8 of the brakes and a bend's tightness averaged over 7 m, a racing line's bend spiking for a few metres
-where a road's width changes. The F2004 lapped Club Motorsports in 84.7 s with it where the driver's own
+where a road's width changes, braking 0.3 s early: the pedal lags a stop by 2 m/s, and in the game, whose
+gravity is 9.82 and whose air thins with height, that ran the F2004 wide off the course's first right-hander
+and practice said it could not lap the course. It costs the F2004 half a second a lap. The F2004 lapped Club Motorsports in 84.7 s with it where the driver's own
 settings took 94.3, on the racing line as it then was; on the line as it is those are 77.3 and 84.0, the
 Eldorado's 127.2 and 129.5 and the buggy's 153.2 and 154.2, and every car laps
 the suite's circuits cleanly, with 6% less grip too. A lap for the watch, the bridge's `lap` and
@@ -776,8 +790,12 @@ the brakes and the tyres are worth having, and its shares of the grip, a crest a
 the pace at 24 places round the lap, all raised together and then lowered: a lap that goes wrong holds
 the places round where it did, and a clean one keeps the places whose own stretches were quicker. A way
 is kept only if it is clean and quicker, and one that is kept is first lapped every way a searched lap
-is, four kinds of step, two with 6% less grip and four with every other place 3% slower, without which an
-opponent with bends of its own left the road on one of the suite's circuits. **Round Club Motorsports the
+is, five kinds of step, two with 6% less grip, one in air 6% thinner than the driver takes it to be and four
+with every other place 3% slower, without which an opponent with bends of its own left the road on one of
+the suite's circuits. **A way is tried at the game's uneven steps and at 33 ms**, the longest step KSA
+takes, which it takes every frame while it draws under 30 a second, as it does with a field of cars: a
+lap practised at 25 ms instead left the road at 515 m round at 33 ms for every driver, and in game the
+quickest went off the road into a tree. **Round Club Motorsports the
 F2004 comes to 73.9 s from 77.3 racing blind, the Eldorado to 120.9 from 127.2 and the buggy to 149.1
 from 153.2; round the flat course the F2004 comes to 70.9 from 74.0.** A third of a minute to a minute of
 one core, most of the gain in the first quarter of it.
@@ -793,8 +811,9 @@ long its roads came out and how much they climb where it is laid, the body, the 
 `Practising.Version`, which is changed by hand when the driver, the line or the rig changes what a lap
 means: not of where the course is, a course laid at the car never being in the same place twice. An
 opponent takes whatever there is when it sets off, and one put back on the road has what there is then.
-**In game the first of the three ways alone has been run**, on the line as it was: 80.6 s for 82.7 blind
-in 2.4 s. The rest has not been raced.
+**Seen in game, all of it**, at 33 ms steps: on Club Motorsports Flat the F2004 laps blind in 74.8 s and
+practises to 73.1 s in 27 s, the slowings measured with it, and the course laid again knows it at once.
+Racing at those steps has not been clean: see `CHECKLIST.md`.
 
 **The rig is in the mod, since practice needs it.** `Sim/LapRig.cs` is `TrackRig`, `TrackWorld` and
 `TrackCar`, which the suite has always driven; the cars' own numbers for the tests are
@@ -810,8 +829,10 @@ frame.
 looks 250 m ahead of each opponent for a car within 2.2 m of its side, the flown one among them, measured
 along the opponent's own route (`Autopilot.Along`) and not in a straight line, by which a car round a bend
 is off to one side until it is too near to stop for, and `Rival.FollowCap` gives the driver the most it
-may go at (`Autopilot.CapMs`): the car's own speed and what 8 m/s2 still brakes off in the room there is,
-keeping 5 m and half a second, or 14 m behind a car that is standing. A driver held so is told each frame
+may go at (`Autopilot.CapMs`): the car's own speed and what 0.6 of its own brakes still brake off in the room there is
+(`Autopilot.BrakeAt`), keeping 5 m and half a second, or 14 m behind a car that is standing. Braking for a
+car at 8 m/s2, an F2004 that brakes at 16 to 45 held back so far that it was never near enough to begin
+a pass, and a field raced in the rig was a procession that lost 5 s a lap to it. A driver held so is told each frame
 that it is waiting, or it would take itself for stuck.
 
 **Going round is a line to one side that the driver is given.** `Autopilot.SideM` is how far to the left
@@ -821,17 +842,36 @@ for the tighter turn. `Rival.Pass` decides it, with a `Rival.Passing` an opponen
 middle of: behind a car at least 4 m/s slower, on a stretch straight enough for the whole pass, it goes
 3 m to the side with more room and no third car in it, is no longer held by that car once it is 2.5 m
 to its side, and comes back to its line 9 m past; if the straight, the speed or the room goes before it
-is level it drops in behind again and waits 3 s. **A car slower than 3 m/s is standing, and is gone
+is level it drops in behind again and waits 3 s. **No pass is begun in the first 8 s of a race**
+(`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
+ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
 round wherever it is**, a bend among them, 4.5 m aside or as far as the road has, since it may be across
 the road, at 9 m/s and slower the nearer it is while not yet clear of it. **The room to one side is asked
 of as much road as the pass takes** (`Rival.RoomOver`), 15 m past a standing car: asked of the next 150 m,
 as it first was, there is never any on a racing line, which runs out to one edge or the other somewhere
-in any stretch that long, and a field raced by hand queued behind a car standing on a road 13 m wide. `PassingTests` races two rigs
+in any stretch that long, and a field raced by hand queued behind a car standing on a road 13 m wide.
+**A car waiting behind another is followed, not gone round** (`Rival.Seen.Queued`, an opponent held under
+3 m/s), so the car at the front of a queue goes round what stops it and the rest go after it, one by one: a
+queue that was gone round stood in two columns. A pass of a standing car that cannot be finished is over,
+where one of a moving car drops back behind it, which behind a car that stands is waiting for good; the car
+behind a driver in its own lane does not take the side it would go to; and a standing car far enough ahead
+may be gone round on either side, crossing behind it.
+
+**A driver keeps a car's width from a car alongside** (`Rival.KeepLane`): the side it runs at comes no
+nearer than 2.4 m, middle to middle, to a car within 7 m ahead or behind, and where it is nearer already,
+no nearer than it is. A racing line runs across the road, and in game the car being passed followed it
+into the one beside it as the two braked into a bend side by side, and both were put back on the road.
+
+**A car in another's wake is spared some of its drag.** `Sim/Slipstream.cs` takes up to 40% of a car's
+drag away right behind another, less the further back and to the side it is, and nothing past 50 m or
+1.6 m to the side; `Buggies` works it out for every car on its wheels in the physics window, from where
+each was last stepped, the flown one among them, and `BuggyDrive.Tow` is the share. Without it two cars
+alike never drew level: a field raced in the rig had one pass in three laps. At 70 m/s an F2004's drag is
+3.6 kN of the 9.2 its power pulls with, so a tow is worth 1.8 m/s2. **Not yet seen in game to let a car by.** `PassingTests` races two rigs
 on one road: every pair of cars past on a straight 3 m apart, an F2004 past an Eldorado it comes upon at
 60 m/s without lifting, and a standing car gone round on a straight, from 14 m behind it and in a bend.
-**None of it has been seen in game**, and what feeds it there, `Opponents.InTheWay`, cannot be run
-without the game. The car that is passed does nothing about it, and a road that narrows with two cars
-level is not tried.
+**Seen in game**: a car stopped at the road's edge gone round by two opponents and one put back past it.
+A pass of a moving car has not been watched, and a road that narrows with two cars level is not tried.
 
 **An opponent off the road drives itself back on, and is put back only if it cannot.** Off the asphalt
 the route driver makes for its line at 5 m/s, and a lap ends `OffRoad` after `Autopilot.OffRoadFor`:

@@ -128,11 +128,14 @@ The panel has a **Course** list. Choose one and press **Lay here**: the course i
 its start where your car is, running the way the car faces, and the car is stood on pole: a chequered
 start line is painted across the road ahead of it and a grid behind.
 **Add opponent** puts a copy of your car in the next box of the grid with a kitten driving; it sets off
-when you do and laps the course, about as hard as **Opponent pace** says: each opponent is a driver of
-its own, a little quicker or slower and on its own line. They practise whatever course is laid, yours
+when you do and laps the course. **Opponents slower by** sets how far off the best lap they know they
+are: at 0% the quickest of them goes as fast as it can, and at 20% they are a fifth slower. Each opponent
+is a driver of its own, up to 4% slower than the rest, and none of them laps the same twice: now and then
+one fluffs the exit of a corner. They practise whatever course is laid, yours
 included: a few seconds after you add the first opponent the panel says what lap they have found so
-far, and it goes on improving for up to a minute. They drive to the best there is when they set off. What they learn of a course is kept, so the next time you lay it they know it already. It slows behind a car in its way but does not
-overtake unless there is a straight and room for it, though they go round a car that is standing wherever it is. One that is knocked off the road drives itself back on, and one on its roof is set on its
+far, and it goes on improving for up to a minute. They drive to the best there is when they set off. What they learn of a course is kept, so the next time you lay it they know it already. An opponent slows behind a car in its way but does not
+overtake unless there is a straight and room for it, though they go round a car that is standing wherever it is, one at a time. Any car
+following close behind another on a straight is in its slipstream and goes faster, yours too. One that is knocked off the road drives itself back on, and one on its roof is set on its
 wheels first; only an opponent that cannot get back is put back on the road.
 
 Hide the game's interface (F2 by default) and a racing display takes its place: your speed, your lap
