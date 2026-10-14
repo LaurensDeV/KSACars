@@ -59,7 +59,11 @@ internal static class Opponents
     // How far back along the road a moving car makes a place no place to put a car back at: one stood 0.6 s ahead of a car at speed was hit at 40 m/s.
     private const double ComingM = 120.0, ComingMs = 5.0;
 
-    private enum Stage { Coming, Gridded, Racing, Righting, Recovering }
+    private enum Stage { Coming, Gridded, Racing, Righting, Recovering, Reversing }
+
+    // Stopped this long with a standing car right in front of its nose, an opponent backs away from it, for so many frames, to go round it.
+    private const double PinnedSeconds = 1.5, PinnedAheadM = 7.0;
+    private const int ReverseFrames = 60;
 
     private sealed class Car(Vehicle craft, int box, int generation, int seed)
     {
@@ -77,8 +81,9 @@ internal static class Opponents
         // Whether the log has said how it drives.
         public bool Told { get; set; }
 
-        // How long it has stood still with nothing in its way, s.
+        // How long it has stood still with nothing in its way, s, and with a standing car against its nose.
         public double Still { get; set; }
+        public double Pinned { get; set; }
 
         // Whether it has been set on its wheels where it lay and not yet driven on for long.
         public bool Righted { get; set; }
@@ -248,6 +253,19 @@ internal static class Opponents
             }
 
             (double side, double cap) = InTheWay(car, buggy, KsaWorld.IsPaused ? 0.0 : Program.GetPlayerDeltaTime());
+
+            // Nose against a car standing across its way there is no going round it forwards: it backs away first.
+            bool pinned = buggy.PlaceValid && buggy.SpeedMs < StillMs && !KsaWorld.IsPaused
+                          && Seen.Any(s => s.AheadM > 0.0 && s.AheadM < PinnedAheadM && Math.Abs(s.SideM) < Rival.AbreastM + 1.0 && s.SpeedMs < Rival.StandingMs);
+            car.Pinned = pinned ? car.Pinned + Program.GetPlayerDeltaTime() : 0.0;
+            if (car.Pinned >= PinnedSeconds)
+            {
+                Laps.Stop(car.Craft);
+                (car.Stage, car.Frames, car.Pinned) = (Stage.Reversing, 0, 0.0);
+                Buggies.Hold(car.Craft, new DriveInput(-1.0, 0.0), 10.0);
+                Log.Info($"opponent: {KsaWorld.DisplayName(car.Craft)} is against a car standing in its way; it backs away to go round it");
+                return;
+            }
             car.Cap = cap;
             Laps.Cap(car.Craft, cap);
             Laps.Side(car.Craft, side);
@@ -261,6 +279,13 @@ internal static class Opponents
                 Laps.Stop(car.Craft);
                 PutBack(car, $"still for {car.Still:F1} s");
             }
+            return;
+        }
+
+        if (car.Stage == Stage.Reversing && ++car.Frames >= ReverseFrames)
+        {
+            Buggies.Hold(car.Craft, default, 0.0);
+            if (SetOff(car) is { Length: > 0 } no) Message = $"{KsaWorld.DisplayName(car.Craft)} would not start again: {no}";
             return;
         }
 
