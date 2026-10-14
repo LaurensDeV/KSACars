@@ -835,10 +835,22 @@ looks 250 m ahead of each opponent for a car within 2.2 m of its side, the flown
 along the opponent's own route (`Autopilot.Along`) and not in a straight line, by which a car round a bend
 is off to one side until it is too near to stop for, and `Rival.FollowCap` gives the driver the most it
 may go at (`Autopilot.CapMs`): the car's own speed and what 0.6 of its own brakes still brake off in the room there is
-(`Autopilot.BrakeAt`), keeping 5 m and half a second, or 14 m behind a car that is standing. Braking for a
+(`Autopilot.BrakeAt`), keeping 5 m and half a second, or 14 m behind a car that is standing, and further by
+2 s of a car coming backwards; nearer than 5 m, as behind a car that cut in, it drops back. Braking for a
 car at 8 m/s2, an F2004 that brakes at 16 to 45 held back so far that it was never near enough to begin
 a pass, and a field raced in the rig was a procession that lost 5 s a lap to it. A driver held so is told each frame
 that it is waiting, or it would take itself for stuck.
+
+**A car is reckoned as wide as it is turned, where it has lately been and where it is going** (`Rival.See`,
+`Rival.Reckon`). `See` gives a car's speed as its velocity along the road where it is, so one reversing is
+coming at the driver, its turn against the road there, and how far from the road's middle it is; each
+`Rival.Seen` is then a span across the road and not a point: out by its length turned across, to everywhere
+across the road it has been, fading at 2.5 m/s, and to where it will be when the driver is up to it, up to
+2.5 s on: a car keeping to the driver's line stays on it, and any other keeps to its lane, or goes on moving
+across, while the racing line runs across the road under it. Every in-the-way, room and alongside test is
+against that span. In `OvertakeScenarios`, a car reversing, one turned across, a racing line bending into a
+car driven at the road's edge and a weaving one were each run into in the rig with it reckoned a point.
+**Not yet seen in game.**
 
 **Going round is a line to one side that the driver is given.** `Autopilot.SideM` is how far to the left
 of its route a driver is to run: eased across at 2 m/s or 8% of the car's speed, 35% under 12 m/s, held
@@ -849,16 +861,20 @@ middle of: behind a car at least 4 m/s slower, on a stretch straight enough for 
 to its side or will be before it is up to it, unless that car is braking harder than 3 m/s2, and comes
 back to its line 9 m past: reckoned on a car keeping its speed, one braking into a bend ahead of a driver
 still behind it was run into at 18 and 24 m/s in game; if the straight, the speed or the room goes before it
-is level it drops in behind again and waits 3 s. **A car going at under 0.6 of what the road allows the driver is crawling** (`Rival.CrawlShare`), and is
+is level, for 0.4 s and not a frame, it drops in behind again and waits 3 s. **A car going at under 0.6 of what the road allows the driver is crawling** (`Rival.CrawlShare`), and is
 gone round wherever it is, a bend among them, as a standing one is: 3 m aside and no faster than 12 m/s
 over its speed until clear of it where there is no straight for the pass. Waiting for a straight as long
 as the pass takes at the driver's own speed, a field followed a car driven slowly in front of it for good.
 **No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
 ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
-round wherever it is**, a bend among them, 4.5 m aside or as far as the road has, since it may be across
-the road, at 9 m/s and slower the nearer it is while not yet clear of it. **The room to one side is asked
-of as much road as the pass takes** (`Rival.RoomOver`), 15 m past a standing car: asked of the next 150 m,
+round wherever it is**, a bend among them, 3.5 m outside it or as far as the road has, driven up to at
+speed and braked to 9 m/s and 8 m/s more for every metre it is clear of it to the side, and slower the
+nearer it is while not yet clear of it; behind one crept up on for 200 m, a pass of a car turned across
+the road lost 20 s. Round a car standing or crawling a driver may go 0.6 m nearer the edge than its racing
+margin (`Rival.Squeeze`, `Autopilot.SqueezeM`). **The room to one side is asked of as much road as the
+pass takes** (`Rival.RoomOver`), 15 m past a standing car, and from a little before the driver is up to it
+(`Rival.RoomFrom`), 8 m short of a standing car: asked of the next 150 m,
 as it first was, there is never any on a racing line, which runs out to one edge or the other somewhere
 in any stretch that long, and a field raced by hand queued behind a car standing on a road 13 m wide.
 **A car waiting behind another is followed, not gone round** (`Rival.Seen.Queued`, an opponent held under
@@ -866,8 +882,8 @@ in any stretch that long, and a field raced by hand queued behind a car standing
 queue that was gone round stood in two columns. A pass of a standing car that cannot be finished is over,
 where one of a moving car drops back behind it, which behind a car that stands is waiting for good; the car
 behind a driver in its own lane does not take the side it would go to; and a standing car far enough ahead
-may be gone round on either side, crossing behind it. **Cars standing side by side are gone round as one**
-(`Rival.TogetherM`, within 8 m along the road of each other): the driver runs 4.5 m outside the furthest of
+may be gone round on either side, crossing behind it. **Cars side by side are gone round as one**
+(`Rival.TogetherM`, within 8 m along the road of each other, both standing or within 2 m/s of each other): the driver runs outside the furthest of
 them on its side, is held by none of them, and creeps at the pace the nearest not yet cleared sets. Going
 round the nearer of two, the other was where it would go and in front of where it was, and in a race the
 player drove five opponents stood in a queue behind the two for good.
@@ -1298,6 +1314,11 @@ ramp and a bridge and to a road's end. `ExtremeLapTests` laps every car round th
 the game's uneven steps: finished, on the asphalt, on its wheels and no spring within 2 cm of where a
 collider would touch; and round the grid by its junctions, turning left and right at four and twice straight
 over the raised crossroads. `KSACARS_EXTREME_LAPS=<file> ./tools/test.sh` writes them out as a table.
+`OVERTAKE_RUN=1 ./tools/test.sh --filter OvertakeScenarios` races an opponent F2004 against cars moved by
+script on Club Motorsports Flat and a straight: slow on the line, the middle or an edge, weaving, turned
+across the road, reversing, braking and speeding up, two abreast and one with three opponents queued
+behind, at four places round the lap and at 21 and 33 ms steps, and writes what each lost, how near it came
+and whether it touched to `OVERTAKE_OUT`; it asks nothing, and nothing in it touches anything.
 `./tools/roads/rig-laps.sh "Z "` laps every car round the circuit files the game reads, in seconds and
 with a CSV of every step for a car named, which is where a circuit is driven before the game is; it
 asks nothing of a lap, because a wall no car climbs is a fair thing to draw. `tools/bepurig` is the
