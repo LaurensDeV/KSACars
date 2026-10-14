@@ -125,6 +125,10 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
   writes and `tools/package.sh` never carries. `Build.Developer` reads it at load, and only then does
   the bridge start. **A new developer-only tool goes behind it**, and the startup line in the log says
   which kind of install is running.
+- **Nothing is written in the mod's folder, and nothing kept is found by a path of its own.** A Borea
+  instance is a profile of its own: StarMap patches `KSA.Constants.DocumentsFolderPath` to answer the
+  instance's folder, so everything the mod keeps is found from that, and only what the mod ships is
+  read beside its DLL. A path built from `Documents/My Games` reads the shared profile in an instance.
 - **The mod writes its own log** to `<KSA user dir>/Logs/KSACars.log`, with the session before kept
   as `KSACars.prev.log`; `./tools/ksa-user-dir.sh` prints that directory and `./tools/run.sh --attach`
   follows the log. KSA's own log, the newest `KittenSpaceAgency.<yymmdd-hhmmss>.<pid>.log` in the
@@ -276,7 +280,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn`, or a second car of the one part another is, **from the part's template**, since a player's library has no car in it |
 | `Ksa/Opponents.cs` | **cars that race the one being flown**, from the panel's Add opponent: a copy of the flown car in the next box of the grid, a kitten at its wheel, driven by `Autopilot` from when the player's car sets off. A driver knows nothing of any other car |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
-| `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has, **in KSA's own logs folder** (`Constants.LogsFolderPath`), which everything the mod keeps — circuits, practised laps, the bridge — sits beside; the old guesses at the user folder are only a fallback |
+| `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has, **in the `logs` folder of the profile KSA was started with** (`Constants.DocumentsFolderPath`, which StarMap answers with a Borea instance's folder), which everything the mod keeps — circuits, practised laps, the bridge — sits beside; the old guesses at the user folder are only a fallback |
 | `src/KSACars/KSACars*.xml` | the cars' parts, seats, colliders and sounds — at the mod root, mirroring Core |
 | `src/KSACars/Meshes/`, `Textures/` | the art, **authored** in Blender over MCP; each `.blend` is the source and is not in this repository. A road has no mesh here, and its asphalt and earth are written by `tools/model/road-textures.py` |
 | `src/KSACars/Native/` | `SDL3.dll`, SDL's own Windows build of release 3.4.18, under the zlib licence beside it, **the one binary in the archive that is not the mod's**; a Linux install has none and reads GLFW's gamepads |
@@ -300,7 +304,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 556 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 555 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
