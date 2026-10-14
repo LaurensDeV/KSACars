@@ -567,4 +567,22 @@ public class PassingTests(ITestOutputHelper output)
         Assert.Equal(1, state.Side);
         Assert.True(braking < 45.0, $"held to {braking:F1} m/s behind a car braking hard");
     }
+
+    [Fact]
+    public void TwoCarsStandingSideBySideAreGoneRoundAsOne()
+    {
+        // one on the driver's line 15 m ahead, another standing beside it 2.5 m to its left, the road's room on the left
+        Rival.Seen[] standing = [Car("near", 15.0, 0.0, 0.0), Car("beside", 16.0, 2.5, 0.0)];
+        Rival.Passing state = new();
+        (double side, double cap) = Look(state, standing, speed: 2.0, left: 9.0, right: 1.0);
+        Assert.Equal(1, state.Side);
+        // out past both, and moving: neither holds it at a standstill
+        Assert.True(side >= 2.5 + Rival.StandingSideM - 1e-9, $"{side:F1} m out, which is not past the second car");
+        Assert.True(cap >= 1.0, $"held to {cap:F1} m/s");
+
+        // with no room past the second, it is not begun on that side
+        Rival.Passing narrow = new();
+        Look(narrow, standing, speed: 2.0, left: 4.0, right: 1.0);
+        Assert.NotEqual(1, narrow.Side);
+    }
 }

@@ -407,10 +407,10 @@ internal static class Rival
         Seen car = Find(cars, state.Who)!.Value;
         double lead = Math.Max(car.SpeedMs, 0.0), theirs = crossM + car.SideM;
         bool standing = lead < StandingMs;
-        double side = Math.Clamp(theirs + (state.Side * (standing ? StandingSideM : PassSideM)), -rightM, leftM);
-        double others = Held(cars, state.Who, crossM, side, speedMs, brakeAt);
+        double side = Math.Clamp(standing ? Outside(cars, car, crossM, state.Side) : theirs + (state.Side * PassSideM), -rightM, leftM);
+        double others = Held(cars, state.Who, crossM, side, speedMs, brakeAt, standing ? car : null);
 
-        bool fits = Math.Abs(side - theirs) >= AbreastM + PassMarginM;
+        bool fits = standing ? ClearOf(cars, car, crossM, side) : Math.Abs(side - theirs) >= AbreastM + PassMarginM;
         bool open = freeMs - lead >= PassKeepMs && others >= lead + PassKeepMs
                     && (standing || freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) <= straightM);
         if (car.AheadM > 0.0 && !(fits && (open || car.AheadM <= LevelM))) state.Back = true;
@@ -431,8 +431,14 @@ internal static class Rival
         if (standing)
         {
             // Round a standing car at a creep, and slower the nearer it is while not yet clear of it to the side: never stopped, which is not steering out.
-            bool clear = Math.Abs(car.SideM) > AbreastM + PassMarginM;
-            double creep = clear || car.AheadM <= 0.0 ? CreepMs : Math.Clamp((car.AheadM - 5.0) * 0.45, 1.2, CreepMs);
+            // So round every car standing beside it, the nearest of them not yet cleared setting the pace.
+            double nearest = double.PositiveInfinity;
+            foreach (Seen beside in cars)
+            {
+                if (!Equals(beside.Who, car.Who) && !Together(beside, car)) continue;
+                if (beside.AheadM > 0.0 && Math.Abs(beside.SideM) <= AbreastM + PassMarginM) nearest = Math.Min(nearest, beside.AheadM);
+            }
+            double creep = double.IsPositiveInfinity(nearest) ? CreepMs : Math.Clamp((nearest - 5.0) * 0.45, 1.2, CreepMs);
             return (side, Math.Min(others, creep));
         }
         // Not held either while it will be out from behind the car before it is up to it, which is reckoned on the car
@@ -443,6 +449,38 @@ internal static class Rival
         bool apart = Math.Abs(car.SideM) > AbreastM + PassMarginM
                      || (slowing < LeadBrakingMs2 && car.AheadM - TuckM > PassLagShare * (speedMs - lead) * moving);
         return (side, Math.Min(others, apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt)));
+    }
+
+    /// <summary>How far along the road from a standing car another standing car is one obstacle with it, gone round as one, m.</summary>
+    public const double TogetherM = 8.0;
+
+    // Whether a car is another that stands beside a standing car being gone round: two cars stopped side by side,
+    // one going round the nearer, had the other where it would go and in front of where it was, and never moved.
+    private static bool Together(Seen car, Seen standing) =>
+        !Equals(car.Who, standing.Who) && standing.SpeedMs < StandingMs && car.SpeedMs < StandingMs && Math.Abs(car.AheadM - standing.AheadM) <= TogetherM;
+
+    // Where to the left of the route a driver runs to go round a standing car on one side: far enough out to clear it and every car standing beside it on that side.
+    private static double Outside(ReadOnlySpan<Seen> cars, Seen standing, double crossM, int way)
+    {
+        double theirs = crossM + standing.SideM, side = theirs + (way * StandingSideM);
+        foreach (Seen car in cars)
+        {
+            if (!Together(car, standing)) continue;
+            double at = crossM + car.SideM;
+            if (way * (at - theirs) > -AbreastM) side = way > 0 ? Math.Max(side, at + StandingSideM) : Math.Min(side, at - StandingSideM);
+        }
+        return side;
+    }
+
+    // Whether a line so far to the left of the route clears a standing car and every car standing beside it.
+    private static bool ClearOf(ReadOnlySpan<Seen> cars, Seen standing, double crossM, double sideM)
+    {
+        if (Math.Abs(crossM + standing.SideM - sideM) < AbreastM + PassMarginM) return false;
+        foreach (Seen car in cars)
+        {
+            if (Together(car, standing) && Math.Abs(crossM + car.SideM - sideM) < AbreastM + PassMarginM) return false;
+        }
+        return true;
     }
 
     private static Seen? Find(ReadOnlySpan<Seen> cars, object? who)
@@ -459,12 +497,14 @@ internal static class Rival
         Math.Max((0.5 * (Math.Max(speedMs, leadMs) + freeMs)) - leadMs, 1.0);
 
     // The most a driver goes at for every car but one: a car is in its way beside where it is or beside where it is going.
-    private static double Held(ReadOnlySpan<Seen> cars, object? but, double crossM, double sideM, double speedMs, Func<double, double>? brakeAt)
+    private static double Held(ReadOnlySpan<Seen> cars, object? but, double crossM, double sideM, double speedMs, Func<double, double>? brakeAt,
+                               Seen? goneRound = null)
     {
         double cap = double.PositiveInfinity;
         foreach (Seen car in cars)
         {
             if (but is not null && Equals(car.Who, but)) continue;
+            if (goneRound is { } round && Together(car, round)) continue;
             double beside = Math.Min(Math.Abs(car.SideM), Math.Abs(crossM + car.SideM - sideM));
             cap = Math.Min(cap, FollowCap(car.AheadM, beside, car.SpeedMs, speedMs, brakeAt));
         }
@@ -510,10 +550,10 @@ internal static class Rival
             // Already to one side of it, that is the side, unless it is standing and far enough ahead to cross behind it.
             if (Math.Abs(slow.SideM) > AbreastM && way != (slow.SideM < 0.0 ? 1 : -1)
                 && !(standing && slow.AheadM > 2.0 * StandingSideM / Autopilot.SideSlopeSlow)) continue;
-            double side = theirs + (way * (standing ? StandingSideM : PassSideM));
+            double side = standing ? Outside(cars, slow, crossM, way) : theirs + (way * PassSideM);
             double spare = way > 0 ? leftM - side : side + rightM;
             // Round a standing car as far to the side as the road has, if that is far enough to be clear of it.
-            if (standing && spare < 0.0 && Math.Abs(Math.Clamp(side, -rightM, leftM) - theirs) >= AbreastM + PassMarginM)
+            if (standing && spare < 0.0 && ClearOf(cars, slow, crossM, Math.Clamp(side, -rightM, leftM)))
             {
                 (side, spare) = (Math.Clamp(side, -rightM, leftM), 0.0);
             }
@@ -528,7 +568,7 @@ internal static class Rival
     {
         foreach (Seen car in cars)
         {
-            if (Equals(car.Who, slow.Who) || car.AheadM < -PassBehindM || car.AheadM > slow.AheadM + PassClearM + PassBeyondM) continue;
+            if (Equals(car.Who, slow.Who) || Together(car, slow) || car.AheadM < -PassBehindM || car.AheadM > slow.AheadM + PassClearM + PassBeyondM) continue;
             // A car behind in the driver's own lane follows it out, and takes nothing from it.
             if (car.AheadM < 0.0 && Math.Abs(car.SideM) <= AbreastM) continue;
             if (Math.Abs(crossM + car.SideM - sideM) <= AbreastM + PassMarginM) return true;
