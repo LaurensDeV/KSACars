@@ -849,7 +849,11 @@ middle of: behind a car at least 4 m/s slower, on a stretch straight enough for 
 to its side or will be before it is up to it, unless that car is braking harder than 3 m/s2, and comes
 back to its line 9 m past: reckoned on a car keeping its speed, one braking into a bend ahead of a driver
 still behind it was run into at 18 and 24 m/s in game; if the straight, the speed or the room goes before it
-is level it drops in behind again and waits 3 s. **No pass is begun in the first 8 s of a race**
+is level it drops in behind again and waits 3 s. **A car going at under 0.6 of what the road allows the driver is crawling** (`Rival.CrawlShare`), and is
+gone round wherever it is, a bend among them, as a standing one is: 3 m aside and no faster than 12 m/s
+over its speed until clear of it where there is no straight for the pass. Waiting for a straight as long
+as the pass takes at the driver's own speed, a field followed a car driven slowly in front of it for good.
+**No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
 ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
 round wherever it is**, a bend among them, 4.5 m aside or as far as the road has, since it may be across
