@@ -357,7 +357,10 @@ internal static class Lanes
         {
             double y = oY[first];
             if (m.PushSide == 0) m.PushSide = hi - y >= y - lo ? 1 : -1;
-            bestSide = Math.Clamp(y + (m.PushSide * PushAcross * (HalfWideM + oHa[first])), lo, hi);
+            // A car standing is not shoved from behind but gone by, clear of its side where the road has room and against its corner where not:
+            // pushed square on, one stopped across the nose stayed there, and the driver backed away and drove into it again.
+            double across = oVa[first] < Rival.StandingMs ? HalfWideM + oHa[first] + PadM : PushAcross * (HalfWideM + oHa[first]);
+            bestSide = Math.Clamp(y + (m.PushSide * across), lo, hi);
             bestCap = oBraking[first] ? Math.Min(bestCap, floor) : Push(oA[first], Math.Max(oVa[first], 0.0), brake);
         }
         else m.PushSide = 0;
@@ -480,7 +483,7 @@ internal static class Lanes
                 // A car ahead on the road slows for what the road ahead of it allows.
                 if (ov[k] > 0.0 && limits is not null) ov[k] = Math.Min(ov[k], Math.Max(Limit(limits, oa[k] + middleM, ov[k]), ov[k] - (brake * StepS)));
                 oa[k] += ov[k] * StepS;
-                double oy = oFrozen[k] ? oY[k] : Lateral(oY[k], oVy[k], oLo[k], oHi[k], t, c, lo, hi);
+                double oy = oFrozen[k] ? oY[k] : Lateral(oY[k], oVy[k], oLo[k], oHi[k], t, c, lo, hi, ov[k]);
                 // Swept over the step: at speed a step carries the driver further than two cars are long.
                 double r1 = oa[k] - e, r0 = oaPrev - ePrev;
                 double along = (r0 > 0.0) != (r1 > 0.0) ? -1.0 : Math.Min(Math.Abs(r0), Math.Abs(r1)) - (2.0 * HalfLongM);
@@ -512,7 +515,7 @@ internal static class Lanes
         for (int k = 0; k < n; k++)
         {
             if (oa[k] <= e || (touched & (1 << k)) != 0) continue;
-            double oy = oFrozen[k] ? oY[k] : Lateral(oY[k], oVy[k], oLo[k], oHi[k], HorizonS, c, lo, hi);
+            double oy = oFrozen[k] ? oY[k] : Lateral(oY[k], oVy[k], oLo[k], oHi[k], HorizonS, c, lo, hi, ov[k]);
             if (Math.Abs(oy - c) - HalfWideM - oHa[k] >= 0.3) continue;
             double held = Math.Max(ov[k], 0.0), free = Limit(limits, e + middleM, freeBase);
             if (held < free) risk += FollowOnS * (free - held) / Math.Max(free, 1.0);
@@ -521,10 +524,12 @@ internal static class Lanes
     }
 
     // Where a car is across the road at a time ahead: carried on at its rate across for a moment, and past that, if it weaves, the place in its band nearest the driver.
-    private static double Lateral(double y, double vy, double yLo, double yHi, double t, double ego, double lo, double hi)
+    private static double Lateral(double y, double vy, double yLo, double yHi, double t, double ego, double lo, double hi, double alongMs)
     {
         double ahead = Math.Clamp(y + (vy * Math.Min(t, CarryS)), lo - 1.5, hi + 1.5);
-        if (t <= WeaveForS || yHi - yLo < WeaveM) return ahead;
+        // Only a car going the driver's way can be wherever the driver goes in the band it has swung over: one standing or coming the other way
+        // has no time to, and a car driven the wrong way along a racing line sweeps the road as the line does, which made every lane a crash.
+        if (t <= WeaveForS || yHi - yLo < WeaveM || alongMs <= Rival.StandingMs) return ahead;
         return Math.Clamp(ego, Math.Min(yLo, ahead), Math.Max(yHi, ahead));
     }
 }
