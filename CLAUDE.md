@@ -870,7 +870,12 @@ than 4 m behind its middle and a metre to the side it is going round, it neither
 held back by that car, which a car moved across into it touches. A car that moves across in front of each
 try still keeps a field behind it: `OvertakeScenarios`' blockers, which move across towards a driver's line
 0.3 to 0.6 s after it at 2.5 to 5 m/s, are passed in 6 of 50 runs, and staying at their tail and taking
-whichever side opens made it 7 with 34 runs touching. **Not yet seen in game.**
+whichever side opens made it 7 with 34 runs touching. **So a car that covers two of a driver's passes of
+it in 10 s is barged by** (`Rival.BargeAfterCovered`): the next pass takes the side with more road, is not
+given up, and closes on the car at 8 m/s over its speed without being held back by it, so a car moved
+across into it is pushed. A pass counts as covered when it is given up because the car moved into the side
+being taken, of a car far slower than the road allows. The blockers are passed in 21 of 50 runs, and no
+scenario without a blocker or a weaver touches more. **Not yet seen in game.**
 **No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
 ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
