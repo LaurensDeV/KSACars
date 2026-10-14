@@ -256,7 +256,7 @@ internal static class Opponents
 
             // Nose against a car standing across its way there is no going round it forwards: it backs away first.
             bool pinned = buggy.PlaceValid && buggy.SpeedMs < StillMs && !KsaWorld.IsPaused
-                          && Seen.Any(s => s.AheadM > 0.0 && s.AheadM < PinnedAheadM && Math.Abs(s.SideM) < Rival.AbreastM + 1.0 && s.SpeedMs < Rival.StandingMs);
+                          && Seen.Any(s => !s.Queued && s.AheadM > 0.0 && s.AheadM < PinnedAheadM && Math.Abs(s.SideM) < Rival.AbreastM + 1.0 && s.SpeedMs < Rival.StandingMs);
             car.Pinned = pinned ? car.Pinned + Program.GetPlayerDeltaTime() : 0.0;
             if (car.Pinned >= PinnedSeconds)
             {

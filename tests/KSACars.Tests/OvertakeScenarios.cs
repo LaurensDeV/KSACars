@@ -166,6 +166,13 @@ public class OvertakeScenarios(ITestOutputHelper output)
         (p.Along, p.Lat) = (Slow(r, p.S, ms), lat);
     };
 
+    // Driven the wrong way round, facing back down the road.
+    private static Behave WrongWay(double ms, Func<Route.Sample, double> lane) => (t, dt, p, r) =>
+    {
+        double lat = lane(At(r, p.S));
+        (p.Along, p.Across, p.Lat, p.Yaw, p.YawSet) = (-ms, 0.0, lat, Math.PI, true);
+    };
+
     private static Behave BrakeCheck(double hi, double lo, double period) => (t, dt, p, r) =>
     {
         double want = Slow(r, p.S, (t % period) < 0.5 * period ? hi : lo);
@@ -202,6 +209,8 @@ public class OvertakeScenarios(ITestOutputHelper output)
                 yield return new("sideways-left", c, at, 0.0, [Sideways(-80.0, LeftEdge)], [0.0]);
                 yield return new("shuffle3/8s", c, at, 0.0, [Shuffle(3.0, 8.0)], [0.0]);
                 yield return new("reverse2-line", c, at, 0.0, [Reverse(2.0, Line)], [0.0]);
+                yield return new("wrongway3-line", c, at, 0.0, [WrongWay(3.0, Line)], [0.0]);
+                yield return new("wrongway6-middle", c, at, 0.0, [WrongWay(6.0, Middle)], [0.0]);
                 yield return new("reverse5-middle", c, at, 0.0, [Reverse(5.0, Middle)], [0.0]);
                 yield return new("brakecheck30/8", c, at, 19.0, [BrakeCheck(30.0, 8.0, 8.0)], [0.0]);
                 yield return new("brakecheck20/3", c, at, 11.0, [BrakeCheck(20.0, 3.0, 6.0)], [0.0]);
