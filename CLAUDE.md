@@ -685,7 +685,12 @@ than the springs carry of what the turn presses on them. Pitch, roll and a wheel
 measured against the asphalt's face, so a slope or a bank is not read as a car in the air.
 
 **A lap can be driven for the watch.** `Route.RacingLine` moves the route across the road to where it
-turns least, keeping `Autopilot.RaceInside` of asphalt outside the car: the line whose own bend squared,
+turns least, keeping `Autopilot.RaceInside` of asphalt outside the car, **less 0.8 m where a kerb is drawn**
+(`Route.KerbUseM`, a bend on the ground tighter than 150 m and never a deck between barriers), so the outer
+tyre runs onto the kerb at an apex and an exit as a driver's does, and a wheel on a kerb, up to 0.75 m past
+the asphalt within 15 m of a kerbed bend, is not off the road (`Autopilot.KerbOnM`). Round Club Motorsports
+Flat that is about 390 m of a lap on the kerbs and a blind lap 0.6 to 0.9 s quicker; further onto them the
+F2004 ran wide at 33 ms steps. The line whose own bend squared,
 over its own length, is least within those bounds, found by an interior-point method to within 5 mm in
 12 to 19 rounds, 10 ms for 3.6 km. It is reckoned from the road's own line with the asphalt's shift a
 point, not from the middle of the asphalt, which swerves where a width changes: reckoned from that, the
