@@ -381,6 +381,7 @@ internal sealed class Bridge
         if (command.Has("opponent"))
         {
             if (command.Has("gap")) Opponents.Gap = Math.Clamp(command.Number("gap", Opponents.Gap), 0.0, Rival.MostGap);
+            if (command.Has("flat_out")) Opponents.FlatOut = command.Flag("flat_out", false);
             if (command.Flag("opponent", true)) Opponents.Add();
             else Opponents.Clear();
             Opponents.Update();

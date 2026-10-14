@@ -97,6 +97,9 @@ internal static class Opponents
     /// <summary>How much slower than the best lap known of the course the opponents are asked to be, as a share of it. Taken as each sets off.</summary>
     public static double Gap { get; set; } = Rival.DefaultGap;
 
+    /// <summary>Whether every opponent drives the best lap known and nothing less: no gap, no driver of its own, and every lap alike. Taken as each sets off.</summary>
+    public static bool FlatOut { get; set; }
+
     public static string Message { get; private set; } = "";
 
     public static int Count => Cars.Count;
@@ -320,7 +323,7 @@ internal static class Opponents
         Rival.Learnt? learnt = Learnt(profile);
         if (!Laps.Start(car.Craft, null, ManyLaps, 0.0, 0.0, Seconds, place: false, keepRows: false, jumps: false, out string why,
                         racing: true, push: way.Push, tune: way.Tune, insideM: way.InsideM, nudgesM: way.LineM,
-                        offRoadSeconds: DriveBackSeconds, person: new Autopilot.Human(car.Seed, LapSpread, ExitChance)))
+                        offRoadSeconds: DriveBackSeconds, person: FlatOut ? null : new Autopilot.Human(car.Seed, LapSpread, ExitChance)))
         {
             return why;
         }
@@ -339,7 +342,7 @@ internal static class Opponents
         Practising.LapOf(profile) ?? (Courses.Laid is { } course ? CircuitLibrary.LapOf(course, profile.DisplayName) : null);
 
     private static Rival.Way Way(Car car, BuggyProfile profile) =>
-        Rival.Drive(Learnt(profile), car.Seed, Gap, Autopilot.RaceInside(profile), profile.DisplayName);
+        Rival.Drive(Learnt(profile), car.Seed, Gap, Autopilot.RaceInside(profile), profile.DisplayName, FlatOut);
 
     // Where across the road a car is to run and the most it may go at, for the cars round it, the flown one among them.
     private static (double SideM, double CapMs) InTheWay(Car car, Buggies.Entry mine, double dt)

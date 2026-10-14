@@ -146,8 +146,10 @@ internal static class CarPanel
                 }
                 // How much slower than the best lap they know of the course they are, to set them to race a player.
                 float gap = (float)(Opponents.Gap * 100.0);
-                ImGui.SetNextItemWidth(170f);
-                if (ImGui.SliderFloat("Opponents slower by", ref gap, 0f, (float)(Rival.MostGap * 100.0), "%.0f%%", ImGuiSliderFlags.None)) Opponents.Gap = gap / 100.0;
+                bool flatOut = Opponents.FlatOut;
+                if (ImGui.Checkbox("Perfect opponents (full speed, no mistakes)", ref flatOut)) Opponents.FlatOut = flatOut;
+                if (!flatOut) ImGui.SetNextItemWidth(170f);
+                if (!flatOut && ImGui.SliderFloat("Opponents slower by", ref gap, 0f, (float)(Rival.MostGap * 100.0), "%.0f%%", ImGuiSliderFlags.None)) Opponents.Gap = gap / 100.0;
                 if (Opponents.Message.Length > 0) ImGui.TextDisabled(Opponents.Message);
                 if (Practising.Message.Length > 0) ImGui.TextDisabled(Practising.Message);
 

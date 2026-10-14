@@ -141,9 +141,11 @@ internal static class Rival
     /// <param name="gap">How much slower than that lap all of them are asked to be, as a share of it.</param>
     /// <param name="ownInsideM">How far inside each edge the car's own racing line keeps.</param>
     /// <param name="car">The car's name, as its profile has it.</param>
-    public static Way Drive(Learnt? learnt, int seed, double gap, double ownInsideM, string car)
+    /// <param name="flatOut">Whether the driver is the lap and no more: no gap, none of its own, and every bend at the lap's pace.</param>
+    public static Way Drive(Learnt? learnt, int seed, double gap, double ownInsideM, string car, bool flatOut = false)
     {
-        Driver own = Of(seed);
+        Driver own = flatOut ? FlatOut : Of(seed);
+        if (flatOut) gap = 0.0;
         Autopilot.Tuning tune;
         double[] line = new double[Places];
         double inside;
@@ -189,6 +191,9 @@ internal static class Rival
         // Past the last measured, on at the reckoned rate.
         return Math.Max(was.m - ((gap - was.g) / GapPerSlowing), LeastSlowing);
     }
+
+    /// <summary>A driver with nothing of its own: the lap it is given, all of it, everywhere.</summary>
+    public static readonly Driver FlatOut = new(0.0, [.. Enumerable.Repeat(1.0, Places)]);
 
     /// <summary>The driver a seed is: the same one every time.</summary>
     public static Driver Of(int seed)

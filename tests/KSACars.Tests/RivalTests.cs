@@ -290,4 +290,15 @@ public class RivalTests
         Assert.InRange(person.Summary.Fumbles, laps.Count - 1, laps.Count + 1);
         Assert.Equal(0, steady.Summary.Fumbles);
     }
+
+    [Fact]
+    public void FlatOutEveryDriverIsTheLapItIsGivenAndNoLess()
+    {
+        Rival.Learnt learnt = new(70.0, new Autopilot.Tuning { Pace = [1.1, 1.2] }, 0.9, [], "", Most: 1.0);
+        Rival.Way one = Rival.Drive(learnt, 1, 0.1, 0.9, "Ferrari F2004", flatOut: true), other = Rival.Drive(learnt, 7, 0.1, 0.9, "Ferrari F2004", flatOut: true);
+        Assert.Equal(one.Tune.Pace, other.Tune.Pace);
+        for (int i = 0; i < Rival.Places; i++) Assert.Equal(learnt.Tune.PaceAt((double)i / Rival.Places), one.Tune.Pace[i], 12);
+        // where a driver of its own is slower somewhere
+        Assert.Contains(Enumerable.Range(0, Rival.Places), i => Rival.Drive(learnt, 1, 0.0, 0.9, "Ferrari F2004").Tune.Pace[i] < one.Tune.Pace[i] - 1e-9);
+    }
 }
