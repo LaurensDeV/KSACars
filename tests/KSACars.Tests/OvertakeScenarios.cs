@@ -525,6 +525,23 @@ public class OvertakeScenarios(ITestOutputHelper output)
         }
     }
 
+    // A player's car driven the wrong way down the racing line into a bend's entry and out of its apex is met at speed and gone by
+    // without touching it: crept up on, it cost up to 3.6 s and was touched in four runs of six.
+    [Theory]
+    [InlineData("entry")]
+    [InlineData("apex")]
+    public void ACarComingTheWrongWayInABendIsGoneByAtSpeed(string where)
+    {
+        Scenario sc = Scenarios().First(s => s.Name == "wrongway3-line" && s.Course == "club" && Club.Value.Places[where] == s.PlaceM);
+        foreach (double dt in new[] { 0.021, 1.0 / 30.0 })
+        {
+            Result r = Run(sc, where, dt).Single();
+            Assert.True(r.Passed && !r.Stuck, $"{where} at {dt:F3} s: not past it");
+            Assert.True(r.Lost < 1.2, $"{where} at {dt:F3} s: lost {r.Lost:F2} s");
+            Assert.Equal(0, r.ContactEvents);
+        }
+    }
+
     [Fact]
     public void Overtakes()
     {

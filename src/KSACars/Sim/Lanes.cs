@@ -108,6 +108,9 @@ internal static class Lanes
     /// <summary>How far across a car's tail a driver pushing by it aims, as a share of the two half widths: a glancing push turns it aside.</summary>
     public const double PushAcross = 0.6;
 
+    /// <summary>Coming at the driver faster than this, m/s, a car is going the other way: gone by, and never pushed.</summary>
+    public const double ComingMs = 0.5, ComingMarginShare = 0.5;
+
     // Time held is forgotten at this share of the rate it is gained, so a car weaving in and out of the driver's lane still adds up.
     private const double HeldFade = 0.5;
 
@@ -343,7 +346,8 @@ internal static class Lanes
         {
             if (oA[k] > 0.0 && oA[k] < Rival.PlanNearM && oHa[k] <= 50.0 && (first < 0 || oA[k] < oA[first])) first = k;
         }
-        bool held = bestCap < PushShare * free0 && first >= 0 && oPlayer[first] && !launch && Math.Max(oVa[first], 0.0) < PushShare * free0;
+        // A car coming the other way is past in a moment, and is gone by and never pushed.
+        bool held = bestCap < PushShare * free0 && first >= 0 && oPlayer[first] && !launch && oVa[first] > -ComingMs && Math.Max(oVa[first], 0.0) < PushShare * free0;
         m.Held = held ? m.Held + step : Math.Max(m.Held - (HeldFade * step), 0.0);
         if (m.Who is not null && holder >= 0 && Equals(m.Kept[holder], m.Who) && bestCap <= Math.Max(oVa[holder], 0.0) + 1.0 && oA[holder] > Rival.AlongsideHoldM)
         {
@@ -359,9 +363,12 @@ internal static class Lanes
             if (m.PushSide == 0) m.PushSide = hi - y >= y - lo ? 1 : -1;
             // A car standing is not shoved from behind but gone by, clear of its side where the road has room and against its corner where not:
             // pushed square on, one stopped across the nose stayed there, and the driver backed away and drove into it again.
-            double across = oVa[first] < Rival.StandingMs ? HalfWideM + oHa[first] + PadM : PushAcross * (HalfWideM + oHa[first]);
-            bestSide = Math.Clamp(y + (m.PushSide * across), lo, hi);
-            bestCap = oBraking[first] ? Math.Min(bestCap, floor) : Push(oA[first], Math.Max(oVa[first], 0.0), brake);
+            bool standing = oVa[first] < Rival.StandingMs;
+            double across = standing ? HalfWideM + oHa[first] + PadM : PushAcross * (HalfWideM + oHa[first]);
+            double aim = y + (m.PushSide * across);
+            bestSide = Math.Clamp(aim, lo, hi);
+            // Clear of a standing car's side there is nothing to push, and the plan's own speed goes by it.
+            if (!(standing && Math.Abs(bestSide - aim) < 0.05)) bestCap = oBraking[first] ? Math.Min(bestCap, floor) : Push(oA[first], Math.Max(oVa[first], 0.0), brake);
         }
         else m.PushSide = 0;
 
@@ -451,6 +458,10 @@ internal static class Lanes
     {
         double v = v0, e = 0.0, aim = aim0, c = cross, risk = 0.0;
         int steps = (int)(HorizonS / StepS), touched = 0;
+        // Making back for the line once past is for a car got past in the look ahead: one already behind leaves every lane alike, and the lane
+        // the driver was in kept it off its line into the next bend.
+        bool passing = false;
+        for (int k = 0; k < n && !passing; k++) passing = oA[k] >= -(2.0 * HalfLongM) - AlongMarginM;
         Span<double> oa = stackalloc double[MostCars], ov = stackalloc double[MostCars];
         for (int k = 0; k < n; k++) (oa[k], ov[k]) = (oA[k], oVa[k]);
         (gone, vEnd) = (0.0, v0);
@@ -463,7 +474,11 @@ internal static class Lanes
             double ePrev = e;
             e += v * StepS;
             double move = SideRate(v) * StepS;
-            aim += Math.Clamp(side - aim, -move, move);
+            // Past every car that was ahead, the driver makes back for its line: held to a lane past the car, a lane round one met in a bend's
+            // entry ran off where the line crossed to the apex, and only a crawl, covering little road in the look ahead, was ever clean.
+            bool past = passing;
+            for (int k = 0; k < n && past; k++) past = oA[k] <= 0.0 || oa[k] < e - (2.0 * HalfLongM) - AlongMarginM;
+            aim += Math.Clamp((past ? 0.0 : side) - aim, -move, move);
             if (rightAt is not null && leftAt is not null)
             {
                 // The driver holds its aim to the road's room a little ahead; the car, lagging it, can still be outside the room where it is.
@@ -505,7 +520,9 @@ internal static class Lanes
                     risk += PadCost * oNear[k] * StepS * weight * (1.0 - (sep / PadM));
                     continue;
                 }
-                double room = (AlongMarginM + (AlongMarginS * closing)) * oNear[k], margin = SideMarginM * oNear[k];
+                // A car coming the other way is beside the driver for a moment: met with less room than one followed or gone by, and not more for the closing.
+                bool coming = ov[k] < -ComingMs;
+                double room = (AlongMarginM + (coming ? 0.0 : AlongMarginS * closing)) * oNear[k], margin = (coming ? ComingMarginShare : 1.0) * SideMarginM * oNear[k];
                 if (along < room && across < margin) risk += NearCost * StepS * weight * (1.0 - (Math.Max(across, 0.0) / margin)) * (1.0 - (Math.Max(along, 0.0) / room));
             }
         }
