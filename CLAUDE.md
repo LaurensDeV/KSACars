@@ -943,7 +943,7 @@ A pass of a moving car has not been watched, and a road that narrows with two ca
 
 **An opponent stopped with its nose against a car standing across its way, or one coming the wrong way,
 backs away from it** (`Opponents.PinnedSeconds`): after 1.5 s under 0.5 m/s with such a car within 7 m
-ahead and in its path, not one queued, its lap is stopped, it is held in reverse for 60 frames and set off
+in front of its nose the way it faces, not along its route, which off the road it faces across, and not one queued, its lap is stopped, it is held in reverse for 60 frames and set off
 again, to go round from there. It cannot steer round a car against its nose, and took itself for waiting
 behind it for good. In `OvertakeScenarios` a car driven slowly the wrong way is passed every time, touched
 nose to nose at a creep in bends. **Not yet seen in game.**
