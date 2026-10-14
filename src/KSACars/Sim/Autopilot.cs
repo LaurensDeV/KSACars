@@ -580,6 +580,12 @@ internal sealed class Autopilot
 
     public const double RaceMarginM = 0.9;
 
+    /// <summary>How far past the asphalt's edge a hub may be where a kerb is drawn and still be on the track, m: half the kerb's width.</summary>
+    public const double KerbOnM = 0.75;
+
+    // How many samples of the route either side of the car a kerb counts for it.
+    private const int KerbNearSamples = 15;
+
     /// <summary>The tightest turn a car is asked to make, m: what a route for it is drawn with.</summary>
     public static double TurnRadius(BuggyProfile profile) =>
         TurnMargin * BuggyDrive.Wheelbase(profile) / Math.Tan(Math.Max(profile.MaxSteerDeg, 1.0) * Math.PI / 180.0);
@@ -943,6 +949,15 @@ internal sealed class Autopilot
             byLoop = near >= 0 && near < limit.Length && _route.Samples[near].LoopM > 0.0;
         }
 
+        // A kerb within a car's length or two of where it is: a car lags its line, which comes in off the kerb where the bend ends.
+        bool kerbed = false;
+        for (int k = -KerbNearSamples; k <= KerbNearSamples && !kerbed; k++)
+        {
+            int near = _index + k;
+            if (_route.Closed) near = ((near % limit.Length) + limit.Length) % limit.Length;
+            kerbed = near >= 0 && near < limit.Length && _route.Samples[near].KerbM > 0.0;
+        }
+
         int grounded = 0, onGround = 0, offAsphalt = 0, off = 0;
         for (int i = 0; i < corners.Length && i < hubs.Length && i < hubHeights.Length; i++)
         {
@@ -956,7 +971,8 @@ internal sealed class Autopilot
                 onGround++;
                 grounded |= 1 << i;
             }
-            if (!byLoop && _road is not null && (!_road.TryLocate(position + (body2Ccf * hubs[i]), null, out _, out double outM) || outM > 0.02))
+            // A wheel on a kerb is on the track, which past the kerb's middle it is not.
+            if (!byLoop && _road is not null && (!_road.TryLocate(position + (body2Ccf * hubs[i]), null, out _, out double outM) || outM > 0.02 + (kerbed ? KerbOnM : 0.0)))
             {
                 offAsphalt++;
                 off |= 1 << i;

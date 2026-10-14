@@ -23,7 +23,8 @@ public class RacingLineTests
     private static double Past(Route route, double insideM)
     {
         double past = double.NegativeInfinity;
-        foreach (Route.Sample s in route.Samples) past = Math.Max(past, Math.Abs(s.CentreM) - Math.Max(s.HalfWidth - insideM, 0.0));
+        // The room is the asphalt and, where a kerb is drawn, as much of it as a line may take.
+        foreach (Route.Sample s in route.Samples) past = Math.Max(past, Math.Abs(s.CentreM) - Math.Max(s.HalfWidth + s.KerbM - insideM, 0.0));
         return past;
     }
 
@@ -157,5 +158,35 @@ public class RacingLineTests
         }
         Assert.InRange(1.0 / tightest, 25.0, 30.0);
         Assert.True(bent < 0.175, $"its bend squared, over the lap, is {bent:F4}");
+    }
+
+    // Round the flat course, on the ground with kerbs at its bends, the line runs onto them; round the raised one,
+    // most of it a deck between barriers, hardly at all; and nowhere is it past the kerb's share either.
+    [Fact]
+    public void TheLineRunsOntoTheKerbsOfABendOnTheGroundAndNotPastADecksEdge()
+    {
+        TrackCar car = TrackCar.F2004;
+        double inside = Autopilot.RaceInside(car.Profile);
+        int OnKerb(Route route)
+        {
+            int on = 0;
+            foreach (Route.Sample s in route.Samples) on += Math.Abs(s.CentreM) - (s.HalfWidth - inside) > 0.3 ? 1 : 0;
+            return on;
+        }
+        AutopilotTests.Track flat = Flat(), raised = Club();
+        Route ground = Raced(flat, car), decks = Raced(raised, car);
+        Assert.True(OnKerb(ground) > 200, $"{OnKerb(ground)} m of the flat course's line on a kerb");
+        Assert.True(OnKerb(decks) < 0.2 * OnKerb(ground), $"{OnKerb(decks)} m of the raised course's line on a kerb");
+        Assert.True(Past(ground, inside) < 1e-6 && Past(decks, inside) < 1e-6);
+    }
+
+    private static AutopilotTests.Track Flat()
+    {
+        DirectoryInfo? at = new(AppContext.BaseDirectory);
+        while (at is not null && !Directory.Exists(Path.Combine(at.FullName, "src", "KSACars", "Circuits"))) at = at.Parent;
+        string file = File.ReadAllText(Path.Combine(at!.FullName, "src", "KSACars", "Circuits", "Club Motorsports Flat.json"));
+        Circuit circuit = Circuit.FromJson(file, out string bad, out _) ?? throw new InvalidOperationException(bad);
+        TrackWorld world = TrackWorld.Earth();
+        return new AutopilotTests.Track(world, circuit, world.Surface(circuit));
     }
 }

@@ -21,7 +21,7 @@ namespace KSACars;
 internal static class Practising
 {
     // Changed by hand when the driver or the rig changes what a kept lap means: a lap kept under another is not read.
-    private const int Version = 5;
+    private const int Version = 6;
 
     // The ground a practising car has under it where there is no road: far enough down that only the road is ever met.
     private const double NoGroundM = -1000.0;

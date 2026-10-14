@@ -27,7 +27,17 @@ internal sealed class Route
     /// <param name="CentreM">How far to the left of this the road's centre is, m.</param>
     /// <param name="LoopM">On a loop, how long the loop is: there the place is on the loop itself, the tangent is the way it really runs, up and over, and nothing of a road's slope or bend is said.</param>
     public readonly record struct Sample(double3 At, double S, double3 Tangent, double3 Across, double Curvature,
-                                         double Slope, double Vertical, double HalfWidth, double CentreM, double Bank = 0.0, double LoopM = 0.0);
+                                         double Slope, double Vertical, double HalfWidth, double CentreM, double Bank = 0.0, double LoopM = 0.0,
+                                         double KerbM = 0.0);
+
+    /// <summary>
+    /// How much further either side than the asphalt the racing line may run where a kerb is drawn, m: a
+    /// bend on the ground tighter than <see cref="RoadTessellation.KerbRadiusM"/>, never a deck between
+    /// barriers. With <see cref="Autopilot.RaceMarginM"/> that is the outer tyre onto the kerb at an apex
+    /// and an exit, as a driver takes them; kept off them, a line turned tighter than it need. Further
+    /// onto it, the F2004 racing blind ran wide at 33 ms steps where the line came off it.
+    /// </summary>
+    public const double KerbUseM = 0.8;
 
     public const double SpacingM = 1.0;
 
@@ -98,7 +108,7 @@ internal sealed class Route
         RoadLaying.Network laid = network();
         List<RoadRibbon> ribbons = laid.Ribbons;
         List<double3> line = [];
-        List<double> halfWidths = [], banks = [], shifts = [];
+        List<double> halfWidths = [], banks = [], shifts = [], kerbs = [];
 
         // A loop is no road: the roads before it are one stretch, it is another, and the roads after it a third.
         List<Sample[]> stretches = [];
@@ -106,12 +116,13 @@ internal sealed class Route
         bool Stretch()
         {
             if (line.Count < 2) return line.Count == 0;
-            if (Along([.. line], [.. halfWidths], false, offsetM, turnRadiusM, [.. banks], raceInsideM, null, [.. shifts]) is not { } part) return false;
+            if (Along([.. line], [.. halfWidths], false, offsetM, turnRadiusM, [.. banks], raceInsideM, null, [.. shifts], [.. kerbs]) is not { } part) return false;
             stretches.Add(part._samples);
             line.Clear();
             halfWidths.Clear();
             banks.Clear();
             shifts.Clear();
+            kerbs.Clear();
             return true;
         }
 
@@ -127,6 +138,7 @@ internal sealed class Route
                 halfWidths.Add(into.HalfWidth + ((outOf.HalfWidth - into.HalfWidth) * i / (across.Count - 1)));
                 banks.Add(0.0);
                 shifts.Add(0.0);
+                kerbs.Add(0.0);
             }
         }
 
@@ -182,6 +194,7 @@ internal sealed class Route
                 halfWidths.Add(section.HalfWidth);
                 banks.Add(to >= from ? section.BankTan : -section.BankTan);
                 shifts.Add(to >= from ? section.Shift : -section.Shift);
+                kerbs.Add(!section.Deck && Math.Abs(section.Curvature) > 1.0 / RoadTessellation.KerbRadiusM ? KerbUseM : 0.0);
             }
         }
 
@@ -195,6 +208,7 @@ internal sealed class Route
                 halfWidths.RemoveAt(halfWidths.Count - 1);
                 banks.RemoveAt(banks.Count - 1);
                 shifts.RemoveAt(shifts.Count - 1);
+                kerbs.RemoveAt(kerbs.Count - 1);
             }
             if (!Stretch() || stretches.Count == 0)
             {
@@ -210,8 +224,9 @@ internal sealed class Route
             halfWidths.RemoveAt(halfWidths.Count - 1);
             banks.RemoveAt(banks.Count - 1);
             shifts.RemoveAt(shifts.Count - 1);
+            kerbs.RemoveAt(kerbs.Count - 1);
         }
-        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM, nudgesM, [.. shifts]) is not { } route)
+        if (Along([.. line], [.. halfWidths], closed, offsetM, turnRadiusM, [.. banks], raceInsideM, nudgesM, [.. shifts], [.. kerbs]) is not { } route)
         {
             why = "the route has no length";
             return null;
@@ -284,8 +299,10 @@ internal sealed class Route
     /// before the kink and back after it, which is the only other room there is.</para>
     /// </summary>
     /// <param name="middlesM">How far to the left of the line the middle of the asphalt is at each of its points, where the road is wider to one side: the route runs there, and a racing line keeps to the asphalt about it.</param>
+    /// <param name="kerbsM">How much further than the asphalt a racing line may run either side at each of its points, where a kerb is: <see cref="KerbUseM"/>.</param>
     public static Route? Along(double3[] line, double[] halfWidths, bool closed, double offsetM, double turnRadiusM = 0.0,
-                               double[]? banks = null, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null, double[]? middlesM = null)
+                               double[]? banks = null, double raceInsideM = 0.0, IReadOnlyList<double>? nudgesM = null, double[]? middlesM = null,
+                               double[]? kerbsM = null)
     {
         int pieces = closed ? line.Length : line.Length - 1;
         if (pieces < 1 || halfWidths.Length != line.Length) return null;
@@ -299,7 +316,7 @@ internal sealed class Route
         int count = closed ? steps : steps + 1;
         double3[] at = new double3[count];
         double[] half = new double[count];
-        double[] bank = new double[count], mid = new double[count];
+        double[] bank = new double[count], mid = new double[count], kerb = new double[count];
         for (int i = 0, piece = 0; i < count; i++)
         {
             double s = length * i / steps;
@@ -311,6 +328,7 @@ internal sealed class Route
             half[i] = halfWidths[piece] + ((halfWidths[next] - halfWidths[piece]) * t);
             if (banks is not null && banks.Length == line.Length) bank[i] = banks[piece] + ((banks[next] - banks[piece]) * t);
             if (middlesM is not null && middlesM.Length == line.Length) mid[i] = middlesM[piece] + ((middlesM[next] - middlesM[piece]) * t);
+            if (kerbsM is not null && kerbsM.Length == line.Length) kerb[i] = Math.Min(kerbsM[piece], kerbsM[next]);
         }
 
         // No car turns on the spot, so a kink is rounded: between a point either side of it the line is
@@ -394,7 +412,7 @@ internal sealed class Route
                     }
                 }
             }
-            left = RacingLine(at, half, closed, raceInsideM, asphalt);
+            left = RacingLine(at, [.. half.Select((h, i) => h + kerb[i])], closed, raceInsideM, asphalt);
 
             // Moved to the left by as much as is asked at each of as many places evenly along it, and between
             // them in proportion: a line learnt, where the one that turns least is not the quickest. Still on the road.
@@ -404,7 +422,7 @@ internal sealed class Route
                 {
                     double place = (double)i / count * nudgesM.Count;
                     int k = (int)place % nudgesM.Count, next = closed ? (k + 1) % nudgesM.Count : Math.Min(k + 1, nudgesM.Count - 1);
-                    double most = Math.Max(half[i] - raceInsideM, 0.0);
+                    double most = Math.Max(half[i] + kerb[i] - raceInsideM, 0.0);
                     left[i] = Math.Clamp(left[i] + nudgesM[k] + ((nudgesM[next] - nudgesM[k]) * (place - Math.Floor(place))), asphalt[i] - most, asphalt[i] + most);
                 }
             }
@@ -459,7 +477,7 @@ internal sealed class Route
                 vertical = bends / level;
             }
             samples[i] = new Sample(at[i], along[i], heading[i], Vec.Cross(up, heading[i]),
-                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], mid[i] - left[i], bank[i]);
+                                    between > 0.0 ? turn / between : 0.0, slope, vertical, half[i], mid[i] - left[i], bank[i], KerbM: kerb[i]);
         }
         return new Route(samples, total, closed);
     }
