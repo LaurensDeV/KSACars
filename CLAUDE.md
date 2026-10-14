@@ -872,7 +872,10 @@ than 4 m behind its middle and a metre to the side it is going round, it neither
 held back by that car, which a car moved across into it touches.
 **No pass is begun in the first 8 s of a race**
 (`Rival.Passing.Launch`): on the grid every car ahead is standing, and a field that went round them all
-ran two abreast into the first bends and touched in each. **A car slower than 3 m/s is standing, and is gone
+ran two abreast into the first bends and touched in each. Through those 8 s each driver runs as far to the
+side of its line as it stood in its box, `Passing.Column`, eased onto the line over the last 4 s, and is
+held back only by a car in its own column, neither the rules nor the lanes deciding: steered for its line
+at once, the two columns closed into one file before the first bend. **Not yet seen in game.** **A car slower than 3 m/s is standing, and is gone
 round wherever it is**, a bend among them, 3.5 m outside it or as far as the road has, driven up to at
 speed and braked to 9 m/s and 8 m/s more for every metre it is clear of it to the side, and slower the
 nearer it is while not yet clear of it; behind one crept up on for 200 m, a pass of a car turned across
@@ -913,7 +916,7 @@ the way across its tail on the side with more road and closes on it at what stil
 its speed, since KSA's contact between two cars is plastic and each changes by half the closing speed;
 stopped, crawling, blocking or driven the wrong way, the player cannot stop an opponent. Another
 opponent is never pushed or rubbed, and one the rules would not go round is the whole road to the lanes.
-Through the first 8 s every car is the whole road. One call is 47 us with one car near, 78 with three and
+One call is 47 us with one car near, 78 with three and
 154 with nine. In `OvertakeScenarios`, every run of every scenario passes the player and none is stuck:
 over its 340 runs the time lost is 376 s where the rules took 898, the median time within 40 m behind a
 player 1.6 s where it was 2.8 and the median held under the road's pace 0 where it was 1.4, the runs off
