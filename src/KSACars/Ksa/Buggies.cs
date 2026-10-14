@@ -185,6 +185,19 @@ internal sealed class Buggies
     /// <summary>Every car in the world. For the frame hook, where the cars are found.</summary>
     public static IReadOnlyCollection<Entry> Cars => Active.Values;
 
+    private static readonly List<(double3 Place, double3 Facing)> Ahead = [];
+
+    // The share of its drag a car is spared in the wake of another on the same body, where each was last stepped.
+    private static double TowOf(Entry e)
+    {
+        Ahead.Clear();
+        foreach (Entry other in Active.Values)
+        {
+            if (!ReferenceEquals(other, e) && other.PlaceValid && ReferenceEquals(other.Craft.Parent, e.Craft.Parent)) Ahead.Add((other.PlaceCcf, other.AheadCcf));
+        }
+        return Ahead.Count == 0 ? 0.0 : Slipstream.Tow(e.PlaceCcf, e.AheadCcf, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(Ahead));
+    }
+
     /// <summary>
     /// Sets a car back on its wheels where it lies, at its next physics step. <paramref name="tip"/>
     /// turns it onto its roof instead, for the bridge to have something to right.
@@ -694,6 +707,7 @@ internal sealed class Buggies
         double3 up = part2Asmb * new double3(1, 0, 0);
         double3 forward = part2Asmb * new double3(0, 1, 0);
         e.AheadCcf = body2Ccf * forward;
+        e.Drive.Tow = TowOf(e);
 
         doubleQuat ccf2Cce = body.GetCcf2Cce();
         TerrainHeights ground = new(body, accurate: true);

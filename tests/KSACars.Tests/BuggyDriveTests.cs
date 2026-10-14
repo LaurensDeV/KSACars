@@ -412,7 +412,7 @@ public class BuggyDriveTests
         Assert.True(rig.Drive.Rpm > 0.9 * BuggyProfile.F2004.RedlineRpm, $"{rig.Drive.Rpm:F0} rpm flat out in top");
     }
 
-    private static Rig RigFor(BuggyProfile p, double dt) =>
+    internal static Rig RigFor(BuggyProfile p, double dt) =>
         p == BuggyProfile.F2004 ? F2004Rig(dt)
         : p == BuggyProfile.Eldorado ? new Rig(dt, p, Rig.EldoradoCom) { RigMass = 2336.0 }
         : new Rig(dt, p);

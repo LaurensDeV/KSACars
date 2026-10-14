@@ -251,7 +251,7 @@ public sealed class BuggyDrive(BuggyProfile profile)
         {
             double3 v = contacts[0].HubVelocity;
             double s = Vec.Len(v);
-            if (s > 0.0) air = -v * (0.5 * airDensity * Profile.DragAreaM2 * s);
+            if (s > 0.0) air = -v * (0.5 * airDensity * Profile.DragAreaM2 * s * (1.0 - Math.Clamp(Tow, 0.0, 1.0)));
         }
         linear += air * dt;
         if (!Grounded.Any(g => g)) angular += WingsInTheAir(contacts, hubs, up, forward, airDensity) * dt;
@@ -260,6 +260,9 @@ public sealed class BuggyDrive(BuggyProfile profile)
 
         return new DriveImpulse(linear, angular);
     }
+
+    /// <summary>The share of its drag the air behind a car ahead spares this one: <see cref="Slipstream"/>. Set before each step.</summary>
+    public double Tow { get; set; }
 
     /// <summary>The share of the wings' area that is the tail's, and how far behind the centre of mass it is, m.</summary>
     public const double TailShare = 0.5, TailArmM = 1.8;
