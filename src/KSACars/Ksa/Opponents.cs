@@ -255,8 +255,7 @@ internal static class Opponents
             (double side, double cap) = InTheWay(car, buggy, KsaWorld.IsPaused ? 0.0 : Program.GetPlayerDeltaTime());
 
             // Nose against a car standing across its way there is no going round it forwards: it backs away first.
-            bool pinned = buggy.PlaceValid && buggy.SpeedMs < StillMs && !KsaWorld.IsPaused
-                          && Seen.Any(s => !s.Queued && s.AheadM > 0.0 && s.AheadM < PinnedAheadM && Math.Abs(s.SideM) < Rival.AbreastM + 1.0 && s.SpeedMs < Rival.StandingMs);
+            bool pinned = buggy.PlaceValid && buggy.SpeedMs < StillMs && !KsaWorld.IsPaused && NoseAgainst(car, buggy);
             car.Pinned = pinned ? car.Pinned + Program.GetPlayerDeltaTime() : 0.0;
             if (car.Pinned >= PinnedSeconds)
             {
@@ -328,6 +327,22 @@ internal static class Opponents
 
     // How far to the side of the road's line a car coming up behind a place counts, m: a road's width and its verges.
     private const double ComingSideM = 25.0;
+
+    // Whether a car not moving, and not an opponent queued behind another, is just in front of this one's nose: measured the way the car faces and not
+    // along its route, since off the road, making for its line, a car faces across the route and the one it is against is beside it there.
+    private static bool NoseAgainst(Car car, Buggies.Entry mine)
+    {
+        double3 up = Vec.Unit(mine.PlaceCcf), nose = Vec.Unit(Vec.RejectFrom(mine.AheadCcf, up));
+        foreach (Buggies.Entry other in Buggies.Cars)
+        {
+            if (ReferenceEquals(other.Craft, car.Craft) || !other.PlaceValid || other.SpeedMs >= Rival.StandingMs) continue;
+            if (Cars.Any(c => ReferenceEquals(c.Craft, other.Craft) && c.Stage == Stage.Racing && c.Cap < WaitingMs)) continue;
+            double3 to = Vec.RejectFrom(other.PlaceCcf - mine.PlaceCcf, up);
+            double ahead = Vec.Dot(to, nose), side = Vec.Len(to - (nose * ahead));
+            if (ahead > 0.0 && ahead < PinnedAheadM && side < Rival.AbreastM + 1.0) return true;
+        }
+        return false;
+    }
 
     // Has a car stand on its brakes, to be stood back on the road once it has.
     private static void PutBack(Car car, string why)
