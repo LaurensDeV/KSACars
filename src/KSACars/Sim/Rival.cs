@@ -394,6 +394,9 @@ internal static class Rival
         /// </summary>
         public double Launch { get; set; }
 
+        /// <summary>How far to the left of its route the driver stood when the start's hold began, m: the column it runs in off the grid.</summary>
+        public double Column { get; set; } = double.NaN;
+
         /// <summary>The speed of the car being gone round at the last look, m/s, to tell it braking.</summary>
         internal double LeadMs { get; set; } = double.NaN;
 
@@ -582,6 +585,15 @@ internal static class Rival
     {
         Seen[] reckoned = Reckon(state, cars, speedMs, freeMs, crossM, dt);
         double step = Math.Max(dt, 0.0);
+        if (state.Launch > step)
+        {
+            // Off the grid each runs in its own column, eased onto the line as the start's hold runs out, held back only by a car in that column:
+            // steered for the line at once, the two columns closed into one file before the first bend.
+            state.Launch -= step;
+            if (double.IsNaN(state.Column)) state.Column = crossM;
+            double column = state.Column * Math.Clamp(state.Launch / ColumnEaseSeconds, 0.0, 1.0);
+            return (column, Held(reckoned, null, crossM, column, speedMs, brakeAt));
+        }
         state.LanesFor = Lanes.Near(reckoned, speedMs, freeMs, brakeAt) ? LanesHoldSeconds : Math.Max(state.LanesFor - step, 0.0);
         if (state.LanesFor > 0.0)
         {
@@ -600,6 +612,9 @@ internal static class Rival
         (double side, double cap) = Choose(state, others, speedMs, freeMs, crossM, leftM, rightM, straightM, dt, brakeAt);
         return (KeepLane(reckoned, crossM, side), cap);
     }
+
+    /// <summary>Over the last this many seconds of the start's hold a driver eases from its grid column onto its line.</summary>
+    public const double ColumnEaseSeconds = 4.0;
 
     /// <summary>How long the lanes go on deciding after the last look a player's car was near, s, and how near a car ahead always is, m.</summary>
     public const double LanesHoldSeconds = 1.0, PlanNearM = 40.0;

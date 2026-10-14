@@ -622,4 +622,20 @@ public class PassingTests(ITestOutputHelper output)
         Assert.Equal(1, state.Side);
         Assert.False(state.Back);
     }
+
+    [Fact]
+    public void OffTheGridEachKeepsItsColumnAndIsHeldOnlyByTheCarInIt()
+    {
+        // in the left column, 2.4 m left of its line, with the right column's car 6 m ahead of it beside it
+        Rival.Passing state = new() { Launch = 8.0 };
+        (double side, double cap) = Look(state, [Car("right", 6.0, -4.8, 2.0)], speed: 3.0, cross: 2.4);
+        Assert.Equal(2.4, side, 9);
+        Assert.True(double.IsPositiveInfinity(cap), $"held to {cap:F1} m/s by the other column's car");
+        // and the one in its own column ahead does hold it
+        Rival.Passing own = new() { Launch = 8.0 };
+        Assert.True(Look(own, [Car("ahead", 8.0, 0.0, 2.0)], speed: 3.0, cross: 2.4).CapMs < 10.0);
+        // eased onto its line as the hold runs out
+        Look(state, [Car("right", 6.0, -4.8, 2.0)], speed: 3.0, cross: 2.4, dt: 6.0);
+        Assert.Equal(1.2, Look(state, [Car("right", 6.0, -4.8, 2.0)], speed: 3.0, cross: 2.4, dt: 0.0).SideM, 1);
+    }
 }
