@@ -324,6 +324,9 @@ internal static class Rival
     /// </summary>
     public readonly record struct Seen(object Who, double AheadM, double SideM, double SpeedMs, bool Queued = false)
     {
+        /// <summary>Whether it is a player's car, and not another opponent: only a player's is barged by.</summary>
+        public bool Player { get; init; }
+
         /// <summary>How much further to either side a car turned across the road reaches than one facing along it, m.</summary>
         public double WideM { get; init; }
 
@@ -376,10 +379,10 @@ internal static class Rival
         /// <summary>Seconds until another pass may be started, after one given up.</summary>
         public double Rest { get; internal set; }
 
-        /// <summary>The car that has covered the driver's passes of it, and how many lately, fading by one in <see cref="CoveredSeconds"/>.</summary>
-        internal object? Coverer { get; set; }
+        /// <summary>The player's car that has kept the driver behind it, and for how many seconds lately.</summary>
+        internal object? Penner { get; set; }
 
-        internal double Covered { get; set; }
+        internal double Penned { get; set; }
 
         /// <summary>
         /// Seconds from the start in which no pass is begun, nor one taken up for being beside a car:
@@ -488,33 +491,34 @@ internal static class Rival
     public const double AlongsideHoldM = 4.0, HoldSideM = 1.0;
 
     /// <summary>
-    /// How many passes of a car far slower than the road allows it may cover by moving across in front of
-    /// them before the driver barges by it; the seconds in which one covered pass is forgotten; how much
-    /// faster than it the driver then goes at it, m/s; and how near ahead it must be, m. A car moved across
-    /// in front of each try kept every opponent behind it however it was gone about.
+    /// How long a player's car slower than <see cref="BargeShare"/> of what the road allows may keep a driver
+    /// behind it before the driver barges by, s; how much faster than it the driver then goes at it, m/s;
+    /// and how near ahead it is looked for, m. A player moving across in front of each try kept every
+    /// opponent behind for a lap, however a pass was gone about.
     /// </summary>
-    public const double BargeAfterCovered = 2.0, CoveredSeconds = 10.0, BargeMs = 8.0, BargeNearM = 40.0;
+    public const double BargeAfterSeconds = 1.5, BargeShare = 0.9, BargeMs = 12.0, BargeNearM = 40.0;
 
-    // Whether the driver is barging by a car: one that has covered its passes, still far slower than the road allows.
+    // Whether the driver is barging by a car: the player's that has kept it behind long enough, still slower than the road allows.
     private static bool Barges(Passing state, Seen car, double freeMs) =>
-        Equals(state.Coverer, car.Who) && state.Covered >= BargeAfterCovered && car.SpeedMs >= StandingMs && Crawling(car.SpeedMs, freeMs);
+        car.Player && Equals(state.Penner, car.Who) && state.Penned >= BargeAfterSeconds && car.SpeedMs >= StandingMs && car.SpeedMs < BargeShare * freeMs;
 
-    // A pass given up because the car moved across into the side being taken: it has covered one more.
-    private static void Cover(Passing state, object who)
+    // The player's car in the driver's path, slower than the road allows, timed for as long as it is there; once long enough, that car.
+    private static Seen? Penning(Passing state, ReadOnlySpan<Seen> cars, double crossM, double freeMs, double dt)
     {
-        if (!Equals(state.Coverer, who)) (state.Coverer, state.Covered) = (who, 0.0);
-        state.Covered += 1.0;
-    }
-
-    // The car in the driver's way that has covered its passes often enough to be barged by, if it is near.
-    private static Seen? Penning(Passing state, ReadOnlySpan<Seen> cars, double crossM, double freeMs)
-    {
+        Seen? pen = null;
         foreach (Seen car in cars)
         {
-            if (car.AheadM <= 0.0 || car.AheadM > BargeNearM || car.Queued || !Barges(state, car, freeMs)) continue;
-            if (Apart(car, crossM, crossM) <= AbreastM + PassMarginM) return car;
+            if (!car.Player || car.AheadM <= 0.0 || car.AheadM > BargeNearM || car.SpeedMs < StandingMs || car.SpeedMs >= BargeShare * freeMs) continue;
+            if (Apart(car, crossM, crossM) > AbreastM + PassMarginM && !Equals(car.Who, state.Penner)) continue;
+            if (pen is not { } p || car.AheadM < p.AheadM) pen = car;
         }
-        return null;
+        if (pen is { } got)
+        {
+            if (!Equals(state.Penner, got.Who)) (state.Penner, state.Penned) = (got.Who, 0.0);
+            state.Penned += Math.Max(dt, 0.0);
+        }
+        else state.Penned = Math.Max(state.Penned - Math.Max(dt, 0.0), 0.0);
+        return pen is { } car2 && Barges(state, car2, freeMs) ? car2 : null;
     }
 
     /// <summary>Slowing faster than this, m/s2, the car being gone round is braking, and a driver not yet out from behind it is held back by it.</summary>
@@ -635,14 +639,13 @@ internal static class Rival
         state.Launch = Math.Max(state.Launch - Math.Max(dt, 0.0), 0.0);
         if (state.Side != 0 && (Find(cars, state.Who) is not { } still || still.AheadM < -PassClearM)) state.End();
         if (state.Side == 0) Start(state, cars, speedMs, freeMs, crossM, leftM, rightM, straightM, brakeAt);
-        state.Covered = Math.Max(state.Covered - (dt / CoveredSeconds), 0.0);
-        if (state.Side == 0)
+        // Kept behind long enough by a player's car, the driver barges by it on the side with more road.
+        if (Penning(state, cars, crossM, freeMs, dt) is { } pen && !Equals(state.Who, pen.Who))
         {
-            if (Penning(state, cars, crossM, freeMs) is not { } pen) return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));
-            // Its passes covered by a car moved across in front of it, the driver barges by on the side with more road.
             double theirs = crossM + pen.SideM;
             state.Begin(pen.Who, leftM - theirs >= theirs + rightM ? 1 : -1);
         }
+        if (state.Side == 0) return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));
 
         Seen car = Find(cars, state.Who)!.Value;
         double lead = Math.Max(car.SpeedMs, 0.0);
@@ -674,7 +677,6 @@ internal static class Rival
         if (state.Back)
         {
             if (car.AheadM < TuckM) return (side, Math.Min(others, Math.Max(lead - DropMs, 0.0)));
-            if (!fits && Crawling(lead, freeMs)) Cover(state, car.Who);
             state.End();
             state.Rest = RestSeconds;
             return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));

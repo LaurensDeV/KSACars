@@ -356,7 +356,7 @@ internal static class Opponents
             if (Rival.See(other.Craft, pilot, mine.PlaceCcf, mine.AheadCcf, other.PlaceCcf, other.AheadCcf, other.VelocityCcf, LookM, mine.SpeedMs) is not { } seen) continue;
             // An opponent held to a crawl by a car in its own way is queued behind it, and is followed rather than gone round.
             bool queued = Cars.Any(c => ReferenceEquals(c.Craft, other.Craft) && c.Stage == Stage.Racing && c.Cap < WaitingMs);
-            Seen.Add(seen with { Queued = queued });
+            Seen.Add(seen with { Queued = queued, Player = !Cars.Any(c => ReferenceEquals(c.Craft, other.Craft)) });
         }
         ReadOnlySpan<Rival.Seen> cars = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(Seen);
 

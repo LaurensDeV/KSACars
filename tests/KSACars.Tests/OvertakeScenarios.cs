@@ -324,7 +324,7 @@ public class OvertakeScenarios(ITestOutputHelper output)
                 seen.Clear();
                 for (int i = 0; i < players.Length; i++)
                 {
-                    if (See(players[i], me, players[i].Place, players[i].Facing, players[i].Velocity) is { } p) seen.Add(p);
+                    if (See(players[i], me, players[i].Place, players[i].Facing, players[i].Velocity) is { } p) seen.Add(p with { Player = true });
                 }
                 foreach (Opp other in opps)
                 {
