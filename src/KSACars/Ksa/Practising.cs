@@ -15,12 +15,13 @@ namespace KSACars;
 /// <para>A course a player draws has no lap that was searched for, and this is what its opponents
 /// have in its place: started when the first opponent is asked for, a first lap after some thirty
 /// laps in the rig, a few seconds, and a quicker one every few seconds after for up to a minute.
-/// Each is the opponents' as it is found. Until the first, an opponent races blind.</para>
+/// Each is the opponents' as it is found. Until the first, an opponent races blind, by a blind lap
+/// measured for what it gives up slower, which is what a gap asked of the opponents is read off.</para>
 /// </summary>
 internal static class Practising
 {
     // Changed by hand when the driver or the rig changes what a kept lap means: a lap kept under another is not read.
-    private const int Version = 4;
+    private const int Version = 5;
 
     // The ground a practising car has under it where there is no road: far enough down that only the road is ever met.
     private const double NoGroundM = -1000.0;
@@ -126,10 +127,15 @@ internal static class Practising
                 return;
             }
 
+            Rival.Learnt? blindLap = null;
+            (double Slowing, double Gap)[] slowed = best?.Slowed is { Length: > 0 } had ? had : [];
+
             void Improved(Practice.Found lap)
             {
                 if (Stale() || (best is not null && lap.Seconds >= best.Seconds)) return;
-                best = new Rival.Learnt(lap.Seconds, lap.Tune, inside, [], key, Most: 1.0);
+                // What the first lap found gives up slower is measured, and held to for the quicker ones after until the last.
+                if (best is null) slowed = Practice.Slowed(car, world, road, loops, route, lap.Tune, Stale) is { Length: > 0 } own ? own : slowed;
+                best = new Rival.Learnt(lap.Seconds, lap.Tune, inside, [], key, Most: 1.0) { Slowed = slowed };
                 Done[asked] = best;
                 Message = $"{profile.DisplayName} is practising this course: {RaceBoard.Clock(lap.Seconds)} so far";
                 Log.Info($"practice: {profile.DisplayName} round {route.LengthM:F0} m: {lap.Seconds:F1} s for {lap.BlindSeconds:F1} s blind, "
@@ -139,22 +145,36 @@ internal static class Practising
 
             Autopilot.Tuning start = new Autopilot.Tuning().Toward(blind.Tune, blind.Most);
             // What the car is to the rig, and how a first lap of it goes: what there is to go on if the rig and the game part.
-            Practice.Drove first = Practice.Drive(car, world, road, loops, route, start, [0.025], Stale);
+            Practice.Drove first = Practice.Drive(car, world, road, loops, route, start, [Practice.LongestStep], Stale);
             string went = first.Clean ? FormattableString.Invariant($"is clean, {first.Seconds:F1} s")
                                       : FormattableString.Invariant($"goes wrong {first.WrongAt * route.LengthM:F0} m round {route.LengthM:F0} m");
+
+            // Racing blind until practice finds a lap, by what a blind lap gives up slower.
+            if (best is null && first.Clean)
+            {
+                slowed = Practice.Slowed(car, world, road, loops, route, start, Stale);
+                if (Stale()) return;
+                Done[asked] = blindLap = new Rival.Learnt(first.Seconds, start, inside, [], key, Most: 1.0) { Slowed = slowed };
+            }
             Log.Info(FormattableString.Invariant($"practice: {profile.DisplayName} as the rig has it: {car.MassKg:F0} kg, centre of mass {car.Com.X:F2} {car.Com.Y:F2} {car.Com.Z:F2}, inertia {car.Inertia.X:F0} {car.Inertia.Y:F0} {car.Inertia.Z:F0}, gravity {world.Gravity:F2}, air {world.Air:F3}; a lap racing blind {went}"));
             Practice.Run(car, world, road, loops, route, start, Stale, Improved);
             if (Stale()) return;
             if (best is null)
             {
-                Done[asked] = null;
+                Done[asked] = blindLap;
                 Message = $"{profile.DisplayName} could not lap this course cleanly in practice";
                 Log.Info($"practice: {profile.DisplayName} does not lap {route.LengthM:F0} m of course cleanly in the rig; its opponents race blind");
                 return;
             }
 
+            if (Practice.Slowed(car, world, road, loops, route, best.Tune, Stale) is { Length: > 0 } last && !Stale())
+            {
+                best = best with { Slowed = last };
+                Done[asked] = best;
+            }
             Message = $"{profile.DisplayName} has practised: {RaceBoard.Clock(best.Seconds)}";
-            Log.Info($"practice: {profile.DisplayName} has done practising in {took.Elapsed.TotalSeconds:F1} s, {best.Seconds:F1} s: {best.Tune.Written()}");
+            Log.Info($"practice: {profile.DisplayName} has done practising in {took.Elapsed.TotalSeconds:F1} s, {best.Seconds:F1} s: {best.Tune.Written()}; "
+                     + $"slower by {string.Join(", ", best.Slowed.Select(p => FormattableString.Invariant($"{p.Gap:P1} at {p.Slowing:F2}")))}");
             Keep(file, best);
             try
             {

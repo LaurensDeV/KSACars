@@ -493,4 +493,63 @@ public class PassingTests(ITestOutputHelper output)
         Assert.True(!double.IsNaN(round.PassedAt), round.Told);
         Assert.True(round.LeastBesideM > round.Fast.HalfWidth + round.Slow.HalfWidth, round.Told);
     }
+
+    [Fact]
+    public void OffTheGridNoPassIsBegunUntilTheFieldHasSetOff()
+    {
+        Rival.Passing state = new() { Launch = 8.0 };
+        Rival.Seen[] ahead = [Car("ahead", 20.0, 0.0, 0.5)];
+        Assert.Equal(0.0, Look(state, ahead, speed: 5.0).SideM);
+        Look(state, ahead, speed: 5.0, dt: 8.1);
+        Assert.NotEqual(0, state.Side);
+    }
+
+    [Fact]
+    public void ACarWaitingBehindAnotherIsFollowedAndNotGoneRound()
+    {
+        Rival.Passing state = new();
+        Assert.Equal(0.0, Look(state, [new Rival.Seen("waiting", 20.0, 0.0, 0.5, Queued: true)], speed: 5.0).SideM);
+        Assert.Equal(0, state.Side);
+        Look(state, [new Rival.Seen("standing", 20.0, 0.0, 0.5)], speed: 5.0);
+        Assert.NotEqual(0, state.Side);
+    }
+
+    [Fact]
+    public void APassOfAStandingCarThatCannotBeFinishedIsOverAndNotWaitedBehind()
+    {
+        Rival.Passing state = new();
+        Rival.Seen[] standing = [Car("standing", 20.0, 0.0, 0.5)];
+        Look(state, standing, speed: 5.0);
+        Assert.NotEqual(0, state.Side);
+        // the room goes: behind a standing car there is no dropping back to, so the pass is over and another may be begun soon
+        (_, double cap) = Look(state, standing, speed: 5.0, left: 0.5, right: 0.5);
+        Assert.Equal(0, state.Side);
+        Assert.InRange(state.Rest, 0.0, Rival.StandingRestSeconds);
+        Assert.True(cap > 0.0, "held to a standstill behind it");
+    }
+
+    [Fact]
+    public void ADriverThatKnowsItsBrakesFollowsCloser()
+    {
+        double known = Rival.FollowCap(60.0, 0.0, 20.0, 40.0, _ => 30.0), unknown = Rival.FollowCap(60.0, 0.0, 20.0, 40.0);
+        Assert.True(known > unknown, $"{known:F1} m/s knowing its brakes and {unknown:F1} not");
+        // never taken to brake harder than the share of what it does, nor softer than a car that does not know
+        Assert.Equal(unknown, Rival.FollowCap(60.0, 0.0, 20.0, 40.0, _ => 1.0), 9);
+    }
+
+    [Fact]
+    public void ADriverKeepsACarsWidthFromACarAlongsideWhereverItsLineGoes()
+    {
+        // a car 3 m to its left and a metre ahead: its line may come no nearer than a lane to it
+        Assert.Equal(3.0 - Rival.LaneM, Rival.KeepLane([Car("beside", 1.0, 3.0, 40.0)], 0.0, 1.5), 9);
+        // nearer than a lane already, it goes no nearer than it is
+        Assert.Equal(0.0, Rival.KeepLane([Car("beside", 1.0, 2.0, 40.0)], 0.0, 1.5), 9);
+        Assert.Equal(-1.0, Rival.KeepLane([Car("beside", -2.0, 2.0, 40.0)], -1.0, 1.0), 9);
+        // on the right the same, and away from it the line goes where it likes
+        Assert.Equal(-3.0 + Rival.LaneM, Rival.KeepLane([Car("beside", 0.0, -3.0, 40.0)], 0.0, -2.0), 9);
+        Assert.Equal(1.5, Rival.KeepLane([Car("beside", 0.0, -3.0, 40.0)], 0.0, 1.5), 9);
+        // a car ahead or behind, or in the driver's own lane, is not alongside
+        Assert.Equal(1.5, Rival.KeepLane([Car("ahead", 20.0, 2.0, 40.0)], 0.0, 1.5), 9);
+        Assert.Equal(1.5, Rival.KeepLane([Car("behind", 3.0, 0.2, 40.0)], 0.0, 1.5), 9);
+    }
 }

@@ -380,7 +380,7 @@ internal sealed class Bridge
         }
         if (command.Has("opponent"))
         {
-            if (command.Has("pace")) Opponents.Pace = Math.Clamp(command.Number("pace", Opponents.Pace), 0.0, 1.0);
+            if (command.Has("gap")) Opponents.Gap = Math.Clamp(command.Number("gap", Opponents.Gap), 0.0, Rival.MostGap);
             if (command.Flag("opponent", true)) Opponents.Add();
             else Opponents.Clear();
             Opponents.Update();

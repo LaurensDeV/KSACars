@@ -38,7 +38,7 @@ public enum LapEnd
 /// </summary>
 public struct LapSummary
 {
-    public int Laps, Steps, BrakeToggles;
+    public int Laps, Steps, BrakeToggles, Fumbles;
     public double Seconds, DistanceM, ProgressM, LastLapSeconds;
     public double MaxCrossM, MeanCrossM, MaxSpeed;
     public double AirSeconds, LongestFlightSeconds, OffAsphaltSeconds;
@@ -155,6 +155,7 @@ internal sealed class Autopilot
     private readonly int _lapsWanted;
     private readonly LapRow[]? _rows;
     private double[]? _limit;
+    private (double HalfTrackM, double ComHeightM)? _stance;
 
     private LapSummary _summary;
     private int _index = -1;
@@ -350,6 +351,37 @@ internal sealed class Autopilot
     }
 
     public Tuning Tune { get; init; } = new();
+
+    /// <summary>
+    /// A driver who is not the same every lap, for a seed: every bend of a lap slower by a share drawn
+    /// for that lap, half a normal of <paramref name="LapSpread"/> and never quicker, and with a chance
+    /// of <paramref name="ExitChance"/> a lap the throttle eased out of one bend.
+    /// </summary>
+    public sealed record Human(int Seed, double LapSpread, double ExitChance);
+
+    /// <summary>The driver as a person, or null for one who drives every lap alike.</summary>
+    public Human? Person { get; init; }
+
+    /// <summary>The throttle a fluffed exit is held to, and the least and most seconds it lasts.</summary>
+    public const double FumbleThrottle = 0.4, FumbleLeastSeconds = 0.5, FumbleMostSeconds = 1.2;
+
+    private double _lapPace = 1.0, _fumbleAt = double.PositiveInfinity, _fumbleUntil = double.NegativeInfinity, _fumbleSeconds;
+    private int _fumbleLap = -1;
+
+    // What this lap is to the person driving it: drawn from its seed and the lap's number, so the same driver has the same laps.
+    private void Roll()
+    {
+        if (Person is not { } person) return;
+        int lap = _summary.Laps;
+        Random dice = new(unchecked((person.Seed * 486187739) + (lap * 7919) + 17));
+        double normal = Math.Sqrt(-2.0 * Math.Log(1.0 - dice.NextDouble())) * Math.Cos(2.0 * Math.PI * dice.NextDouble());
+        _lapPace = Math.Clamp(1.0 - (person.LapSpread * Math.Abs(normal)), 1.0 - (3.0 * person.LapSpread), 1.0);
+        (_fumbleAt, _fumbleLap) = dice.NextDouble() < person.ExitChance ? (dice.NextDouble() * _route.LengthM, lap) : (double.PositiveInfinity, -1);
+        _fumbleSeconds = FumbleLeastSeconds + ((FumbleMostSeconds - FumbleLeastSeconds) * dice.NextDouble());
+    }
+
+    /// <summary>How hard the car brakes at a speed, m/s2, all its brakes on the weight and the wings: what a car ahead is braked for with.</summary>
+    public double BrakeAt(double speedMs) => _profile.BrakeG * (_gravity + BuggyDrive.WingLoad(_profile, speedMs, _air, _mass));
 
     /// <summary>Whether crests and dips are taken at whatever the bends allow, to see what a car does in the air.</summary>
     public bool Jumps { get; init; }
@@ -570,7 +602,7 @@ internal sealed class Autopilot
             }
             // A loop is gone into at what carries the car over its top and no faster: it presses by the square of the speed.
             if (s.LoopM > 0.0) allowed = Math.Min(CruiseMs, LoopSpeed(s.LoopM, _gravity));
-            else if (allowed < CruiseMs) allowed = Math.Min(allowed * Tune.PaceAt(s.S / _route.LengthM), CruiseMs);
+            else if (allowed < CruiseMs) allowed = Math.Min(allowed * Tune.PaceAt(s.S / _route.LengthM) * _lapPace, CruiseMs);
             limit[i] = s.S >= _stopAt - ArriveOverM ? ArriveMs : Math.Max(allowed, CrawlMs);
         }
 
@@ -678,10 +710,11 @@ internal sealed class Autopilot
                              ReadOnlySpan<double3> hubs, ReadOnlySpan<double> hubHeights, double dt, bool hullDown)
     {
         BuggyCorner[] corners = _profile.Corners;
+        _stance ??= Stance(hubs, up, forward);
         if (_limit is not { } limit)
         {
-            (double halfTrack, double comHeight) = Stance(hubs, up, forward);
-            _limit = limit = Limits(halfTrack, comHeight);
+            if (Person is not null) Roll();
+            _limit = limit = Limits(_stance.Value.HalfTrackM, _stance.Value.ComHeightM);
         }
         double3 radial = Vec.Unit(position);
         double3 ahead = body2Ccf * forward, top = body2Ccf * up;
@@ -710,6 +743,12 @@ internal sealed class Autopilot
             _summary.Laps++;
             _summary.LastLapSeconds = _summary.Seconds - _lapStarted;
             _lapStarted = _summary.Seconds;
+            // A lap of its own: the bends are weighed up again for it.
+            if (Person is not null)
+            {
+                Roll();
+                _limit = limit = Limits(_stance.Value.HalfTrackM, _stance.Value.ComHeightM);
+            }
         }
         (_s, _cross) = (s, cross);
         Route.Sample here = _route.Samples[_index];
@@ -825,6 +864,13 @@ internal sealed class Autopilot
                 else { if (!_braking) Brake(true); throttle = -Math.Clamp(pedal, 0.0, 1.0); }
             }
         }
+        // A fluffed exit: the next time after its place the throttle is wanted wide open, it is not, for a moment.
+        if (s >= _fumbleAt && _fumbleLap == _summary.Laps && throttle > 0.9 && !_braking)
+        {
+            (_fumbleUntil, _fumbleAt) = (_summary.Seconds + _fumbleSeconds, double.PositiveInfinity);
+            _summary.Fumbles++;
+        }
+        if (_summary.Seconds < _fumbleUntil && throttle > FumbleThrottle) throttle = FumbleThrottle;
         // Nor is it braked there: the speed it has is what holds it on.
         if (looping) throttle = Math.Clamp((wanted - rolling) / Tune.FullThrottleUnderMs, 0.0, 1.0);
 

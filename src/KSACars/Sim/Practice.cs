@@ -10,7 +10,9 @@ namespace KSACars;
 /// where the stretches about that place were quicker for it. A lap that goes wrong says where, so
 /// only the places that led to it are left as they were.
 ///
-/// <para>Each time, what was found is lapped again every way a search for a lap is, with less taken
+/// <para>A way is clean if it is at the game's uneven steps and at the longest step the game takes,
+/// which it takes every frame with a field of cars in it: a lap found at 25 ms left the road at it.
+/// Each time, what was found is lapped again every way a search for a lap is, with less taken
 /// where one goes wrong until all are clean, and only then given out: so there is a lap to drive by
 /// after some thirty laps and a quicker one every fifty or so after.</para>
 ///
@@ -31,14 +33,20 @@ internal static class Practice
     public const double LeastPace = 0.7, LessPace = 0.03;
     public static readonly double[] PlaceSteps = [0.06, 0.03];
 
-    /// <summary>The share of its grip a car is tried with, to be sure of a lap that does not need all of it.</summary>
-    public const double LessGrip = 0.94;
+    /// <summary>The share of its grip a car is tried with, and of the air on its wings, to be sure of a lap that does not need all of either.</summary>
+    public const double LessGrip = 0.94, LessAir = 0.94;
+
+    /// <summary>The shares of every bend's speed a lap is measured at for what it gives up, from the least slowing to the most.</summary>
+    public static readonly double[] Slowings = [0.95, 0.9, 0.85, 0.8, 0.7, 0.6];
 
     /// <summary>The laps a practice may take looking: half a minute to a minute of one core, by the car.</summary>
     public const int MostDrives = 300;
 
     /// <summary>What was found: the lap's time, the slowest of the ways it was tried; the driver's settings it was lapped with; and how many laps it took to find.</summary>
     public sealed record Found(double Seconds, Autopilot.Tuning Tune, double BlindSeconds, int Drives);
+
+    /// <summary>The longest step KSA takes at no time warp, s, which it takes every frame while it draws fewer than 30 a second.</summary>
+    public const double LongestStep = 1.0 / 30.0;
 
     // The game's own steps, as the suite laps with them: between 17 and 33 ms and no two alike.
     private static readonly double[] GameSteps = Drawn();
@@ -70,8 +78,9 @@ internal static class Practice
     public readonly record struct Drove(bool Clean, double Seconds, double WrongAt, double[] Stretches);
 
     /// <summary><see cref="Lap"/>, with where it went wrong and how long each stretch of it took.</summary>
+    /// <param name="planAir">The air the driver takes there to be, where not the world's.</param>
     public static Drove Drive(TrackCar car, TrackWorld world, RoadSurface road, IReadOnlyList<RoadLoop> loops, Route route,
-                              Autopilot.Tuning tune, double[] steps, Func<bool>? cancelled = null)
+                              Autopilot.Tuning tune, double[] steps, Func<bool>? cancelled = null, double planAir = double.NaN)
     {
         TrackRig rig = new(car, world, road) { KeepsLog = false };
         rig.Loops.AddRange(loops);
@@ -86,7 +95,7 @@ internal static class Practice
         rig.Dt = steps[0];
         rig.Pattern = steps.Length > 1 ? steps : null;
 
-        Autopilot pilot = new(car.Profile, route, road, car.MassKg, world.Gravity, world.Air, route.Closed ? 2 : 1, 0.0, 900.0) { Tune = tune };
+        Autopilot pilot = new(car.Profile, route, road, car.MassKg, world.Gravity, double.IsFinite(planAir) ? planAir : world.Air, route.Closed ? 2 : 1, 0.0, 900.0) { Tune = tune };
         rig.Driver = pilot;
         double length = route.LengthM, flyingFrom = route.Closed ? length : 0.0;
         double[] passed = new double[Rival.Places + 1];
@@ -137,6 +146,27 @@ internal static class Practice
         return null;
     }
 
+    /// <summary>
+    /// What a way of lapping gives up with every bend taken slower, each of <see cref="Slowings"/> as a
+    /// share of the lap at its own pace, at the game's steps: what a gap asked of an opponent is read
+    /// off. A slowing that does not lap cleanly is left out.
+    /// </summary>
+    public static (double Slowing, double Gap)[] Slowed(TrackCar car, TrackWorld world, RoadSurface road, IReadOnlyList<RoadLoop> loops, Route route,
+                                                        Autopilot.Tuning tune, Func<bool>? cancelled = null)
+    {
+        Drove own = Drive(car, world, road, loops, route, tune, GameSteps, cancelled);
+        if (!own.Clean) return [];
+        List<(double, double)> slowed = [];
+        foreach (double slowing in Slowings)
+        {
+            Drove lap = Drive(car, world, road, loops, route, tune with { Pace = [.. Enumerable.Range(0, Rival.Places).Select(i => tune.PaceAt((double)i / Rival.Places) * slowing)] },
+                              GameSteps, cancelled);
+            if (cancelled?.Invoke() == true) return [];
+            if (lap.Clean) slowed.Add((slowing, (lap.Seconds / own.Seconds) - 1.0));
+        }
+        return [.. slowed];
+    }
+
     /// <summary>The shares of the grip a car races blind with that practice is started from, the first it laps cleanly with being the one.</summary>
     public static readonly double[] StartShares = [1.0, 0.94, 0.88, 0.82, 0.76, 0.7];
 
@@ -182,20 +212,22 @@ internal static class Practice
         private bool Stopped => cancelled?.Invoke() == true;
         private bool Spent => _drives >= mostDrives || Stopped;
 
-        private Drove Drive(Autopilot.Tuning tune, double[] steps, bool lessGrip = false)
+        private Drove Drive(Autopilot.Tuning tune, double[] steps, bool lessGrip = false, bool thinAir = false)
         {
             _drives++;
+            if (thinAir) return Practice.Drive(car, world.Thinner(LessAir), road, loops, route, tune, steps, cancelled, world.Air);
             // The plan is the one the car with all its grip is driven by.
             return lessGrip ? Practice.Drive(_slippery, world, road, loops, route, tune with { GripShare = tune.GripShare / LessGrip }, steps, cancelled)
                             : Practice.Drive(car, world, road, loops, route, tune, steps, cancelled);
         }
 
-        // While it is looked for a way is clean if it is at the game's steps and at 25 ms.
+        // While it is looked for a way is clean if it is at the game's steps and at the longest the game takes, which a
+        // game under 30 frames a second takes every frame: there a car's springs are their softest.
         private Tried Try(Autopilot.Tuning tune)
         {
             Drove a = Drive(tune, GameSteps);
             if (!a.Clean) return new Tried(false, 0.0, a.WrongAt, []);
-            Drove b = Drive(tune, [0.025]);
+            Drove b = Drive(tune, [LongestStep]);
             if (!b.Clean) return new Tried(false, 0.0, b.WrongAt, []);
             return new Tried(true, Math.Max(a.Seconds, b.Seconds), double.NaN, [.. a.Stretches.Zip(b.Stretches, (x, y) => x + y)]);
         }
@@ -381,22 +413,25 @@ internal static class Practice
             (_tune, _lap) = _sure;
         }
 
-        // Four kinds of step, and two again with less grip than the driver takes there to be: the two a search tries
-        // first, whose time and stretches are what the next try is held against, then those with less grip, where most go wrong.
+        // Five kinds of step, two again with less grip than the driver takes there to be and one in thinner air: the two a
+        // search tries first, whose time and stretches are what the next try is held against, then those with less grip, where most go wrong.
         private Tried Sure(Autopilot.Tuning tune, out double worst)
         {
             worst = 0.0;
             Tried searched = Try(tune);
             if (!searched.Clean) return searched;
-            foreach (double[] steps in new[] { GameSteps, [0.025] })
+            foreach (double[] steps in new[] { GameSteps, [LongestStep] })
             {
                 Drove lap = Drive(tune, steps, lessGrip: true);
                 if (!lap.Clean) return new Tried(false, 0.0, lap.WrongAt, []);
             }
+            // Air a little thinner than the driver takes it to be, which is less on the wings: the game's air is the height it is laid at.
+            Drove thin = Drive(tune, GameSteps, thinAir: true);
+            if (!thin.Clean) return new Tried(false, 0.0, thin.WrongAt, []);
             // An opponent takes some places up to 3% slower than the next, and a lap that only holds at its own pace leaves the
             // road then: at steady steps, where it was seen to.
             double[] pace = PaceOf(tune);
-            double[][] steady = [[1.0 / 60.0], [0.020]];
+            double[][] steady = [[1.0 / 60.0], [0.020], [0.025]];
             foreach (double[] steps in steady)
             {
                 for (int odd = 0; odd < 2; odd++)

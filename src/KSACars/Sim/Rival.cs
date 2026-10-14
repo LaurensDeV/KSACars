@@ -5,18 +5,27 @@ using Brutal.Numerics;
 namespace KSACars;
 
 /// <summary>
-/// What makes a route driver an opponent: a driver of its own for a seed, quicker or slower than the
-/// next, surer in some bends than in others and on a line a little its own; and the speed it holds
-/// behind a car that is in its way, which a route driver alone would drive into, and when it goes
-/// round that car and on which side.
+/// What makes a route driver an opponent: a driver of its own for a seed, a little slower than the
+/// quickest and surer in some bends than in others; how much slower than the best lap known of a
+/// course a gap asked for is; and the speed it holds behind a car that is in its way, which a route
+/// driver alone would drive into, and when it goes round that car and on which side.
 /// </summary>
 internal static class Rival
 {
     /// <summary>The places round a lap a driver's pace and line are its own at.</summary>
     public const int Places = 24;
 
-    /// <summary>How far a driver's pace is from the one asked, the share of a bend's speed it gives up or takes, and how far its line is from the racing line, m.</summary>
-    public const double PushSpread = 0.12, PaceLow = 0.97, PaceHigh = 1.0, LineSpreadM = 0.4;
+    /// <summary>The most a driver's lap is slower than the gap asked of all of them, and the share of a bend's speed it gives up at each place.</summary>
+    public const double GapSpread = 0.04, PaceLow = 0.97, PaceHigh = 1.0;
+
+    /// <summary>The gap to the best lap known that an opponent is asked for unless the panel says otherwise, and the most it may be.</summary>
+    public const double DefaultGap = 0.0, MostGap = 0.2;
+
+    /// <summary>
+    /// What a lap gives up for every bend taken slower by a share, where nothing was measured of the
+    /// course: about 0.4 of it on the courses that were, and the least any bend is slowed to.
+    /// </summary>
+    public const double GapPerSlowing = 0.4, LeastSlowing = 0.5;
 
     /// <summary>
     /// How any car is raced on a course nothing is known of: the driver's settings, how much nearer
@@ -55,11 +64,16 @@ internal static class Rival
     /// <summary>A car further to the side than this is not in the way.</summary>
     public const double AbreastM = 2.2;
 
-    /// <summary>How hard a driver is taken to brake for a car ahead, m/s2: what it may still be closing at so far behind.</summary>
-    public const double FollowBrakeMs2 = 8.0;
+    /// <summary>
+    /// How hard a driver is taken to brake for a car ahead, m/s2, where its own brakes are not known,
+    /// and the share of what they do that it is taken to brake at where they are: braking for a car
+    /// at a fraction of what an F2004 does, a driver stayed so far back that no pass was ever begun, and
+    /// at 0.8 of it an opponent braking for a car ahead at full lock in game spun.
+    /// </summary>
+    public const double FollowBrakeMs2 = 8.0, FollowBrakeShare = 0.6;
 
-    /// <summary>A driver: how hard it drives, what it makes of each bend, and where it puts its car across the road.</summary>
-    public sealed record Driver(double Push, double[] Pace, double[] LineM);
+    /// <summary>A driver: how much slower than the gap asked its lap is, as a share, and what it makes of each bend.</summary>
+    public sealed record Driver(double Gap, double[] Pace);
 
     /// <summary>
     /// A lap of one course by one car that was searched for, as a course's file of laps has it: the
@@ -69,11 +83,19 @@ internal static class Rival
     /// <param name="Most">The share of the way to it that the hardest pace is: all of it for a lap that was practised, which moves no line, and 0.55 for one that was searched for with a line of its own.</param>
     public sealed record Learnt(double Seconds, Autopilot.Tuning Tune, double InsideM, double[] LineM, string CircuitSha256, double Most = MostOfLearnt)
     {
+        /// <summary>
+        /// What the lap gave up with every bend taken slower, as it was lapped: each share of a bend's
+        /// speed and how much slower than the lap that was, from the least slowing to the most. Empty
+        /// where it was not measured.
+        /// </summary>
+        public (double Slowing, double Gap)[] Slowed { get; init; } = [];
+
         /// <summary>As its file has it.</summary>
         public string ToJson() => JsonSerializer.Serialize(new Dictionary<string, object>
         {
             ["seconds"] = Math.Round(Seconds, 3), ["circuit_sha256"] = CircuitSha256, ["inside_m"] = Math.Round(InsideM, 4),
             ["tune"] = Tune.Written(), ["line_m"] = LineM, ["most"] = Most,
+            ["slowed"] = Slowed.Select(p => new[] { Math.Round(p.Slowing, 4), Math.Round(p.Gap, 5) }).ToArray(),
         }, new JsonSerializerOptions { WriteIndented = true });
     }
 
@@ -97,7 +119,10 @@ internal static class Rival
             }
             why = "";
             double most = root.TryGetProperty("most", out JsonElement share) ? Math.Clamp(share.GetDouble(), 0.0, 1.0) : MostOfLearnt;
-            return new Learnt(seconds, tune, inside, line, root.GetProperty("circuit_sha256").GetString() ?? "", most);
+            (double, double)[] slowed = root.TryGetProperty("slowed", out JsonElement table)
+                ? [.. table.EnumerateArray().Select(p => (p[0].GetDouble(), p[1].GetDouble())).Where(p => double.IsFinite(p.Item1) && double.IsFinite(p.Item2))]
+                : [];
+            return new Learnt(seconds, tune, inside, line, root.GetProperty("circuit_sha256").GetString() ?? "", most) { Slowed = slowed };
         }
         catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {
@@ -107,57 +132,79 @@ internal static class Rival
     }
 
     /// <summary>
-    /// How the opponent a seed is drives at a pace, with a lap learnt of this course by its car or
-    /// without. With one the pace is a share of the way from the driver's own cautious settings to the
-    /// learnt lap's, the hardest pace being <see cref="MostOfLearnt"/> of it, and the opponent's own bends
-    /// and line are taken from there; without, it is a share of the way to its car's <see cref="Blind"/>.
+    /// How the opponent a seed is drives, a gap slower than the best lap known of this course by its
+    /// car: one learnt here, all of it or <see cref="Learnt.Most"/> of a lap searched for with a line
+    /// of its own, or with none its car's <see cref="Blind"/>. Every bend is taken slower by the share
+    /// that gives up the gap, the driver's own and the one asked together, read off what the lap was
+    /// measured to give up where it was and reckoned at <see cref="GapPerSlowing"/> where it was not.
     /// </summary>
+    /// <param name="gap">How much slower than that lap all of them are asked to be, as a share of it.</param>
     /// <param name="ownInsideM">How far inside each edge the car's own racing line keeps.</param>
     /// <param name="car">The car's name, as its profile has it.</param>
-    public static Way Drive(Learnt? learnt, int seed, double pace, double ownInsideM, string car)
+    public static Way Drive(Learnt? learnt, int seed, double gap, double ownInsideM, string car)
     {
-        Driver own = Of(seed, pace);
+        Driver own = Of(seed);
+        Autopilot.Tuning tune;
+        double[] line = new double[Places];
+        double inside;
         if (learnt is null)
         {
-            // Nothing is known of the course: the way of driving that holds on any, as much of it as the pace asks.
             Blind blind = BlindFor(car);
-            double most = own.Push * blind.Most;
-            Autopilot.Tuning racing = new Autopilot.Tuning().Toward(blind.Tune, most);
-            return new Way(0.0, racing with { Pace = own.Pace }, own.LineM, ownInsideM - (blind.NearerM * most));
+            tune = new Autopilot.Tuning().Toward(blind.Tune, blind.Most);
+            inside = ownInsideM - (blind.NearerM * blind.Most);
+        }
+        else
+        {
+            // Not all the way to a searched lap: it was the best of thousands tried, and past this share of it a driver leaves the road.
+            tune = new Autopilot.Tuning().Toward(learnt.Tune, learnt.Most);
+            for (int i = 0; i < Places; i++)
+            {
+                double at = (double)i / Places;
+                line[i] = learnt.LineM.Length == 0 ? 0.0 : learnt.LineM[(int)(at * learnt.LineM.Length) % learnt.LineM.Length] * learnt.Most;
+            }
+            inside = ownInsideM + ((learnt.InsideM - ownInsideM) * learnt.Most);
         }
 
-        // Not all the way: the lap was the best of thousands tried, and past this share of it a driver with bends of its own leaves the road.
-        double share = own.Push * learnt.Most;
-        Autopilot.Tuning tune = new Autopilot.Tuning().Toward(learnt.Tune, share);
-        double[] bends = new double[Places], line = new double[Places];
-        for (int i = 0; i < Places; i++)
-        {
-            double at = (double)i / Places;
-            bends[i] = tune.PaceAt(at) * own.Pace[i];
-            double learntLine = learnt.LineM.Length == 0 ? 0.0 : learnt.LineM[(int)(at * learnt.LineM.Length) % learnt.LineM.Length];
-            // The nearer the learnt lap, the less of a line of its own: that lap is at the edge of what its line bears.
-            line[i] = (learntLine * share) + (own.LineM[i] * (1.0 - share));
-        }
-        return new Way(0.0, tune with { Pace = bends }, line, ownInsideM + ((learnt.InsideM - ownInsideM) * share));
+        // What the driver's own bends already give up is not asked of every bend again.
+        double walked = GapPerSlowing * (1.0 - own.Pace.Average());
+        double slowing = Slowing(learnt?.Slowed ?? [], Math.Max(Math.Clamp(gap, 0.0, MostGap) + own.Gap - walked, 0.0));
+        double[] bends = new double[Places];
+        for (int i = 0; i < Places; i++) bends[i] = tune.PaceAt((double)i / Places) * own.Pace[i] * slowing;
+        return new Way(0.0, tune with { Pace = bends }, line, inside);
     }
 
-    /// <summary>The driver a seed is, for a pace asked of all of them: the same one every time.</summary>
-    public static Driver Of(int seed, double push)
+    /// <summary>
+    /// The share of every bend's speed that gives up a gap, read between the slowings a lap was
+    /// measured at, or with none reckoned at <see cref="GapPerSlowing"/>; never under <see cref="LeastSlowing"/>.
+    /// </summary>
+    public static double Slowing(IReadOnlyList<(double Slowing, double Gap)> slowed, double gap)
+    {
+        if (gap <= 0.0) return 1.0;
+        (double m, double g) was = (1.0, 0.0);
+        foreach ((double m, double g) in slowed.OrderByDescending(p => p.Slowing))
+        {
+            if (g >= gap && g > was.g) return Math.Max(was.m + ((m - was.m) * (gap - was.g) / (g - was.g)), LeastSlowing);
+            if (g > was.g) was = (m, g);
+        }
+        // Past the last measured, on at the reckoned rate.
+        return Math.Max(was.m - ((gap - was.g) / GapPerSlowing), LeastSlowing);
+    }
+
+    /// <summary>The driver a seed is: the same one every time.</summary>
+    public static Driver Of(int seed)
     {
         Random dice = new(unchecked((seed * 7919) + 104729));
-        double own = Math.Clamp(push + (((dice.NextDouble() * 2.0) - 1.0) * PushSpread), 0.0, 1.0);
+        double gap = dice.NextDouble() * GapSpread;
 
         // A walk round the lap, so a driver is good through a run of bends and not at one place and bad at the next.
-        double[] pace = new double[Places], line = new double[Places];
-        double p = dice.NextDouble(), l = (dice.NextDouble() * 2.0) - 1.0;
+        double[] pace = new double[Places];
+        double p = dice.NextDouble();
         for (int i = 0; i < Places; i++)
         {
             p = Math.Clamp(p + ((dice.NextDouble() - 0.5) * 0.5), 0.0, 1.0);
-            l = Math.Clamp(l + ((dice.NextDouble() - 0.5) * 0.8), -1.0, 1.0);
             pace[i] = PaceLow + ((PaceHigh - PaceLow) * p);
-            line[i] = l * LineSpreadM;
         }
-        return new Driver(own, pace, line);
+        return new Driver(gap, pace);
     }
 
     /// <summary>How far past a standing car, and past a moving one before the driver's own speed is counted, the road has to have room to one side.</summary>
@@ -179,11 +226,11 @@ internal static class Rival
         return over;
     }
 
-    /// <summary>How quick the driver a seed is, as one number to put drivers in order by: its push and what it makes of the bends together.</summary>
+    /// <summary>How quick the driver a seed is, as one number to put drivers in order by: the share of its lap it gives up, its own and in the bends, taken from nothing.</summary>
     public static double Strength(int seed)
     {
-        Driver driver = Of(seed, 0.5);
-        return driver.Push + driver.Pace.Average();
+        Driver driver = Of(seed);
+        return -(driver.Gap + (GapPerSlowing * (1.0 - driver.Pace.Average())));
     }
 
     /// <summary>
@@ -198,19 +245,25 @@ internal static class Rival
     /// <paramref name="leaderMs"/> the way the driver faces: the leader's own speed and what can still
     /// be braked off in the room there is, or no limit where the car is not in the way.
     /// </summary>
-    public static double FollowCap(double aheadM, double sideM, double leaderMs, double speedMs)
+    /// <param name="brakeAt">How hard the driver's car brakes at a speed, m/s2, all of it: at the leader's speed, the least it brakes at on the way down to it.</param>
+    public static double FollowCap(double aheadM, double sideM, double leaderMs, double speedMs, Func<double, double>? brakeAt = null)
     {
         if (aheadM <= 0.0 || Math.Abs(sideM) > AbreastM) return double.PositiveInfinity;
         double lead = Math.Max(leaderMs, 0.0);
         // Behind a car that is standing, room to steer out from behind it: stopped at its tail there is no going round.
         double room = aheadM - (lead < StandingMs ? StandingGapM : GapM) - (GapSeconds * Math.Max(speedMs, 0.0));
-        double cap = room <= 0.0 ? lead : Math.Sqrt((lead * lead) + (2.0 * FollowBrakeMs2 * room));
+        double brake = brakeAt is null ? FollowBrakeMs2 : Math.Max(FollowBrakeShare * brakeAt(lead), FollowBrakeMs2);
+        double cap = room <= 0.0 ? lead : Math.Sqrt((lead * lead) + (2.0 * brake * room));
         // Far enough back that it would not be braking yet, or behind a car pulling away, the car ahead is nothing to it.
         return cap > Math.Max(speedMs, 0.0) + 5.0 ? double.PositiveInfinity : cap;
     }
 
-    /// <summary>Another car as a driver sees it: how far on along the driver's route it is, how far to the driver's left, and its speed the way the driver faces.</summary>
-    public readonly record struct Seen(object Who, double AheadM, double SideM, double SpeedMs);
+    /// <summary>
+    /// Another car as a driver sees it: how far on along the driver's route it is, how far to the
+    /// driver's left, its speed the way the driver faces, and whether it is only waiting behind a car
+    /// in its own way, which is followed and not gone round: that car is the one to go round.
+    /// </summary>
+    public readonly record struct Seen(object Who, double AheadM, double SideM, double SpeedMs, bool Queued = false);
 
     /// <summary>What a driver remembers of the car it is going round, from one look to the next: the caller's, one a driver.</summary>
     public sealed class Passing
@@ -226,6 +279,13 @@ internal static class Rival
 
         /// <summary>Seconds until another pass may be started, after one given up.</summary>
         public double Rest { get; internal set; }
+
+        /// <summary>
+        /// Seconds from the start in which no pass is begun, nor one taken up for being beside a car:
+        /// on the grid every car ahead is standing, and a field that went round them all ran two
+        /// abreast into the first bends.
+        /// </summary>
+        public double Launch { get; set; }
 
         internal void Begin(object who, int side) => (Who, Side, Back) = (who, side, false);
 
@@ -244,8 +304,8 @@ internal static class Rival
     /// <summary>Less than this far behind a car's middle a driver is beside it, and goes on with a pass it would otherwise give up.</summary>
     public const double LevelM = 2.0;
 
-    /// <summary>The seconds moving out takes, the seconds from a car at which a pass is started, and the seconds after giving one up before the next.</summary>
-    public const double PullOutSeconds = 1.5, PassSoonSeconds = 4.0, RestSeconds = 3.0;
+    /// <summary>The seconds moving out takes, the seconds from a car at which a pass is started, and the seconds after giving one up before the next, or one of a standing car.</summary>
+    public const double PullOutSeconds = 1.5, PassSoonSeconds = 4.0, RestSeconds = 3.0, StandingRestSeconds = 1.0;
 
     /// <summary>The seconds a car is behind its driver's aim in moving across, and how much longer than reckoned moving out is taken to be.</summary>
     public const double PassLagSeconds = 1.0, PassLagShare = 1.3;
@@ -300,30 +360,67 @@ internal static class Rival
     /// <param name="crossM">How far to the left of its route the driver's car is.</param>
     /// <param name="leftM">How far to the left of the route a car's middle may be over the stretch ahead, and <paramref name="rightM"/> to the right.</param>
     /// <param name="straightM">How far on the route first bends.</param>
+    /// <param name="brakeAt">How hard the driver's car brakes at a speed, m/s2, or null for <see cref="FollowBrakeMs2"/>.</param>
     public static (double SideM, double CapMs) Pass(Passing state, ReadOnlySpan<Seen> cars, double speedMs, double freeMs, double crossM,
-                                                    double leftM, double rightM, double straightM, double dt)
+                                                    double leftM, double rightM, double straightM, double dt, Func<double, double>? brakeAt = null)
+    {
+        (double side, double cap) = Choose(state, cars, speedMs, freeMs, crossM, leftM, rightM, straightM, dt, brakeAt);
+        return (KeepLane(cars, crossM, side), cap);
+    }
+
+    /// <summary>Half a car's width and the room kept from a car alongside, middle to middle, m, and how far ahead or behind a car is alongside.</summary>
+    public const double LaneM = 2.4, AlongsideM = 7.0;
+
+    /// <summary>
+    /// The side a driver asks to run at, moved no nearer than <see cref="LaneM"/> to a car alongside it,
+    /// and where it is already nearer, no nearer than it is: a racing line runs across the road, and the
+    /// car being passed followed it into the one beside it, the two side by side into a bend.
+    /// </summary>
+    public static double KeepLane(ReadOnlySpan<Seen> cars, double crossM, double sideM)
+    {
+        double want = sideM;
+        foreach (Seen car in cars)
+        {
+            if (Math.Abs(car.AheadM) > AlongsideM || Math.Abs(car.SideM) < 0.5) continue;
+            double theirs = crossM + car.SideM;
+            if (car.SideM > 0.0 && want > theirs - LaneM) want = Math.Max(theirs - LaneM, Math.Min(crossM, want));
+            if (car.SideM < 0.0 && want < theirs + LaneM) want = Math.Min(theirs + LaneM, Math.Max(crossM, want));
+        }
+        return want;
+    }
+
+    private static (double SideM, double CapMs) Choose(Passing state, ReadOnlySpan<Seen> cars, double speedMs, double freeMs, double crossM,
+                                                       double leftM, double rightM, double straightM, double dt, Func<double, double>? brakeAt)
     {
         state.Rest = Math.Max(state.Rest - Math.Max(dt, 0.0), 0.0);
+        state.Launch = Math.Max(state.Launch - Math.Max(dt, 0.0), 0.0);
         if (state.Side != 0 && (Find(cars, state.Who) is not { } still || still.AheadM < -PassClearM)) state.End();
-        if (state.Side == 0) Start(state, cars, speedMs, freeMs, crossM, leftM, rightM, straightM);
-        if (state.Side == 0) return (0.0, Held(cars, null, crossM, 0.0, speedMs));
+        if (state.Side == 0) Start(state, cars, speedMs, freeMs, crossM, leftM, rightM, straightM, brakeAt);
+        if (state.Side == 0) return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));
 
         Seen car = Find(cars, state.Who)!.Value;
         double lead = Math.Max(car.SpeedMs, 0.0), theirs = crossM + car.SideM;
         bool standing = lead < StandingMs;
         double side = Math.Clamp(theirs + (state.Side * (standing ? StandingSideM : PassSideM)), -rightM, leftM);
-        double others = Held(cars, state.Who, crossM, side, speedMs);
+        double others = Held(cars, state.Who, crossM, side, speedMs, brakeAt);
 
         bool fits = Math.Abs(side - theirs) >= AbreastM + PassMarginM;
         bool open = freeMs - lead >= PassKeepMs && others >= lead + PassKeepMs
                     && (standing || freeMs * (car.AheadM + PassClearM) / Closing(speedMs, freeMs, lead) <= straightM);
         if (car.AheadM > 0.0 && !(fits && (open || car.AheadM <= LevelM))) state.Back = true;
+        if (state.Back && standing)
+        {
+            // There is no dropping back behind a car that stands, which would be waiting for it for good: the pass is over, and the next may take either side.
+            state.End();
+            state.Rest = StandingRestSeconds;
+            return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));
+        }
         if (state.Back)
         {
             if (car.AheadM < TuckM) return (side, Math.Min(others, Math.Max(lead - DropMs, 0.0)));
             state.End();
             state.Rest = RestSeconds;
-            return (0.0, Held(cars, null, crossM, 0.0, speedMs));
+            return (0.0, Held(cars, null, crossM, 0.0, speedMs, brakeAt));
         }
         if (standing)
         {
@@ -335,7 +432,7 @@ internal static class Rival
         // Not held either while it will be out from behind the car before it is up to it.
         double moving = PassLagSeconds + ((AbreastM + PassMarginM - Math.Abs(car.SideM)) / Math.Max(Math.Min(Autopilot.SideRateMs, Autopilot.SideSlope * speedMs), 0.1));
         bool apart = Math.Abs(car.SideM) > AbreastM + PassMarginM || car.AheadM - TuckM > PassLagShare * (speedMs - lead) * moving;
-        return (side, Math.Min(others, apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs)));
+        return (side, Math.Min(others, apart ? double.PositiveInfinity : FollowCap(car.AheadM, 0.0, lead, speedMs, brakeAt)));
     }
 
     private static Seen? Find(ReadOnlySpan<Seen> cars, object? who)
@@ -352,21 +449,23 @@ internal static class Rival
         Math.Max((0.5 * (Math.Max(speedMs, leadMs) + freeMs)) - leadMs, 1.0);
 
     // The most a driver goes at for every car but one: a car is in its way beside where it is or beside where it is going.
-    private static double Held(ReadOnlySpan<Seen> cars, object? but, double crossM, double sideM, double speedMs)
+    private static double Held(ReadOnlySpan<Seen> cars, object? but, double crossM, double sideM, double speedMs, Func<double, double>? brakeAt)
     {
         double cap = double.PositiveInfinity;
         foreach (Seen car in cars)
         {
             if (but is not null && Equals(car.Who, but)) continue;
             double beside = Math.Min(Math.Abs(car.SideM), Math.Abs(crossM + car.SideM - sideM));
-            cap = Math.Min(cap, FollowCap(car.AheadM, beside, car.SpeedMs, speedMs));
+            cap = Math.Min(cap, FollowCap(car.AheadM, beside, car.SpeedMs, speedMs, brakeAt));
         }
         return cap;
     }
 
     private static void Start(Passing state, ReadOnlySpan<Seen> cars, double speedMs, double freeMs, double crossM,
-                              double leftM, double rightM, double straightM)
+                              double leftM, double rightM, double straightM, Func<double, double>? brakeAt)
     {
+        if (state.Launch > 0.0) return;
+
         // Off its line with a car between it and the line, a driver is passing that car whether it chose to or not: the side it is on is kept.
         foreach (Seen car in cars)
         {
@@ -384,11 +483,12 @@ internal static class Rival
             if (car.AheadM <= 0.0 || Math.Min(Math.Abs(car.SideM), Math.Abs(crossM + car.SideM)) > AbreastM) continue;
             if (nearest is not { } n || car.AheadM < n.AheadM) nearest = car;
         }
-        if (nearest is not { } slow) return;
+        // A car waiting behind another is followed: it goes when that one does, or the one it waits for is gone round first.
+        if (nearest is not { } slow || (slow.Queued && slow.SpeedMs < StandingMs)) return;
 
         double lead = Math.Max(slow.SpeedMs, 0.0);
         if (freeMs - lead < PassFasterMs) return;
-        bool holds = FollowCap(slow.AheadM, 0.0, lead, speedMs) < freeMs;
+        bool holds = FollowCap(slow.AheadM, 0.0, lead, speedMs, brakeAt) < freeMs;
         if (!holds && slow.AheadM - GapM > (speedMs - lead) * PassSoonSeconds) return;
         bool standing = lead < StandingMs;
         if (!standing && freeMs * (PullOutSeconds + ((slow.AheadM + PassClearM) / Closing(speedMs, freeMs, lead))) > straightM) return;
@@ -397,8 +497,9 @@ internal static class Rival
         int best = 0;
         foreach (int way in (ReadOnlySpan<int>)[1, -1])
         {
-            // Already to one side of it, that is the side.
-            if (Math.Abs(slow.SideM) > AbreastM && way != (slow.SideM < 0.0 ? 1 : -1)) continue;
+            // Already to one side of it, that is the side, unless it is standing and far enough ahead to cross behind it.
+            if (Math.Abs(slow.SideM) > AbreastM && way != (slow.SideM < 0.0 ? 1 : -1)
+                && !(standing && slow.AheadM > 2.0 * StandingSideM / Autopilot.SideSlopeSlow)) continue;
             double side = theirs + (way * (standing ? StandingSideM : PassSideM));
             double spare = way > 0 ? leftM - side : side + rightM;
             // Round a standing car as far to the side as the road has, if that is far enough to be clear of it.
@@ -418,6 +519,8 @@ internal static class Rival
         foreach (Seen car in cars)
         {
             if (Equals(car.Who, slow.Who) || car.AheadM < -PassBehindM || car.AheadM > slow.AheadM + PassClearM + PassBeyondM) continue;
+            // A car behind in the driver's own lane follows it out, and takes nothing from it.
+            if (car.AheadM < 0.0 && Math.Abs(car.SideM) <= AbreastM) continue;
             if (Math.Abs(crossM + car.SideM - sideM) <= AbreastM + PassMarginM) return true;
         }
         return false;

@@ -100,10 +100,12 @@ internal static class Laps
     /// <param name="jumpZones">Stretches of the route where a crest is not slowed for.</param>
     /// <param name="tune">The driver's settings, where they are not its own.</param>
     /// <param name="insideM">How far inside each edge the racing line keeps, where not the car's own.</param>
+    /// <param name="person">The driver as a person, who is not the same every lap: <see cref="Autopilot.Person"/>.</param>
     public static bool Start(Vehicle craft, IReadOnlyList<int>? through, int laps, double speedMs, double offsetM, double timeoutSeconds,
                              bool place, bool keepRows, bool jumps, out string why, bool racing = false, double push = 0.0,
                              IReadOnlyList<(double From, double To)>? jumpZones = null, Autopilot.Tuning? tune = null, double insideM = 0.0,
-                             IReadOnlyList<double>? nudgesM = null, double offRoadSeconds = Autopilot.OffRoadSeconds)
+                             IReadOnlyList<double>? nudgesM = null, double offRoadSeconds = Autopilot.OffRoadSeconds,
+                             Autopilot.Human? person = null)
     {
         if (Buggies.Of(craft) is not { } car)
         {
@@ -128,7 +130,7 @@ internal static class Laps
 
         LapRow[]? rows = keepRows ? new LapRow[MostRows] : null;
         Autopilot pilot = new(profile, route, surface, craft.TotalMass, gravity, air, laps, speedMs,
-                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new(), OffRoadFor = offRoadSeconds };
+                              timeoutSeconds > 0.0 ? timeoutSeconds : 600.0, rows) { Jumps = jumps, Push = push, JumpZones = jumpZones ?? [], Tune = tune ?? new(), OffRoadFor = offRoadSeconds, Person = person };
 
         if (place) Place(craft, profile, route, surface!);
 

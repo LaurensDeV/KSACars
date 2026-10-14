@@ -17,6 +17,9 @@ internal sealed class TrackWorld(double radiusM, double gravity, double air, Fun
     public double Gravity { get; } = gravity;
     public double Air { get; } = air;
 
+    /// <summary>The same world with its air thinned to a share of what it was.</summary>
+    public TrackWorld Thinner(double share) => new(RadiusM, Gravity, Air * share, height);
+
     public static TrackWorld Earth(Func<double, double, double>? height = null) => new(6_371_000.0, 9.81, 1.225, height ?? Flat);
 
     public static TrackWorld Luna(Func<double, double, double>? height = null) => new(1_737_400.0, 1.62, 0.0, height ?? Flat);

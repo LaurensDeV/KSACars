@@ -144,9 +144,10 @@ internal static class CarPanel
                     ImGui.SameLine(0f, -1f);
                     if (ImGui.Button("Remove opponents", null)) Opponents.Clear();
                 }
-                float pace = (float)(Opponents.Pace * 100.0);
+                // How much slower than the best lap they know of the course they are, to set them to race a player.
+                float gap = (float)(Opponents.Gap * 100.0);
                 ImGui.SetNextItemWidth(170f);
-                if (ImGui.SliderFloat("Opponent pace", ref pace, 0f, 100f, "%.0f%%", ImGuiSliderFlags.None)) Opponents.Pace = pace / 100.0;
+                if (ImGui.SliderFloat("Opponents slower by", ref gap, 0f, (float)(Rival.MostGap * 100.0), "%.0f%%", ImGuiSliderFlags.None)) Opponents.Gap = gap / 100.0;
                 if (Opponents.Message.Length > 0) ImGui.TextDisabled(Opponents.Message);
                 if (Practising.Message.Length > 0) ImGui.TextDisabled(Practising.Message);
 

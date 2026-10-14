@@ -8,13 +8,11 @@ public class RivalTests
     [Fact]
     public void ASeedIsTheSameDriverEveryTimeAndAnotherSeedAnother()
     {
-        Rival.Driver a = Rival.Of(3, 0.3), again = Rival.Of(3, 0.3), b = Rival.Of(4, 0.3);
-        Assert.Equal(a.Push, again.Push);
+        Rival.Driver a = Rival.Of(3), again = Rival.Of(3), b = Rival.Of(4);
+        Assert.Equal(a.Gap, again.Gap);
         Assert.Equal(a.Pace, again.Pace);
-        Assert.Equal(a.LineM, again.LineM);
-        Assert.NotEqual(a.Push, b.Push);
+        Assert.NotEqual(a.Gap, b.Gap);
         Assert.NotEqual(a.Pace, b.Pace);
-        Assert.NotEqual(a.LineM, b.LineM);
     }
 
     [Fact]
@@ -23,19 +21,32 @@ public class RivalTests
         double least = 1.0, most = 0.0;
         for (int seed = 1; seed <= 200; seed++)
         {
-            Rival.Driver d = Rival.Of(seed, 0.5);
-            Assert.InRange(d.Push, 0.5 - Rival.PushSpread, 0.5 + Rival.PushSpread);
+            Rival.Driver d = Rival.Of(seed);
+            Assert.InRange(d.Gap, 0.0, Rival.GapSpread);
             Assert.Equal(Rival.Places, d.Pace.Length);
-            Assert.Equal(Rival.Places, d.LineM.Length);
             Assert.All(d.Pace, p => Assert.InRange(p, Rival.PaceLow, Rival.PaceHigh));
-            Assert.All(d.LineM, l => Assert.InRange(l, -Rival.LineSpreadM, Rival.LineSpreadM));
             // from one place to the next a driver changes its mind only so far
             for (int i = 1; i < Rival.Places; i++) Assert.True(Math.Abs(d.Pace[i] - d.Pace[i - 1]) <= 0.26 * (Rival.PaceHigh - Rival.PaceLow));
-            (least, most) = (Math.Min(least, d.Push), Math.Max(most, d.Push));
+            (least, most) = (Math.Min(least, d.Gap), Math.Max(most, d.Gap));
         }
-        Assert.True(most - least > Rival.PushSpread, "two hundred drivers are all of a pace");
-        Assert.InRange(Rival.Of(1, 0.0).Push, 0.0, Rival.PushSpread);
-        Assert.InRange(Rival.Of(1, 1.0).Push, 1.0 - Rival.PushSpread, 1.0);
+        Assert.True(most - least > 0.75 * Rival.GapSpread, "two hundred drivers are all of a pace");
+    }
+
+    [Fact]
+    public void AGapIsReadBetweenTheSlowingsALapWasMeasuredAtAndReckonedWhereItWasNot()
+    {
+        (double, double)[] slowed = [(0.95, 0.02), (0.9, 0.05), (0.8, 0.12)];
+        Assert.Equal(1.0, Rival.Slowing(slowed, 0.0), 12);
+        Assert.Equal(0.975, Rival.Slowing(slowed, 0.01), 12);
+        Assert.Equal(0.95, Rival.Slowing(slowed, 0.02), 12);
+        Assert.Equal(0.85, Rival.Slowing(slowed, 0.085), 12);
+        // past the last measured, on at the reckoned rate, and never under the least
+        Assert.Equal(0.8 - (0.04 / Rival.GapPerSlowing), Rival.Slowing(slowed, 0.16), 12);
+        Assert.Equal(Rival.LeastSlowing, Rival.Slowing(slowed, 5.0), 12);
+        // nothing measured, all of it reckoned
+        Assert.Equal(1.0 - (0.04 / Rival.GapPerSlowing), Rival.Slowing([], 0.04), 12);
+        // a slowing that gave up nothing, as on a course the car is flat out round, is passed over and the rest reckoned
+        Assert.Equal(1.0 - (0.0001 / Rival.GapPerSlowing), Rival.Slowing([(0.95, 0.0), (0.9, 0.0)], 0.0001), 12);
     }
 
     [Fact]
@@ -121,11 +132,11 @@ public class RivalTests
     }
 
     // An opponent with nobody in its way, lapped twice in the rig at the game's steps.
-    private static AutopilotTests.Lap Raced(Circuit circuit, TrackCar car, Rival.Learnt? learnt, int seed, double pace)
+    private static AutopilotTests.Lap Raced(Circuit circuit, TrackCar car, Rival.Learnt? learnt, int seed, double gap)
     {
         TrackWorld world = TrackWorld.Earth();
         AutopilotTests.Track track = new(world, circuit, world.Surface(circuit));
-        Rival.Way way = Rival.Drive(learnt, seed, pace, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName);
+        Rival.Way way = Rival.Drive(learnt, seed, gap, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName);
         Route route = Route.Of(circuit, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM, null, 0.0,
                                out string why, Autopilot.TurnRadius(car.Profile), way.InsideM > 0.0 ? way.InsideM : Autopilot.RaceInside(car.Profile),
                                way.LineM) ?? throw new InvalidOperationException(why);
@@ -147,19 +158,19 @@ public class RivalTests
         TrackCar car = TrackCar.All.Single(c => c.Profile.DisplayName == carName);
 
         double before = double.MaxValue;
-        foreach (double pace in new[] { 0.0, 0.5, 1.0 })
+        foreach (double gap in new[] { 0.2, 0.1, 0.0 })
         {
             foreach (int seed in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
             {
-                AutopilotTests.Lap lap = Raced(circuit, car, learnt, seed, pace);
-                Assert.True(lap.End == LapEnd.Finished && lap.Summary.OffAsphaltSeconds == 0.0, $"pace {pace}, opponent {seed}: {lap.Told}");
+                AutopilotTests.Lap lap = Raced(circuit, car, learnt, seed, gap);
+                Assert.True(lap.End == LapEnd.Finished && lap.Summary.OffAsphaltSeconds == 0.0, $"gap {gap}, opponent {seed}: {lap.Told}");
             }
-            double took = Raced(circuit, car, learnt, 1, pace).Summary.LastLapSeconds;
-            Assert.True(took < before, $"pace {pace} took {took:F1} s, no quicker than the {before:F1} s of the pace before");
+            double took = Raced(circuit, car, learnt, 1, gap).Summary.LastLapSeconds;
+            Assert.True(took < before, $"gap {gap} took {took:F1} s, no quicker than the {before:F1} s of the gap before");
             before = took;
         }
         // with a lap to go by an opponent is quicker than without, or the lap is not worth coming with
-        double without = Raced(circuit, car, null, 1, 1.0).Summary.LastLapSeconds;
+        double without = Raced(circuit, car, null, 1, 0.0).Summary.LastLapSeconds;
         Assert.True(before < without - 1.0, $"{before:F1} s with the lap and {without:F1} s without");
     }
 
@@ -196,16 +207,16 @@ public class RivalTests
         AutopilotTests.Lap cautious = RacedBlind(track, car, null);
         if (!Clean(cautious)) return;
 
-        foreach (double pace in new[] { 0.5, 1.0 })
+        foreach (double gap in new[] { 0.1, 0.0 })
         {
             foreach (int seed in new[] { 1, 2, 3, 4, 5 })
             {
-                AutopilotTests.Lap lap = RacedBlind(track, car, Rival.Drive(null, seed, pace, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName));
-                Assert.True(Clean(lap), $"pace {pace}, opponent {seed}: {lap.Told}");
+                AutopilotTests.Lap lap = RacedBlind(track, car, Rival.Drive(null, seed, gap, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName));
+                Assert.True(Clean(lap), $"gap {gap}, opponent {seed}: {lap.Told}");
             }
         }
         // the quickest of five flat out is no slower than the cautious driver, to within what its own caution in a bend costs it
-        double best = Enumerable.Range(1, 5).Min(seed => RacedBlind(track, car, Rival.Drive(null, seed, 1.0, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName)).Summary.Seconds);
+        double best = Enumerable.Range(1, 5).Min(seed => RacedBlind(track, car, Rival.Drive(null, seed, 0.0, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName)).Summary.Seconds);
         Assert.True(best < cautious.Summary.Seconds * 1.03, $"{best:F1} s flat out and {cautious.Summary.Seconds:F1} s cautious");
     }
 
@@ -242,5 +253,41 @@ public class RivalTests
         Assert.Equal(Enumerable.Range(1, 9), grid.Order());
         for (int i = 1; i < grid.Length; i++) Assert.True(Rival.Strength(grid[i - 1]) >= Rival.Strength(grid[i]));
         Assert.Equal(grid, Rival.Gridded(9));
+    }
+
+    // Each lap's time, racing blind round a course with straights at the game's steps, as a person or not.
+    private static (AutopilotTests.Lap Lap, List<double> Laps) Lapped(Autopilot.Human? person)
+    {
+        AutopilotTests.Track track = ExtremeLapTests.Laid("Speedway");
+        TrackCar car = TrackCar.F2004;
+        Rival.Way way = Rival.Drive(null, 1, 0.0, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName);
+        Route route = Route.Of(track.Circuit, TrackWorld.DirOf, track.World.RadiusM, track.World.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM, null, 0.0,
+                               out string why, Autopilot.TurnRadius(car.Profile), way.InsideM, way.LineM) ?? throw new InvalidOperationException(why);
+        List<double> laps = [];
+        AutopilotTests.Lap lap = AutopilotTests.Drive(car, track, route, ExtremeLapTests.GameSteps[0], laps: 6, timeout: 900.0, pattern: ExtremeLapTests.GameSteps,
+                                                      tune: way.Tune, person: person, each: (_, pilot) =>
+                                                      {
+                                                          if (pilot.Summary.Laps > laps.Count) laps.Add(pilot.Summary.LastLapSeconds);
+                                                      });
+        return (lap, laps);
+    }
+
+    [Fact]
+    public void APersonLapsUnlikeItselfButAlikeEveryRaceNeverQuickerAndOnTheRoad()
+    {
+        (AutopilotTests.Lap steady, List<double> same) = Lapped(null);
+        (AutopilotTests.Lap person, List<double> laps) = Lapped(new Autopilot.Human(3, 0.015, 1.0));
+        (_, List<double> again) = Lapped(new Autopilot.Human(3, 0.015, 1.0));
+        Assert.Equal(LapEnd.Finished, person.End);
+        Assert.Equal(0.0, person.Summary.OffAsphaltSeconds);
+        Assert.Equal(0, person.Rig.HullDownSteps);
+
+        // the same person laps the same laps every race, and none of them alike
+        Assert.Equal(laps, again);
+        Assert.True(laps.Skip(1).Max() - laps.Skip(1).Min() > 0.05, $"every lap alike: {string.Join(", ", laps.Select(t => t.ToString("F2")))}");
+        // a flying lap is never quicker than the driver who is the same every lap, and a fluffed exit is had nearly every lap
+        for (int i = 1; i < laps.Count; i++) Assert.True(laps[i] >= same[i] - 0.05, $"lap {i}: {laps[i]:F2} s, where the same driver takes {same[i]:F2}");
+        Assert.InRange(person.Summary.Fumbles, laps.Count - 1, laps.Count + 1);
+        Assert.Equal(0, steady.Summary.Fumbles);
     }
 }

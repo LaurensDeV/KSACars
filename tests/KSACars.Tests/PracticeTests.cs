@@ -48,7 +48,7 @@ public class PracticeTests
         for (int i = 1; i < given.Count; i++) Assert.True(given[i].Seconds < given[i - 1].Seconds, $"lap {i} given out is no quicker than the one before");
         // and past the first it is a lap learnt place by place, with the driver's settings its own
         if (laps >= Practice.MostDrives) Assert.True(found.Tune.Pace.Distinct().Count() > 4, "every place has much the same pace");
-        Assert.NotEqual(Rival.Racing.Tune.LookAheadSeconds, found.Tune.LookAheadSeconds);
+        Assert.NotEqual((Rival.Racing.Tune with { Pace = [] }).Written(), (found.Tune with { Pace = [] }).Written());
 
         // and what it found is clean for a lap of it driven afresh
         (bool clean, double seconds) = Practice.Lap(car, world, track.Road, [], route, found.Tune, [1.0 / 60.0]);
@@ -60,7 +60,7 @@ public class PracticeTests
         Assert.Equal(found.Tune.Written(), Rival.Read(learnt.ToJson(), out string unread)!.Tune.Written());
         foreach (int seed in new[] { 1, 2, 3, 4, 5, 6 })
         {
-            Rival.Way way = Rival.Drive(learnt, seed, 1.0, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName);
+            Rival.Way way = Rival.Drive(learnt, seed, 0.0, Autopilot.RaceInside(car.Profile), car.Profile.DisplayName);
             Route own = Route.Of(circuit, TrackWorld.DirOf, world.RadiusM, world.HeightAt, TrackWorld.LiftM, TrackWorld.SpacingM, null, 0.0,
                                  out string why, Autopilot.TurnRadius(car.Profile), way.InsideM, way.LineM) ?? throw new InvalidOperationException(why);
             (bool stays, double took) = Practice.Lap(car, world, track.Road, [], own, way.Tune, [0.02]);

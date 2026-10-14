@@ -9,7 +9,7 @@ namespace KSACars;
 /// driver, <see cref="Autopilot"/>, from the moment the player's own car sets off.
 ///
 /// <para>Each is a driver of its own, <see cref="Rival.Of"/> its number, so no two lap alike and the
-/// same one is the same every race. It holds back behind a car that is in its way and goes round
+/// same one is the same every race, and none laps alike twice. It holds back behind a car that is in its way and goes round
 /// one where <see cref="Rival.Pass"/> finds the road for it. Knocked off the road it drives itself back on, and on its roof it is set on its wheels
 /// to; only one that cannot, in a quarter of a minute, or is stuck, is stood back on the road. Asked from the panel, which is in the GUI pass, and done from the frame hook.</para>
 /// </summary>
@@ -42,6 +42,12 @@ internal static class Opponents
 
     // Held to less than this by a car in its way, an opponent standing still is waiting and not stuck.
     private const double WaitingMs = 3.0;
+
+    // Seconds from the start in which no opponent begins a pass.
+    private const double LaunchSeconds = 8.0;
+
+    // How much slower than the last a driver may take every bend of a lap, half a normal of it, and the chance a lap that it fluffs the exit of one bend.
+    private const double LapSpread = 0.015, ExitChance = 0.25;
 
     // Frames a car set on its wheels is left to settle before it drives on, and frames of racing after which it is righted afresh the next time.
     private const int RightedFrames = 90, ForgivenFrames = 1200;
@@ -76,14 +82,17 @@ internal static class Opponents
         public int Frames { get; set; }
 
         public Rival.Passing Passing { get; set; } = new();
+
+        // The most it was let go at last frame, for a car in its way.
+        public double Cap { get; set; } = double.PositiveInfinity;
     }
 
     private static readonly List<Car> Cars = [];
     private static bool _add, _clear, _warmedThisFrame;
     private static int _made;
 
-    /// <summary>How hard an opponent drives, 0 to 1: how much of a lap learnt of the course it takes, or with none the driver's push. Taken as each sets off.</summary>
-    public static double Pace { get; set; } = 0.7;
+    /// <summary>How much slower than the best lap known of the course the opponents are asked to be, as a share of it. Taken as each sets off.</summary>
+    public static double Gap { get; set; } = Rival.DefaultGap;
 
     public static string Message { get; private set; } = "";
 
@@ -201,6 +210,7 @@ internal static class Opponents
             if (KsaWorld.ControlledVehicle is not { } flown || Buggies.Of(flown) is not { PlaceValid: true } mine || mine.SpeedMs < SetOffMs) return;
             Message = SetOff(car) is { Length: > 0 } why ? $"{KsaWorld.DisplayName(car.Craft)} would not start: {why}"
                                                            : $"{KsaWorld.DisplayName(car.Craft)} is racing";
+            car.Passing.Launch = LaunchSeconds;
             return;
         }
 
@@ -232,6 +242,7 @@ internal static class Opponents
             }
 
             (double side, double cap) = InTheWay(car, buggy, KsaWorld.IsPaused ? 0.0 : Program.GetPlayerDeltaTime());
+            car.Cap = cap;
             Laps.Cap(car.Craft, cap);
             Laps.Side(car.Craft, side);
             if (cap < WaitingMs) Laps.Waiting(car.Craft);
@@ -279,7 +290,7 @@ internal static class Opponents
     // Has a car stand on its brakes, to be stood back on the road once it has.
     private static void PutBack(Car car, string why)
     {
-        (car.Stage, car.Frames, car.Still) = (Stage.Recovering, 0, 0.0);
+        (car.Stage, car.Frames, car.Still, car.Cap) = (Stage.Recovering, 0, 0.0, double.PositiveInfinity);
         Buggies.Hold(car.Craft, new DriveInput(0.0, 0.0, Brake: 1.0), 60.0);
         Log.Info($"opponent: {KsaWorld.DisplayName(car.Craft)} could not drive on, {why}; it will be put back on the road");
     }
@@ -287,7 +298,7 @@ internal static class Opponents
     // Starts a car's lap as the driver its number is; what went wrong, or nothing.
     private static string SetOff(Car car)
     {
-        (car.Stage, car.Frames, car.Still, car.Passing) = (Stage.Racing, 0, 0.0, new());
+        (car.Stage, car.Frames, car.Still, car.Passing, car.Cap) = (Stage.Racing, 0, 0.0, new(), double.PositiveInfinity);
         if (Buggies.Of(car.Craft) is not { } buggy) return "it is no longer a car";
         BuggyProfile profile = buggy.Drive.Profile;
 
@@ -295,16 +306,16 @@ internal static class Opponents
         Rival.Learnt? learnt = Learnt(profile);
         if (!Laps.Start(car.Craft, null, ManyLaps, 0.0, 0.0, Seconds, place: false, keepRows: false, jumps: false, out string why,
                         racing: true, push: way.Push, tune: way.Tune, insideM: way.InsideM, nudgesM: way.LineM,
-                        offRoadSeconds: DriveBackSeconds))
+                        offRoadSeconds: DriveBackSeconds, person: new Autopilot.Human(car.Seed, LapSpread, ExitChance)))
         {
             return why;
         }
         if (!car.Told)
         {
             car.Told = true;
-            Log.Info($"opponent: {KsaWorld.DisplayName(car.Craft)} drives at {way.Tune.GripShare:F2} of the grip, "
-                     + (learnt is null ? $"push {way.Push:F2}, with no lap of this course to go by"
-                                       : $"towards a lap of {learnt.Seconds:F1} s"));
+            Log.Info(FormattableString.Invariant($"opponent: {KsaWorld.DisplayName(car.Craft)} drives every bend at {way.Tune.Pace.Min():F3} to {way.Tune.Pace.Max():F3}, ")
+                     + (learnt is null ? "with no lap of this course to go by"
+                                       : FormattableString.Invariant($"by a lap of {learnt.Seconds:F1} s measured at {learnt.Slowed.Length} slowings")));
         }
         return "";
     }
@@ -314,7 +325,7 @@ internal static class Opponents
         Practising.LapOf(profile) ?? (Courses.Laid is { } course ? CircuitLibrary.LapOf(course, profile.DisplayName) : null);
 
     private static Rival.Way Way(Car car, BuggyProfile profile) =>
-        Rival.Drive(Learnt(profile), car.Seed, Pace, Autopilot.RaceInside(profile), profile.DisplayName);
+        Rival.Drive(Learnt(profile), car.Seed, Gap, Autopilot.RaceInside(profile), profile.DisplayName);
 
     // Where across the road a car is to run and the most it may go at, for the cars round it, the flown one among them.
     private static (double SideM, double CapMs) InTheWay(Car car, Buggies.Entry mine, double dt)
@@ -325,14 +336,17 @@ internal static class Opponents
         foreach (Buggies.Entry other in Buggies.Cars)
         {
             if (ReferenceEquals(other.Craft, car.Craft) || !other.PlaceValid) continue;
-            if (Rival.See(other.Craft, pilot, mine.PlaceCcf, mine.AheadCcf, other.PlaceCcf, other.AheadCcf, other.SpeedMs, LookM) is { } seen) Seen.Add(seen);
+            if (Rival.See(other.Craft, pilot, mine.PlaceCcf, mine.AheadCcf, other.PlaceCcf, other.AheadCcf, other.SpeedMs, LookM) is not { } seen) continue;
+            // An opponent held to a crawl by a car in its own way is queued behind it, and is followed rather than gone round.
+            bool queued = Cars.Any(c => ReferenceEquals(c.Craft, other.Craft) && c.Stage == Stage.Racing && c.Cap < WaitingMs);
+            Seen.Add(seen with { Queued = queued });
         }
         ReadOnlySpan<Rival.Seen> cars = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(Seen);
 
         // With no driver, or one not yet stepped, nothing is known of the road: no room either side is no pass.
         double free = pilot?.FreeMs ?? 0.0, left = 0.0, right = 0.0, straight = 0.0;
         pilot?.RoadAhead(Rival.RoomOver(cars, mine.SpeedMs), Rival.StraightPerM(Math.Max(free, mine.SpeedMs)), out left, out right, out straight);
-        return Rival.Pass(car.Passing, cars, mine.SpeedMs, free, pilot?.CrossM ?? 0.0, left, right, straight, dt);
+        return Rival.Pass(car.Passing, cars, mine.SpeedMs, free, pilot?.CrossM ?? 0.0, left, right, straight, dt, pilot is null ? null : pilot.BrakeAt);
     }
 
     private static readonly List<Rival.Seen> Seen = [];
