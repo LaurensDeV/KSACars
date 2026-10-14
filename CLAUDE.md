@@ -857,7 +857,11 @@ in any stretch that long, and a field raced by hand queued behind a car standing
 queue that was gone round stood in two columns. A pass of a standing car that cannot be finished is over,
 where one of a moving car drops back behind it, which behind a car that stands is waiting for good; the car
 behind a driver in its own lane does not take the side it would go to; and a standing car far enough ahead
-may be gone round on either side, crossing behind it.
+may be gone round on either side, crossing behind it. **Cars standing side by side are gone round as one**
+(`Rival.TogetherM`, within 8 m along the road of each other): the driver runs 4.5 m outside the furthest of
+them on its side, is held by none of them, and creeps at the pace the nearest not yet cleared sets. Going
+round the nearer of two, the other was where it would go and in front of where it was, and in a race the
+player drove five opponents stood in a queue behind the two for good.
 
 **A driver keeps a car's width from a car alongside** (`Rival.KeepLane`): the side it runs at comes no
 nearer than 2.4 m, middle to middle, to a car within 7 m ahead or behind, and where it is nearer already,
