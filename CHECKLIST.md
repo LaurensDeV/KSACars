@@ -52,6 +52,12 @@ none of it has been seen as **KSACars** yet:
       click asks, refused in both while racing, and the guest still put in its own after loading
 - [x] Joining by the code alone from behind the host's own router (same games, the code 3DH8B-K7GTG): the guest
       found the host on this machine and was racing in its world 5 s after Join, as one racer
+- [x] The panel's Race online folded until opened, its steps for a host and a guest, the streaming warning in
+      red, and a guest's course, opponent and road-building controls greyed or gone (same games, read off the
+      windows)
+- [x] Name tags over the other racer's car, with the interface up and hidden; the countdown and the F2 note at
+      the start, with the interface hidden (same games)
+- [x] A host's world at full speed with a guest's car waiting on the grid (same games: a twentieth of it before)
 - [ ] A kitten on EVA turned away from another racer's car, and the craft mover passing over it, by hand
 - [ ] A third racer: its car made in the worlds of those already in
 - [ ] Racing online between two machines, one hosting and one joining with its code across the internet
