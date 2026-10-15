@@ -64,7 +64,7 @@ internal static class Multiplayer
     private static double _sendNext;
     private static int _index = -1, _routeGeneration = -1;
     private static uint _raceSeen;
-    private static bool _held;
+    private static bool _held, _routerTold;
     private static string? _layAsked;
     private static string _hashOf = "", _hash = "";
 
@@ -226,7 +226,7 @@ internal static class Multiplayer
         foreach (Remote r in Remotes.Values) Remove(r);
         Remotes.Clear();
         ReleaseHold();
-        (_raceSeen, _layAsked, OnTheCourse, Trouble, _index) = (0, null, false, "", -1);
+        (_raceSeen, _layAsked, OnTheCourse, Trouble, _index, _routerTold) = (0, null, false, "", -1, false);
         if (was && !quiet) Say("out of the race");
     }
 
@@ -252,6 +252,11 @@ internal static class Multiplayer
 
             s.Update();
             foreach (string said in s.Said()) Say(said);
+            if (!_routerTold && _opening is { IsCompleted: true })
+            {
+                _routerTold = true;
+                Say($"router: {RouterSays}{(HostCode is { } code ? $"; code {code.Code}" : "")}");
+            }
 
             Vehicle? flown = KsaWorld.ControlledVehicle is { IsDisposed: false } v ? v : null;
             Buggies.Entry? mine = flown is null ? null : Buggies.Of(flown);
