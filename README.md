@@ -165,8 +165,9 @@ Nobody needs an account or anything else installed. Everyone races in the host's
 a copy of it, with your car already on the grid, in place of the world you had, so save first. The
 host's own course comes with it, even one the host drew themselves.
 
-1. The host lays a course and presses **Host a race**. The panel shows a code of ten letters and digits
-   with a **Copy** button: send it to the others however you like.
+1. The host lays a course and presses **Host a race**. The panel has a code of ten letters and digits,
+   hidden until you press the eye beside it, and a **Copy** button that copies it either way: send it to
+   the others however you like.
 2. A guest presses **Join a race**, pastes the host's code and presses **Join**. The host's game stops for
    a moment while its world is sent; the guest's loads it and is put in its car.
 3. When everyone is in, the host sets the laps and presses **Start race**. Every car goes to its box on

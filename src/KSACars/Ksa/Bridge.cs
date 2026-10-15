@@ -380,6 +380,7 @@ internal sealed class Bridge
         }
         if (command.Flag("open_panel", false)) (CarPanel.Visible, CarPanel.OpenOnline) = (true, true);
         if (command.Has("hide_ui")) Program.DrawUI = !command.Flag("hide_ui", false);
+        if (command.Has("show_code")) CarPanel.ShowCode = command.Flag("show_code", false);
         if (command.Flag("stop", false)) Multiplayer.Stop();
         if (command.Flag("host", false)) Multiplayer.Host();
         if (command.Flag("ready", false)) Multiplayer.Ready();

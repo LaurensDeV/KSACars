@@ -337,13 +337,42 @@ internal static class CarPanel
         else ImGui.TextWrapped($"{number}. {text}");
     }
 
+    // Hidden until asked for, so a code is not on a stream by accident; Copy copies it either way.
+    private static bool _showCode;
+
+    /// <summary>Whether the codes on the panel are shown, as its eye button sets it: for the bridge.</summary>
+    public static bool ShowCode { get => _showCode; set => _showCode = value; }
+
     private static void CodeLine(string id, string code)
     {
-        Shown.SetValue(code);
+        Shown.SetValue(_showCode ? code : "*****-*****");
         ImGui.SetNextItemWidth(150f);
         ImGui.InputText(id, Shown, ImGuiInputTextFlags.ReadOnly);
         ImGui.SameLine(0f, -1f);
+        if (Eye($"##eye{id}", _showCode)) _showCode = !_showCode;
+        ImGui.SetItemTooltip(_showCode ? "Hide the code" : "Show the code");
+        ImGui.SameLine(0f, -1f);
         if (ImGui.Button($"Copy{id}", null)) ImGui.SetClipboardText(code);
+    }
+
+    private static readonly ImColor8 EyeInk = new(235, 235, 235, 255);
+
+    // A button with an eye drawn on it, struck through while what it shows is hidden: the panel's font has no eye of its own.
+    private static bool Eye(string id, bool open)
+    {
+        float h = ImGui.GetFrameHeight();
+        float2 size = new(h * 1.5f, h);
+        bool pressed = ImGui.Button(id, size);
+        float2 min = ImGui.GetItemRectMin(), max = ImGui.GetItemRectMax();
+        float2 c = new((min.X + max.X) / 2f, (min.Y + max.Y) / 2f);
+        float w = h * 0.5f, lid = h * 0.32f;
+        ImDrawListPtr draw = ImGui.GetWindowDrawList();
+        float2 left = new(c.X - w, c.Y), right = new(c.X + w, c.Y);
+        draw.AddBezierQuadratic(left, new float2(c.X, c.Y - (2f * lid)), right, EyeInk, 1.5f);
+        draw.AddBezierQuadratic(left, new float2(c.X, c.Y + (2f * lid)), right, EyeInk, 1.5f);
+        draw.AddCircleFilled(c, h * 0.16f, EyeInk);
+        if (!open) draw.AddLine(new float2(c.X - (w * 0.8f), c.Y + (h * 0.32f)), new float2(c.X + (w * 0.8f), c.Y - (h * 0.32f)), EyeInk, 1.8f);
+        return pressed;
     }
 
     private static void Recent(int lines)
