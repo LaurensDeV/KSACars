@@ -102,8 +102,13 @@ internal static class CarPanel
                 if (!ImGui.IsItemActive()) _rockWeight = (float)(KsaWorld.RockWeight * 100.0);
             }
 
-            bool chasing = ChaseCamera.On;
-            if (ImGui.Checkbox("Chase camera", ref chasing)) ChaseCamera.Chosen = chasing;
+            // The gamepad's Back steps through the same four.
+            ImGui.Text("Camera");
+            foreach (ChaseMode mode in Enum.GetValues<ChaseMode>())
+            {
+                ImGui.SameLine(0f, -1f);
+                if (ImGui.RadioButton($"{mode}##camera", ChaseCamera.Mode == mode)) ChaseCamera.Choose(mode);
+            }
 
             bool moving = mover.Enabled;
             if (ImGui.Checkbox("Move craft with the mouse", ref moving)) mover.Enabled = moving;

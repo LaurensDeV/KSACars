@@ -82,4 +82,19 @@ public static class ChaseView
     /// <summary>The view's elevation a frame on with a stick pushed away, which lowers it, or pulled back.</summary>
     public static double Tilt(double elevation, double stickY, double dt) =>
         Math.Clamp(elevation - (stickY * StickRadPerSec * dt), HighestRad, LowestRad);
+
+    /// <summary>How far behind the car the chase stands, in KSA's orbit distance power: the craft's radius times this, before speed pulls it back.</summary>
+    public static double DistancePower(ChaseMode mode) => mode switch
+    {
+        ChaseMode.Close => 1.5,
+        ChaseMode.Medium => 2.2,
+        ChaseMode.Far => 3.2,
+        _ => double.NaN,
+    };
+
+    /// <summary>The mode after this one, as a button steps through them: close, medium, far, free, and round again.</summary>
+    public static ChaseMode Next(ChaseMode mode) => (ChaseMode)(((int)mode + 1) % 4);
 }
+
+/// <summary>Where the camera is while a car is flown: behind it close, medium or far, or free, KSA's own orbit view.</summary>
+public enum ChaseMode { Close, Medium, Far, Free }

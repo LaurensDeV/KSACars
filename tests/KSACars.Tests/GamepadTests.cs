@@ -110,4 +110,14 @@ public class GamepadTests
             Assert.InRange(Math.Abs(elevation), 0.0, ChaseView.MostShakeRad);
         }
     }
+
+    [Fact]
+    public void BackStepsThroughTheFourCameraModesAndEachChaseIsFurtherThanTheLast()
+    {
+        Assert.Equal([ChaseMode.Medium, ChaseMode.Far, ChaseMode.Free, ChaseMode.Close],
+                     new[] { ChaseMode.Close, ChaseMode.Medium, ChaseMode.Far, ChaseMode.Free }.Select(ChaseView.Next));
+        Assert.True(ChaseView.DistancePower(ChaseMode.Close) < ChaseView.DistancePower(ChaseMode.Medium));
+        Assert.True(ChaseView.DistancePower(ChaseMode.Medium) < ChaseView.DistancePower(ChaseMode.Far));
+        Assert.True(double.IsNaN(ChaseView.DistancePower(ChaseMode.Free)));
+    }
 }

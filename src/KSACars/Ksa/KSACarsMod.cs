@@ -118,6 +118,7 @@ public sealed class KSACarsMod
             CarPanel.Draw(_mover, _roadEditor);
             NameTags.Draw();
             StartLights.Draw();
+            ChaseCamera.DrawNote();
             _roadEditor.Update();
             // After the panel, so a click on its checkbox is the panel's and not the world's; and
             // here rather than in the frame hook, which is past the point gizmos are drawn from.

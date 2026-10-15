@@ -197,7 +197,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Hatch.cs` | the iris over each thruster — **where each of its six blades is, how it is turned and how big it is drawn** as it opens, and when its rocket may fire |
 | `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
 | `Sim/Gamepad.cs` | a gamepad as a car's controls: the triggers as throttle and brake, the left stick as steer and the right as the pitch and roll keys, **each with its dead centre taken out and the rest stretched to full**, added to the keys, and which buttons went down since the read before |
-| `Sim/ChaseView.cs` | a view that stays behind a car: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, a stick to look round from there, and what speed does to it: a wider field of view, further back, lower, and a shake near 65 m/s |
+| `Sim/ChaseView.cs` | a view that stays behind a car, close, medium or far, or none, the four modes the gamepad's Back steps through: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, a stick to look round from there, and what speed does to it: a wider field of view, further back, lower, and a shake near 65 m/s |
 | `Sim/TerrainRay.cs` | where a ray from the eye first goes under the ground, walked out along it — **not the mean sphere's hit**, which lands behind a hill seen side-on |
 | `Sim/TerrainMask.cs` | the stretch of a line that lies below a body's highest ground, which is all of it the terrain ray has to walk |
 | `Sim/CursorAim.cs` | the cursor, from window pixels to the framebuffer pixels a camera's ray is asked for in |
@@ -280,7 +280,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/GamepadInput.cs` | the first gamepad SDL or GLFW knows, **read from the frame hook and handed to the physics window**, for the car being flown alone; KSA reads a gamepad for its menus only. Its buttons do what the boost, RCS and engine keys and the panel's Unflip and headlights do. **A Steam Controller has been seen read through SDL; no axis or button has been checked** |
-| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown and turned by a gamepad's right stick: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends, as are the field of view and the distance that speed changes; on while a gamepad is read unless the panel's Chase camera says otherwise |
+| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown, at the distance of the mode chosen on the panel or with the gamepad's Back, which is said on the screen for a moment, and turned by a gamepad's right stick: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends, as are the field of view and the distance that speed changes; at medium while a gamepad is read unless the panel's Camera or Back says otherwise |
 | `Ksa/SdlPad.cs` | a gamepad through SDL where a `Native/SDL3` is beside the mod, for the pads GLFW cannot see, a Steam Controller among them; without it `GamepadInput` reads GLFW's. **Steam, while it runs, also turns a Steam Controller's buttons into keys**, which the mod cannot stop |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
 | `Ksa/LaunchPads.cs` | a body's launch pads as the colliders KSA stands on each, posed as KSA poses them, so a wheel on a pad is sprung against the pad |
@@ -1332,7 +1332,8 @@ has to be reached. A state is never resent, being stale before a resend would co
 **The start is on the host's clock.** A guest measures the host's clock against its own by the quickest
 ping it has had answered, so the lights go out together in every game; at a start each car is stood in
 its box of the grid, which `Opponents` then leaves free, held on its brakes, and let go. Every racer's
-interface is hidden at the start, as F2 hides it, so the racing display takes its place, and
+interface is hidden at the start, as F2 hides it, so the racing display takes its place, the chase camera is
+switched on, and
 `Ksa/StartLights.cs` counts the seconds down large in the middle of every screen, with a note for ten seconds
 that F2 has the interface back; `Ksa/NameTags.cs` puts each other racer's name over their car. **Seen between
 two copies on one machine**: the count and the note with the interface hidden, the lights out 7 ms apart.

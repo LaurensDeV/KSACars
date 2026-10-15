@@ -203,6 +203,8 @@ internal sealed class Bridge
     {
         if (CraftNamed(command.String("craft")) is not { } craft) return Failed("no such craft");
         if (command.Flag("focus", false)) KsaWorld.GoTo(craft);
+        // A camera mode, as the gamepad's Back or the panel chooses one: close, medium, far or free.
+        if (command.String("camera") is { Length: > 0 } cameraMode && Enum.TryParse(cameraMode, ignoreCase: true, out ChaseMode chosenMode)) ChaseCamera.Choose(chosenMode);
         if (command.Has("cam_elevation_deg") || command.Has("cam_distance"))
         {
             // The orbit camera on whatever is being flown, lifted out of the grass to see a car's crew. The

@@ -109,6 +109,7 @@ internal static class GamepadInput
         if (pressed.HasFlag(PadButtons.X) && car.Drive.Profile.HasDownforce) car.Downforce = !car.Downforce;
         if (pressed.HasFlag(PadButtons.Y)) Buggies.Right(craft);
         if (pressed.HasFlag(PadButtons.DpadUp)) car.Beam = (BeamSetting)(((int)car.Beam + 1) % 3);
+        if (pressed.HasFlag(PadButtons.Back)) ChaseCamera.Cycle();
         if (pressed.HasFlag(PadButtons.Start) && car.Drive.Profile.HasRockets)
         {
             KsaWorld.TrySetEngineOn(craft, !(KsaWorld.EngineOn(craft) ?? false));

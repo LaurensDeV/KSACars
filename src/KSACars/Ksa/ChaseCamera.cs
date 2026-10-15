@@ -1,3 +1,4 @@
+using Brutal.ImGuiApi;
 using Brutal.Numerics;
 using KSA;
 
@@ -31,10 +32,55 @@ internal static class ChaseCamera
     private static float _fovDeg, _fovWritten;
     private static double _distance, _distanceWritten;
 
-    /// <summary>The panel's choice; with none made the view chases while a gamepad is being read.</summary>
-    public static bool? Chosen { get; set; }
+    /// <summary>The mode chosen, from the panel or the gamepad's Back; with none the view chases at medium while a gamepad is being read.</summary>
+    public static ChaseMode? Chosen { get; set; }
 
-    public static bool On => Chosen ?? GamepadInput.Present;
+    public static ChaseMode Mode => Chosen ?? (GamepadInput.Present ? ChaseMode.Medium : ChaseMode.Free);
+
+    public static bool On => Mode != ChaseMode.Free;
+
+    // The mode whose distance was last put on the view, so a new one sets it once and the mouse wheel moves it after.
+    private static ChaseMode? _applied;
+
+    /// <summary>The next mode, as the gamepad's Back steps through them, said on the screen for a moment.</summary>
+    public static void Cycle() => Choose(ChaseView.Next(Mode));
+
+    /// <summary>A mode chosen, and said on the screen for a moment.</summary>
+    public static void Choose(ChaseMode mode)
+    {
+        Chosen = mode;
+        (_note, _noteUntil) = ($"Camera: {mode.ToString().ToLowerInvariant()}", Environment.TickCount64 + NoteMs);
+    }
+
+    /// <summary>A chase, for a race starting: the mode the player last chased in, or medium if they were free.</summary>
+    public static void Chase()
+    {
+        if (Mode == ChaseMode.Free) Chosen = ChaseMode.Medium;
+    }
+
+    private const long NoteMs = 2000;
+    private static string _note = "";
+    private static long _noteUntil;
+
+    /// <summary>The mode just chosen, low in the middle of the screen. Inside KSA's ImGui frame; never throws.</summary>
+    public static void DrawNote()
+    {
+        try
+        {
+            if (Environment.TickCount64 > _noteUntil) return;
+            ImGuiViewportPtr screen = ImGui.GetMainViewport();
+            ImDrawListPtr draw = ImGui.GetForegroundDrawList(screen);
+            const float px = 26f;
+            float2 box = ImGui.CalcTextSize(_note) * (px / ImGui.GetFontSize());
+            float2 at = new(screen.WorkPos.X + ((screen.WorkSize.X - box.X) / 2f), screen.WorkPos.Y + (screen.WorkSize.Y * 0.8f));
+            draw.AddRectFilled(new float2(at.X - 10f, at.Y - 5f), new float2(at.X + box.X + 10f, at.Y + box.Y + 5f), new ImColor8(0, 0, 0, 160), 6f);
+            draw.AddText(ImGui.GetFont(), px, at, new ImColor8(255, 255, 255, 245), _note);
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"the camera's note could not be drawn: {e.GetBaseException().Message}");
+        }
+    }
 
     public static void Update()
     {
@@ -72,6 +118,12 @@ internal static class ChaseCamera
                 _camera = camera;
                 _fovDeg = _fovWritten = FovDeg(camera);
                 _distance = _distanceWritten = view.DistancePower;
+                _applied = null;
+            }
+            if (_applied != Mode)
+            {
+                _applied = Mode;
+                _distance = ChaseView.DistancePower(Mode);
             }
             view.ReferenceFrame = CameraReferenceFrame.Surface;
 

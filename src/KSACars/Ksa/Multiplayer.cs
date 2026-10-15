@@ -807,6 +807,8 @@ internal static partial class Multiplayer
                 Program.DrawUI = false;
                 _hiddenAt = Now();
             }
+            // Behind the car, as a racing game starts a race; the panel's Chase camera turns it off again.
+            ChaseCamera.Chase();
             Say($"to the grid, box {(me?.Box ?? 0) + 1}: {start.Laps} laps");
         }
         if (_held && Now() >= start.At)
@@ -879,6 +881,7 @@ internal static partial class Multiplayer
             ["behind_s"] = Behind is { } b ? Math.Round(b, 4) : null, ["recent"] = Said.ToArray(),
             // How much of the speed asked KSA gives: a world short of its speed is one whose physics cannot keep up.
             ["achieved"] = Math.Round(Universe.GetAchivedSpeedFraction(), 3),
+            ["camera"] = ChaseCamera.Mode.ToString(), ["camera_distance"] = KsaWorld.ControlledVehicle?.OrbitView is { } view ? Math.Round(view.DistancePower, 3) : null,
             ["line"] = _impaired is { } line ? $"{line.DelaySeconds * 1000:F0} ms, +-{line.JitterSeconds * 1000:F0} ms, {line.Loss * 100:F0}% lost" : null,
             ["dropped"] = _session?.Dropped,
         };

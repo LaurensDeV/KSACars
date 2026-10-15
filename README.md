@@ -101,8 +101,10 @@ A gamepad drives a car too, beside the keys, with the triggers and the stick as 
 | Start | light and cut the rockets |
 | right / left bumper | rocket throttle up / down |
 | D-pad up | headlights: off, dipped, main beam |
+| Back (View, Select) | camera: close, medium, far, free |
 
-An Xbox pad needs nothing. A Steam Controller is read by the mod itself, through SDL, and wants Steam
+With a gamepad the camera follows behind the car; the panel's **Camera** buttons choose the same four as
+Back, and **Free** gives KSA's own camera back. An Xbox pad needs nothing. A Steam Controller is read by the mod itself, through SDL, and wants Steam
 closed: while Steam runs it also turns the controller's buttons into keys, so Start pauses the game.
 
 The Eldorado can carry a **scoop** on its nose, chosen from the **Fast & Purrious** panel under **Scoop size** —
@@ -172,7 +174,7 @@ takes it up during the session, every guest's follows.
 2. A guest presses **Join a race**, pastes the host's code and presses **Join**. The host's game stops for
    a moment while its world is sent; the guest's loads it and is put in its car.
 3. When everyone is in, the host sets the laps and presses **Start race**. Every car goes to its box on
-   the grid, the interface is hidden so the racing display shows, and a countdown runs in the middle of
+   the grid, the interface is hidden so the racing display shows, the chase camera comes on, and a countdown runs in the middle of
    the screen until the lights go out. Press F2 to have the interface back. Every other racer's name
    floats over their car.
 

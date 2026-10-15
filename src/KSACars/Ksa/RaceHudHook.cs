@@ -72,6 +72,7 @@ internal static class RaceHudHook
                 // First: the display may throw, and the hook catches it before anything after it is drawn.
                 NameTags.Draw();
                 StartLights.Draw();
+                ChaseCamera.DrawNote();
                 RaceHud.Draw();
             }
         }
