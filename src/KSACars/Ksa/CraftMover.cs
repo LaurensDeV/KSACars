@@ -128,7 +128,8 @@ internal sealed class CraftMover
     private Vehicle? UnderCursor()
     {
         _craft.Clear();
-        _craft.AddRange(KsaWorld.Vehicles);
+        // Another racer's car is theirs to move.
+        _craft.AddRange(KsaWorld.Vehicles.Where(v => !Multiplayer.IsOthers(v)));
         if (_craft.Count == 0) return null;
 
         _screen.Clear();

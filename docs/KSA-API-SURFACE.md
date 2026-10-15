@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-247 types and 570 members across 12 assemblies.
+248 types and 571 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -918,6 +918,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 PositionPhys`
 - `Brutal.Numerics.double3 VelocityPhys`
 - `Brutal.Numerics.doubleQuat Body2Phys`
+
+### KSA.KittenEva
+
+- `bool BoardVehicle(KSA.Vehicle, KSA.EVADoor)`
 
 ### KSA.KittenRenderable
 

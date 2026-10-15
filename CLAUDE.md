@@ -247,8 +247,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/MeshPatch.cs` | **an experiment**: a curved square as vertices, normals, UVs and triangles, in a right-handed frame of its own and wound the way KSA draws, for the bridge's one mesh made while the game runs |
 | `Sim/Vec.cs` | vector helpers, and `Plan`, a place or a step on a chart |
 | **`src/KSACars/Ksa/`** | **everything that binds to the game** |
-| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the twelve patches, and once a frame finds the cars, poses their wheels and plays their engines |
-| `Ksa/PhysicsHook.cs` | **one of the twelve places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
+| `Ksa/KSACarsMod.cs` | StarMap entry point: installs the thirteen patches, and once a frame finds the cars, poses their wheels and plays their engines |
+| `Ksa/PhysicsHook.cs` | **one of the thirteen places this mod patches the game** — a prefix on `Vehicle.PrepareWorker`, the only window in which a write to a vehicle's state survives the frame |
 | `Ksa/Buggies.cs` | every car in the world: its ground read **off the physics state in the planet-fixed frame**, never the analytic position, which on a landed craft is metres out; the impulse written from `PhysicsHook`'s window; the subparts posed each frame |
 | `Ksa/SeatedCrewHook.cs` | the second patch — **a car's crew drawn when it is not the craft being flown**, because KSA draws seated kittens for the controlled craft alone, and in an open car the one left sitting would disappear when the other gets out |
 | `Ksa/LightsHook.cs` | the third patch — **the headlamps submitted where KSA submits a craft's own lights**, a postfix on `PartTree.UpdateRenderData`; KSA clears its light list after the GUI pass, so a light from any StarMap hook is never drawn |
@@ -262,6 +262,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Practising.cs` | **practice run beside the game**, for the course that is laid and the car that is to race on it: what the rig needs read in the frame hook, the search on a thread of its own, and what it finds kept under `<KSA user dir>/KSACars/Laps/` |
 | `Ksa/RaceHudHook.cs` | the eleventh patch, on a private method — **the racing display drawn with KSA's interface hidden**, a postfix on `Program.DrawFps`, the one call KSA still makes inside its ImGui frame with F2 on; if KSA moves it there is no display |
 | `Ksa/WarpHook.cs` | the twelfth patch, on two methods — **every world in an online race held to the race's speed**: prefixes on both of `Universe.SetSimulationSpeed`, which every warp key, auto-warp, the escape menu's pause and the editor go through, replace what is asked with `Multiplayer.HeldSpeed` while anyone has joined |
+| `Ksa/ControlHook.cs` | the thirteenth patch, on two members — **nobody takes another racer's car**: a prefix on the setter of `Program.ControlledVehicle`, which clicking a craft, the map view, EVA, boarding and the editor go through, leaves control where it is, and one on `KittenEva.BoardVehicle` turns a kitten away from that car before it climbs in |
 | `Ksa/RaceHud.cs` | **the racing display**: the flown car's speed, its lap out of the laps set, its place among the cars on the course and a map of the course about the car with the way it faces at the top, drawn only while KSA's interface is hidden; where every car is along the course is kept from the frame hook |
 | `Ksa/RoadColliders.cs` | triangle meshes of the mod's own in KSA's physics, registered as ground clutter of infinite mass in each bubble's simulation, from four prefixes on the physics passes and one private dictionary. Each run of a laid road is one mesh, in the bubbles within three kilometres of any of it, and a road laid again has the meshes from before freed once no bubble holds one; the bridge's `road` with `box_top` puts a box under the flown craft |
 | `Ksa/RoadDrawing.cs` | **the roads as they are drawn**: each mesh of a laid circuit written into a place of its own in a pool of `RuntimeMesh`es that only grows, to 56 places, and handed to KSA's renderer for each view in asphalt and in earth, turned as the body is about the mesh's own origin; the nearest drawn where there are more meshes than places |
@@ -316,7 +317,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 570 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 571 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -550,7 +551,7 @@ KSA hides the kitten's own head from it, and its camera is at the helmet's chin 
 out, and the driver's eyes show through it. A car has a helmet if its part has those subparts;
 `docs/F2004-REFERENCES.md` has what it was modelled on and how it is fitted.
 
-**Twelve patches; nine are on public methods and pinned.** Each of those has a `PinTheSignature` that is
+**Thirteen patches; ten are on public methods and pinned.** Each of those has a `PinTheSignature` that is
 never called and only puts the patched method in this assembly's metadata, so `docs/KSA-API-SURFACE.md`
 tracks it and a KSA change to it is a build error. `LensColourHook`, `RailsHook` and `RaceHudHook` each patch a private method, which
 cannot be pinned: each checks what it found at install and switches itself off with a warning. Harmony ships with StarMap, so a player installs
@@ -1283,11 +1284,14 @@ outright from more than 3 m. Its drive still steps with the inputs its game sent
 springs work. A pose is sent as where the car is on the course (`Sim/RacePose.cs`), and timed and drawn on the
 universe time every world shares, so a car is drawn as its world's physics moves and not as the wall clock
 does. A racer who joins later has its car made, with the same Id, in the worlds of those already in. A car not
-heard from for 3 s of the world's time is let go of and braked. A racer who leaves has its car taken out of
-every world, and a host that stops takes out its guests'; a guest keeps the world it was given. A guest that
+heard from for 3 s of the world's time is let go of and braked. Whoever is out of the race, by leaving, by
+the host stopping or by the host's game going quiet, is left with its own car alone: the others' are taken out
+of its world, found by the roster's Ids. A guest that
 joins again forgets the world and the clocks it had, a new host numbering its worlds from one again; one that
 has not loaded the world it was sent in two minutes is put out of the race, since the host's world waits for
-it; and when the last guest goes, the host's world runs at 1 again. **Two cars that touch each meet it in their own
+it; and when the last guest goes, the host's world runs at 1 again. **Nobody takes another racer's car**: `Ksa/ControlHook.cs` refuses control of it and a kitten boarding it, and the
+craft mover leaves it alone, except while a guest loads the host's world, whose save hands control to the host's
+car before the guest is put in its own. **Two cars that touch each meet it in their own
 game**: there one is a puppet and the other is pushed, and what the pushed car does is then sent to the other.
 
 **Seen between two copies on one machine** (`tools/two-games.sh`, 2026.10.13.5602): the guest given the host's

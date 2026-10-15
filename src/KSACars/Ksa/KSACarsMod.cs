@@ -53,6 +53,7 @@ public sealed class KSACarsMod
         RoadDrawHook.Install();
         RaceHudHook.Install();
         WarpHook.Install();
+        ControlHook.Install();
         RoadColliders.Install();
 
         if (Build.Developer) _bridge = new Bridge();
@@ -173,6 +174,7 @@ public sealed class KSACarsMod
         RoadDrawHook.Remove();
         RaceHudHook.Remove();
         WarpHook.Remove();
+        ControlHook.Remove();
         RoadColliders.Remove();
         Log.Info("unloaded");
 
@@ -203,6 +205,7 @@ public sealed class KSACarsMod
         RoadDrawHook.Remove();
         RaceHudHook.Remove();
         WarpHook.Remove();
+        ControlHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }
