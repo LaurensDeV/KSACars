@@ -82,6 +82,7 @@ public sealed class KSACarsMod
             RacingLine.Update();
             StartLine.Update();
             Opponents.Update();
+            Multiplayer.Update();
             RaceHud.Update();
         }
         catch (Exception e)
@@ -152,6 +153,9 @@ public sealed class KSACarsMod
     [StarMapUnload]
     public void Unload()
     {
+        // Says goodbye to the other games and closes the port on the router.
+        Multiplayer.Stop();
+
         // Audio channels belong to the game and nothing else gives them back.
         _buggySound.StopAll();
         _rocketSound.StopAll();

@@ -164,6 +164,8 @@ internal static class CarPanel
                 }
             }
 
+            RaceOnline();
+
             // Drawing roads is unfinished, so only a developer's install offers it.
             if (Build.Developer)
             {
@@ -176,6 +178,98 @@ internal static class CarPanel
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);
         }
         ImGui.End();
+    }
+
+    private static readonly ImInputString NetName = new(NetWire.NameChars * 4, ""u8);
+    private static readonly ImInputString NetCode = new(96, ""u8);
+    private static readonly ImInputString Shown = new(96, ""u8);
+    private static bool _named;
+
+    // Hosting a race, or joining one with a code: see Multiplayer.
+    private static void RaceOnline()
+    {
+        ImGui.SeparatorText("Race online");
+        if (!_named)
+        {
+            NetName.SetValue(Multiplayer.PlayerName);
+            _named = true;
+        }
+
+        if (!Multiplayer.Active)
+        {
+            ImGui.SetNextItemWidth(170f);
+            ImGui.InputText("Your name", NetName);
+            Multiplayer.PlayerName = NetName.ToString().Trim();
+            if (ImGui.Button("Host a race", null)) Multiplayer.Host();
+            ImGui.SameLine(0f, -1f);
+            if (ImGui.Button("Join a race", null)) Multiplayer.Ready();
+            Recent(2);
+            return;
+        }
+
+        if (Multiplayer.Hosting)
+        {
+            if (Multiplayer.HostCode is { } code)
+            {
+                CodeLine("Your code", code.Code);
+                ImGui.TextDisabled(code.How);
+            }
+            else ImGui.TextDisabled("finding your code...");
+            if (Multiplayer.RouterSays.Length > 0) ImGui.TextDisabled(Multiplayer.RouterSays);
+            if (Multiplayer.LocalAddress is { } local) ImGui.TextDisabled($"on your own network: {local}");
+
+            ImGui.SetNextItemWidth(170f);
+            ImGui.InputTextWithHint("##letin", "a guest's code", NetCode);
+            ImGui.SameLine(0f, -1f);
+            if (ImGui.Button("Let in", null)) Multiplayer.LetIn(NetCode.ToString());
+
+            if (Multiplayer.OnTheCourse)
+            {
+                int laps = RaceHud.Laps;
+                ImGui.SetNextItemWidth(120f);
+                if (ImGui.SliderInt("Race laps", ref laps, 1, 20)) RaceHud.Laps = laps;
+                if (ImGui.Button("Start race", null)) Multiplayer.StartRace();
+            }
+        }
+        else if (!Multiplayer.Joined)
+        {
+            ImGui.SetNextItemWidth(170f);
+            ImGui.InputTextWithHint("##join", "the host's code", NetCode);
+            ImGui.SameLine(0f, -1f);
+            if (ImGui.Button("Join", null)) Multiplayer.Join(NetCode.ToString());
+            if (Multiplayer.GuestCode is { } mine)
+            {
+                CodeLine("Your code", mine);
+                ImGui.TextDisabled("if joining does not work, give the host this to let you in");
+            }
+        }
+
+        if (Multiplayer.Trouble.Length > 0) ImGui.TextDisabled(Multiplayer.Trouble);
+        if (Multiplayer.Countdown is { } wait) ImGui.Text($"Lights out in {wait:F1} s");
+        foreach (NetSession.Racer racer in Multiplayer.Racers)
+        {
+            string car = BuggyProfile.All.FirstOrDefault(p => p.PartId == racer.Car)?.DisplayName ?? racer.Car;
+            ImGui.TextDisabled($"{racer.Box + 1}. {racer.Name}{(racer.Id == Multiplayer.Me ? " (you)" : "")}, {car}");
+        }
+        Recent(3);
+        if (ImGui.Button(Multiplayer.Hosting ? "Stop hosting" : "Leave", null)) Multiplayer.Stop();
+    }
+
+    private static void CodeLine(string label, string code)
+    {
+        Shown.SetValue(code);
+        ImGui.SetNextItemWidth(120f);
+        ImGui.InputText($"##{label}", Shown, ImGuiInputTextFlags.ReadOnly);
+        ImGui.SameLine(0f, -1f);
+        if (ImGui.SmallButton($"Copy##{label}")) ImGui.SetClipboardText(code);
+        ImGui.SameLine(0f, -1f);
+        ImGui.Text(label);
+    }
+
+    private static void Recent(int lines)
+    {
+        IReadOnlyList<string> said = Multiplayer.Recent;
+        for (int i = Math.Max(0, said.Count - lines); i < said.Count; i++) ImGui.TextDisabled(said[i]);
     }
 
     private static void BeamButton(Buggies.Entry car, string label, BeamSetting setting)

@@ -52,6 +52,8 @@ internal sealed class Buggies
         public double3 PlaceCcf;
         public double3 AheadCcf;
         public double3 VelocityCcf;
+        public doubleQuat Body2Ccf = doubleQuat.Identity;
+        public double3 SpinBody;
         public double SpeedMs;
         public bool PlaceValid;
         public double SpringLift { get; set; }
@@ -168,6 +170,7 @@ internal sealed class Buggies
         Held.Clear();
         ToRight.Clear();
         ToStand.Clear();
+        Puppets.Clear();
         HullMargins.Clear();
     }
 
@@ -220,6 +223,45 @@ internal sealed class Buggies
         if (!Active.ContainsKey(craft)) return false;
         ToStand[craft] = (atCcf, upCcf, aheadCcf);
         return true;
+    }
+
+    /// <summary>
+    /// Puts a car where another game says it is, at every physics step until it is let go with null:
+    /// in the body's own frame, turned as given, moving as given. The drive is still stepped, so its
+    /// wheels turn and its springs work, and what it pushes is written over.
+    /// </summary>
+    public static void Puppet(Vehicle craft, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody)? pose)
+    {
+        if (pose is { } p) Puppets[craft] = p;
+        else Puppets.Remove(craft);
+    }
+
+    private static readonly Dictionary<Vehicle, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody)> Puppets = [];
+
+    // Further out than this a car is put where it is wanted outright; nearer, it is drawn there over a few steps, so a late datagram is not a jolt.
+    private const double SnapM = 3.0, PullSeconds = 0.1;
+
+    private static void Pull(Entry e, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody) pose, double dt)
+    {
+        Vehicle craft = e.Craft;
+        if (!craft.HasPhysicsBubble || dt > 0.1) return;
+        PhysicsStates states = craft.GetPhysicsStatesMutable();
+        PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic, out double3 positionCcf, out _, out doubleQuat body2Ccf);
+        doubleQuat body2Phys = states.Kinematic.Body2Phys;
+        doubleQuat ccf2Body = body2Ccf.Inverse();
+
+        double3 off = pose.At - positionCcf;
+        bool snap = Vec.Len(off) > SnapM;
+        if (snap) states.Kinematic.PositionPhys += off.Transform(ccf2Body).Transform(body2Phys);
+        states.Kinematic.Body2Phys = body2Phys * (ccf2Body * pose.Body2Ccf);
+
+        // Moving as it is, and closing what is left between where it is and where it is wanted.
+        PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic, out _, out double3 nowVelocity, out doubleQuat nowBody2Ccf);
+        double3 wanted = pose.Velocity + (snap ? Vec.Zero : off / Math.Max(PullSeconds, dt));
+        states.Kinematic.VelocityPhys += (wanted - nowVelocity).Transform(nowBody2Ccf.Inverse()).Transform(states.Kinematic.Body2Phys);
+        states.Kinematic.AngularVelocityPhys = pose.SpinBody.Transform(states.Kinematic.Body2Phys);
+        e.LeftValid = false;
+        if (craft.Situation.IsOnRails()) craft.TakeOffRails();
     }
 
     /// <summary>
@@ -598,6 +640,7 @@ internal sealed class Buggies
         try
         {
             Step(e, dt);
+            if (dt > 0.0 && Puppets.TryGetValue(craft, out (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody) pose)) Pull(e, pose, dt);
         }
         catch (Exception ex)
         {
@@ -701,6 +744,7 @@ internal sealed class Buggies
         double3 spinBody = states.Kinematic.AngularVelocityPhys.Transform(body2Phys.Inverse());
         double3 velocityBody = velocityCcf.Transform(ccf2Body);
         (e.PlaceCcf, e.VelocityCcf, e.SpeedMs, e.PlaceValid) = (positionCcf, velocityCcf, Vec.Len(velocityCcf), true);
+        (e.Body2Ccf, e.SpinBody) = (body2Ccf, spinBody);
 
         double3 com = craft.CenterOfMassAsmb;
         doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;

@@ -160,7 +160,7 @@ internal static class Opponents
         if (!ReferenceEquals(flown.Parent, body)) return "the course is on another body";
 
         int box = 1;
-        while (Cars.Any(c => c.Box == box)) box++;
+        while (Cars.Any(c => c.Box == box) || Multiplayer.Holds(box)) box++;
         if (box >= StartGrid.BoxesOn(route)) return route.Closed ? "the grid is full" : "this course has no grid behind its start";
 
         (double s, double left) = Box(route, box);
@@ -411,8 +411,8 @@ internal static class Opponents
 
     private static readonly List<Rival.Seen> Seen = [];
 
-    // Where a box of the grid is: how far along the route, a closed one's last metres being behind its start, and how far to its left.
-    private static (double S, double Left) Box(Route route, int box)
+    /// <summary>Where a box of the grid is: how far along the route, a closed one's last metres being behind its start, and how far to its left.</summary>
+    public static (double S, double Left) Box(Route route, int box)
     {
         double s = StartGrid.PoleM - (box * StartGrid.BoxEveryM);
         if (s < 0.0) s += route.LengthM;

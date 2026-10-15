@@ -157,6 +157,29 @@ on ground that is level for a kilometre around: a road follows whatever ground i
 A course is not kept in a save, so lay it again after loading one. A save made while a course is laid
 does keep the ground under it cleared; take the roads up before you save if you want that ground back.
 
+### Racing other people
+
+Under **Race online** in the panel, one player presses **Host a race** and the others **Join a race**.
+Nobody needs an account or anything else installed. Everyone races in their own game, and each sees the
+others' cars on their own copy of the course.
+
+1. The host lays a course and presses **Host a race**. The panel shows a code of ten letters and digits
+   with a **Copy** button: send it to the others however you like.
+2. A guest presses **Join a race**, pastes the host's code and presses **Join**. If the guest has the
+   same course, it is laid where the guest's car is.
+3. When everyone is in, the host sets the laps and presses **Start race**. Every car goes to its box on
+   the grid, and the lights go out five seconds later.
+
+The mod asks the host's router to open the port (UPnP). Most routers allow that, and then the code just
+works. If a guest cannot get in, the guest's panel shows a code of its own: send it to the host, who
+pastes it under **Let in**, then press **Join** again. That gets through most routers. Players on the
+same network can join with the address the host's panel shows under *on your own network*. A
+`host:port` from a tunnel such as playit.gg, or a VPN such as Tailscale, works in the code's place too.
+
+Everyone needs the same version of the mod, and the same course file; the mod's own courses are the
+same for everyone. The host uses UDP port 50000. Online racing is new and has not yet been tried
+between two real games, and cars from other games do not yet push each other properly when they touch.
+
 ## Build
 
 Requires the **.NET 10 SDK** — the mod targets `net10.0` because that is what KSA runs on. The scripts

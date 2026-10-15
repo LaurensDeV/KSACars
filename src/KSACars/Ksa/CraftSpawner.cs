@@ -33,15 +33,22 @@ internal static class CraftSpawner
     /// sets one down. From the part's own template, so it asks nothing of any vehicle library: a
     /// player's has no car in it unless they saved one.
     /// </summary>
-    public static Vehicle? SpawnLike(Vehicle like, string id, Celestial body, double latitudeDeg, double longitudeDeg)
+    public static Vehicle? SpawnLike(Vehicle like, string id, Celestial body, double latitudeDeg, double longitudeDeg) =>
+        SpawnOf(like.Parts.Root.Template, like, id, body, latitudeDeg, longitudeDeg);
+
+    /// <summary>
+    /// A craft of one part, from its template, built beside <paramref name="platform"/> and set down
+    /// as <see cref="SpawnParked"/> sets one down: for a car another game is driving, which may be
+    /// one this game has nobody in.
+    /// </summary>
+    public static Vehicle? SpawnOf(PartTemplate template, Vehicle platform, string id, Celestial body, double latitudeDeg, double longitudeDeg)
     {
         try
         {
-            PartTemplate template = like.Parts.Root.Template;
             Part part = new(template.Id, template);
             PartTree parts = part.CreateOwnTree();
             parts.ReinitializeDerivedValues();
-            return Park(like, parts, $"'{id}' (a {template.Id})", id, body, latitudeDeg, longitudeDeg);
+            return Park(platform, parts, $"'{id}' (a {template.Id})", id, body, latitudeDeg, longitudeDeg);
         }
         catch (Exception e)
         {

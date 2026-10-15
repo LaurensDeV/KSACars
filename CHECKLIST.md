@@ -31,6 +31,13 @@ none of it has been seen as **KSACars** yet:
 - [ ] The craft mover sets a car down on a road on the ground and on a raised deck, standing on the asphalt
       where the ring was drawn, from near and from kilometres off; and a craft that is no car goes to the
       ground as before
+- [ ] Racing online: two games on two machines, one hosting and one joining with its code, each seeing the
+      other's car on its own copy of the course, smooth, on its wheels and at the right place on the road
+- [ ] The host's router opening the port through UPnP, and the panel saying the address it gives
+- [ ] A guest let in with its own code where the host's router would not open the port
+- [ ] The host's Start race putting every car in its box and letting them go together; the racing display
+      counting the laps from the lights
+- [ ] An online car touched: what each game does when the two cars meet, and that neither is thrown
 - [x] A course's start (2026.10.13.5602, bridge `road` with `course`, Club Motorsports Flat): the chequered
       line between the road's edge lines ahead of the F2004, solid white and black 2 cm over the asphalt, the
       pole's box round the car, and the racing line's arrowheads solid over it

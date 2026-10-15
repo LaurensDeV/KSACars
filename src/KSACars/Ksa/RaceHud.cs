@@ -74,6 +74,9 @@ internal static class RaceHud
     /// <summary>How many laps the race is: what the lap is shown out of.</summary>
     public static int Laps { get; set; } = 3;
 
+    /// <summary>Forgets every car's laps and times, for a race that starts now.</summary>
+    public static void Restart() => Cars.Clear();
+
     /// <summary>Once a frame, from the frame hook. Never throws.</summary>
     public static void Update()
     {

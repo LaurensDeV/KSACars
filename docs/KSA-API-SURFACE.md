@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-245 types and 555 members across 12 assemblies.
+245 types and 561 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -189,8 +189,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.doubleQuat CreateFromAxisAngle(Brutal.Numerics.double3, double)`
 - `Brutal.Numerics.doubleQuat CreateFromRotationMatrix(Brutal.Numerics.double4x4)`
 - `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
+- `Brutal.Numerics.doubleQuat Normalize(Brutal.Numerics.doubleQuat)`
+- `Brutal.Numerics.doubleQuat Slerp(Brutal.Numerics.doubleQuat, Brutal.Numerics.doubleQuat, double)`
 - `Brutal.Numerics.doubleQuat get_Identity()`
 - `Brutal.Numerics.doubleQuat op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.doubleQuat)`
+- `double LengthSquared()`
 - `double W`
 - `double X`
 - `double Y`
@@ -319,6 +322,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool Checkbox(Brutal.ImGuiApi.ImString, ref bool)`
 - `bool InputDouble(Brutal.ImGuiApi.ImString, ref double, double, double, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiInputTextFlags)`
 - `bool InputText(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
+- `bool InputTextWithHint(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
 - `bool IsItemActive()`
 - `bool IsItemClicked(Brutal.ImGuiApi.ImGuiMouseButton)`
 - `bool IsItemDeactivated()`
@@ -341,6 +345,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void SameLine(float, float)`
 - `void Separator()`
 - `void SeparatorText(Brutal.ImGuiApi.ImString)`
+- `void SetClipboardText(Brutal.ImGuiApi.ImString)`
 - `void SetNextItemWidth(float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `void Text(Brutal.ImGuiApi.ImString)`
@@ -980,6 +985,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.ModLibrary
 
 - `!!0 Get<1>(string)`
+- `bool TryGet<1>(string, ref !!0)`
 
 ### KSA.ModuleBase
 

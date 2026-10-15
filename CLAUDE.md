@@ -228,6 +228,13 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Lanes.cs` | **where across the road an opponent runs and how fast while a player's car is near**: a handful of lanes, each tried at a few speeds and rolled 3 s ahead against every car, the cheapest in time lost, touching and leaving the road taken; an overtake of a player's car slower than the road allows, and a push past one that holds it up |
 | `Sim/RaceLine.cs` | the line to drive as arrowheads on the road ahead of a car: where each lies, on the road's own surface, and **its colour from the car's speed now against what the route allows there**, as runs of one colour that are each a draw |
 | `Sim/StartGrid.cs` | a course's start as paint on its asphalt: a chequered band between two white lines across the road ahead of the pole, from one edge line to the other, and behind it the boxes of a grid in two columns, **every corner on the road's own surface and a quad white or black by which half of one picture it is in** |
+| `Sim/RacePose.cs` | **a car measured against a laid course rather than the planet**: how far along the route it is, where it is and how it is turned and moving in the road's own frame there, so it is put in the same place on another player's copy of the course laid somewhere else |
+| `Sim/NetWire.cs` | what two games racing each other say, as UDP datagrams: a mark and a version so anything else is dropped, a hello, a welcome, the roster, a car's state, a ping, a start and a goodbye |
+| `Sim/NetSession.cs` | **a race between games over one UDP socket each**: a host that hands each guest a number and a box, passes every car's state on to the rest and starts the race, and a guest that speaks to it alone; read on a thread of its own and handled once a frame, on the caller's clock |
+| `Sim/RemoteTrack.cs` | another game's car as the states it has sent, put on this game's clock by the quickest any has come and drawn 0.1 s in the past between the two either side of then |
+| `Sim/JoinCode.cs` | an IPv4 address and port as ten letters and digits of Crockford's base 32, and back, or a plain `host:port` |
+| `Sim/Stun.cs` | a STUN binding request and its answer: **where a socket is seen from outside every router**, asked of a free public server |
+| `Sim/Upnp.cs` | a UDP port opened on the home router through UPnP, and the address it is reached at, with what a router answers parsed apart from the asking |
 | `Sim/RoadCurve.cs` | the cubic curve a road follows between two points, sampled |
 | `Sim/RoadProfile.cs` | what a road is along its length apart from where it goes: **its height as a curve through its points' heights that climbs steadily where they do and never overshoots**, its lean and its width, an end at a junction held to the height, the climb and the lean it is given, with the steepest grade and the tightest crest or dip of each road |
 | `Sim/RoadGround.cs` | the ground along a road, **smoothed and never buried**: at or above every sample of the ground and the line between two, with no step in its slope, level ground and a steady slope left as they are and a bump filled over |
@@ -278,6 +285,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, set a driver going round a circuit, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
 | `Ksa/Laps.cs` | the laps being driven by `Autopilot`, a car each, **kept outside `Buggies.Entry`**: stepped from the physics window, and from the frame hook ended when the car is gone or the roads are laid again, and filed under the bridge's folder as a summary and a line a step |
 | `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn`, or a second car of the one part another is, **from the part's template**, since a player's library has no car in it |
+| `Ksa/Multiplayer.cs` | **racing other players, each in their own game**, from the panel's Race online: hosting or joining with a code, this car's pose sent 30 times a second, each other racer's car a copy of theirs that `Buggies.Puppet` puts where its game says, and the host's start. **Not yet seen between two games** |
 | `Ksa/Opponents.cs` | **cars that race the one being flown**, from the panel's Add opponent: a copy of the flown car in the next box of the grid, a kitten at its wheel, driven by `Autopilot` from when the player's car sets off. A driver knows nothing of any other car |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has, **in the `logs` folder of the profile KSA was started with** (`Constants.DocumentsFolderPath`, which StarMap answers with a Borea instance's folder), which everything the mod keeps — circuits, practised laps, the bridge — sits beside; the old guesses at the user folder are only a fallback |
@@ -304,7 +312,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 555 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 561 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -1238,6 +1246,36 @@ KSA's and gives up once roads are laid again, and only the bits it found are wri
 in the window it stopped the game for 3 to 7 seconds a laying of a 4 km course. Road more than
 `Roads.ClutterUnderM`, 60 m, above the ground is left out of the search, and what stands under it stays. The bridge's
 `road` with `probe_clutter` measures the reckoned positions against KSA's own. KSA writes those bits into a save, so a game saved with a road laid keeps the clearing.
+
+## Racing online
+
+**A race between players is a race between games.** KSA has no multiplayer to build on: its `KSA.Networking`
+connects and chats over RakNet and replicates nothing, and its terminal commands are never registered. So
+each player runs their own game and lays the same course where their own car is, and `Ksa/Multiplayer.cs`
+sends each car to the others over UDP as where it is on that course, `Sim/RacePose.cs`: how far along the
+racing display's route, where across, how high above the road and how it is turned, in the road's frame
+there. On another copy that is the same place on the road, whatever the ground under it or the way the
+course was laid. Two copies are the same course if their files hash alike; a guest with the host's course
+in its library has it laid at its car.
+
+**Another game's car is a puppet.** `CraftSpawner.SpawnOf` makes a car of its part, a kitten is seated, and
+`Buggies.Puppet` hands its pose to the physics window, where `Buggies.Pull` writes it after the drive is
+stepped: turned as told, moving as told, and drawn onto its place over 0.1 s, or put there outright from
+more than 3 m. Its drive still steps with the inputs its game sent, so its wheels steer and its springs
+work. A car not heard from for 3 s is let go of and braked. **Its contact with a car of this game is
+one-sided**: this game's car is pushed by it and it is put back where it is told to be. **Not yet seen in game.**
+
+**Nobody signs in to anything.** The host's port is opened on its router through UPnP where the router
+allows it (`Sim/Upnp.cs`), leased for four hours so a crash leaves it to close, and closed when the race
+is; every game asks a public STUN server where its socket is seen from outside (`Sim/Stun.cs`); and an
+address is a ten-character code (`Sim/JoinCode.cs`). Where a router will not open the port, a guest gives
+the host its own code and the host's Let in sends to it for 30 s, which opens the way through both
+routers from inside. Every guest speaks to the host alone, which passes each state on, so only the host
+has to be reached. Nothing is resent: a state is stale before a resend would come.
+
+**The start is on the host's clock.** A guest measures the host's clock against its own by the quickest
+ping it has had answered, so the lights go out together in every game; at a start each car is stood in
+its box of the grid, which `Opponents` then leaves free, held on its brakes, and let go.
 
 ## Adding a car
 
