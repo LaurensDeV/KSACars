@@ -46,6 +46,11 @@ none of it has been seen as **KSACars** yet:
       back, mirrored in the host's world; a guest leaving, its car taken out of the host's world and both able
       to warp again; the host stopping, its guests' cars taken out and the guest told; a guest joining a host
       that hosted again; and the host's game killed, the guest told within ten seconds and let go
+- [x] Out of the race, a world keeps its own car alone (same games): the guest's after it left, after the host
+      stopped and after the host's game was killed, and the host's after it stopped
+- [x] Nobody takes another racer's car (same games): control of it asked through the bridge, as KSA's own
+      click asks, refused in both while racing, and the guest still put in its own after loading
+- [ ] A kitten on EVA turned away from another racer's car, and the craft mover passing over it, by hand
 - [ ] A third racer: its car made in the worlds of those already in
 - [ ] Racing online between two machines, one hosting and one joining with its code across the internet
 - [ ] The host's router opening the port through UPnP, and the panel saying the address it gives
