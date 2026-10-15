@@ -188,6 +188,13 @@ is a vehicle apparently sitting at the solar system barycentre.
 
 `IParentBody.Mu` is a plain property — no need to hunt for the gravitational parameter.
 
+**The world's speed goes through two public methods, and only two.** `Universe.SetSimulationSpeed(double, bool)`
+and `Universe.SetSimulationSpeed(SimSpeed)` each assign the speed outright: the warp keys, auto-warp, the escape
+menu, the settings and save windows, which pause the world every frame they are open, and the vehicle editor
+all go through one or the other, and a reset on load writes the field itself. `Ksa/WarpHook.cs` prefixes both.
+The universe time is `Universe.GetElapsedSeconds()`, and a save brings it back as it was. **KSA limits its frames
+only with vsync off** (`display.fpslimit`); with it on, the limit is the monitor's refresh.
+
 **A part's template by its Id is `ModLibrary.Get<PartTemplate>(id)`, never `TryGet`.** `TryGet<T>` has a
 branch for most of what the library keeps and none for a part template, so it answers false for every
 part there is. `Get` has the branch, and throws a `NullReferenceException` for an Id it has not loaded.

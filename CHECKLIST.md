@@ -35,6 +35,10 @@ none of it has been seen as **KSACars** yet:
       127.0.0.1): the guest laid the host's course by itself, each saw the other's F2004 with a kitten at the
       wheel, and raced at up to 66 m/s each puppet was 0.23 m on average and 0.8 m at worst from where it was
       wanted, never put there outright; over the line and after a car was moved to its box it was found again
+- [x] A guest given the host's world (same games): the save and the course, 46 KB, loaded with the guest
+      flying its own car in it and the course laid as the host's, the host's car on it 2 cm from where it was
+      wanted; the universe times within 6 ms while both drew freely; a warp to 10x and a pause refused in both
+- [ ] A guest joining a race already under way, and a third racer's car made in the worlds of those in
 - [ ] Racing online between two machines, one hosting and one joining with its code across the internet
 - [ ] The host's router opening the port through UPnP, and the panel saying the address it gives
 - [ ] A guest let in with its own code where the host's router would not open the port
