@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-252 types and 585 members across 12 assemblies.
+252 types and 591 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -294,6 +294,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### Brutal.ImGuiApi.ImDrawListExtensions
 
+- `void AddBezierQuadratic(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, float, int)`
 - `void AddCircle(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, float, Brutal.ImGuiApi.ImColor8, int, float)`
 - `void AddCircleFilled(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, float, Brutal.ImGuiApi.ImColor8, int)`
 - `void AddLine(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, float)`
@@ -314,10 +315,13 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.ImGuiApi.ImDrawListPtr GetBackgroundDrawList(Brutal.ImGuiApi.ImGuiViewportPtr)`
 - `Brutal.ImGuiApi.ImDrawListPtr GetForegroundDrawList(Brutal.ImGuiApi.ImGuiViewportPtr)`
+- `Brutal.ImGuiApi.ImDrawListPtr GetWindowDrawList()`
 - `Brutal.ImGuiApi.ImFontPtr GetFont()`
 - `Brutal.ImGuiApi.ImGuiIOPtr GetIO()`
 - `Brutal.ImGuiApi.ImGuiViewportPtr GetMainViewport()`
 - `Brutal.Numerics.float2 CalcTextSize(Brutal.ImGuiApi.ImString, bool, float)`
+- `Brutal.Numerics.float2 GetItemRectMax()`
+- `Brutal.Numerics.float2 GetItemRectMin()`
 - `Brutal.Numerics.float2 GetMousePos()`
 - `Brutal.Numerics.float2 GetWindowPos()`
 - `Brutal.Numerics.float2 GetWindowSize()`
@@ -346,6 +350,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool SmallButton(Brutal.ImGuiApi.ImString)`
 - `float GetCursorPosX()`
 - `float GetFontSize()`
+- `float GetFrameHeight()`
 - `void BeginDisabled(bool)`
 - `void End()`
 - `void EndCombo()`
@@ -358,6 +363,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void Separator()`
 - `void SeparatorText(Brutal.ImGuiApi.ImString)`
 - `void SetClipboardText(Brutal.ImGuiApi.ImString)`
+- `void SetItemTooltip(Brutal.ImGuiApi.ImString)`
 - `void SetNextItemOpen(bool, Brutal.ImGuiApi.ImGuiCond)`
 - `void SetNextItemWidth(float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
