@@ -101,6 +101,8 @@ internal static partial class Multiplayer
     private static int _joinSeen;
     private static double _paceLogNext;
     private static double? _hiddenAt;
+    private static int _courseSent = -1, _courseSeen = -1;
+    private static double _courseSeenAt;
     private static string _myCraft = "";
     private static (string Name, Circuit Circuit, string? Shape)? _course;
 
@@ -423,6 +425,7 @@ internal static partial class Multiplayer
     private static void Hand(NetSession s, Vehicle? flown)
     {
         if (flown is not null) s.SetCraft(NetSession.HostId, flown.Id);
+        SendCourse(s);
         OnTheCourse = Roads.Any;
         Trouble = OnTheCourse ? "" : "lay a course for the race";
 
@@ -524,16 +527,49 @@ internal static partial class Multiplayer
         {
             files.Add(("save/" + Path.GetRelativePath(folder, path).Replace('\\', '/'), File.ReadAllBytes(path)));
         }
-        if (Roads.Any && KsaWorld.ControlledVehicle?.Parent is Celestial body && Roads.CircuitOn(body) is { } circuit)
-        {
-            string course = JsonSerializer.Serialize(new Dictionary<string, string?>
-            {
-                ["name"] = Courses.Laid ?? "course", ["shape"] = Courses.LaidShape, ["circuit"] = circuit.ToJson(),
-            });
-            files.Add(("course.json", Encoding.UTF8.GetBytes(course)));
-        }
+        files.Add(("course.json", CourseFile()));
+        _courseSent = Roads.Generation;
         return WorldTransfer.Pack(files);
     }
+
+    // The course as it is laid, where it is laid, or that there is none.
+    private static byte[] CourseFile()
+    {
+        Dictionary<string, string?> course = Roads.Any && KsaWorld.ControlledVehicle?.Parent is Celestial body && Roads.CircuitOn(body) is { } circuit
+            ? new() { ["name"] = Courses.Laid ?? "course", ["shape"] = Courses.LaidShape, ["circuit"] = circuit.ToJson() }
+            : new() { ["none"] = "true" };
+        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(course));
+    }
+
+    // The course read from what a host sent: laid as it is, or none, or null for no word of one.
+    private static (string Name, Circuit Circuit, string? Shape)? ReadCourse(byte[] data, out bool none)
+    {
+        none = false;
+        if (JsonSerializer.Deserialize<Dictionary<string, string?>>(data) is not { } course) return null;
+        none = course.ContainsKey("none");
+        return course.GetValueOrDefault("circuit") is { } json && Circuit.FromJson(json, out _, out _) is { } circuit
+            ? (course.GetValueOrDefault("name") ?? "course", circuit, course.GetValueOrDefault("shape"))
+            : null;
+    }
+
+    // The host: a course laid again, or taken up, sent to every guest racing once it has stood a second, so a drag is not sent every frame.
+    private static void SendCourse(NetSession s)
+    {
+        int generation = Roads.Generation;
+        if (generation != _courseSeen) (_courseSeen, _courseSeenAt) = (generation, Now());
+        if (generation == _courseSent || Now() - _courseSeenAt < CourseSettleSeconds || Courses.Busy || _handover is not null) return;
+        _courseSent = generation;
+        byte[] pack = WorldTransfer.Pack([("course.json", CourseFile())]);
+        int sent = 0;
+        foreach (NetSession.Racer racer in s.Racers.Where(r => r.Id != NetSession.HostId && r.HasWorld))
+        {
+            s.SendWorld(racer, pack);
+            sent++;
+        }
+        if (sent > 0) Say(Roads.Any ? "sending everyone the course as it is now" : "telling everyone the roads are taken up");
+    }
+
+    private const double CourseSettleSeconds = 1.0;
 
     // A guest: the host's world, once it has all come, written as a save and loaded; then its own car flown and the course laid.
     private static void Take(NetSession s)
@@ -572,6 +608,24 @@ internal static partial class Multiplayer
                 if (_course is { } course) Courses.LayAsIs(course.Name, course.Circuit, course.Shape);
                 _taking = Taking.Laying;
                 break;
+            case Taking.Racing when s.World is { } changed && changed.Transfer != _worldTaken:
+                // Sent while racing, it is the host's course as it is now: laid as it is, or taken up.
+                _worldTaken = changed.Transfer;
+                foreach ((string name, byte[] data) in WorldTransfer.Unpack(changed.Data))
+                {
+                    if (name != "course.json") continue;
+                    if (ReadCourse(data, out bool none) is { } now)
+                    {
+                        Courses.LayAsIs(now.Name, now.Circuit, now.Shape);
+                        Say("the host changed the course: laying it");
+                    }
+                    else if (none)
+                    {
+                        Courses.TakeUp();
+                        Say("the host took the roads up");
+                    }
+                }
+                break;
             case Taking.Laying when !Courses.Busy && (Roads.Any || _course is null):
                 s.SayLoaded();
                 // The world, and with it the universe time every car is drawn on, has been replaced.
@@ -598,11 +652,7 @@ internal static partial class Multiplayer
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllBytes(path, data);
             }
-            else if (name == "course.json" && JsonSerializer.Deserialize<Dictionary<string, string?>>(data) is { } course
-                     && course.GetValueOrDefault("circuit") is { } json && Circuit.FromJson(json, out _, out _) is { } circuit)
-            {
-                _course = (course.GetValueOrDefault("name") ?? "course", circuit, course.GetValueOrDefault("shape"));
-            }
+            else if (name == "course.json") _course = ReadCourse(data, out _);
         }
         GameSaves.Refresh();
         GameSaves.LoadSaveGame(HandoverSave);

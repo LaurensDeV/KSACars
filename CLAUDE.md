@@ -1264,7 +1264,10 @@ saves it with `GameSaves.MakeUncompressedSave` as `Online race`, packs that save
 laid into one zip (`Sim/WorldTransfer.cs`, 46 KB for a small save) and sends it over the race's socket. The
 guest writes it into its own saves as `Online race`, loads it, flies its own car by its Id, lays the course
 from the circuit it was sent, which is exactly where the host's is and needs no file of its own, and says it
-is ready, and the host's world runs again. Every guest has then started at the moment the host's world was
+is ready, and the host's world runs again. The course goes on being the host's: laid again or taken up while guests are in, once it
+has stood a second, so a road being dragged is not sent every frame, it is sent alone to every guest racing,
+who lays it as it is or takes theirs up. **Seen between two copies on one machine**: a course changed and taken
+up on the host, laid and taken up on the guest within a second. Every guest has then started at the moment the host's world was
 saved, with the same date, sun and craft. A guest is let in only with the host's KSA build and every mod the
 host has enabled, since a save holding a part of a mod it lacks does not load; it is told which it lacks.
 After that each world is simulated on its own: what is on rails stays the same, and what only physics moves

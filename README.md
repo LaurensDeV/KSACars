@@ -163,7 +163,8 @@ Open **Race online** at the bottom of the panel; one player presses **Host a rac
 **Join a race**, and the panel walks each through what to do.
 Nobody needs an account or anything else installed. Everyone races in the host's world: joining loads
 a copy of it, with your car already on the grid, in place of the world you had, so save first. The
-host's own course comes with it, even one the host drew themselves.
+host's own course comes with it, even one the host drew themselves, and if the host changes the course or
+takes it up during the session, every guest's follows.
 
 1. The host lays a course and presses **Host a race**. The panel has a code of ten letters and digits,
    hidden until you press the eye beside it, and a **Copy** button that copies it either way: send it to
