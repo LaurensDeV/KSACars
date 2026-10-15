@@ -242,6 +242,9 @@ internal sealed class Buggies
     // Further out than this a car is put where it is wanted outright; nearer, it is drawn there over a few steps, so a late datagram is not a jolt.
     private const double SnapM = 3.0, PullSeconds = 0.1;
 
+    // A puppet told to move slower than this, and as near as this to where it is told to be, is at rest.
+    private const double RestMs = 0.05, RestM = 0.05;
+
     private static readonly Dictionary<Vehicle, (double Seconds, int Steps, int Snaps, double Worst)> PullSeen = [];
 
     // Once a second, how far a puppet was from where it was wanted before each step's pull, and how often it was put there outright.
@@ -267,6 +270,9 @@ internal sealed class Buggies
         doubleQuat ccf2Body = body2Ccf.Inverse();
 
         double3 off = pose.At - positionCcf;
+        // Standing where it is told to stand, it is left on KSA's rails: woken every step, its physics is built again every step,
+        // and a puppet waiting on the grid ran the whole world at a twentieth of its speed.
+        if (craft.Situation.IsOnRails() && Vec.Len(pose.Velocity) < RestMs && Vec.Len(off) < RestM) return;
         bool snap = Vec.Len(off) > SnapM;
         PullLog(e, off, snap, dt);
         if (snap) states.Kinematic.PositionPhys += off.Transform(ccf2Body).Transform(body2Phys);
