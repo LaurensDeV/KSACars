@@ -102,6 +102,19 @@ internal static class Multiplayer
     /// <summary>The name this player races under.</summary>
     public static string PlayerName { get; set; } = Environment.UserName;
 
+    /// <summary>For a developer, a bad line made on purpose: every datagram this game sends held back, jittered and lost so.</summary>
+    public static NetSession.Line? Impaired
+    {
+        get => _impaired;
+        set
+        {
+            _impaired = value is { Any: true } ? value : null;
+            if (_session is { } s) s.Impaired = _impaired;
+        }
+    }
+
+    private static NetSession.Line? _impaired;
+
     /// <summary>The port a host listens on.</summary>
     public static int Port { get; set; } = DefaultPort;
 
@@ -202,6 +215,7 @@ internal static class Multiplayer
             NetSession s = new(NetSession.Role.Host, PlayerName, MyCar(), Port, Now) { KsaBuild = Build.KsaRunning ?? "", Mods = EnabledMods() };
             s.UniverseClock = () => (Universe.GetElapsedSeconds(), Universe.SimulationSpeed);
             s.TrackClock = Universe.GetElapsedSeconds;
+            s.Impaired = _impaired;
             _session = s;
             _cancel = new CancellationTokenSource();
             _opening = Upnp.OpenAsync(s.Port, "Fast & Purrious race", LeaseSeconds, _cancel.Token);
@@ -224,6 +238,7 @@ internal static class Multiplayer
         {
             NetSession s = new(NetSession.Role.Client, PlayerName, MyCar(), 0, Now) { KsaBuild = Build.KsaRunning ?? "", Mods = EnabledMods() };
             s.TrackClock = Universe.GetElapsedSeconds;
+            s.Impaired = _impaired;
             _session = s;
             _cancel = new CancellationTokenSource();
             _ = s.AskWhereAsync(_cancel.Token);
@@ -690,6 +705,8 @@ internal static class Multiplayer
             ["on_the_course"] = OnTheCourse, ["trouble"] = Trouble, ["world"] = WorldSays, ["countdown_s"] = Countdown is { } c ? Math.Round(c, 2) : null,
             ["held"] = _held, ["held_speed"] = HeldSpeed, ["speed"] = Universe.SimulationSpeed, ["universe_s"] = Math.Round(Universe.GetElapsedSeconds(), 3),
             ["behind_s"] = Behind is { } b ? Math.Round(b, 4) : null, ["recent"] = Said.ToArray(),
+            ["line"] = _impaired is { } line ? $"{line.DelaySeconds * 1000:F0} ms, +-{line.JitterSeconds * 1000:F0} ms, {line.Loss * 100:F0}% lost" : null,
+            ["dropped"] = _session?.Dropped,
         };
         List<Dictionary<string, object?>> racers = [];
         Route? route = OnTheCourse ? SharedRoute(out _) : null;

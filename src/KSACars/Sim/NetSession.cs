@@ -306,6 +306,12 @@ internal sealed class NetSession : IDisposable
     public void Update()
     {
         double now = _clock();
+        for (int i = 0; i < _late.Count; i++)
+        {
+            if (_late[i].Due > now) continue;
+            Put(_late[i].Data, _late[i].To);
+            _late.RemoveAt(i--);
+        }
         int handled = 0;
         while (handled++ < MostQueued && _in.TryDequeue(out (byte[] Data, IPEndPoint From, double Arrived) d)) Handle(d.Data, d.From, d.Arrived);
 
@@ -632,15 +638,50 @@ internal sealed class NetSession : IDisposable
     private void SendTo(NetWire.Message message, IPEndPoint? to)
     {
         if (to is null || _closed) return;
+        int n = NetWire.Write(message, _out);
+        if (Impaired is { } line && line.Any)
+        {
+            if (_chance.NextDouble() < line.Loss)
+            {
+                Dropped++;
+                return;
+            }
+            double due = _clock() + Math.Max(0.0, line.DelaySeconds + (line.JitterSeconds * ((2.0 * _chance.NextDouble()) - 1.0)));
+            _late.Add((due, _out[..n], to));
+            return;
+        }
+        Put(_out.AsSpan(0, n), to);
+    }
+
+    private void Put(ReadOnlySpan<byte> data, IPEndPoint to)
+    {
         try
         {
-            int n = NetWire.Write(message, _out);
-            _socket.SendTo(_out.AsSpan(0, n), SocketFlags.None, to);
+            _socket.SendTo(data, SocketFlags.None, to);
         }
         catch (Exception e) when (e is SocketException or ObjectDisposedException or ArgumentException)
         {
         }
     }
+
+    /// <summary>A bad line, made on purpose: how long each datagram this game sends is held back, how much that varies either way, and the share of them lost.</summary>
+    public readonly record struct Line(double DelaySeconds, double JitterSeconds, double Loss)
+    {
+        public bool Any => DelaySeconds > 0.0 || JitterSeconds > 0.0 || Loss > 0.0;
+    }
+
+    /// <summary>
+    /// For a developer: every datagram this game sends held back, jittered and lost as a line across
+    /// the world would, so a race can be tried on one machine as it would be across the internet.
+    /// Datagrams held back go out in <see cref="Update"/>, so no sooner than a frame.
+    /// </summary>
+    public Line? Impaired { get; set; }
+
+    /// <summary>How many datagrams <see cref="Impaired"/> has lost on purpose.</summary>
+    public int Dropped { get; private set; }
+
+    private readonly List<(double Due, byte[] Data, IPEndPoint To)> _late = [];
+    private readonly Random _chance = new();
 
     private void Say(string what) => _said.Add(what);
 

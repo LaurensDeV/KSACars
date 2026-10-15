@@ -373,6 +373,11 @@ internal sealed class Bridge
     {
         if (command.String("name") is { Length: > 0 } name) Multiplayer.PlayerName = name;
         if (command.Has("port")) Multiplayer.Port = (int)command.Number("port", Multiplayer.DefaultPort);
+        if (command.Has("delay_ms") || command.Has("jitter_ms") || command.Has("loss"))
+        {
+            Multiplayer.Impaired = new NetSession.Line(command.Number("delay_ms", 0.0) / 1000.0, command.Number("jitter_ms", 0.0) / 1000.0,
+                                                       Math.Clamp(command.Number("loss", 0.0), 0.0, 1.0));
+        }
         if (command.Flag("stop", false)) Multiplayer.Stop();
         if (command.Flag("host", false)) Multiplayer.Host();
         if (command.Flag("ready", false)) Multiplayer.Ready();

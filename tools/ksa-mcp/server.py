@@ -286,11 +286,13 @@ TOOLS = {
                    "ready=true opens a guest's socket and finds its code, join is the host's code or host:port, let_in a "
                    "guest's code for the host to open the way to, laps and start=true start the race, stop=true leaves "
                    "it; name is the racer's name. Answers where the race is: codes, the router's answer, who is in it, "
-                   "and for each other racer's car how far it is from where its game says (off_by_m). Set KSA_USER_DIR "
-                   "to drive a second game's profile.",
+                   "and for each other racer's car how far it is from where its game says (off_by_m). delay_ms, "
+                   "jitter_ms and loss (0..1) make every datagram this game sends late and lost so, a line across "
+                   "the world on one machine; all three 0 clears it. Set KSA_USER_DIR to drive a second game's profile.",
                    {"host": {"type": "boolean"}, "port": _num("UDP port"), "ready": {"type": "boolean"},
                     "join": {"type": "string"}, "let_in": {"type": "string"}, "laps": _num("count"),
-                    "start": {"type": "boolean"}, "stop": {"type": "boolean"}, "name": {"type": "string"}}, [],
+                    "start": {"type": "boolean"}, "stop": {"type": "boolean"}, "name": {"type": "string"},
+                    "delay_ms": _num("ms each way"), "jitter_ms": _num("ms either way"), "loss": _num("0..1")}, [],
                    lambda a: [_text(json.dumps(send("online", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),

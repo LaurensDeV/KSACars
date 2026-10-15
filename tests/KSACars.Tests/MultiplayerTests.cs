@@ -485,4 +485,26 @@ public class MultiplayerTests
         Assert.InRange(rate, 0.45, 0.55);
         Assert.InRange(universe - (1000.0 + (0.5 * (Now() - start))), -0.05, 0.05);
     }
+    [Fact]
+    public void ALineMadeBadOnPurposeHoldsBackAndLosesWhatItCarries()
+    {
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now);
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now);
+        guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+        Until(() => guest.Joined && guest.Racers.Count == 2, host, guest);
+        NetSession.Racer seen = host.Racers.First(r => r.Id == guest.Me);
+
+        // Held back 0.3 s: a state is not there sooner.
+        guest.Impaired = new NetSession.Line(0.3, 0.0, 0.0);
+        double sent = Now();
+        guest.Send(new RacePose(1, 100, default, doubleQuat.Identity, default, default), 0, 0, 0, 0, false);
+        Until(() => seen.Track.Newest is not null, host, guest);
+        Assert.True(Now() - sent >= 0.3, $"came in {Now() - sent:F3} s");
+
+        // Half lost: of 400, about 200 go, and the newest that comes is near the last sent.
+        guest.Impaired = new NetSession.Line(0.0, 0.0, 0.5);
+        for (int k = 0; k < 400; k++) guest.Send(new RacePose(2 + k, 1000, default, doubleQuat.Identity, default, default), 0, 0, 0, 0, false);
+        Until(() => seen.Track.Newest!.Pose.S > 390.0, host, guest);
+        Assert.InRange(guest.Dropped, 150, 250);
+    }
 }
