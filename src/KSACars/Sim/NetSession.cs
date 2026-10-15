@@ -37,6 +37,12 @@ internal sealed class NetSession : IDisposable
 
         /// <summary>On the host, whether this racer has loaded the world it was sent and is racing in it.</summary>
         public bool HasWorld { get; set; }
+
+        /// <summary>
+        /// On the host, whether this racer has said anything but hello: a guest looking on its own network
+        /// is heard at two addresses and settles on the first to answer, and the other never speaks again.
+        /// </summary>
+        public bool Confirmed { get; set; }
     }
 
     public const byte HostId = 1;
@@ -83,7 +89,7 @@ internal sealed class NetSession : IDisposable
     private readonly List<string> _said = [];
 
     private readonly Dictionary<byte, WorldTransfer.Outgoing> _going = [];
-    private readonly Queue<Racer> _arriving = new();
+    private readonly List<Racer> _arriving = [];
     private WorldTransfer.Incoming? _coming;
     private uint _transfers, _loadedTransfer;
     private double _clockNext, _needNext, _lastPieceAt, _loadedNext, _sentAt;
@@ -94,6 +100,7 @@ internal sealed class NetSession : IDisposable
     private const double RateSmoothing = 0.3;
 
     private IPEndPoint? _host;
+    private IPEndPoint[] _nearby = [];
     private double _helloNext, _joinUntil, _pingNext, _rosterNext, _startNext;
     private double _bestRtt = double.PositiveInfinity;
     private uint _sequence, _races;
@@ -149,10 +156,16 @@ internal sealed class NetSession : IDisposable
     public double? WorldShare => _coming is { Complete: false } c ? (double)c.Have / c.Count : null;
 
     /// <summary>On the host, whether any racer is being sent a world or has not yet loaded it, which its world is held for.</summary>
-    public bool Handing => _arriving.Count > 0 || _racers.Values.Any(r => r.Id != HostId && !r.HasWorld);
+    public bool Handing => _arriving.Any(r => r.Confirmed) || _racers.Values.Any(r => r.Id != HostId && r.Confirmed && !r.HasWorld);
 
     /// <summary>On the host, the next racer that has been let in and needs a world: dequeued as it is taken.</summary>
-    public Racer? NextArrival() => _arriving.TryDequeue(out Racer? r) && _racers.ContainsKey(r.Id) ? r : null;
+    public Racer? NextArrival()
+    {
+        _arriving.RemoveAll(r => !_racers.ContainsKey(r.Id));
+        if (_arriving.FirstOrDefault(r => r.Confirmed) is not { } next) return null;
+        _arriving.Remove(next);
+        return next;
+    }
 
     /// <summary>On the host, sends a racer the world it is to race in.</summary>
     public void SendWorld(Racer racer, byte[] world)
@@ -204,6 +217,7 @@ internal sealed class NetSession : IDisposable
         // Windows reports an ICMP refusal of an earlier send as a failure of the next receive.
         if (OperatingSystem.IsWindows()) _socket.IOControl(unchecked((int)0x9800000C), [0, 0, 0, 0], null);
         _socket.Bind(new IPEndPoint(IPAddress.Any, port));
+        _socket.EnableBroadcast = true;
         Port = ((IPEndPoint)_socket.LocalEndPoint!).Port;
         Random.Shared.NextBytes(_stunTransaction);
 
@@ -241,10 +255,18 @@ internal sealed class NetSession : IDisposable
         }
     }
 
-    /// <summary>Has a client ask to join a host, at an address that has been looked up.</summary>
-    public void Join(IPEndPoint host)
+    /// <summary>
+    /// Has a client ask to join a host, at an address that has been looked up. With
+    /// <paramref name="nearby"/> it asks this machine and the local network too, for a host behind the
+    /// same router, which most routers will not reach by its own public address; the first host to
+    /// answer on the same port is the one joined.
+    /// </summary>
+    public void Join(IPEndPoint host, bool nearby = false)
     {
         if (Is != Role.Client) return;
+        _nearby = nearby
+            ? [new IPEndPoint(IPAddress.Loopback, host.Port), new IPEndPoint(IPAddress.Broadcast, host.Port)]
+            : [];
         (_host, Me, Out, _helloNext, _joinUntil) = (host, 0, "", 0.0, _clock() + JoinWithinSeconds);
         _racers.Clear();
         // A host started afresh numbers its worlds from one again, and its clock is another.
@@ -362,7 +384,9 @@ internal sealed class NetSession : IDisposable
             }
             if (now >= _helloNext)
             {
-                SendTo(new NetWire.Hello(Name, Car, KsaBuild, string.Join(',', Mods)), _host);
+                NetWire.Hello hello = new(Name, Car, KsaBuild, string.Join(',', Mods));
+                SendTo(hello, _host);
+                foreach (IPEndPoint near in _nearby) SendTo(hello, near);
                 _helloNext = now + HelloEverySeconds;
             }
             return;
@@ -399,7 +423,7 @@ internal sealed class NetSession : IDisposable
 
     private void UpdateHost(double now)
     {
-        foreach (Racer gone in _racers.Values.Where(r => r.Id != HostId && now - r.HeardAt > (r.HasWorld ? SilentSeconds : LoadingSilentSeconds)).ToArray())
+        foreach (Racer gone in _racers.Values.Where(r => r.Id != HostId && now - r.HeardAt > (r.HasWorld || !r.Confirmed ? SilentSeconds : LoadingSilentSeconds)).ToArray())
         {
             _racers.Remove(gone.Id);
             Say($"{gone.Name} has gone quiet and is out of the race");
@@ -461,12 +485,24 @@ internal sealed class NetSession : IDisposable
         }
         if (Is == Role.Host) HandleAsHost(message, from, arrived);
         else if (from.Equals(_host)) HandleAsClient(message, arrived);
+        else if (!Joined && _nearby.Length > 0 && _host is { } wanted && from.Port == wanted.Port && message is NetWire.Welcome
+                 && (IPAddress.IsLoopback(from.Address) || JoinCode.IsPrivate(from.Address)))
+        {
+            // A host behind the same router, answering from this machine or the local network: it is the one joined.
+            Say($"found the host on this network, at {from}");
+            (_host, _nearby) = (from, []);
+            HandleAsClient(message, arrived);
+        }
     }
 
     private void HandleAsHost(NetWire.Message message, IPEndPoint from, double arrived)
     {
         Racer? racer = _racers.Values.FirstOrDefault(r => from.Equals(r.At));
-        if (racer is not null) racer.HeardAt = arrived;
+        if (racer is not null)
+        {
+            racer.HeardAt = arrived;
+            if (message is not NetWire.Hello) racer.Confirmed = true;
+        }
         switch (message)
         {
             case NetWire.Hello hello:
@@ -493,7 +529,7 @@ internal sealed class NetSession : IDisposable
                 while (_racers.Values.Any(r => r.Box == box)) box++;
                 Racer joined = new(id, UniqueName(Clip(hello.Name)), hello.Car, box) { At = from, HeardAt = arrived };
                 _racers[id] = joined;
-                _arriving.Enqueue(joined);
+                _arriving.Add(joined);
                 SendTo(new NetWire.Welcome(id, ""), from);
                 _rosterNext = 0.0;
                 Say($"{joined.Name} has joined, in box {box + 1}, from {from}");

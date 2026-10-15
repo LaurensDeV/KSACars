@@ -1317,7 +1317,10 @@ allows it (`Sim/Upnp.cs`), leased for four hours so a crash leaves it to close, 
 is; every game asks a public STUN server where its socket is seen from outside (`Sim/Stun.cs`); and an
 address is a ten-character code (`Sim/JoinCode.cs`). Where a router will not open the port, a guest gives
 the host its own code and the host's Let in sends to it for 30 s, which opens the way through both
-routers from inside. Every guest speaks to the host alone, which passes each state on, so only the host
+routers from inside. A code that is the guest's own public address is a host behind the same router, which
+most routers do not reach by that address: the guest then says hello on this machine and to the whole local
+network as well, and joins whichever host answers on the code's port. The host takes a guest on only once it
+has heard more than hello from it at the address it settled on, so the one heard twice is one racer. Every guest speaks to the host alone, which passes each state on, so only the host
 has to be reached. A state is never resent, being stale before a resend would come; the pieces of a world are.
 
 **The start is on the host's clock.** A guest measures the host's clock against its own by the quickest

@@ -91,7 +91,7 @@ internal static class Multiplayer
     private static NetSession? _session;
     private static CancellationTokenSource? _cancel;
     private static Task<Upnp.Opened>? _opening;
-    private static Task<IPEndPoint?>? _finding;
+    private static Task<(IPEndPoint At, bool Nearby)?>? _finding;
     private static double _sendNext, _loadingSince;
     private static int _index = -1, _routeGeneration = -1;
     private static uint _raceSeen, _worldTaken;
@@ -278,7 +278,7 @@ internal static class Multiplayer
         Ready();
         if (_session is null) return;
         Say($"looking for {at.Host}:{at.Port}...");
-        _finding = Find(at.Host, at.Port, _cancel?.Token ?? CancellationToken.None);
+        _finding = Find(_session, at.Host, at.Port, _cancel?.Token ?? CancellationToken.None);
     }
 
     /// <summary>Has a host open the way through its router to a guest's code.</summary>
@@ -324,11 +324,16 @@ internal static class Multiplayer
         if (was && !quiet) Say("out of the race");
     }
 
-    private static async Task<IPEndPoint?> Find(string host, int port, CancellationToken token)
+    // The host's address, and whether it is behind this game's own router: its public address the same as this one's,
+    // which a STUN server is given a few seconds to say.
+    private static async Task<(IPEndPoint At, bool Nearby)?> Find(NetSession s, string host, int port, CancellationToken token)
     {
-        if (IPAddress.TryParse(host, out IPAddress? ip)) return new IPEndPoint(ip.MapToIPv4(), port);
-        IPAddress[] found = await Dns.GetHostAddressesAsync(host, AddressFamily.InterNetwork, token);
-        return found.Length > 0 ? new IPEndPoint(found[0], port) : null;
+        IPAddress? ip = IPAddress.TryParse(host, out IPAddress? parsed) ? parsed.MapToIPv4()
+            : (await Dns.GetHostAddressesAsync(host, AddressFamily.InterNetwork, token)).FirstOrDefault();
+        if (ip is null) return null;
+        for (int k = 0; k < 30 && s.Public is null && !token.IsCancellationRequested; k++) await Task.Delay(100, token);
+        bool nearby = s.Public is { } mine && mine.Address.Equals(ip);
+        return (new IPEndPoint(ip, port), nearby);
     }
 
     /// <summary>Once a frame, from the frame hook. Never throws.</summary>
@@ -340,7 +345,11 @@ internal static class Multiplayer
             if (_finding is { IsCompleted: true } finding)
             {
                 _finding = null;
-                if (finding.IsCompletedSuccessfully && finding.Result is { } host) s.Join(host);
+                if (finding.IsCompletedSuccessfully && finding.Result is { } host)
+                {
+                    s.Join(host.At, host.Nearby);
+                    if (host.Nearby) Say("that code is your own router's: looking on this computer and your network too");
+                }
                 else Say("that host could not be found");
             }
 
@@ -517,7 +526,6 @@ internal static class Multiplayer
                 // Loading before the load: KSA loads it inside the call and hands control to the host's car, which only a game loading may be given.
                 (_worldTaken, _taking, _loadingSince) = (world.Transfer, Taking.Loading, Now());
                 Load(world.Data);
-                (_taking, _loadingSince) = (Taking.Loading, Now());
                 break;
             case Taking.Loading:
                 string mine = s.Racers.FirstOrDefault(r => r.Id == s.Me)?.Craft ?? "";

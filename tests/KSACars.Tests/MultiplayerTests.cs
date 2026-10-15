@@ -540,4 +540,29 @@ public class MultiplayerTests
         Assert.False(host.Handing);
         Assert.Single(host.Racers);
     }
+    [Fact]
+    public void AGuestBehindTheHostsRouterFindsItOnItsOwnNetworkAndIsTakenOnOnce()
+    {
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now);
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now);
+
+        // The code's address goes nowhere, as a router's own public address does from behind it.
+        guest.Join(new IPEndPoint(IPAddress.Parse("192.0.2.1"), host.Port), nearby: true);
+        Until(() => guest.Joined, host, guest);
+
+        NetSession.Racer? arriving = null;
+        Until(() => (arriving ??= host.NextArrival()) is not null, host, guest);
+        Assert.Equal(guest.Me, arriving!.Id);
+
+        // Heard at more than one address, it is one racer once the others have gone quiet.
+        double until = Now() + 11.0;
+        while (Now() < until)
+        {
+            host.Update();
+            guest.Update();
+            Thread.Sleep(20);
+        }
+        Assert.Equal(2, host.Racers.Count);
+        Assert.Null(host.NextArrival());
+    }
 }
