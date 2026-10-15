@@ -31,13 +31,18 @@ none of it has been seen as **KSACars** yet:
 - [ ] The craft mover sets a car down on a road on the ground and on a raised deck, standing on the asphalt
       where the ring was drawn, from near and from kilometres off; and a craft that is no car goes to the
       ground as before
-- [ ] Racing online: two games on two machines, one hosting and one joining with its code, each seeing the
-      other's car on its own copy of the course, smooth, on its wheels and at the right place on the road
+- [x] Racing online between two copies on one machine (2026.10.13.5602, `tools/two-games.sh`, joined at
+      127.0.0.1): the guest laid the host's course by itself, each saw the other's F2004 with a kitten at the
+      wheel, and raced at up to 66 m/s each puppet was 0.23 m on average and 0.8 m at worst from where it was
+      wanted, never put there outright; over the line and after a car was moved to its box it was found again
+- [ ] Racing online between two machines, one hosting and one joining with its code across the internet
 - [ ] The host's router opening the port through UPnP, and the panel saying the address it gives
 - [ ] A guest let in with its own code where the host's router would not open the port
-- [ ] The host's Start race putting every car in its box and letting them go together; the racing display
-      counting the laps from the lights
-- [ ] An online car touched: what each game does when the two cars meet, and that neither is thrown
+- [x] The host's start putting every car in its box and letting them go together (same games, bridge
+      `online` with `start`): the lights out 6 to 13 ms apart in the two
+- [ ] The racing display counting the laps from the lights
+- [x] An online car touched (same games): an F2004 into the other at 9 m/s lost 3.6 m/s in its game, and
+      the one it hit was shoved to 3 m/s in the other's; neither thrown, each puppet then doing what its car did
 - [x] A course's start (2026.10.13.5602, bridge `road` with `course`, Club Motorsports Flat): the chequered
       line between the road's edge lines ahead of the F2004, solid white and black 2 cm over the asphalt, the
       pole's box round the car, and the racing line's arrowheads solid over it

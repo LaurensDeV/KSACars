@@ -177,8 +177,8 @@ same network can join with the address the host's panel shows under *on your own
 `host:port` from a tunnel such as playit.gg, or a VPN such as Tailscale, works in the code's place too.
 
 Everyone needs the same version of the mod, and the same course file; the mod's own courses are the
-same for everyone. The host uses UDP port 50000. Online racing is new and has not yet been tried
-between two real games, and cars from other games do not yet push each other properly when they touch.
+same for everyone. The host uses UDP port 50000. Online racing is new: it has been raced between two
+copies of the game on one PC, but not yet across the internet.
 
 ## Build
 

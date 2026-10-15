@@ -152,6 +152,7 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
 ./tools/run.sh --attach                    # follow a game that's already running
 python3 tools/ksa-mcp/server.py cli status # drive a running game through the bridge
 ./tools/roads/rig-laps.sh "Z "             # every car round the circuit files starting so, headless, in seconds
+./tools/two-games.sh --race                # two copies of the game on this machine, one hosting the other
 ./tools/buggy-sounds.py                    # re-cut the buggy's engine from its recordings
 ./tools/eldorado-sounds.py                 # ...and the Eldorado's
 ./tools/f2004-sounds.py                    # ...and the F2004's, from the one recording that needs a credit
@@ -285,7 +286,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Bridge.cs` | **commands from outside the game**, read from `Logs/bridge/KSACars/` and answered beside them — load a save, park a car, drive it, set a driver going round a circuit, seat and EVA kittens, step the world, capture — so an agent can test a car in a game that stays running. Developer installs only |
 | `Ksa/Laps.cs` | the laps being driven by `Autopilot`, a car each, **kept outside `Buggies.Entry`**: stepped from the physics window, and from the frame hook ended when the car is gone or the roads are laid again, and filed under the bridge's folder as a summary and a line a step |
 | `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn`, or a second car of the one part another is, **from the part's template**, since a player's library has no car in it |
-| `Ksa/Multiplayer.cs` | **racing other players, each in their own game**, from the panel's Race online: hosting or joining with a code, this car's pose sent 30 times a second, each other racer's car a copy of theirs that `Buggies.Puppet` puts where its game says, and the host's start. **Not yet seen between two games** |
+| `Ksa/Multiplayer.cs` | **racing other players, each in their own game**, from the panel's Race online: hosting or joining with a code, this car's pose sent 30 times a second, each other racer's car a copy of theirs that `Buggies.Puppet` puts where its game says, and the host's start. **Seen between two copies on one machine; not across the internet** |
 | `Ksa/Opponents.cs` | **cars that race the one being flown**, from the panel's Add opponent: a copy of the flown car in the next box of the grid, a kitten at its wheel, driven by `Autopilot` from when the player's car sets off. A driver knows nothing of any other car |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has, **in the `logs` folder of the profile KSA was started with** (`Constants.DocumentsFolderPath`, which StarMap answers with a Borea instance's folder), which everything the mod keeps — circuits, practised laps, the bridge — sits beside; the old guesses at the user folder are only a fallback |
@@ -312,7 +313,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 561 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 560 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -1262,8 +1263,15 @@ in its library has it laid at its car.
 `Buggies.Puppet` hands its pose to the physics window, where `Buggies.Pull` writes it after the drive is
 stepped: turned as told, moving as told, and drawn onto its place over 0.1 s, or put there outright from
 more than 3 m. Its drive still steps with the inputs its game sent, so its wheels steer and its springs
-work. A car not heard from for 3 s is let go of and braked. **Its contact with a car of this game is
-one-sided**: this game's car is pushed by it and it is put back where it is told to be. **Not yet seen in game.**
+work. A car not heard from for 3 s is let go of and braked. **Two cars that touch each meet it in their
+own game**: there one is a puppet, put back where it is told to be, and the other is pushed; and what the
+pushed car does is then sent to the other game, where its puppet does it. **Seen between two copies on one
+machine** (`tools/two-games.sh`, 2026.10.13.5602): racing at up to 66 m/s, a puppet 0.23 m on average from
+where it was wanted before each step's pull and never more than 0.8 m, the lights out 6 ms apart; and an
+F2004 run into the other at 9 m/s lost 3.6 m/s in its game while the one it hit was shoved to 3 m/s in
+the other's, and neither was thrown. **Nothing has been raced across the internet**, nor has a port been
+opened through UPnP or a guest let in by its code: the router of the machine it was tried on has UPnP off
+and does not take back what is sent to its own address.
 
 **Nobody signs in to anything.** The host's port is opened on its router through UPnP where the router
 allows it (`Sim/Upnp.cs`), leased for four hours so a crash leaves it to close, and closed when the race

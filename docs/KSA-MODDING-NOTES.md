@@ -53,6 +53,14 @@ Mods are loaded into separate `AssemblyLoadContext`s, so dependencies do not col
 
 `Console.WriteLine` reaches the KSA console.
 
+**A profile of its own: `-InstancePath <folder>`.** StarMap reads it, or `STARMAP_INSTANCE_PATH`, and
+patches `Constants.DocumentsFolderPath` to answer that folder, so KSA reads its mods, saves, vehicles,
+settings and logs from there. That is how Borea runs an instance, and how two copies of the game run on
+one machine at once, each with its own log and the mod's own bridge (`tools/two-games.sh`). The folder
+needs a `manifest.toml` and a `mods` folder; KSA lists the saves when it starts, so a save copied in
+afterwards is not found until it is restarted. Two copies at a player's settings fill a 12 GB card, and
+one then draws a frame every few seconds.
+
 ### Porting to a different loader
 
 The bound surface is small — six attributes and a `KSA.Mod` parameter, all in one entry class, so
@@ -179,6 +187,10 @@ never runs, and `GetPositionEcl()` keeps returning its default `_positionEcl` of
 is a vehicle apparently sitting at the solar system barycentre.
 
 `IParentBody.Mu` is a plain property — no need to hunt for the gravitational parameter.
+
+**A part's template by its Id is `ModLibrary.Get<PartTemplate>(id)`, never `TryGet`.** `TryGet<T>` has a
+branch for most of what the library keeps and none for a part template, so it answers false for every
+part there is. `Get` has the branch, and throws a `NullReferenceException` for an Id it has not loaded.
 
 ### Spawning a kitten on EVA, with a velocity of your choosing
 
