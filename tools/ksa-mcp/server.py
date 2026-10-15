@@ -240,7 +240,9 @@ TOOLS = {
                     "steps": _num("count")}, ["lat", "lon"],
                    lambda a: [_text(json.dumps(send("ground", **a)))]),
     "ksa_road": ("loop=<m> lays a road to a loop of that length and a road on from it; loop_stand=<m> stands the flown car on the laid loop that far round and loop_where=true says how high it is and where on the loop. Lay the roads of a circuit from the library (circuit), with lat/lon its first point put there and turned by heading, on whatever body the craft is on, and save_as keeping it so; or a test circuit with a junction from lat/lon "
-                 "along heading (deg, 0 north), length and width in metres, kept in the library with save_as. lift is "
+                 "along heading (deg, 0 north), length and width in metres, kept in the library with save_as; a test "
+                 "circuit or loop is laid only with both lat and lon, and with neither, edit and drag_node work on the "
+                 "course that is laid and anything else only says what is laid. lift is "
                  "above the ground, spacing between points, margin how far past the edge clutter is cleared "
                  "(clutter=false leaves it); clear=true takes the roads up. edit=true opens that circuit in the road "
                  "editor instead, with its free camera at view_yaw and view_pitch (deg) and view_distance (m). "

@@ -486,6 +486,16 @@ internal sealed class Bridge
                 return Failed(notKept);
             }
         }
+        else if (!(command.Has("lat") && command.Has("lon")))
+        {
+            // With no place a test road is not laid, at 0, 0 or anywhere: the course that is laid is the one worked on, and with none, nothing is.
+            if (Roads.CircuitOn(body) is not { } laid)
+            {
+                return command.Has("drag_node") || command.Has("edit") ? Failed("no roads are laid: give lat and lon for a test road") : Done(new() { ["laid"] = false });
+            }
+            circuit = laid;
+            if (!command.Has("drag_node") && !command.Has("edit")) return Done(new() { ["laid"] = true, ["course"] = Courses.Laid, ["roads"] = laid.Roads.Count });
+        }
         else
         {
             double width = Math.Clamp(command.Number("width", 8.0), 1.0, 40.0), length = Math.Clamp(command.Number("length", 300.0), 10.0, 20_000.0);
