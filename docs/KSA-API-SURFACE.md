@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-248 types and 571 members across 12 assemblies.
+252 types and 585 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -118,6 +118,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### Brutal.ElementCount
 
 - `Brutal.ElementCount op_Implicit(int)`
+
+### Brutal.Pointers.Ptr
+
+*referenced as a type only*
 
 ## Brutal.Core.Numerics
 
@@ -315,11 +319,14 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.ImGuiApi.ImGuiViewportPtr GetMainViewport()`
 - `Brutal.Numerics.float2 CalcTextSize(Brutal.ImGuiApi.ImString, bool, float)`
 - `Brutal.Numerics.float2 GetMousePos()`
+- `Brutal.Numerics.float2 GetWindowPos()`
+- `Brutal.Numerics.float2 GetWindowSize()`
 - `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
 - `bool Begin(Brutal.ImGuiApi.ImString, ref bool, Brutal.ImGuiApi.ImGuiWindowFlags)`
 - `bool BeginCombo(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiComboFlags)`
 - `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
 - `bool Checkbox(Brutal.ImGuiApi.ImString, ref bool)`
+- `bool CollapsingHeader(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiTreeNodeFlags)`
 - `bool InputDouble(Brutal.ImGuiApi.ImString, ref double, double, double, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiInputTextFlags)`
 - `bool InputText(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
 - `bool InputTextWithHint(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
@@ -337,20 +344,33 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool SliderFloat(Brutal.ImGuiApi.ImString, ref float, float, float, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
 - `bool SliderInt(Brutal.ImGuiApi.ImString, ref int, int, int, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
 - `bool SmallButton(Brutal.ImGuiApi.ImString)`
+- `float GetCursorPosX()`
 - `float GetFontSize()`
+- `void BeginDisabled(bool)`
 - `void End()`
 - `void EndCombo()`
+- `void EndDisabled()`
+- `void PopStyleColor(int)`
 - `void PopTextWrapPos()`
+- `void PushStyleColor(Brutal.ImGuiApi.ImGuiCol, ref Brutal.Numerics.float4)`
 - `void PushTextWrapPos(float)`
 - `void SameLine(float, float)`
 - `void Separator()`
 - `void SeparatorText(Brutal.ImGuiApi.ImString)`
 - `void SetClipboardText(Brutal.ImGuiApi.ImString)`
+- `void SetNextItemOpen(bool, Brutal.ImGuiApi.ImGuiCond)`
 - `void SetNextItemWidth(float)`
 - `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
+- `void SetNextWindowSizeConstraints(ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiSizeCallback, Brutal.Pointers.Ptr)`
+- `void SetWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond)`
 - `void Text(Brutal.ImGuiApi.ImString)`
 - `void TextColored(ref Brutal.Numerics.float4, Brutal.ImGuiApi.ImString)`
 - `void TextDisabled(Brutal.ImGuiApi.ImString)`
+- `void TextWrapped(Brutal.ImGuiApi.ImString)`
+
+### Brutal.ImGuiApi.ImGuiCol
+
+*referenced as a type only*
 
 ### Brutal.ImGuiApi.ImGuiComboFlags
 
@@ -389,7 +409,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 *referenced as a type only*
 
+### Brutal.ImGuiApi.ImGuiSizeCallback
+
+*referenced as a type only*
+
 ### Brutal.ImGuiApi.ImGuiSliderFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiTreeNodeFlags
 
 *referenced as a type only*
 
@@ -1120,6 +1148,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool get_DrawUI()`
 - `double GetPlayerDeltaTime()`
 - `void set_ControlledVehicle(KSA.Vehicle)`
+- `void set_DrawUI(bool)`
 
 ### KSA.QuaternionEx
 
@@ -1278,6 +1307,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.UniverseTime GetElapsedTime()`
 - `bool IsPaused()`
 - `bool get_IsAutoWarpActive()`
+- `double GetAchivedSpeedFraction()`
 - `double GetElapsedSeconds()`
 - `double GetSimulationSpeed()`
 - `double get_SimulationSpeed()`

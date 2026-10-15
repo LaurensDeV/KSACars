@@ -67,7 +67,13 @@ internal static class RaceHudHook
     {
         try
         {
-            if (!Program.DrawUI && KsaWorld.InFlightScene) RaceHud.Draw();
+            if (!Program.DrawUI && KsaWorld.InFlightScene)
+            {
+                // First: the display may throw, and the hook catches it before anything after it is drawn.
+                NameTags.Draw();
+                StartLights.Draw();
+                RaceHud.Draw();
+            }
         }
         catch (Exception e)
         {

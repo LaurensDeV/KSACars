@@ -275,7 +275,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Courses.cs` | **a circuit laid where the car being flown is, for a player**: its first point at the car, its first road the way the car faces, and the car stood on its start; asked from the panel, worked out beside the game and laid from the frame hook once that is done |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap; it also reads where the head bone has the head, for the helmet |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, a course to lay and the line to drive, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, its Race online section folded until opened and told as numbered steps for a host and for a guest, with whatever would change the host's world greyed out for a guest and Build roads hidden from one, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, a course to lay and the line to drive, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
@@ -291,6 +291,8 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Laps.cs` | the laps being driven by `Autopilot`, a car each, **kept outside `Buggies.Entry`**: stepped from the physics window, and from the frame hook ended when the car is gone or the roads are laid again, and filed under the bridge's folder as a summary and a line a step |
 | `Ksa/CraftSpawner.cs` | parks a craft from a vehicle library at a latitude and longitude, for the bridge's `spawn`, or a second car of the one part another is, **from the part's template**, since a player's library has no car in it |
 | `Ksa/Multiplayer.cs` | **racing other players in the host's world**, from the panel's Race online: hosting or joining with a code, the host's world and course handed to each guest with its car in it, every world held to the host's universe time, this car's pose sent 30 times a second and every other racer's car put where its game says, and the host's start. **Seen between two copies on one machine; not across the internet** |
+| `Ksa/NameTags.cs` | **each other online racer's name over their car**, a point above it put on the screen by KSA's camera, smaller and fainter further off, drawn behind every window, with the interface up and with it hidden |
+| `Ksa/StartLights.cs` | **an online race's start on every racer's screen**: the seconds counted down large and GO! as the lights go out, and while the interface the start hid is still hidden, how to have it back |
 | `Ksa/Opponents.cs` | **cars that race the one being flown**, from the panel's Add opponent: a copy of the flown car in the next box of the grid, a kitten at its wheel, driven by `Autopilot` from when the player's car sets off. A driver knows nothing of any other car |
 | `Ksa/Build.cs` | what build this is, read off the assembly — and **whether it is a developer's install** |
 | `Ksa/Log.cs` | the mod's own log file, which is the only debugging channel it has, **in the `logs` folder of the profile KSA was started with** (`Constants.DocumentsFolderPath`, which StarMap answers with a Borea instance's folder), which everything the mod keeps — circuits, practised laps, the bridge — sits beside; the old guesses at the user folder are only a fallback |
@@ -317,7 +319,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 571 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 585 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -1325,7 +1327,17 @@ has to be reached. A state is never resent, being stale before a resend would co
 
 **The start is on the host's clock.** A guest measures the host's clock against its own by the quickest
 ping it has had answered, so the lights go out together in every game; at a start each car is stood in
-its box of the grid, which `Opponents` then leaves free, held on its brakes, and let go.
+its box of the grid, which `Opponents` then leaves free, held on its brakes, and let go. Every racer's
+interface is hidden at the start, as F2 hides it, so the racing display takes its place, and
+`Ksa/StartLights.cs` counts the seconds down large in the middle of every screen, with a note for ten seconds
+that F2 has the interface back; `Ksa/NameTags.cs` puts each other racer's name over their car. **Seen between
+two copies on one machine**: the count and the note with the interface hidden, the lights out 7 ms apart.
+
+**A puppet standing where it is told to stand is left on KSA's rails.** KSA rails a craft that stands still,
+and woken every step its physics is built again every step: a puppet waiting on the grid held the host's world
+to a twentieth of its speed, KSA's `_achievedSpeedFraction` cutting every step, and the guest, keeping the host's
+time, fell behind with it. The bridge's `online` says the achieved fraction, and each game logs it every two
+seconds while racing together.
 
 ## Adding a car
 

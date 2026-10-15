@@ -159,7 +159,8 @@ does keep the ground under it cleared; take the roads up before you save if you 
 
 ### Racing other people
 
-Under **Race online** in the panel, one player presses **Host a race** and the others **Join a race**.
+Open **Race online** at the bottom of the panel; one player presses **Host a race** and the others
+**Join a race**, and the panel walks each through what to do.
 Nobody needs an account or anything else installed. Everyone races in the host's world: joining loads
 a copy of it, with your car already on the grid, in place of the world you had, so save first. The
 host's own course comes with it, even one the host drew themselves.
@@ -169,10 +170,13 @@ host's own course comes with it, even one the host drew themselves.
 2. A guest presses **Join a race**, pastes the host's code and presses **Join**. The host's game stops for
    a moment while its world is sent; the guest's loads it and is put in its car.
 3. When everyone is in, the host sets the laps and presses **Start race**. Every car goes to its box on
-   the grid, and the lights go out five seconds later.
+   the grid, the interface is hidden so the racing display shows, and a countdown runs in the middle of
+   the screen until the lights go out. Press F2 to have the interface back. Every other racer's name
+   floats over their car.
 
 While anyone has joined, time warp and pause are off for everyone, the escape menu's included, so every
-copy of the world keeps the same time.
+copy of the world keeps the same time. A guest cannot lay or take up a course, add opponents or build
+roads: the world is the host's.
 
 The mod asks the host's router to open the port (UPnP). Most routers allow that, and then the code just
 works. If a guest cannot get in, the guest's panel shows a code of its own: send it to the host, who

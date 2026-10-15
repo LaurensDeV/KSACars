@@ -378,8 +378,8 @@ internal sealed class NetSession : IDisposable
         {
             if (now > _joinUntil)
             {
-                Out = $"{_host} never answered: is the code right, and has the host pressed Host?";
-                Say(Out);
+                Out = "the host never answered: check the code, and that the host has pressed Host a race";
+                Say($"{_host} never answered");
                 return;
             }
             if (now >= _helloNext)
@@ -426,7 +426,8 @@ internal sealed class NetSession : IDisposable
         foreach (Racer gone in _racers.Values.Where(r => r.Id != HostId && now - r.HeardAt > (r.HasWorld || !r.Confirmed ? SilentSeconds : LoadingSilentSeconds)).ToArray())
         {
             _racers.Remove(gone.Id);
-            Say($"{gone.Name} has gone quiet and is out of the race");
+            // One that never said more than hello was the same guest heard at another address, and was never in the race.
+            if (gone.Confirmed) Say($"{gone.Name} has gone quiet and is out of the race");
             _rosterNext = 0.0;
         }
         if (now >= _rosterNext)
@@ -462,7 +463,8 @@ internal sealed class NetSession : IDisposable
     }
 
     private NetWire.Roster Roster() =>
-        new(Course, CourseHash, [.. _racers.Values.OrderBy(r => r.Box).Select(r => new NetWire.Racer(r.Id, r.Name, r.Car, r.Box, r.Craft))]);
+        new(Course, CourseHash, [.. _racers.Values.Where(r => r.Id == HostId || r.Confirmed).OrderBy(r => r.Box)
+                                                  .Select(r => new NetWire.Racer(r.Id, r.Name, r.Car, r.Box, r.Craft))]);
 
     private void Handle(byte[] data, IPEndPoint from, double arrived)
     {
@@ -501,7 +503,12 @@ internal sealed class NetSession : IDisposable
         if (racer is not null)
         {
             racer.HeardAt = arrived;
-            if (message is not NetWire.Hello) racer.Confirmed = true;
+            if (message is not NetWire.Hello && !racer.Confirmed)
+            {
+                racer.Confirmed = true;
+                _rosterNext = 0.0;
+                Say($"{racer.Name} has joined, in box {racer.Box + 1}, from {from}");
+            }
         }
         switch (message)
         {
@@ -532,7 +539,7 @@ internal sealed class NetSession : IDisposable
                 _arriving.Add(joined);
                 SendTo(new NetWire.Welcome(id, ""), from);
                 _rosterNext = 0.0;
-                Say($"{joined.Name} has joined, in box {box + 1}, from {from}");
+                Log($"{joined.Name} says hello from {from}");
                 return;
             case NetWire.State state when racer is not null && state.Id == racer.Id:
                 racer.Track.Add(state, TrackClock?.Invoke() ?? arrived);
@@ -737,6 +744,9 @@ internal sealed class NetSession : IDisposable
     private readonly Random _chance = new();
 
     private void Say(string what) => _said.Add(what);
+
+    // Said to the log alone: handed out as said, with nothing for the panel.
+    private void Log(string what) => _said.Add("\u0001" + what);
 
     private void Read()
     {

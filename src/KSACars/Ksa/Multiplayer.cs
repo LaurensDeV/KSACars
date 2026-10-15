@@ -26,7 +26,7 @@ namespace KSACars;
 ///
 /// <para>The panel asks; this runs once a frame from the frame hook. Never throws.</para>
 /// </summary>
-internal static class Multiplayer
+internal static partial class Multiplayer
 {
     public const int DefaultPort = 50000;
 
@@ -99,6 +99,8 @@ internal static class Multiplayer
     private static Handover? _handover;
     private static Taking _taking;
     private static int _joinSeen;
+    private static double _paceLogNext;
+    private static double? _hiddenAt;
     private static string _myCraft = "";
     private static (string Name, Circuit Circuit, string? Shape)? _course;
 
@@ -125,6 +127,9 @@ internal static class Multiplayer
     public static bool Hosting => _session is { Is: NetSession.Role.Host };
     public static bool Joined => _session is { Joined: true };
 
+    /// <summary>Whether this game is a guest in another player's world, which is that player's to change: no course laid or taken up, no opponent added.</summary>
+    public static bool InSomeonesWorld => _session is { Is: NetSession.Role.Client, Joined: true };
+
     /// <summary>Whether anyone else is in the race with this game, which is when the world's speed is the race's to hold.</summary>
     public static bool Together => _session is { Joined: true } s && s.Racers.Count > 1;
 
@@ -137,7 +142,10 @@ internal static class Multiplayer
     /// <summary>What is in the way of racing, for the panel, or nothing.</summary>
     public static string Trouble { get; private set; } = "";
 
-    public static IEnumerable<NetSession.Racer> Racers => _session?.Racers.OrderBy(r => r.Box) ?? Enumerable.Empty<NetSession.Racer>();
+    /// <summary>Everyone in the race; on the host, a guest only once it has been heard from at the address it settled on.</summary>
+    public static IEnumerable<NetSession.Racer> Racers =>
+        _session?.Racers.Where(r => r.Id == NetSession.HostId || r.Confirmed || _session.Is == NetSession.Role.Client).OrderBy(r => r.Box)
+        ?? Enumerable.Empty<NetSession.Racer>();
 
     public static byte Me => _session?.Me ?? 0;
 
@@ -218,6 +226,27 @@ internal static class Multiplayer
         return s.Racers.Any(r => r.Id != s.Me && r.Craft == id);
     }
 
+    /// <summary>Every other racer's name and its car in this world, for their name tags.</summary>
+    public static IEnumerable<(string Name, Vehicle Craft)> Others
+    {
+        get
+        {
+            if (_session is not { } s) yield break;
+            foreach (NetSession.Racer racer in s.Racers)
+            {
+                if (racer.Id != s.Me && Remotes.TryGetValue(racer.Id, out Remote? remote) && remote.Craft is { } craft) yield return (racer.Name, craft);
+            }
+        }
+    }
+
+    /// <summary>What the start puts on the screen now: the count or GO!, and whether to say how to have the interface back; null for nothing.</summary>
+    public static (string? Count, bool Hint)? StartSays()
+    {
+        if (_session?.Start is not { } start) return null;
+        (string? count, bool hint) = StartLights.Say(start.At - Now(), _hiddenAt is { } at && !Program.DrawUI ? Now() - at : -1.0);
+        return count is null && !hint ? null : (count, hint);
+    }
+
     /// <summary>Whether a box of the grid is a racer's, so an opponent is not put in it.</summary>
     public static bool Holds(int box) => _session is { } s && s.Racers.Any(r => r.Box == box);
 
@@ -277,7 +306,8 @@ internal static class Multiplayer
         }
         Ready();
         if (_session is null) return;
-        Say($"looking for {at.Host}:{at.Port}...");
+        Log.Info($"online: looking for {at.Host}:{at.Port}");
+        Say("looking for the host...");
         _finding = Find(_session, at.Host, at.Port, _cancel?.Token ?? CancellationToken.None);
     }
 
@@ -291,6 +321,7 @@ internal static class Multiplayer
             return;
         }
         s.PunchTo(new IPEndPoint(ip, at.Port));
+        Say("opening the way in for them for 30 seconds: tell them to press Join now");
     }
 
     /// <summary>A host starts the race: every car to its box, and the lights out a few seconds on.</summary>
@@ -320,7 +351,7 @@ internal static class Multiplayer
         HeldSpeed = null;
         Behind = null;
         if (was) Universe.SetSimulationSpeed(1.0, alert: false);
-        (_raceSeen, _worldTaken, _taking, OnTheCourse, Trouble, _index, _routerTold) = (0, 0, Taking.Waiting, false, "", -1, false);
+        (_raceSeen, _worldTaken, _taking, OnTheCourse, Trouble, _index, _routerTold, _hiddenAt) = (0, 0, Taking.Waiting, false, "", -1, false, null);
         if (was && !quiet) Say("out of the race");
     }
 
@@ -608,6 +639,11 @@ internal static class Multiplayer
             HeldSpeed = _taking == Taking.Loading ? null : 1.0;
         }
         if (HeldSpeed is { } held && Math.Abs(Universe.SimulationSpeed - held) > 1e-9) Universe.SetSimulationSpeed(held, alert: false);
+        if (Now() >= _paceLogNext)
+        {
+            _paceLogNext = Now() + 2.0;
+            Log.Info(FormattableString.Invariant($"online: pace: speed {Universe.SimulationSpeed:F3}, achieved {Universe.GetAchivedSpeedFraction():F3}, behind {Behind ?? 0.0:F2} s, universe {Universe.GetElapsedSeconds():F2}"));
+        }
     }
 
     private static Route? SharedRoute(out Celestial? body)
@@ -715,6 +751,12 @@ internal static class Multiplayer
             Buggies.Hold(flown, new DriveInput(0.0, 0.0, Brake: 1.0), 1e6);
             _held = true;
             RaceHud.Laps = start.Laps;
+            // Raced with the interface hidden, as F2 hides it, the racing display in its place; F2 has it back.
+            if (Program.DrawUI)
+            {
+                Program.DrawUI = false;
+                _hiddenAt = Now();
+            }
             Say($"to the grid, box {(me?.Box ?? 0) + 1}: {start.Laps} laps");
         }
         if (_held && Now() >= start.At)
@@ -785,6 +827,8 @@ internal static class Multiplayer
             ["on_the_course"] = OnTheCourse, ["trouble"] = Trouble, ["world"] = WorldSays, ["countdown_s"] = Countdown is { } c ? Math.Round(c, 2) : null,
             ["held"] = _held, ["held_speed"] = HeldSpeed, ["speed"] = Universe.SimulationSpeed, ["universe_s"] = Math.Round(Universe.GetElapsedSeconds(), 3),
             ["behind_s"] = Behind is { } b ? Math.Round(b, 4) : null, ["recent"] = Said.ToArray(),
+            // How much of the speed asked KSA gives: a world short of its speed is one whose physics cannot keep up.
+            ["achieved"] = Math.Round(Universe.GetAchivedSpeedFraction(), 3),
             ["line"] = _impaired is { } line ? $"{line.DelaySeconds * 1000:F0} ms, +-{line.JitterSeconds * 1000:F0} ms, {line.Loss * 100:F0}% lost" : null,
             ["dropped"] = _session?.Dropped,
         };
@@ -816,10 +860,21 @@ internal static class Multiplayer
         return r;
     }
 
+    // Everything is logged; the panel is shown only what a player needs, and never an address, which a stream would show.
     private static void Say(string what)
     {
+        // The session marks what is for the log alone.
+        if (what.StartsWith('\u0001'))
+        {
+            Log.Info($"online: {what[1..]}");
+            return;
+        }
         Log.Info($"online: {what}");
+        if (Address().IsMatch(what) || what.StartsWith("hosting on port", StringComparison.Ordinal) || what.StartsWith("router:", StringComparison.Ordinal)) return;
         Said.Add(what);
         if (Said.Count > MessagesKept) Said.RemoveAt(0);
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\b\d{1,3}(\.\d{1,3}){3}\b")]
+    private static partial System.Text.RegularExpressions.Regex Address();
 }
