@@ -1293,8 +1293,15 @@ pace when it did not, both worlds refusing a warp to 10x and a pause, the lights
 run into the other at 9 m/s losing 3.6 m/s in its game while the one it hit was shoved to 3 m/s in the
 other's. Two copies on one card is no fair test of smoothness: the copy whose window is behind the other is
 given what the card has left, at 40 frames a second each with vsync off, and crawls when the card is short.
-**Nothing has been raced across the internet**, nor has a port been opened through UPnP or a guest let in by
-its code: the router of the machine it was tried on has UPnP off and does not take back what is sent to its
+**A bad line is made on purpose for a developer**: the bridge's `online` with `delay_ms`, `jitter_ms` and
+`loss` holds back, jitters and loses every datagram a game sends (`NetSession.Impaired`), sent in its next
+frame. Through 75 ms each way, 20 ms either way and 5% lost on both: the world handed over in 4.4 s with its
+lost pieces asked for again, the lights out 21 ms apart, and in 67 s of racing no puppet put outright, the
+worst 1.5 m from where it was wanted at 48 m/s and most a tenth of that. A guest's world goes no faster than
+KSA lets it: KSA runs a world slower than its speed when its physics workers take most of a frame
+(`Universe._achievedSpeedFraction`), and with both copies racing on one machine a guest 0.5 s behind stayed so,
+at 1.1, until the racing stopped, and then caught up. **Nothing has been raced across the internet**, nor has a
+port been opened through UPnP or a guest let in by its code: the router of the machine it was tried on has UPnP off and does not take back what is sent to its
 own address.
 
 **Nobody signs in to anything.** The host's port is opened on its router through UPnP where the router

@@ -38,6 +38,9 @@ none of it has been seen as **KSACars** yet:
 - [x] A guest given the host's world (same games): the save and the course, 46 KB, loaded with the guest
       flying its own car in it and the course laid as the host's, the host's car on it 2 cm from where it was
       wanted; the universe times within 6 ms while both drew freely; a warp to 10x and a pause refused in both
+- [x] A race through a bad line made on purpose (same games, bridge `online` with 75 ms each way, 20 ms of
+      jitter and 5% lost on both): the world handed over in 4.4 s, the lights out 21 ms apart, no puppet put
+      outright in 67 s, the worst 1.5 m off at 48 m/s
 - [ ] A guest joining a race already under way, and a third racer's car made in the worlds of those in
 - [ ] Racing online between two machines, one hosting and one joining with its code across the internet
 - [ ] The host's router opening the port through UPnP, and the panel saying the address it gives

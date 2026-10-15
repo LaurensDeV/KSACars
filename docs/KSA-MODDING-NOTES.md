@@ -192,7 +192,10 @@ is a vehicle apparently sitting at the solar system barycentre.
 and `Universe.SetSimulationSpeed(SimSpeed)` each assign the speed outright: the warp keys, auto-warp, the escape
 menu, the settings and save windows, which pause the world every frame they are open, and the vehicle editor
 all go through one or the other, and a reset on load writes the field itself. `Ksa/WarpHook.cs` prefixes both.
-The universe time is `Universe.GetElapsedSeconds()`, and a save brings it back as it was. **KSA limits its frames
+The universe time is `Universe.GetElapsedSeconds()`, and a save brings it back as it was. **A world runs
+slower than its speed when the physics cannot keep up**: each frame's step is the frame, capped at
+`1 / minTargetFrameRate`, times the speed times `_achievedSpeedFraction`, which `ApplyVehicleSolvers` drops below
+1 whenever the vehicle solver took more than 0.9 of a frame; asking for more speed then gets nothing more. **KSA limits its frames
 only with vsync off** (`display.fpslimit`); with it on, the limit is the monitor's refresh.
 
 **A part's template by its Id is `ModLibrary.Get<PartTemplate>(id)`, never `TryGet`.** `TryGet<T>` has a
