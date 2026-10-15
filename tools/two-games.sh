@@ -11,7 +11,9 @@
 #     KSA_USER_DIR="$(./tools/two-games.sh --dir A)" python3 tools/ksa-mcp/server.py cli online '{}'
 #
 # Both copies share one graphics card, and at the player's settings two of them fill its memory and
-# one draws a frame every few seconds; the profiles are made with the graphics turned well down.
+# one draws a frame every few seconds; the profiles are made with the graphics turned well down. Each
+# is held to 40 frames a second with vsync off, since KSA only limits frames with vsync off: limited
+# by the monitor, the copy in front takes the whole card and the one behind runs in slow motion.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -57,7 +59,7 @@ import re, sys
 source, target, name = sys.argv[1:]
 s = open(source).read()
 light = {
-    "width": "800", "height": "500", "posX": "0" if name == "A" else "820", "posY": "40", "fpslimit": "60",
+    "width": "800", "height": "500", "posX": "0" if name == "A" else "820", "posY": "40", "vsync": "false", "fpslimit": "40",
     "antialiasing": '"None"', "terrainShadowMapSize": "1024", "cascadedShadowMapSize": "1024",
     "LightAtlasShadowMapSize": "1024", "cascadedShadowMapFilter": '"Pcf"', "lightSystemShadowSlots": '"Low"',
     "cloudShadows": '"Off"', "clouds": "false", "cloudUpscale": '"Low"', "oceanSimQuality": '"Low"', "ocean": "false",
@@ -86,6 +88,20 @@ for name in A B; do
     # One at a time: two loading at once fight over the disk and the card.
     sleep 25
 done
+
+# Windows gives the window in front the processor and throttles one behind it, and both copies race.
+# shellcheck disable=SC2016  # the dollars are PowerShell's
+powershell.exe -NoProfile -Command '
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class Throttle {
+  [StructLayout(LayoutKind.Sequential)] public struct State { public uint Version; public uint ControlMask; public uint StateMask; }
+  [DllImport("kernel32.dll")] public static extern bool SetProcessInformation(IntPtr h, int kind, ref State s, int size);
+  public static bool Off(IntPtr h) { var s = new State { Version = 1, ControlMask = 1, StateMask = 0 }; return SetProcessInformation(h, 4, ref s, Marshal.SizeOf(s)); }
+}
+"@
+Get-Process StarMap | ForEach-Object { $_.PriorityClass = "High"; [void][Throttle]::Off($_.Handle) }' >/dev/null 2>&1 || true
+echo "both at high priority, unthrottled"
 
 [[ "${1:-}" == "--race" ]] || exit 0
 
