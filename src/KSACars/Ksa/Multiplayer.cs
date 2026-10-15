@@ -514,7 +514,8 @@ internal static class Multiplayer
         switch (_taking)
         {
             case Taking.Waiting when s.World is { } world && world.Transfer != _worldTaken:
-                _worldTaken = world.Transfer;
+                // Loading before the load: KSA loads it inside the call and hands control to the host's car, which only a game loading may be given.
+                (_worldTaken, _taking, _loadingSince) = (world.Transfer, Taking.Loading, Now());
                 Load(world.Data);
                 (_taking, _loadingSince) = (Taking.Loading, Now());
                 break;
