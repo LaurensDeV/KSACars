@@ -41,7 +41,12 @@ none of it has been seen as **KSACars** yet:
 - [x] A race through a bad line made on purpose (same games, bridge `online` with 75 ms each way, 20 ms of
       jitter and 5% lost on both): the world handed over in 4.4 s, the lights out 21 ms apart, no puppet put
       outright in 67 s, the worst 1.5 m off at 48 m/s
-- [ ] A guest joining a race already under way, and a third racer's car made in the worlds of those in
+- [x] The rough cases between the two copies (2026.10.13.5602): a guest joining mid-race in a beach buggy
+      against the host's F2004, the host's lap running on through the handover; a guest's car on its roof and
+      back, mirrored in the host's world; a guest leaving, its car taken out of the host's world and both able
+      to warp again; the host stopping, its guests' cars taken out and the guest told; a guest joining a host
+      that hosted again; and the host's game killed, the guest told within ten seconds and let go
+- [ ] A third racer: its car made in the worlds of those already in
 - [ ] Racing online between two machines, one hosting and one joining with its code across the internet
 - [ ] The host's router opening the port through UPnP, and the panel saying the address it gives
 - [ ] A guest let in with its own code where the host's router would not open the port
