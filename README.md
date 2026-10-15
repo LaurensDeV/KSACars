@@ -176,8 +176,8 @@ copy of the world keeps the same time.
 
 The mod asks the host's router to open the port (UPnP). Most routers allow that, and then the code just
 works. If a guest cannot get in, the guest's panel shows a code of its own: send it to the host, who
-pastes it under **Let in**, then press **Join** again. That gets through most routers. Players on the
-same network can join with the address the host's panel shows under *on your own network*. A
+pastes it under **Let in**, then press **Join** again. That gets through most routers. Players in the
+same house can join with the code too: the mod sees it is their own router's and looks on the local network. A
 `host:port` from a tunnel such as playit.gg, or a VPN such as Tailscale, works in the code's place too.
 
 Everyone needs the same version of the game and of this mod, and every mod the host has enabled. The

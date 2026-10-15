@@ -50,6 +50,8 @@ none of it has been seen as **KSACars** yet:
       stopped and after the host's game was killed, and the host's after it stopped
 - [x] Nobody takes another racer's car (same games): control of it asked through the bridge, as KSA's own
       click asks, refused in both while racing, and the guest still put in its own after loading
+- [x] Joining by the code alone from behind the host's own router (same games, the code 3DH8B-K7GTG): the guest
+      found the host on this machine and was racing in its world 5 s after Join, as one racer
 - [ ] A kitten on EVA turned away from another racer's car, and the craft mover passing over it, by hand
 - [ ] A third racer: its car made in the worlds of those already in
 - [ ] Racing online between two machines, one hosting and one joining with its code across the internet
