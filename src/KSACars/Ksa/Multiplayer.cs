@@ -31,8 +31,8 @@ internal static class Multiplayer
     // The route a pose is measured along, which has to be the same on every copy whatever car is driven: the racing display's.
     private const double RouteTurnRadiusM = 8.0;
 
-    // Further across the route than this a car is looked for along all of it again.
-    private const double LostAcrossM = 40.0;
+    // Further across or along the route than this from the place it was found at, a car is looked for along all of it again.
+    private const double LostAcrossM = 40.0, LostAlongM = 5.0;
 
     // A car not heard from for this long is let go of where it is, and stands there.
     private const double LostSeconds = 3.0;
@@ -347,7 +347,8 @@ internal static class Multiplayer
         if (now < _sendNext || !mine.PlaceValid) return;
         _sendNext = Math.Max(_sendNext + SendEverySeconds, now);
         RacePose pose = RacePose.Of(route, ref _index, mine.PlaceCcf, mine.Body2Ccf, mine.VelocityCcf, mine.SpinBody, 10.0 + mine.SpeedMs);
-        if (Math.Abs(pose.Offset.Y) > LostAcrossM)
+        // Moved along the route or far across it, as by being stood in a box, the car is looked for along all of it again.
+        if (Math.Abs(pose.Offset.Y) > LostAcrossM || Math.Abs(pose.Offset.X) > LostAlongM)
         {
             _index = -1;
             pose = RacePose.Of(route, ref _index, mine.PlaceCcf, mine.Body2Ccf, mine.VelocityCcf, mine.SpinBody, 0.0);
@@ -379,7 +380,7 @@ internal static class Multiplayer
                 if (madeOne || flown is null || SharedRoute(out Celestial? body) is null || body is null) continue;
                 madeOne = true;
                 Remotes[racer.Id] = remote = new Remote(racer.Car);
-                if (!ModLibrary.TryGet(racer.Car, out PartTemplate? template) || template is null)
+                if (TemplateOf(racer.Car) is not { } template)
                 {
                     Say($"{racer.Name} drives a {racer.Car}, which this game does not have");
                     continue;
@@ -452,6 +453,14 @@ internal static class Multiplayer
         if (KsaWorld.ControlledVehicle is { IsDisposed: false } flown) Buggies.Hold(flown, default, 0.0);
     }
 
+    // KSA's TryGet has no branch for a part template and always answers no; Get has one, and throws for an id it has not loaded.
+    private static PartTemplate? TemplateOf(string id)
+    {
+        if (id.Length == 0) return null;
+        try { return ModLibrary.Get<PartTemplate>(id); }
+        catch (NullReferenceException) { return null; }
+    }
+
     private static string MyCar() =>
         KsaWorld.ControlledVehicle is { IsDisposed: false } v && Buggies.Of(v) is { } e ? e.Drive.Profile.PartId : "";
 
@@ -467,6 +476,44 @@ internal static class Multiplayer
         {
             Log.Warn($"an online racer's car could not be taken away: {e.GetBaseException().Message}");
         }
+    }
+
+    /// <summary>Where the race is, for the bridge: who is in it, and for each other racer how far its car is from where its game says.</summary>
+    public static Dictionary<string, object?> Report()
+    {
+        Dictionary<string, object?> r = new()
+        {
+            ["active"] = Active, ["hosting"] = Hosting, ["joined"] = Joined, ["me"] = (int)Me, ["port"] = _session?.Port,
+            ["code"] = HostCode?.Code, ["guest_code"] = GuestCode, ["local"] = LocalAddress, ["router"] = RouterSays,
+            ["public"] = _session?.Public?.ToString(), ["host_offset_s"] = _session is { } s ? Math.Round(s.HostOffset, 4) : null,
+            ["on_the_course"] = OnTheCourse, ["trouble"] = Trouble, ["countdown_s"] = Countdown is { } c ? Math.Round(c, 2) : null,
+            ["held"] = _held, ["recent"] = Said.ToArray(),
+        };
+        List<Dictionary<string, object?>> racers = [];
+        Route? route = OnTheCourse ? SharedRoute(out _) : null;
+        double now = Now();
+        foreach (NetSession.Racer racer in Racers)
+        {
+            Dictionary<string, object?> one = new()
+            {
+                ["id"] = (int)racer.Id, ["name"] = racer.Name, ["car"] = racer.Car, ["box"] = (int)racer.Box,
+                ["heard_s_ago"] = double.IsFinite(racer.Track.HeardAt) ? Math.Round(now - racer.Track.HeardAt, 2) : null,
+                ["s_m"] = racer.Track.Newest is { } newest ? Math.Round(newest.Pose.S, 1) : null,
+            };
+            if (Remotes.TryGetValue(racer.Id, out Remote? remote) && remote.Craft is { } craft && Buggies.Of(craft) is { PlaceValid: true } e)
+            {
+                one["craft"] = KsaWorld.DisplayName(craft);
+                if (route is not null && racer.Track.At(now) is { } at)
+                {
+                    (double3 wanted, _, _) = at.Pose.On(route);
+                    one["off_by_m"] = Math.Round(Vec.Len(e.PlaceCcf - wanted), 3);
+                    one["speed_ms"] = Math.Round(e.SpeedMs, 1);
+                }
+            }
+            racers.Add(one);
+        }
+        r["racers"] = racers;
+        return r;
     }
 
     private static void Say(string what)

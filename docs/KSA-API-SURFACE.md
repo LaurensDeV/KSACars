@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-245 types and 561 members across 12 assemblies.
+245 types and 560 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -985,7 +985,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.ModLibrary
 
 - `!!0 Get<1>(string)`
-- `bool TryGet<1>(string, ref !!0)`
 
 ### KSA.ModuleBase
 
