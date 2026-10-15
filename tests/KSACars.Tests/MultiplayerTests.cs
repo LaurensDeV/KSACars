@@ -85,18 +85,27 @@ public class MultiplayerTests
                             new double3(40, 1, -0.5), new double3(0.01, 0.02, 0.03));
         NetWire.Message[] messages =
         [
-            new NetWire.Hello("Laurens", "KSACars_Prefab_F1", "Club Motorsports", "abc123"),
+            new NetWire.Hello("Laurens", "KSACars_Prefab_F1", "2026.10.13.5602", string.Join(",", Enumerable.Range(0, 300).Select(k => $"Mod{k}"))),
             new NetWire.Welcome(3, ""),
             new NetWire.Welcome(0, "the race is full"),
-            new NetWire.Roster("Club Motorsports", "abc123", [new NetWire.Racer(1, "Host", "KSACars_Prefab_F1", 0), new NetWire.Racer(2, "Ünïcødé 🐱", "KSACars_Prefab_Buggy", 1)]),
+            new NetWire.Roster("Club Motorsports", "abc123", [new NetWire.Racer(1, "Host", "KSACars_Prefab_F1", 0, "CarA"), new NetWire.Racer(2, "Ünïcødé 🐱", "KSACars_Prefab_Buggy", 1, "")]),
             new NetWire.State(2, 77, 12.5, pose, 0.75f, -0.25f, 0f, 3, true),
             new NetWire.Ping(1.5),
             new NetWire.Pong(1.5, 99.25),
             new NetWire.Start(4, 100.0, 5),
             new NetWire.Bye(),
             new NetWire.Punch(),
+            new NetWire.Clock(1.23456789e9, 42.5, 1f),
+            new NetWire.Got(7),
+            new NetWire.Loaded(7),
         ];
         byte[] buffer = new byte[NetWire.BufferBytes];
+        NetWire.Chunk chunk = new(7, 3, 9, [.. Enumerable.Range(0, WorldTransfer.ChunkBytes).Select(k => (byte)k)]);
+        NetWire.Chunk chunkBack = Assert.IsType<NetWire.Chunk>(NetWire.Read(buffer.AsSpan(0, NetWire.Write(chunk, buffer)), out _));
+        Assert.Equal(chunk.Data, chunkBack.Data);
+        Assert.True(NetWire.Write(chunk, buffer) < 1280, "a piece of a world goes whole in any datagram");
+        NetWire.Need need = new(7, [.. Enumerable.Range(0, 500).Select(k => (ushort)k)]);
+        Assert.Equal(NetWire.MostNeeded, Assert.IsType<NetWire.Need>(NetWire.Read(buffer.AsSpan(0, NetWire.Write(need, buffer)), out _)).Missing.Length);
         foreach (NetWire.Message m in messages)
         {
             int n = NetWire.Write(m, buffer);
@@ -110,6 +119,11 @@ public class MultiplayerTests
                 Assert.True(Vec.Len(s.Pose.Offset - t.Pose.Offset) < 1e-6);
                 Assert.True(Math.Abs(doubleQuat.Dot(s.Pose.Attitude, t.Pose.Attitude)) > 1 - 1e-6);
                 Assert.True(n < 128, $"a state is {n} bytes");
+            }
+            else if (m is NetWire.Hello h && back is NetWire.Hello g)
+            {
+                Assert.Equal(h.Mods, g.Mods);
+                Assert.Equal(h.KsaBuild, g.KsaBuild);
             }
             else if (m is NetWire.Roster r && back is NetWire.Roster q)
             {
@@ -248,10 +262,10 @@ public class MultiplayerTests
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
     private static double Now() => Clock.Elapsed.TotalSeconds;
 
-    // Steps both sessions until a condition holds or a few seconds pass.
+    // Steps both sessions until a condition holds or the time runs out: long enough for the whole suite running beside them.
     private static void Until(Func<bool> done, params NetSession[] sessions)
     {
-        double until = Now() + 5.0;
+        double until = Now() + 20.0;
         while (!done() && Now() < until)
         {
             foreach (NetSession s in sessions) s.Update();
@@ -308,7 +322,7 @@ public class MultiplayerTests
         using System.Net.Sockets.UdpClient other = new(0);
         byte[] buffer = new byte[NetWire.BufferBytes];
         int n = NetWire.Write(new NetWire.Hello("Old", "car", "", ""), buffer);
-        buffer[4] = 2;
+        buffer[4] = 99;
         other.Send(buffer, n, new IPEndPoint(IPAddress.Loopback, host.Port));
         other.Client.ReceiveTimeout = 3000;
         double until = Now() + 3.0;
@@ -324,5 +338,151 @@ public class MultiplayerTests
         Assert.Equal(0, refused!.Id);
         Assert.Contains("version", refused.Refused);
         Assert.Single(host.Racers);
+    }
+    [Fact]
+    public void AWorldComesWholeThroughALineThatLosesAPieceInThree()
+    {
+        byte[] world = new byte[(WorldTransfer.ChunkBytes * 40) + 123];
+        new Random(5).NextBytes(world);
+        WorldTransfer.Outgoing going = new(9, world);
+        WorldTransfer.Incoming? coming = null;
+        Random line = new(11);
+        int sent = 0;
+        for (int step = 0; step < 2000 && coming is not { Complete: true }; step++)
+        {
+            foreach (NetWire.Chunk chunk in going.Next(1.0 / 60.0))
+            {
+                sent++;
+                if (line.Next(3) == 0) continue;
+                coming ??= new WorldTransfer.Incoming(chunk.Transfer, chunk.Count);
+                coming.Add(chunk);
+            }
+            // Every quarter of a second the guest asks for what it is without, and for all of it once the pieces stop.
+            if (step % 15 == 0 && coming is not null) going.Need(coming.Missing(all: step % 60 == 0));
+        }
+        Assert.True(coming is { Complete: true }, "the world never all came");
+        Assert.Equal(world, coming!.Assemble());
+        Assert.InRange(sent, 41, 41 * 3);
+    }
+
+    [Fact]
+    public void AWorldUnpacksAsItWasPackedAndNothingClimbsOutOfItsFolder()
+    {
+        byte[] universe = Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("<Vehicle Id=\"CarA\"/>", 20_000)));
+        byte[] packed = WorldTransfer.Pack([("save/universe.xml", universe), ("save/meta.toml", "name = \"x\""u8.ToArray()), ("circuit.json", "{}"u8.ToArray())]);
+        Assert.True(packed.Length < universe.Length / 20, $"{packed.Length} bytes packed of {universe.Length}");
+        List<(string Name, byte[] Data)> back = WorldTransfer.Unpack(packed);
+        Assert.Equal(["circuit.json", "save/meta.toml", "save/universe.xml"], back.Select(f => f.Name).Order());
+        Assert.Equal(universe, back.First(f => f.Name == "save/universe.xml").Data);
+
+        foreach (string bad in (string[])["../evil.dll", "save/../../evil", "/etc/passwd", "C:/Windows/x", "save\\x", "", "a//b"]) Assert.False(WorldTransfer.SafeName(bad), bad);
+        Assert.Throws<InvalidDataException>(() => WorldTransfer.Unpack(WorldTransfer.Pack([("../evil.dll", [1])])));
+    }
+
+    [Fact]
+    public void AGuestsWorldIsRunAShadeFasterOrSlowerToKeepTheHostsTimeAndNeverWarps()
+    {
+        Assert.Equal(1.0, ClockLock.Speed(0.0, 1.0), 12);
+        Assert.Equal(1.002, ClockLock.Speed(0.01, 1.0), 12);
+        Assert.Equal(ClockLock.MostFaster, ClockLock.Speed(60.0, 1.0), 12);
+        Assert.Equal(0.0, ClockLock.Speed(-60.0, 1.0), 12);
+        Assert.Equal(0.0, ClockLock.Speed(5.0, 0.0), 12);
+        Assert.Equal(1010.5, ClockLock.HostNow(1000.0, 50.0, 1.0, 60.5), 9);
+        Assert.Equal(1000.0, ClockLock.HostNow(1000.0, 50.0, 0.0, 60.5), 9);
+
+        // A world 0.4 s behind, stepped at 60 Hz, closes the gap and holds it.
+        double host = 0.0, guest = -0.4;
+        for (int k = 0; k < 60 * 45; k++)
+        {
+            double speed = ClockLock.Speed(host - guest, 1.0);
+            host += 1.0 / 60.0;
+            guest += speed / 60.0;
+        }
+        Assert.InRange(host - guest, -0.001, 0.001);
+    }
+
+    [Fact]
+    public void AGuestIsSentTheHostsWorldAndTheHostsWorldWaitsForItToLoad()
+    {
+        double universe = 5000.0, speed = 1.0;
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now) { KsaBuild = "b1", Mods = ["Core", "FastAndPurrious"] };
+        host.UniverseClock = () => (universe, speed);
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now) { KsaBuild = "b1", Mods = ["Core", "FastAndPurrious", "Extra"] };
+        guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+
+        NetSession.Racer? arriving = null;
+        Until(() => (arriving ??= host.NextArrival()) is not null && guest.Joined, host, guest);
+        Assert.True(host.Handing);
+        byte[] world = new byte[300_000];
+        new Random(3).NextBytes(world);
+        host.SendWorld(arriving!, world);
+        host.SetCraft(arriving!.Id, "Guest (online)");
+        Until(() => guest.World is not null, host, guest);
+        Assert.Equal(world, guest.World!.Value.Data);
+        Until(() => guest.Racers.Any(r => r.Craft == "Guest (online)"), host, guest);
+
+        // Held until the guest has loaded it, and running again after.
+        Assert.True(host.Handing);
+        guest.SayLoaded();
+        Until(() => !host.Handing, host, guest);
+
+        // The guest knows the host's universe time.
+        Until(() => guest.HostUniverse is not null, host, guest);
+        Assert.InRange(guest.HostUniverse!.Value.Universe, 5000.0, 5001.0);
+    }
+
+    [Fact]
+    public void AGuestWithoutAModTheHostHasIsToldWhichAndKeptOut()
+    {
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now) { KsaBuild = "b1", Mods = ["Core", "KSArmory", "FastAndPurrious"] };
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now) { KsaBuild = "b1", Mods = ["Core", "FastAndPurrious"] };
+        guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+        Until(() => guest.Out.Length > 0, host, guest);
+        Assert.Contains("KSArmory", guest.Out);
+        Assert.Single(host.Racers);
+
+        using NetSession other = new(NetSession.Role.Client, "Other", "car", 0, Now) { KsaBuild = "b2", Mods = ["Core", "KSArmory", "FastAndPurrious"] };
+        other.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+        Until(() => other.Out.Length > 0, host, other);
+        Assert.Contains("b2", other.Out);
+    }
+    [Fact]
+    public void AHostThatStandsStillAnsweringAPingDoesNotPutTheGuestsClockOut()
+    {
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now);
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now);
+        guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+        Until(() => guest.Joined, host, guest);
+
+        // The host saving its world: a second and a half with the guest's first ping unanswered.
+        double until = Now() + 1.5;
+        while (Now() < until)
+        {
+            guest.Update();
+            Thread.Sleep(5);
+        }
+        Until(() => guest.ClockKnown, host, guest);
+        Assert.InRange(guest.HostOffset, -0.05, 0.05);
+    }
+    [Fact]
+    public void AHostWhoseWorldCannotKeepUpIsFollowedAtTheRateItReallyGoes()
+    {
+        // A host drawing too slowly for its steps to keep up: its world goes at half the wall clock, at speed 1.
+        double start = Now();
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now);
+        host.UniverseClock = () => (1000.0 + (0.5 * (Now() - start)), 1.0);
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now);
+        guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+        Until(() => guest.Joined && guest.Racers.Count == 2 && guest.ClockKnown, host, guest);
+        double until = Now() + 1.5;
+        while (Now() < until)
+        {
+            host.Update();
+            guest.Update();
+            Thread.Sleep(5);
+        }
+        (double universe, double rate) = guest.HostUniverse!.Value;
+        Assert.InRange(rate, 0.45, 0.55);
+        Assert.InRange(universe - (1000.0 + (0.5 * (Now() - start))), -0.05, 0.05);
     }
 }

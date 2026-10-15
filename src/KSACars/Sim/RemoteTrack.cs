@@ -28,6 +28,14 @@ internal sealed class RemoteTrack
     private uint _newest;
     private bool _any;
 
+    /// <summary>Forgets every state and what the clocks were measured to be apart.</summary>
+    public void Clear()
+    {
+        _states.Clear();
+        _lags.Clear();
+        (_any, _newest, HeardAt) = (false, 0, double.NegativeInfinity);
+    }
+
     /// <summary>When the newest state arrived, on this game's clock, s.</summary>
     public double HeardAt { get; private set; } = double.NegativeInfinity;
 

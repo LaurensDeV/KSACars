@@ -52,6 +52,7 @@ public sealed class KSACarsMod
         RailsHook.Install();
         RoadDrawHook.Install();
         RaceHudHook.Install();
+        WarpHook.Install();
         RoadColliders.Install();
 
         if (Build.Developer) _bridge = new Bridge();
@@ -171,7 +172,8 @@ public sealed class KSACarsMod
         RailsHook.Remove();
         RoadDrawHook.Remove();
         RaceHudHook.Remove();
-            RoadColliders.Remove();
+        WarpHook.Remove();
+        RoadColliders.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -200,6 +202,7 @@ public sealed class KSACarsMod
         RailsHook.Remove();
         RoadDrawHook.Remove();
         RaceHudHook.Remove();
+        WarpHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

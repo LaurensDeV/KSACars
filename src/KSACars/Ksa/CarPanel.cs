@@ -203,6 +203,7 @@ internal static class CarPanel
             if (ImGui.Button("Host a race", null)) Multiplayer.Host();
             ImGui.SameLine(0f, -1f);
             if (ImGui.Button("Join a race", null)) Multiplayer.Ready();
+            ImGui.TextDisabled("joining loads the host's world in place of yours: save first");
             Recent(2);
             return;
         }
@@ -244,7 +245,10 @@ internal static class CarPanel
             }
         }
 
+        if (Multiplayer.WorldSays.Length > 0) ImGui.Text(Multiplayer.WorldSays);
         if (Multiplayer.Trouble.Length > 0) ImGui.TextDisabled(Multiplayer.Trouble);
+        if (Multiplayer.Together) ImGui.TextDisabled("time warp and pause are off while racing together");
+        if (Multiplayer.Behind is { } behind && Math.Abs(behind) > 0.5) ImGui.TextDisabled($"your game is {Math.Abs(behind):F1} s {(behind > 0 ? "behind" : "ahead of")} the host's");
         if (Multiplayer.Countdown is { } wait) ImGui.Text($"Lights out in {wait:F1} s");
         foreach (NetSession.Racer racer in Multiplayer.Racers)
         {

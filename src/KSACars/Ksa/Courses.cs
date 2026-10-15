@@ -31,11 +31,23 @@ internal static class Courses
     /// <summary>Asks for a circuit of the library to be laid at the car being flown.</summary>
     public static void Lay(string name) => (_asked, _takeUp) = (name, false);
 
+    /// <summary>
+    /// Asks for a circuit to be laid exactly where it is, on the body the car being flown is on, and
+    /// the car left where it stands: for an online guest, laying the course as the host has it laid.
+    /// <paramref name="shape"/> is the course as its file has it, which a practised lap is kept by.
+    /// </summary>
+    public static void LayAsIs(string name, Circuit circuit, string? shape) => (_asIs, _takeUp) = ((name, circuit, shape), false);
+
+    private static (string Name, Circuit Circuit, string? Shape)? _asIs;
+
     /// <summary>Asks for the roads to be taken up, and what stood under them put back.</summary>
     public static void TakeUp() => (_asked, _takeUp) = (null, true);
 
-    // A course being worked out beside the game: its name, the craft it is for, and the work.
-    private static (string Name, Vehicle Craft, double Lat, double Lon, double Turn, Task<Roads.Prepared> Work)? _coming;
+    // A course being worked out beside the game: its name, the craft it is for, and the work; Stand is false for one laid as it is.
+    private static (string Name, Vehicle Craft, double Lat, double Lon, double Turn, Task<Roads.Prepared> Work, bool Stand, string? Shape)? _coming;
+
+    /// <summary>Whether a course is being worked out or waits to be laid.</summary>
+    public static bool Busy => _coming is not null || _asked is not null || _asIs is not null;
 
     /// <summary>Once a frame, from the frame hook. Never throws.</summary>
     public static void Update()
@@ -46,7 +58,7 @@ internal static class Courses
             {
                 (_asked, _takeUp, _coming) = (null, false, null);
                 Roads.Clear();
-                (Laid, LaidShape, Message) = (null, null, "roads taken up");
+                (Laid, LaidShape, Message, _asIs) = (null, null, "roads taken up", null);
                 return;
             }
             if (_asked is { } name)
@@ -54,11 +66,21 @@ internal static class Courses
                 _asked = null;
                 Message = Begin(name) is { Length: > 0 } why ? $"not laid: {why}" : $"laying {name}...";
             }
+            if (_asIs is { } asIs)
+            {
+                _asIs = null;
+                if (KsaWorld.ControlledVehicle is not { IsDisposed: false } craft || craft.Parent is not Celestial body) Message = "not laid: no car is being flown";
+                else
+                {
+                    _coming = (asIs.Name, craft, 0.0, 0.0, 0.0, Roads.Prepare(body, asIs.Circuit, LiftM, SpacingM), false, asIs.Shape);
+                    Message = $"laying {asIs.Name}...";
+                }
+            }
             if (_coming is not { Work.IsCompleted: true } done) return;
             _coming = null;
             if (!done.Work.IsCompletedSuccessfully) throw done.Work.Exception?.GetBaseException() ?? new InvalidOperationException("the course was not worked out");
-            Message = Put(done.Name, done.Craft, done.Lat, done.Lon, done.Turn, done.Work.Result) is { Length: > 0 } not
-                ? $"not laid: {not}" : $"{done.Name} laid: you are on its start";
+            Message = Put(done.Name, done.Craft, done.Lat, done.Lon, done.Turn, done.Work.Result, done.Stand, done.Shape) is { Length: > 0 } not
+                ? $"not laid: {not}" : done.Stand ? $"{done.Name} laid: you are on its start" : $"{done.Name} laid";
         }
         catch (Exception e)
         {
@@ -93,12 +115,12 @@ internal static class Courses
             turn = (Math.Atan2(Vec.Dot(car.AheadCcf, east), Vec.Dot(car.AheadCcf, north)) * 180.0 / Math.PI) - read.StartBearingDeg();
         }
         Circuit here = read.MovedTo(lat, lon, turn, body.MeanRadius, body.Id);
-        _coming = (name, craft, lat, lon, turn, Roads.Prepare(body, here, LiftM, SpacingM));
+        _coming = (name, craft, lat, lon, turn, Roads.Prepare(body, here, LiftM, SpacingM), true, null);
         return "";
     }
 
     // Lays what was worked out and stands the car on its start; what went wrong, or nothing.
-    private static string Put(string name, Vehicle craft, double lat, double lon, double turn, Roads.Prepared prepared)
+    private static string Put(string name, Vehicle craft, double lat, double lon, double turn, Roads.Prepared prepared, bool stand, string? shape)
     {
         if (craft.IsDisposed || Buggies.Of(craft) is not { } car) return "the car is gone";
 
@@ -107,7 +129,12 @@ internal static class Courses
         if (!Roads.Any) return "the roads could not be laid here";
         Laid = name;
         // The course as its file has it, wherever it is laid: what a lap practised on it is kept by.
-        LaidShape = CircuitLibrary.Load(name, out _)?.ToJson();
+        LaidShape = shape ?? CircuitLibrary.Load(name, out _)?.ToJson();
+        if (!stand)
+        {
+            Log.Info($"course: {name} laid as it was given, on {prepared.Body.Id}");
+            return "";
+        }
 
         BuggyProfile profile = car.Drive.Profile;
         if (Roads.RouteOver(null, 0.0, Autopilot.TurnRadius(profile), out _, out RoadSurface? surface, out _) is { } route && surface is not null)

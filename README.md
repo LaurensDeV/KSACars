@@ -160,15 +160,19 @@ does keep the ground under it cleared; take the roads up before you save if you 
 ### Racing other people
 
 Under **Race online** in the panel, one player presses **Host a race** and the others **Join a race**.
-Nobody needs an account or anything else installed. Everyone races in their own game, and each sees the
-others' cars on their own copy of the course.
+Nobody needs an account or anything else installed. Everyone races in the host's world: joining loads
+a copy of it, with your car already on the grid, in place of the world you had, so save first. The
+host's own course comes with it, even one the host drew themselves.
 
 1. The host lays a course and presses **Host a race**. The panel shows a code of ten letters and digits
    with a **Copy** button: send it to the others however you like.
-2. A guest presses **Join a race**, pastes the host's code and presses **Join**. If the guest has the
-   same course, it is laid where the guest's car is.
+2. A guest presses **Join a race**, pastes the host's code and presses **Join**. The host's game stops for
+   a moment while its world is sent; the guest's loads it and is put in its car.
 3. When everyone is in, the host sets the laps and presses **Start race**. Every car goes to its box on
    the grid, and the lights go out five seconds later.
+
+While anyone has joined, time warp and pause are off for everyone, the escape menu's included, so every
+copy of the world keeps the same time.
 
 The mod asks the host's router to open the port (UPnP). Most routers allow that, and then the code just
 works. If a guest cannot get in, the guest's panel shows a code of its own: send it to the host, who
@@ -176,9 +180,9 @@ pastes it under **Let in**, then press **Join** again. That gets through most ro
 same network can join with the address the host's panel shows under *on your own network*. A
 `host:port` from a tunnel such as playit.gg, or a VPN such as Tailscale, works in the code's place too.
 
-Everyone needs the same version of the mod, and the same course file; the mod's own courses are the
-same for everyone. The host uses UDP port 50000. Online racing is new: it has been raced between two
-copies of the game on one PC, but not yet across the internet.
+Everyone needs the same version of the game and of this mod, and every mod the host has enabled. The
+host uses UDP port 50000. Online racing is new: it has been raced between two copies of the game on one
+PC, but not yet across the internet.
 
 ## Build
 

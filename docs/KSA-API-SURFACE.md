@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-245 types and 560 members across 12 assemblies.
+247 types and 570 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -719,8 +719,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.GameSaves
 
+- `string get_SaveFolderPath()`
 - `void LoadSaveGame(string)`
 - `void MakeUncompressedSave(string)`
+- `void Refresh()`
 
 ### KSA.GameSettings
 
@@ -982,9 +984,19 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `string get_Id()`
 
+### KSA.ModEntry
+
+- `bool Enabled`
+- `string get_Id()`
+
 ### KSA.ModLibrary
 
 - `!!0 Get<1>(string)`
+- `KSA.ModManifest Manifest`
+
+### KSA.ModManifest
+
+- `System.Collections.Generic.List`1<KSA.ModEntry> get_Mods()`
 
 ### KSA.ModuleBase
 
@@ -1159,6 +1171,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.SimSpeed
 
+- `double Value`
 - `void .ctor(double)`
 
 ### KSA.SimStep
@@ -1260,12 +1273,15 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.SimStep GetLastSimStep()`
 - `KSA.UniverseTime GetElapsedTime()`
 - `bool IsPaused()`
+- `bool get_IsAutoWarpActive()`
 - `double GetElapsedSeconds()`
 - `double GetSimulationSpeed()`
 - `double get_SimulationSpeed()`
+- `void AutoWarpStop(bool)`
 - `void DestroyVehicle(KSA.Vehicle, KSA.CrewDisposition)`
 - `void DestroyVehicleFromEvent(KSA.Vehicle, KSA.VehicleDestructionEvent)`
 - `void SetSimulationSpeed(KSA.SimSpeed)`
+- `void SetSimulationSpeed(double, bool)`
 
 ### KSA.UniverseTime
 
