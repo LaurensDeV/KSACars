@@ -55,6 +55,7 @@ none of it has been seen as **KSACars** yet:
 - [x] The panel's Race online folded until opened, its steps for a host and a guest, the streaming warning in
       red, and a guest's course, opponent and road-building controls greyed or gone (same games, read off the
       windows)
+- [x] A code hidden behind the eye button until it is pressed, and shown after (same games)
 - [x] Name tags over the other racer's car, with the interface up and hidden; the countdown and the F2 note at
       the start, with the interface hidden (same games)
 - [x] A host's world at full speed with a guest's car waiting on the grid (same games: a twentieth of it before)
