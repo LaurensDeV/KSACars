@@ -167,12 +167,12 @@ internal sealed class NetSession : IDisposable
         return next;
     }
 
-    /// <summary>On the host, sends a racer the world it is to race in.</summary>
-    public void SendWorld(Racer racer, byte[] world)
+    /// <summary>On the host, sends a racer the world it is to race in, or the course alone as <paramref name="what"/> says.</summary>
+    public void SendWorld(Racer racer, byte[] world, string what = "the world")
     {
         _going[racer.Id] = new WorldTransfer.Outgoing(++_transfers, world);
         _sentAt = _clock();
-        Say($"sending {racer.Name} the world, {world.Length / 1024} KB");
+        Say($"sending {racer.Name} {what}, {world.Length / 1024} KB");
     }
 
     /// <summary>On the host, the Id of a racer's car in the world, told to everyone.</summary>

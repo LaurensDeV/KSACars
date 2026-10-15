@@ -563,7 +563,7 @@ internal static partial class Multiplayer
         int sent = 0;
         foreach (NetSession.Racer racer in s.Racers.Where(r => r.Id != NetSession.HostId && r.HasWorld))
         {
-            s.SendWorld(racer, pack);
+            s.SendWorld(racer, pack, "the course");
             sent++;
         }
         if (sent > 0) Say(Roads.Any ? "sending everyone the course as it is now" : "telling everyone the roads are taken up");
