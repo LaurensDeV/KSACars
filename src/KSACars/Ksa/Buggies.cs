@@ -171,6 +171,7 @@ internal sealed class Buggies
         ToRight.Clear();
         ToStand.Clear();
         Puppets.Clear();
+        PullSeen.Clear();
         HullMargins.Clear();
     }
 
@@ -241,6 +242,21 @@ internal sealed class Buggies
     // Further out than this a car is put where it is wanted outright; nearer, it is drawn there over a few steps, so a late datagram is not a jolt.
     private const double SnapM = 3.0, PullSeconds = 0.1;
 
+    private static readonly Dictionary<Vehicle, (double Seconds, int Steps, int Snaps, double Worst)> PullSeen = [];
+
+    // Once a second, how far a puppet was from where it was wanted before each step's pull, and how often it was put there outright.
+    private static void PullLog(Entry e, double3 off, bool snap, double dt)
+    {
+        (double seconds, int steps, int snaps, double worst) = PullSeen.GetValueOrDefault(e.Craft);
+        (seconds, steps, snaps, worst) = (seconds + dt, steps + 1, snaps + (snap ? 1 : 0), Math.Max(worst, Vec.Len(off)));
+        if (seconds >= 1.0)
+        {
+            Log.Info($"puppet {KsaWorld.DisplayName(e.Craft)}: {steps} steps, {snaps} put outright, worst {worst:F2} m off, now {Vec.Len(off):F2} m at {e.SpeedMs:F1} m/s");
+            (seconds, steps, snaps, worst) = (0.0, 0, 0, 0.0);
+        }
+        PullSeen[e.Craft] = (seconds, steps, snaps, worst);
+    }
+
     private static void Pull(Entry e, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody) pose, double dt)
     {
         Vehicle craft = e.Craft;
@@ -252,6 +268,7 @@ internal sealed class Buggies
 
         double3 off = pose.At - positionCcf;
         bool snap = Vec.Len(off) > SnapM;
+        PullLog(e, off, snap, dt);
         if (snap) states.Kinematic.PositionPhys += off.Transform(ccf2Body).Transform(body2Phys);
         states.Kinematic.Body2Phys = body2Phys * (ccf2Body * pose.Body2Ccf);
 

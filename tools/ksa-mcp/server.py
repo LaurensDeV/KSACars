@@ -35,6 +35,9 @@ _user_dir: Path | None = None
 
 def user_dir() -> Path:
     global _user_dir
+    # KSA_USER_DIR names another profile, such as a Borea instance's, for a second game on this machine.
+    if _user_dir is None and os.environ.get("KSA_USER_DIR"):
+        _user_dir = Path(os.environ["KSA_USER_DIR"])
     if _user_dir is None:
         out = subprocess.run([str(REPO / "tools" / "ksa-user-dir.sh")], capture_output=True, text=True)
         _user_dir = Path(out.stdout.strip())
@@ -279,6 +282,16 @@ TOOLS = {
                  "offset": _num("m left"), "timeout": _num("sim seconds"), "place": {"type": "boolean"},
                  "rows": {"type": "boolean"}, "jump": {"type": "boolean"}, "racing": {"type": "boolean"}, "push": _num("0..1"), "jump_zones": {"type": "string"}, "tune": {"type": "string"}, "inside": _num("m")}, [],
                 lambda a: [_text(json.dumps(send("lap", **a), indent=1))]),
+    "ksa_online": ("Race other games, as the panel's Race online does: host=true hosts on port (default 50000), "
+                   "ready=true opens a guest's socket and finds its code, join is the host's code or host:port, let_in a "
+                   "guest's code for the host to open the way to, laps and start=true start the race, stop=true leaves "
+                   "it; name is the racer's name. Answers where the race is: codes, the router's answer, who is in it, "
+                   "and for each other racer's car how far it is from where its game says (off_by_m). Set KSA_USER_DIR "
+                   "to drive a second game's profile.",
+                   {"host": {"type": "boolean"}, "port": _num("UDP port"), "ready": {"type": "boolean"},
+                    "join": {"type": "string"}, "let_in": {"type": "string"}, "laps": _num("count"),
+                    "start": {"type": "boolean"}, "stop": {"type": "boolean"}, "name": {"type": "string"}}, [],
+                   lambda a: [_text(json.dumps(send("online", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),
     "ksa_drive": ("Drive a buggy: hold throttle (-1..1, negative brakes then reverses) and steer (-1 right..1 "

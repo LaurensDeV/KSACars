@@ -100,6 +100,7 @@ internal sealed class Bridge
             "road" => Road(command),
             "lap" => Lap(command),
             "save" => SaveGame(command),
+            "online" => Online(command),
             _ => Failed($"no command '{command.Name}'"),
         };
 
@@ -367,6 +368,21 @@ internal sealed class Bridge
     }
 
     // A test road laid from lat/lon along a heading, on the ground the whole way; clear=true takes it up.
+    // Racing other games: host, ready, join, let in, start or stop, each as the panel's button; then where the race is.
+    private static Reply Online(BridgeCommand command)
+    {
+        if (command.String("name") is { Length: > 0 } name) Multiplayer.PlayerName = name;
+        if (command.Has("port")) Multiplayer.Port = (int)command.Number("port", Multiplayer.DefaultPort);
+        if (command.Flag("stop", false)) Multiplayer.Stop();
+        if (command.Flag("host", false)) Multiplayer.Host();
+        if (command.Flag("ready", false)) Multiplayer.Ready();
+        if (command.String("join") is { Length: > 0 } join) Multiplayer.Join(join);
+        if (command.String("let_in") is { Length: > 0 } guest) Multiplayer.LetIn(guest);
+        if (command.Has("laps")) RaceHud.Laps = (int)command.Number("laps", RaceHud.Laps);
+        if (command.Flag("start", false)) Multiplayer.StartRace();
+        return Done(Multiplayer.Report());
+    }
+
     private static Reply Road(BridgeCommand command)
     {
         if (command.Flag("clear", false))
