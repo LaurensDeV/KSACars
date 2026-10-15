@@ -507,4 +507,37 @@ public class MultiplayerTests
         Until(() => seen.Track.Newest!.Pose.S > 390.0, host, guest);
         Assert.InRange(guest.Dropped, 150, 250);
     }
+    [Fact]
+    public void AGuestJoiningAgainTakesTheNewHostsWorldThoughItIsNumberedAsTheLastWas()
+    {
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now);
+        foreach (byte fill in (byte[])[1, 2])
+        {
+            using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now);
+            guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+            NetSession.Racer? arriving = null;
+            Until(() => (arriving ??= host.NextArrival()) is not null, host, guest);
+            Assert.Null(guest.World);
+            byte[] world = [.. Enumerable.Repeat(fill, 5000)];
+            host.SendWorld(arriving!, world);
+            Until(() => guest.World is not null, host, guest);
+            Assert.Equal(1u, guest.World!.Value.Transfer);
+            Assert.Equal(world, guest.World.Value.Data);
+            Assert.Equal(fill, guest.Joins);
+        }
+    }
+
+    [Fact]
+    public void AHostCanPutAGuestOutAndTellItWhy()
+    {
+        using NetSession host = new(NetSession.Role.Host, "Host", "car", 0, Now);
+        using NetSession guest = new(NetSession.Role.Client, "Guest", "car", 0, Now);
+        guest.Join(new IPEndPoint(IPAddress.Loopback, host.Port));
+        NetSession.Racer? arriving = null;
+        Until(() => (arriving ??= host.NextArrival()) is not null && guest.Joined, host, guest);
+        host.Drop(arriving!, "it did not load the world in 120 s");
+        Until(() => guest.Out.Length > 0, host, guest);
+        Assert.False(host.Handing);
+        Assert.Single(host.Racers);
+    }
 }

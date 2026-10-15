@@ -71,6 +71,7 @@ internal static class Multiplayer
         public Vehicle Craft { get; } = craft;
         public Handing Stage { get; set; } = Handing.Spawned;
         public int Frames { get; set; }
+        public double SentAt { get; set; }
     }
 
     // Where a guest is in taking the host's world on.
@@ -97,6 +98,7 @@ internal static class Multiplayer
     private static bool _held, _routerTold;
     private static Handover? _handover;
     private static Taking _taking;
+    private static int _joinSeen;
     private static (string Name, Circuit Circuit, string? Shape)? _course;
 
     /// <summary>The name this player races under.</summary>
@@ -295,8 +297,16 @@ internal static class Multiplayer
         {
             _ = Upnp.CloseAsync(gateway, s.Port);
         }
+        // A host ending the race takes its guests' cars out of its world; a guest leaving keeps the world it was given.
+        bool hosted = _session is { Is: NetSession.Role.Host };
+        if (hosted && _handover is { } pending) Destroy(pending.Craft);
         (_session, _cancel, _opening, _finding, _handover, _course) = (null, null, null, null, null, null);
-        foreach (Remote r in Remotes.Values) if (r.Craft is { } craft) Buggies.Puppet(craft, null);
+        foreach (Remote r in Remotes.Values)
+        {
+            if (r.Craft is not { } craft) continue;
+            if (hosted) Destroy(craft);
+            else Buggies.Puppet(craft, null);
+        }
         Remotes.Clear();
         ReleaseHold();
         HeldSpeed = null;
@@ -380,6 +390,15 @@ internal static class Multiplayer
         if (_handover is not { } h) return;
         if (!s.Racers.Contains(h.Racer) || !KsaWorld.IsAlive(h.Craft))
         {
+            // Gone before it raced: the car made for it goes too.
+            if (KsaWorld.IsAlive(h.Craft)) Destroy(h.Craft);
+            _handover = null;
+            return;
+        }
+        if (h.Stage == Handing.Sent && Now() - h.SentAt > LoadWithinSeconds)
+        {
+            s.Drop(h.Racer, $"it did not load the world in {LoadWithinSeconds:F0} s");
+            Destroy(h.Craft);
             _handover = null;
             return;
         }
@@ -408,7 +427,7 @@ internal static class Multiplayer
                     return;
                 }
                 s.SendWorld(h.Racer, Pack());
-                (h.Stage, h.Frames) = (Handing.Sent, 0);
+                (h.Stage, h.Frames, h.SentAt) = (Handing.Sent, 0, Now());
                 return;
             case Handing.Sent when h.Racer.HasWorld:
                 _handover = null;
@@ -465,6 +484,10 @@ internal static class Multiplayer
     // A guest: the host's world, once it has all come, written as a save and loaded; then its own car flown and the course laid.
     private static void Take(NetSession s)
     {
+        if (s.Joins != _joinSeen)
+        {
+            (_joinSeen, _taking, _worldTaken, _course, _raceSeen) = (s.Joins, Taking.Waiting, 0, null, 0);
+        }
         if (!s.Joined)
         {
             OnTheCourse = false;
@@ -533,8 +556,10 @@ internal static class Multiplayer
     {
         if (!Together)
         {
-            HeldSpeed = null;
-            Behind = null;
+            // The race let go of the world: it runs again as if nobody had held it.
+            bool wasHeld = HeldSpeed is not null;
+            (HeldSpeed, Behind) = (null, null);
+            if (wasHeld) Universe.SetSimulationSpeed(1.0, alert: false);
             return;
         }
         if (Universe.IsAutoWarpActive) Universe.AutoWarpStop(resetSimulationSpeed: false);
@@ -592,8 +617,8 @@ internal static class Multiplayer
         double now = Universe.GetElapsedSeconds();
         foreach (NetSession.Racer racer in s.Racers)
         {
-            if (racer.Id == s.Me || racer.Craft.Length == 0 || racer.Track.At(now) is not { } at) continue;
             racing.Add(racer.Id);
+            if (racer.Id == s.Me || racer.Craft.Length == 0 || racer.Track.At(now) is not { } at) continue;
             if (!Remotes.TryGetValue(racer.Id, out Remote? remote)) Remotes[racer.Id] = remote = new Remote();
             (double3 positionCcf, doubleQuat body2Ccf, double3 velocityCcf) = at.Pose.On(route);
 
@@ -637,10 +662,10 @@ internal static class Multiplayer
             Buggies.Hold(craft, new DriveInput(at.Inputs.Throttle, at.Inputs.Steer, at.Inputs.Brake), 0.25);
             if (Buggies.Of(craft) is { } puppet) puppet.Beam = at.Inputs.Lights ? BeamSetting.Low : BeamSetting.Off;
         }
-        // A racer who has left: its car is let go of and stands where it is, in every world alike.
+        // A racer who has left: its car is taken out of every world alike, and is not left on the road.
         foreach (byte gone in Remotes.Keys.Where(id => !racing.Contains(id)).ToArray())
         {
-            if (Remotes[gone].Craft is { } craft) Buggies.Puppet(craft, null);
+            if (Remotes[gone].Craft is { } craft) Destroy(craft);
             Remotes.Remove(gone);
         }
     }
@@ -678,6 +703,19 @@ internal static class Multiplayer
         if (!_held) return;
         _held = false;
         if (KsaWorld.ControlledVehicle is { IsDisposed: false } flown) Buggies.Hold(flown, default, 0.0);
+    }
+
+    private static void Destroy(Vehicle craft)
+    {
+        Buggies.Puppet(craft, null);
+        try
+        {
+            if (KsaWorld.IsAlive(craft) && !ReferenceEquals(craft, KsaWorld.ControlledVehicle)) Universe.DestroyVehicle(craft);
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"a car that left the race could not be taken away: {e.GetBaseException().Message}");
+        }
     }
 
     // KSA's TryGet has no branch for a part template and always answers no; Get has one, and throws for an id it has not loaded.

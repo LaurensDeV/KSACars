@@ -1283,7 +1283,11 @@ outright from more than 3 m. Its drive still steps with the inputs its game sent
 springs work. A pose is sent as where the car is on the course (`Sim/RacePose.cs`), and timed and drawn on the
 universe time every world shares, so a car is drawn as its world's physics moves and not as the wall clock
 does. A racer who joins later has its car made, with the same Id, in the worlds of those already in. A car not
-heard from for 3 s of the world's time is let go of and braked. **Two cars that touch each meet it in their own
+heard from for 3 s of the world's time is let go of and braked. A racer who leaves has its car taken out of
+every world, and a host that stops takes out its guests'; a guest keeps the world it was given. A guest that
+joins again forgets the world and the clocks it had, a new host numbering its worlds from one again; one that
+has not loaded the world it was sent in two minutes is put out of the race, since the host's world waits for
+it; and when the last guest goes, the host's world runs at 1 again. **Two cars that touch each meet it in their own
 game**: there one is a puppet and the other is pushed, and what the pushed car does is then sent to the other.
 
 **Seen between two copies on one machine** (`tools/two-games.sh`, 2026.10.13.5602): the guest given the host's

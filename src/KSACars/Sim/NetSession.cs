@@ -247,6 +247,23 @@ internal sealed class NetSession : IDisposable
         if (Is != Role.Client) return;
         (_host, Me, Out, _helloNext, _joinUntil) = (host, 0, "", 0.0, _clock() + JoinWithinSeconds);
         _racers.Clear();
+        // A host started afresh numbers its worlds from one again, and its clock is another.
+        (World, _coming, _hostClock, _hostRate, _loadedTransfer, _bestRtt, HostOffset, Start) = (null, null, null, 0.0, 0, double.PositiveInfinity, 0.0, null);
+        Joins++;
+    }
+
+    /// <summary>On a guest, how many times it has asked to join: a new one is a new race, with a new world to take on.</summary>
+    public int Joins { get; private set; }
+
+    /// <summary>On the host, puts a racer out of the race and tells it why.</summary>
+    public void Drop(Racer racer, string why)
+    {
+        if (racer.Id == HostId || !_racers.Remove(racer.Id)) return;
+        _going.Remove(racer.Id);
+        SendTo(new NetWire.Welcome(0, why), racer.At);
+        SendTo(new NetWire.Bye(), racer.At);
+        _rosterNext = 0.0;
+        Say($"{racer.Name} is out of the race: {why}");
     }
 
     /// <summary>Sends punches to an address for a while, so its router lets that game's datagrams in: for a host that cannot open its own port.</summary>
