@@ -56,7 +56,9 @@ none of it has been seen as **KSACars** yet:
       red, and a guest's course, opponent and road-building controls greyed or gone (same games, read off the
       windows)
 - [x] The host's course changed, then taken up, with a guest in (same games): the guest laid the new one and
-      took its roads up within a second of each
+      took its roads up within a second of each; and a point dragged through forty layings, as the road editor
+      lays a drag, sent to the guest once, a second after the last
+- [ ] The road editor used by hand on the host with a guest in, clicks and drags
 - [x] A code hidden behind the eye button until it is pressed, and shown after (same games)
 - [x] Name tags over the other racer's car, with the interface up and hidden; the countdown and the F2 note at
       the start, with the interface hidden (same games)
