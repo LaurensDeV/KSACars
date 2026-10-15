@@ -99,6 +99,7 @@ internal static class Multiplayer
     private static Handover? _handover;
     private static Taking _taking;
     private static int _joinSeen;
+    private static string _myCraft = "";
     private static (string Name, Circuit Circuit, string? Shape)? _course;
 
     /// <summary>The name this player races under.</summary>
@@ -203,6 +204,20 @@ internal static class Multiplayer
         }
         : "";
 
+    /// <summary>
+    /// Whether a craft is another racer's car, which nobody in this game may take control of, board
+    /// or pick up: one the roster names for another racer, or the one a host is making for a guest.
+    /// </summary>
+    public static bool IsOthers(Vehicle? craft)
+    {
+        if (craft is null || _session is not { Joined: true } s) return false;
+        // Loading the host's world hands control to the craft its save was flying, the host's; this game's own is taken a moment later.
+        if (s.Is == NetSession.Role.Client && _taking == Taking.Loading) return false;
+        if (_handover is { } h && ReferenceEquals(h.Craft, craft)) return true;
+        string id = craft.Id;
+        return s.Racers.Any(r => r.Id != s.Me && r.Craft == id);
+    }
+
     /// <summary>Whether a box of the grid is a racer's, so an opponent is not put in it.</summary>
     public static bool Holds(int box) => _session is { } s && s.Racers.Any(r => r.Box == box);
 
@@ -297,17 +312,10 @@ internal static class Multiplayer
         {
             _ = Upnp.CloseAsync(gateway, s.Port);
         }
-        // A host ending the race takes its guests' cars out of its world; a guest leaving keeps the world it was given.
-        bool hosted = _session is { Is: NetSession.Role.Host };
-        if (hosted && _handover is { } pending) Destroy(pending.Craft);
+        // Whoever leaves the race is left with their own car alone: the others' are taken out of their world.
+        if (_session is { } ending) ClearOthers(ending);
+        if (_handover is { } pending) Destroy(pending.Craft);
         (_session, _cancel, _opening, _finding, _handover, _course) = (null, null, null, null, null, null);
-        foreach (Remote r in Remotes.Values)
-        {
-            if (r.Craft is not { } craft) continue;
-            if (hosted) Destroy(craft);
-            else Buggies.Puppet(craft, null);
-        }
-        Remotes.Clear();
         ReleaseHold();
         HeldSpeed = null;
         Behind = null;
@@ -344,6 +352,12 @@ internal static class Multiplayer
                 Say($"router: {RouterSays}{(HostCode is { } code ? $"; code {code.Code}" : "")}");
             }
 
+            // Taken by a route the hook does not see: this game's own car is handed back.
+            if (IsOthers(KsaWorld.ControlledVehicle) && KsaWorld.Vehicles.FirstOrDefault(c => c.Id == OwnCraft(s)) is { } own)
+            {
+                KsaWorld.GoTo(own);
+                Say("that is another racer's car; you are back in your own");
+            }
             Vehicle? flown = KsaWorld.ControlledVehicle is { IsDisposed: false } v ? v : null;
             Buggies.Entry? mine = flown is null ? null : Buggies.Of(flown);
             s.Set(Courses.Laid ?? "", "", mine?.Drive.Profile.PartId ?? s.Car);
@@ -490,6 +504,9 @@ internal static class Multiplayer
         }
         if (!s.Joined)
         {
+            // Out of the race, the host gone or stopped: this world keeps its own car alone, as the host's does.
+            if (_taking != Taking.Waiting) ClearOthers(s);
+            _taking = Taking.Waiting;
             OnTheCourse = false;
             Trouble = s.Out;
             return;
@@ -511,6 +528,7 @@ internal static class Multiplayer
                 }
                 if (!KsaWorld.InFlight || mine.Length == 0 || KsaWorld.Vehicles.FirstOrDefault(v => v.Id == mine) is not { } craft) break;
                 KsaWorld.GoTo(craft);
+                _myCraft = craft.Id;
                 if (_course is { } course) Courses.LayAsIs(course.Name, course.Circuit, course.Shape);
                 _taking = Taking.Laying;
                 break;
@@ -703,6 +721,21 @@ internal static class Multiplayer
         if (!_held) return;
         _held = false;
         if (KsaWorld.ControlledVehicle is { IsDisposed: false } flown) Buggies.Hold(flown, default, 0.0);
+    }
+
+    private static string OwnCraft(NetSession s) =>
+        s.Racers.FirstOrDefault(r => r.Id == s.Me)?.Craft is { Length: > 0 } craft ? craft : _myCraft;
+
+    // Every other racer's car taken out of this world: those puppeted, and any the roster names that never were.
+    private static void ClearOthers(NetSession s)
+    {
+        HashSet<string> others = [.. s.Racers.Where(r => r.Id != s.Me && r.Craft.Length > 0).Select(r => r.Craft)];
+        foreach (Remote r in Remotes.Values) if (r.Craft is { } craft) others.Add(craft.Id);
+        // Once out of the race a guest's number is gone, so its own car is the one it was put in.
+        string mine = s.Is == NetSession.Role.Host ? s.Racers.FirstOrDefault(r => r.Id == NetSession.HostId)?.Craft ?? "" : _myCraft;
+        others.Remove(mine);
+        foreach (Vehicle craft in KsaWorld.Vehicles.Where(v => others.Contains(v.Id)).ToArray()) Destroy(craft);
+        Remotes.Clear();
     }
 
     private static void Destroy(Vehicle craft)
