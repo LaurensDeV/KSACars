@@ -26,37 +26,9 @@ public static class HeadGear
 
         // Where each of the mesh's axes ends up in the part frame: the columns of the turn.
         double3 x = ToPart(rowX / length), y = ToPart(rowY / length), z = ToPart(rowZ / length);
-        return (seat + (ToPart(translationCm) * 0.01), FromColumns(x, y, z), length * 0.01);
+        return (seat + (ToPart(translationCm) * 0.01), Vec.FromColumns(x, y, z), length * 0.01);
     }
 
     // The kitten's left is the part's Z, its up the part's X and its ahead the part's Y.
     private static double3 ToPart(double3 model) => new(model.Y, model.Z, model.X);
-
-    private static doubleQuat FromColumns(double3 x, double3 y, double3 z)
-    {
-        double trace = x.X + y.Y + z.Z;
-        doubleQuat q;
-        if (trace > 0.0)
-        {
-            double s = 2.0 * Math.Sqrt(trace + 1.0);
-            q = new doubleQuat((y.Z - z.Y) / s, (z.X - x.Z) / s, (x.Y - y.X) / s, 0.25 * s);
-        }
-        else if (x.X > y.Y && x.X > z.Z)
-        {
-            double s = 2.0 * Math.Sqrt(1.0 + x.X - y.Y - z.Z);
-            q = new doubleQuat(0.25 * s, (y.X + x.Y) / s, (z.X + x.Z) / s, (y.Z - z.Y) / s);
-        }
-        else if (y.Y > z.Z)
-        {
-            double s = 2.0 * Math.Sqrt(1.0 + y.Y - x.X - z.Z);
-            q = new doubleQuat((y.X + x.Y) / s, 0.25 * s, (z.Y + y.Z) / s, (z.X - x.Z) / s);
-        }
-        else
-        {
-            double s = 2.0 * Math.Sqrt(1.0 + z.Z - x.X - y.Y);
-            q = new doubleQuat((z.X + x.Z) / s, (z.Y + y.Z) / s, 0.25 * s, (x.Y - y.X) / s);
-        }
-        double n = Math.Sqrt((q.X * q.X) + (q.Y * q.Y) + (q.Z * q.Z) + (q.W * q.W));
-        return new doubleQuat(q.X / n, q.Y / n, q.Z / n, q.W / n);
-    }
 }

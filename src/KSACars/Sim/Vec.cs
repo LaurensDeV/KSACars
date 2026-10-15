@@ -128,6 +128,35 @@ internal static class Vec
         double3 flattened = reference - n * Dot(reference, n);
         return Len2(flattened) < 1e-12 ? AnyPerpendicular(v) : Unit(flattened);
     }
+
+    /// <summary>The turn that carries the X, Y and Z axes onto three orthonormal columns.</summary>
+    public static doubleQuat FromColumns(double3 x, double3 y, double3 z)
+    {
+        double trace = x.X + y.Y + z.Z;
+        doubleQuat q;
+        if (trace > 0.0)
+        {
+            double s = 2.0 * Math.Sqrt(trace + 1.0);
+            q = new doubleQuat((y.Z - z.Y) / s, (z.X - x.Z) / s, (x.Y - y.X) / s, 0.25 * s);
+        }
+        else if (x.X > y.Y && x.X > z.Z)
+        {
+            double s = 2.0 * Math.Sqrt(1.0 + x.X - y.Y - z.Z);
+            q = new doubleQuat(0.25 * s, (y.X + x.Y) / s, (z.X + x.Z) / s, (y.Z - z.Y) / s);
+        }
+        else if (y.Y > z.Z)
+        {
+            double s = 2.0 * Math.Sqrt(1.0 + y.Y - x.X - z.Z);
+            q = new doubleQuat((y.X + x.Y) / s, 0.25 * s, (z.Y + y.Z) / s, (z.X - x.Z) / s);
+        }
+        else
+        {
+            double s = 2.0 * Math.Sqrt(1.0 + z.Z - x.X - y.Y);
+            q = new doubleQuat((z.X + x.Z) / s, (z.Y + y.Z) / s, 0.25 * s, (x.Y - y.X) / s);
+        }
+        double n = Math.Sqrt((q.X * q.X) + (q.Y * q.Y) + (q.Z * q.Z) + (q.W * q.W));
+        return new doubleQuat(q.X / n, q.Y / n, q.Z / n, q.W / n);
+    }
 }
 
 /// <summary>
@@ -159,4 +188,5 @@ internal readonly record struct Plan(double E, double N)
         double len = Len;
         return len > 1e-12 ? new Plan(E / len, N / len) : default;
     }
+
 }
