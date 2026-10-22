@@ -41,7 +41,7 @@ references no game assembly, so a stray `using KSA;` there fails the test build 
 slipping through. Anything whose maths lives there can be changed and tested without launching KSA.
 
 You do still need its assemblies to *build* that half: `double3` comes from
-`Brutal.Core.Numerics.dll` and appears throughout `Sim/`, so the test project references it and
+`Brutal.Numerics.dll` and appears throughout `Sim/`, so the test project references it and
 `tools/test.sh` errors out without it.
 
 ### Getting KSA's assemblies

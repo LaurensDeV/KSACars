@@ -110,7 +110,7 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
 ## Environment
 
 - **KSA install**: `/mnt/c/Program Files/Kitten Space Agency` (Windows game, WSL dev)
-- **KSA build these notes were taken against**: `2026.10.13.5602`
+- **KSA build these notes were taken against**: `2026.10.19.5638`
 - The system `dotnet` is 8.0 and **cannot build this** — the mod targets **net10.0**. A .NET 10 SDK
   is installed at `~/.dotnet`. **Use `tools/build.sh` / `tools/test.sh`**, which source
   `tools/env.sh`. In an interactive shell, `source tools/env.sh` once.
@@ -1357,8 +1357,8 @@ A car is **data plus art**: nothing in the drive, the sound or the hands names a
    ending `<Prefix>WheelFL`, `WheelFR`, `WheelRL`, `WheelRR` and `Steering` (and `Arm…` and `Coil…` if
    it has visible suspension, `Upright…` for what sits inside a rim and must not spin), its seats, doors, colliders, light switch and mass — a box the car's size, not a
    sphere. **A shipped part's subpart list is append-only and its Id is not renameable**: KSA pairs a
-   saved part with its definition positionally and by Id, and a save that no longer matches closes
-   the game. `docs/KSA-MODDING-NOTES.md` has the loop.
+   saved part with its definition positionally and by Id, and a save that no longer matches loses
+   the car: KSA 2026.10.19.5638 leaves it out with an alert, where earlier builds closed the game. `docs/KSA-MODDING-NOTES.md` has the loop.
 3. **Give it a `BuggyProfile`** in `Sim/BuggyProfile.cs` and add it to `All`: the hubs, the steering
    wheel's pivot and axis, the driver's eye, the head and tail lamps, the rocket nozzles if it flies, and the tuning. Add tests in `BuggyDriveTests` that it
    settles, pulls away and shrugs off a yaw kick, and one in `SteeringGripTests` that the driver

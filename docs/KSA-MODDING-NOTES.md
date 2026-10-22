@@ -2,7 +2,7 @@
 
 Everything here comes out of the shipped assemblies of **KSA build 2026.9.10.5438**, read with
 `tools/apidump`, or out of the StarMap sources, and was rechecked against **2026.9.22.5482**,
-**2026.10.7.5541**, **2026.10.10.5554** and **2026.10.13.5602** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
+**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602** and **2026.10.19.5638** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
 none of this is documented by RocketWerkz, and **it will drift between game builds**. Re-run
 the dumper rather than trusting this file after an update.
 
@@ -15,7 +15,7 @@ the dumper rather than trusting this file after an update.
 | Physics | **BepuPhysics v2** |
 | Game assembly | `KSA.dll` (~1100 public types in the `KSA` namespace) |
 | UI | Dear ImGui via `Brutal.ImGui.dll`, namespace `Brutal.ImGuiApi` |
-| Maths | `Brutal.Core.Numerics` — `double3`, `float3`, `float4`, `doubleQuat`, System.Numerics-style statics |
+| Maths | `Brutal.Numerics` — `double3`, `float3`, `float4`, `doubleQuat`, System.Numerics-style statics |
 | Code mod loader | **StarMap** (community) — <https://github.com/StarMapLoader/StarMap> |
 | Patching | Harmony (`Lib.Harmony` 2.4.2) |
 
@@ -645,7 +645,7 @@ side. `NoFaceSnapping` (Core's tag, `FaceSnapBlacklist`) is what turns the secon
 
 `Diameter` plus a `DiameterFilterlist` tag is what makes a part appear under a given stack size.
 
-### Removing a subpart breaks every save holding that part, and kills the process
+### Removing a subpart breaks every save holding that part
 
 **A saved part is paired with its current definition by *position*, and the loop is bounded by
 the save while it indexes the definition** — `KSA.PartTree.Deserialize`:
@@ -670,6 +670,12 @@ And it is not survivable. `UncompressedSave.Load` runs from `Popup.DrawAll` insi
 refuse the save — it terminates. There is no version field, no name match and no warning; the
 same positional pairing means a **reorder** silently applies one subpart's saved state to
 another.
+
+**Since 2026.10.19.5638 the craft is skipped rather than the game closed**, by its reading: a
+vehicle that throws while it is built is caught in `CelestialSystem.DeserializeSave`
+(`CelestialSystem.cs:700-720`), left out of the world and named in a red alert, the save loading
+without it. The loop in `PartTree.cs:340` is as it was, so the car is still lost from that save.
+**Not seen in game.**
 
 Craft files in the vehicle library are unaffected: they store no `<SubPartRef>` at all.
 

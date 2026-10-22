@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="$(KsaDllDir)Brutal.Core.Numerics.dll" />
-    <Reference Include="$(KsaDllDir)Brutal.Core.Common.dll" />
+    <Reference Include="$(KsaDllDir)Brutal.Numerics.dll" />
+    <Reference Include="$(KsaDllDir)Brutal.Core.dll" />
     <Reference Include="$(KsaDllDir)BepuPhysics.dll" />
     <Reference Include="$(KsaDllDir)BepuUtilities.dll" />
   </ItemGroup>
