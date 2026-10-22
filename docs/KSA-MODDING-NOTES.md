@@ -2,7 +2,7 @@
 
 Everything here comes out of the shipped assemblies of **KSA build 2026.9.10.5438**, read with
 `tools/apidump`, or out of the StarMap sources, and was rechecked against **2026.9.22.5482**,
-**2026.10.7.5541** and **2026.10.10.5554** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
+**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602** and **2026.10.19.5638** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
 none of this is documented by RocketWerkz, and **it will drift between game builds**. Re-run
 the dumper rather than trusting this file after an update.
 
@@ -15,7 +15,7 @@ the dumper rather than trusting this file after an update.
 | Physics | **BepuPhysics v2** |
 | Game assembly | `KSA.dll` (~1100 public types in the `KSA` namespace) |
 | UI | Dear ImGui via `Brutal.ImGui.dll`, namespace `Brutal.ImGuiApi` |
-| Maths | `Brutal.Core.Numerics` — `double3`, `float3`, `float4`, `doubleQuat`, System.Numerics-style statics |
+| Maths | `Brutal.Numerics` — `double3`, `float3`, `float4`, `doubleQuat`, System.Numerics-style statics |
 | Code mod loader | **StarMap** (community) — <https://github.com/StarMapLoader/StarMap> |
 | Patching | Harmony (`Lib.Harmony` 2.4.2) |
 
@@ -52,6 +52,14 @@ and a mismatch means the hook is silently skipped:
 Mods are loaded into separate `AssemblyLoadContext`s, so dependencies do not collide.
 
 `Console.WriteLine` reaches the KSA console.
+
+**A profile of its own: `-InstancePath <folder>`.** StarMap reads it, or `STARMAP_INSTANCE_PATH`, and
+patches `Constants.DocumentsFolderPath` to answer that folder, so KSA reads its mods, saves, vehicles,
+settings and logs from there. That is how Borea runs an instance, and how two copies of the game run on
+one machine at once, each with its own log and the mod's own bridge (`tools/two-games.sh`). The folder
+needs a `manifest.toml` and a `mods` folder; KSA lists the saves when it starts, so a save copied in
+afterwards is not found until it is restarted. Two copies at a player's settings fill a 12 GB card, and
+one then draws a frame every few seconds.
 
 ### Porting to a different loader
 
@@ -180,6 +188,20 @@ is a vehicle apparently sitting at the solar system barycentre.
 
 `IParentBody.Mu` is a plain property — no need to hunt for the gravitational parameter.
 
+**The world's speed goes through two public methods, and only two.** `Universe.SetSimulationSpeed(double, bool)`
+and `Universe.SetSimulationSpeed(SimSpeed)` each assign the speed outright: the warp keys, auto-warp, the escape
+menu, the settings and save windows, which pause the world every frame they are open, and the vehicle editor
+all go through one or the other, and a reset on load writes the field itself. `Ksa/WarpHook.cs` prefixes both.
+The universe time is `Universe.GetElapsedSeconds()`, and a save brings it back as it was. **A world runs
+slower than its speed when the physics cannot keep up**: each frame's step is the frame, capped at
+`1 / minTargetFrameRate`, times the speed times `_achievedSpeedFraction`, which `ApplyVehicleSolvers` drops below
+1 whenever the vehicle solver took more than 0.9 of a frame; asking for more speed then gets nothing more. **KSA limits its frames
+only with vsync off** (`display.fpslimit`); with it on, the limit is the monitor's refresh.
+
+**A part's template by its Id is `ModLibrary.Get<PartTemplate>(id)`, never `TryGet`.** `TryGet<T>` has a
+branch for most of what the library keeps and none for a part template, so it answers false for every
+part there is. `Get` has the branch, and throws a `NullReferenceException` for an Id it has not loaded.
+
 ### Spawning a kitten on EVA, with a velocity of your choosing
 
 A kitten outside a craft is a `KittenEva`, a `Vehicle` subclass, and the game flies it like any
@@ -213,7 +235,9 @@ eva.UpdatePerFrameData();
   distance by the craft's radius over the kitten's, which from a large craft leaves the view
   kilometres off; keep the kitten's own `OrbitView.DistancePower` instead.
 - **A kitten dies at 125 g**, filtered over `radius / 200` seconds: `EffectiveMaxGLoad` is 50 g for
-  anything under 5 m, times 2.5 for a kitten (`PhysicsBubble.DetectStructuralFailure`). It is then
+  anything under 5 m, times 2.5 for a kitten (`PhysicsBubble.DetectStructuralFailure`). **And at
+  20 m/s of fall stopped in one step**, since 2026.10.13.5602: on the ground or the sea,
+  `DetectKittenImpact` compares its downward speed over the ground with the step before's. It is then
   marked KIA and kept on the roster's LOST tab. `PartFailure` ignores kittens entirely.
 
 ### Per-frame buffers are not readable from a StarMap hook
@@ -240,6 +264,13 @@ Suffixes on positions and velocities mean the frame:
 | `Bub` / `Phys` | physics-bubble local, used by the Bepu step |
 | `Asmb` / `Body` | vehicle assembly and body frames |
 | `Ego` | **camera-relative render frame** |
+
+**Near a body the physics is stepped in `Ccf`, with the turning frame's accelerations put in.** A bubble
+within the body's physics radius is `BubbleFrame.Ccf`, and `PhysicsStates.ComputeDerivatives` adds
+`-w x (w x r)` to every craft in it and `-2 w x v` to one with no contact; a craft with any contact has
+the first turned along its own radius, so nothing standing on the ground slides. So a craft held up off
+the ground and nothing else is thrown towards the equator, 1.7 cm/s2 at 45 degrees on Earth, which is
+what `Hover.Hold` takes out.
 
 `Ego` is a **pure translation** of `Ecl` — `Camera.EclToEgo(p)` is literally `p - camera.PositionEcl`,
 with no rotation. That means you can do all your maths in `Ecl` and convert once at draw time.
@@ -614,7 +645,7 @@ side. `NoFaceSnapping` (Core's tag, `FaceSnapBlacklist`) is what turns the secon
 
 `Diameter` plus a `DiameterFilterlist` tag is what makes a part appear under a given stack size.
 
-### Removing a subpart breaks every save holding that part, and kills the process
+### Removing a subpart breaks every save holding that part
 
 **A saved part is paired with its current definition by *position*, and the loop is bounded by
 the save while it indexes the definition** — `KSA.PartTree.Deserialize`:
@@ -639,6 +670,12 @@ And it is not survivable. `UncompressedSave.Load` runs from `Popup.DrawAll` insi
 refuse the save — it terminates. There is no version field, no name match and no warning; the
 same positional pairing means a **reorder** silently applies one subpart's saved state to
 another.
+
+**Since 2026.10.19.5638 the craft is skipped rather than the game closed**, by its reading: a
+vehicle that throws while it is built is caught in `CelestialSystem.DeserializeSave`
+(`CelestialSystem.cs:700-720`), left out of the world and named in a red alert, the save loading
+without it. The loop in `PartTree.cs:340` is as it was, so the car is still lost from that save.
+**Not seen in game.**
 
 Craft files in the vehicle library are unaffected: they store no `<SubPartRef>` at all.
 
@@ -824,10 +861,129 @@ Handy Core subparts: `CoreStructuralA_Subpart_TubeA` (0.854 × 0.101 tube),
 `Nosecone{Ballistic,Blunt}{1,2}MSkinA` for the cones themselves). Materials follow
 `<Category>_Material`, e.g. `CoreStructuralA_Material`.
 
-**Not solved**: rendering a mesh at an arbitrary runtime position (for mod-simulated objects
-rather than parts on a vehicle). `KSA.StaticMeshRenderable` has a public constructor and a
-`Transform` field, but needs `IMeshRenderer<InstanceData>` instances owned by the engine's
-render systems.
+**Drawing a mesh at an arbitrary runtime position**: a `StaticMeshRenderable` built over a `<GltfFile>`
+asset draws wherever its `Transform` says each time `Draw` is called, and one renderable can be drawn any
+number of times a frame with a different transform each time. The transform's rows are the mesh's X, Y and
+Z axes and then its origin, camera-relative, and the axes may be scaled each on its own.
+The asset managers take a `Core.AssetName`, which is in `Planet.Core.dll`. The draw has to be made from a
+postfix on `SuperMeshRenderSystem.ClearBuckets(IViewport)`: anything submitted earlier in the frame is
+cleared by that call. The `.glb` needs a material slot, which a part's mesh does not have. Nothing in the
+mod draws a `<GltfFile>`; `Ksa/RuntimeMesh.cs` builds the same renderable over a mesh of its own.
+
+**Drawing a mesh made at runtime** (`Ksa/RuntimeMesh.cs`; **one patch seen in game**, lit, textured, smoothly
+shaded and casting a shadow, and written over in place; a road's meshes not yet): every static mesh is a
+stretch of three buffers owned by `SuperMeshRenderSystem.MeshIndirectSystem`: normals and UVs
+(`InterleavedVertex`, 20 bytes) in 10 MB, positions (`float3`) in 5 MB, which is 436,000 vertices for the
+whole game, and `int` indices in 10 MB. `AddMesh(AssetName, MeshAsset)` takes room from the end of each,
+uploads, and files a `MeshIndirectRef` under the name; nothing ever gives room back, and a buffer that is
+full throws from whatever was loading. It stores one `VertexOffset`, taken from the normals' buffer and
+used for both, so the two must always have had the same number of vertices put in them. The offsets and
+counts in `MeshIndirectRef.Data` are read anew each frame as the draw is written, so a slot reserved once
+can be redrawn with fewer triangles by setting `Data.IndexCount`, and its bytes replaced with
+`VkUtils.StageAndUploadToBuffer` into `VertexAttribBuffer`, `VertexPosBuffer` and `IndexBuffer` at the
+offset times the stride, through a `StagingPool` from `DeviceCtx.CreateStagingPool()`, whose disposal
+submits the copies and waits. A `GltfPbrAssetRef` built by hand over that `MeshIndirectRef` and a material,
+and added to `GltfSystem` with `TryAdd`, is what a `StaticMeshRenderable` of that name then finds. The
+pipelines cull back faces and take anticlockwise as the front, there are no tangents (the shader takes
+them from the UVs' screen derivatives, so a triangle needs area in the texture), and the instance's axes
+have to be right-handed or every face is turned away. `AssetManager.TryGet` removes what it is asked
+for and returns null: use `IsLoaded` and `GetOrLoad`. The free room is `FreeSpace` on the private
+`_vertexAllocator`, `_vertexPosAllocator` and `_indexAllocator`. `docs/KSA-API-SURFACE.md` does not record
+the `Planet.*` assemblies or members of a generic type, which is most of what this binds to.
+
+**One reserved stretch can hold many meshes, and one mesh many draws.** `MeshPassBucketSystem` files a
+draw under the `IMeshDrawStorage` object a renderable was built over, not under a name or a handle, and
+reads that object's `IndexCount`, `IndexOffset` and `VertexOffset` as it writes each frame's draw commands.
+`MeshIndirectRef` has a public constructor, so one made by hand over any part of a stretch that was
+reserved, with no source to free, is drawn as a loaded mesh is; two over the same vertices with different
+runs of the indices are two draws of one mesh, each in the material of its own `GltfPbrAssetRef`.
+`Ksa/RuntimeMesh.cs` reserves a block with one `AddMesh` and cuts it so. **Every such object that has an
+instance in a view is one of that view's 256 draw commands a pass, and every `Draw` one of its 1024
+instances**; KSA throws past either from inside its render, which closes the game. A renderable whose
+mesh has `IndexCount` 0 still takes a draw command if it is drawn, so one with nothing to draw is not.
+`StaticMeshRenderable.Draw` also files a shadow caster about the transform's translation, of the mesh's
+`BoundingRadius` times the longest of the transform's axes. Any number of copies can go through one
+`StagingPool` and one command buffer, which is one wait for the graphics card for all of them.
+
+**A triangle whose corners all have one texture coordinate is drawn speckled with holes.** Seen in game on
+2026.10.13.5602: a flat-coloured quad over a road, every corner at `(0.25, 0.5)`, had asphalt showing
+through it a pixel here and there, more of them with distance, and the same half a metre over the road as
+2 cm over it, so it is not the road it fights. With the corners spread over the picture the quad is solid.
+Why is not read out of the shader; what is known is that every mesh the mod draws needs real coordinates.
+
+`SplineRenderer.AddTube`, called from inside `Universe.UpdateRenderData`, sweeps a lit tube along
+camera-relative samples, but its section is a regular polygon of one radius and its normals are radial, so
+it cannot make anything flat and thin.
+
+**A collider of a mod's own**: KSA's physics is BepuPhysics, one `Simulation` a physics bubble
+(`PhysicsBubble.ConstraintSim.Simulation`), stepped on a worker. A static added to it collides with
+nothing unless the narrow phase lets it (`NarrowPhaseCallbacks.AllowContactGeneration`): a vehicle's own
+terrain patch and launch pad, terrain blocks, and ground clutter. So a static is added with
+`Simulation.Statics.Add`, posed in the bubble's frame (its planet-fixed position less
+`Origin.PositionBub`), and its handle written into the private `BubbleClutterStatics._statics` with
+infinite mass, and again whenever a pass finds it gone, because clutter's own sync clears that dictionary. Shapes go in a registry all
+simulations share, writable only between vehicle steps (`ConstraintSim.UnlockShapes`, from a prefix on
+`Universe.ExecuteNextVehicleSolvers`); the statics are synced from prefixes on
+`ConstraintSim.DetectCollisions` and `Simulate`, re-posed when the bubble's origin moves, and forgotten on
+`TryResetForPool`, which clears them. `Ksa/RoadColliders.cs` is this. A contact with such a static counts
+as terrain contact (`ConstraintSim.IsGroundSurfaceFor`), so a craft resting on one is landed, and is
+reported to clutter as a hit, which infinite mass never lets displace or destroy it.
+**Seen in game on 2026.10.10.5554**: a 12 m box put under a parked F2004 with its top half a metre up
+lifted the car onto it by its hull, where it came to rest as landed, and taking the box away set the car
+back on the ground; a box half a metre deep with the car inside it pushed the car down instead, the
+shorter way out.
+
+**A craft at speed over a triangle mesh is braked by triangles it is nowhere near.** KSA adds a vehicle's
+body with `BodyDescription.CreateDynamic(pose, velocity, inertia, shape, activity)`, and a bare shape
+converts to a `CollidableDescription` whose speculative margin has no upper bound, so the engine sets it
+each step to how far the body moves in the step: 0.4 m at 25 m/s, 1.7 m at 100. Every triangle within
+that of a hull's box gets a contact, and for one lying wholly ahead of the box's front face the axis of
+least overlap is along the car, not up. Its constraint lets the box close on that triangle no faster than
+the gap over the step, so a box 14 cm clear of the road has its speed cut to that in one step: 10 to 15 m/s
+off 25, 44 off 60, with a pitch nose down because the push is at the road and under the centre of mass. A
+contact that is real, the box resting on or in the mesh, is corrected by the engine's mesh reduction and
+costs nothing but its friction. A static has no margin of its own (`StaticDescription` carries only a
+shape, a pose and a continuity), so the cure is on the body: `Simulation.Bodies[handle].Collidable
+.MaximumSpeculativeMargin`, which `BoundingBoxBatcher` clamps the step's margin to, written before
+`Simulation.PredictBoundingBoxes`, which `ConstraintSim.DetectCollisions` calls first. `Ksa/RoadColliders.cs`
+writes it from its prefix there for every car in `Buggies.HullMargins`: 5 cm and what the car closes on
+the road with while a wheel is on a road, and the engine's own otherwise, because what stops a hull
+falling fast through a one-sided triangle is that margin. `tools/bepurig` is this in the engine alone: a
+box flown along a circuit's road, 33 such contacts in the 2 km of `Z Vertical` at 25 m/s and none with
+the margin held. **Seen in game on 2026.10.10.5554**: the F2004 lost 10 m/s in a step two or three times
+a lap of that circuit, each logged as the engine's change and not the drive's, and none with the margin
+held, on it or on three other circuits it had been thrown on.
+
+**A road's collider is a triangle mesh, not boxes**: KSA's simulations are made with BepuPhysics' default
+collision tasks, which pair a `Mesh` with a vehicle's `Compound` or `BigCompound`, a kitten and displaced
+clutter. A `Mesh` is built as KSA builds a parachute's terrain (`ChuteBepuClothState.BuildTerrainMesh`):
+`BufferPool.Take<Triangle>` and `new Mesh(buffer, Vector3.One, pool)`, which builds its tree in that pool.
+The pool is the mod's own, so the building is done when the road is laid and not in the unlock window, and
+`Shapes.Add` there only copies the struct in. `Shapes.RemoveAndDispose(index, pool)` gives the slot back to
+the registry and the triangles and tree to that pool; the slot is given out again by the next `Add`, so a
+shape is only removed once no simulation has a static of it, which each simulation counts. `UnlockShapes`
+succeeds only while no vehicle update is running, and the collision passes run only inside one, so in the
+window that count is not moving.
+**A triangle is solid from one side**, the side `(C - A) x (B - A)` points to: a box dropped on the other
+side falls through. Inside one mesh Bepu smooths a contact at an edge two triangles share
+(`MeshReduction`); between two meshes it does not, and a box sliding at 35 m/s off one closed deck onto
+another that shares its end section stops dead there. So `Sim/RoadCollider.cs` makes one mesh of a whole
+run of roads, of the triangles it is drawn with. A
+mesh has no bounding radius to `ClutterEcotypePhysicalData.ComputeBoundingRadius`, so a parachute's cloth,
+which gathers clutter by it, does not drape over a road. All of this was measured in BepuPhysics alone
+with KSA's contact settings. **Not seen in game**: a laid road's meshes, a kitten on one, a craft driven
+onto one, a craft railed on one, an origin shift, a save loaded, a road laid again.
+
+**Switching ground clutter off under something**: grass, shrubs, trees and rocks are ecotypes of one
+system. Each is laid on a grid over the six faces of a cube round the body (`CubeCellGrid.DirectionToQscUv`),
+`ceil(quarter circumference / (16 x ObjectSeparation))` cells to a face, 16 by 16 slots to a cell and one
+instance a slot. `Generate.comp` puts the instance at the slot's middle plus a hash of the cell and slot,
+up to a slot either way, **with the slot's row running against the face's V**; `Sim/ClutterGrid.cs` is that
+arithmetic. `GroundClutterPlacementData` keeps 256 bits a cell, a cleared bit being an instance neither
+drawn nor collided with: write a cell's mask with `ExcludeCell` and call
+`GroundClutterRenderer.QueueExclusionUpload`, and cells already generated change on the next frame. The
+masks are written into the save (`ClutterEcotypeSaveData`). Seen in game on grass, shrubs and trees; a cell
+over a cube face's edge is not handled.
 
 ## Character attachments
 
@@ -988,6 +1144,19 @@ in 2026.9.22.5482.
   centre and it cannot matter. `docs/BLOCKED-ON-KSA.md` has it.
 - **The force acts at the centre of mass**, so there is no righting moment: a floating craft keeps
   whatever roll and pitch it has, and anything that should come upright has to be given a torque.
+- **A craft in air is dragged by its colliders' box, on the ground or not.** `PhysicsStates.ComputeDerivatives`
+  applies `(CdA + 0.1 × surface area) · ½ρv²` every step to anything in the physics bubble that is not
+  railed. The box is the axis-aligned bounds of the whole collider compound (`Vehicle.UpdateCollisionGeometry`),
+  the mesh's only where a craft has no colliders; `RecomputeAerodynamicProperties` makes the areas of it,
+  with a Cd of 1.2 across and along. A part cannot declare a drag, and `<Diameter>` does not reach it.
+- **That drag is off while `VehicleProperties.AerodynamicCdABody` is zero.** The air branch is gated on
+  the CdA being above zero, skin term, skin torque and air buoyancy with it, and that field is read
+  nowhere else in the game. It is public through `Vehicle.GetPhysicsStatesMutable().Props`, a ref onto
+  the craft's own record, and a write from the `PrepareWorker` prefix is what the next worker integrates
+  with. KSA rebuilds it only in `UpdateAfterPartTreeModification`: creation, load, split, merge, the
+  editor, and a kitten boarding. `TotalSurfaceArea` and `TotalVolume` beside it are read by the sea and
+  must be left alone. The water's branch takes the same CdA, so zeroed it leaves only the skin term there.
+  If KSA drops the gate this compiles clean and the skin term comes back.
 - **Water drag is the air's box drag with the ocean's density**, `(CdA + 0.1 × wetted area) · ½ρv²`
   at the centre of mass (`ComputeDrag`). The box's CdA is per axis, so sideways drag dwarfs drag
   along the long axis, and there is no lift. A slow floating craft goes on rails

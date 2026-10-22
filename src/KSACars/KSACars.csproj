@@ -48,6 +48,13 @@
     <None Update="Sounds\**\*.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <!-- The courses the mod comes with, written by tools/roads/club-motorsports.py. -->
+    <None Update="Native\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Circuits\**\*.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <!--
@@ -63,9 +70,9 @@
   <ItemGroup>
     <Reference Include="$(KsaDllDir)KSA.dll" Private="false" />
     <Reference Include="$(KsaDllDir)StarMap.API.dll" Private="false" />
-    <Reference Include="$(KsaDllDir)Brutal.Core.Numerics.dll" Private="false" />
-    <Reference Include="$(KsaDllDir)Brutal.Core.Common.dll" Private="false" />
-    <Reference Include="$(KsaDllDir)Brutal.Core.Strings.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Numerics.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Core.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Strings.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.ImGui.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.ImGui.Abstractions.dll" Private="false" />
     <!-- GlfwKeyAction, in the signature of Vehicle.ProcessInput that Ksa/BoostHook.cs patches. -->
@@ -79,7 +86,17 @@
     -->
     <!-- Needed to compile against Vehicle's mass-properties signatures (Symmetric3x3). -->
     <Reference Include="$(KsaDllDir)BepuUtilities.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)BepuPhysics.dll" Private="false" />
     <Reference Include="$(KsaDllDir)0Harmony.dll" Private="false" />
+    <!--
+      What Ksa/RuntimeMesh.cs writes a mesh into KSA's shared buffers with: the asset name and what it
+      is keyed by, the CPU mesh KSA's mesh system is handed, and the staging pool and buffer handles.
+    -->
+    <Reference Include="$(KsaDllDir)Planet.Core.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Collections.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Render.Mesh.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Vulkan.dll" Private="false" />
+    <Reference Include="$(KsaDllDir)Brutal.Vulkan.Abstractions.dll" Private="false" />
   </ItemGroup>
 
   <!--

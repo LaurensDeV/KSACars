@@ -29,7 +29,7 @@ internal sealed class Bridge
 
     // A folder of its own: every mod built from the same tooling has a bridge, and two reading one
     // folder each answer whichever command they reach first.
-    private static string Root => Path.Combine(Log.Folder, "bridge", "KSACars");
+    internal static string Root => Path.Combine(Log.Folder, "bridge", "KSACars");
     private static string Inbox => Path.Combine(Root, "in");
     private static string Outbox => Path.Combine(Root, "out");
 
@@ -97,7 +97,10 @@ internal sealed class Bridge
             "spawn" => Spawn(command),
             "drive" => Drive(command),
             "ground" => Ground(command),
+            "road" => Road(command),
+            "lap" => Lap(command),
             "save" => SaveGame(command),
+            "online" => Online(command),
             _ => Failed($"no command '{command.Name}'"),
         };
 
@@ -200,6 +203,8 @@ internal sealed class Bridge
     {
         if (CraftNamed(command.String("craft")) is not { } craft) return Failed("no such craft");
         if (command.Flag("focus", false)) KsaWorld.GoTo(craft);
+        // A camera mode, as the gamepad's Back or the panel chooses one: close, medium, far or free.
+        if (command.String("camera") is { Length: > 0 } cameraMode && Enum.TryParse(cameraMode, ignoreCase: true, out ChaseMode chosenMode)) ChaseCamera.Choose(chosenMode);
         if (command.Has("cam_elevation_deg") || command.Has("cam_distance"))
         {
             // The orbit camera on whatever is being flown, lifted out of the grass to see a car's crew. The
@@ -259,6 +264,8 @@ internal sealed class Bridge
             if (lift > 0.0) flyer.Throttle = lift;
             Buggies.Ignite(flyer, lift > 0.0);
         }
+        if (command.Has("game_drag")) Buggies.ShedsGameDrag = !command.Flag("game_drag", false);
+        if (command.Has("hull_margin")) Buggies.HoldsHullMargin = command.Flag("hull_margin", true);
         if (command.Has("downforce"))
         {
             if (Buggies.Of(craft) is not { } pressed) return Failed("that craft is not a buggy");
@@ -306,6 +313,303 @@ internal sealed class Bridge
         if (Buggies.Report(craft) is { } report) return Done(report);
         return command.Flag("eva", false) || command.Flag("crew", false) ? Done(new() { ["seats"] = craft.SeatCount })
                                                                           : Failed("that craft is not a buggy");
+    }
+
+    // A driver that follows a route round the laid circuit: start=true sets one going on a car, stop=true
+    // ends it, and either way or with neither what it has come to so far is answered. It never holds the queue.
+    private static Reply Lap(BridgeCommand command)
+    {
+        if (CraftNamed(command.String("craft")) is not { } craft) return Failed("no such craft");
+
+        if (command.Flag("start", false))
+        {
+            List<int>? through = null;
+            if (command.String("route") is { Length: > 0 } listed)
+            {
+                through = [];
+                foreach (string id in listed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int node)) return Failed($"route: '{id}' is not a point's id");
+                    through.Add(node);
+                }
+            }
+            // Stretches where a crest is a jump that is meant: "3651-4091,5000-5100", metres along the route.
+            List<(double, double)> zones = [];
+            foreach (string zone in (command.String("jump_zones") ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] ends = zone.Split('-');
+                if (ends.Length != 2 || !double.TryParse(ends[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double from)
+                    || !double.TryParse(ends[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double to))
+                {
+                    return Failed($"jump_zones: '{zone}' is not from-to in metres");
+                }
+                zones.Add((from, to));
+            }
+            List<double> nudges = [];
+            foreach (string nudge in (command.String("line") ?? "").Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!double.TryParse(nudge, NumberStyles.Float, CultureInfo.InvariantCulture, out double metres)) return Failed($"line: '{nudge}' is not metres");
+                nudges.Add(metres);
+            }
+            Autopilot.Tuning? tune = new Autopilot.Tuning().With(command.String("tune") ?? "", out string badTune);
+            if (tune is null) return Failed($"tune: {badTune}");
+            if (!Laps.Start(craft, through, (int)command.Number("laps", 1.0), command.Number("speed", 0.0), command.Number("offset", 0.0),
+                            command.Number("timeout", 600.0), command.Flag("place", true), command.Flag("rows", false),
+                            command.Flag("jump", false), out string why, command.Flag("racing", false),
+                            Math.Clamp(command.Number("push", 0.0), 0.0, 1.0), zones, tune, command.Number("inside", 0.0), nudges))
+            {
+                return Failed(why);
+            }
+        }
+        else if (command.Flag("stop", false) && !Laps.Stop(craft))
+        {
+            return Failed("that craft has no lap running");
+        }
+
+        return Laps.Status(craft) is { } status ? Done(status) : Failed("that craft has driven no lap");
+    }
+
+    // A test road laid from lat/lon along a heading, on the ground the whole way; clear=true takes it up.
+    // Racing other games: host, ready, join, let in, start or stop, each as the panel's button; then where the race is.
+    private static Reply Online(BridgeCommand command)
+    {
+        if (command.String("name") is { Length: > 0 } name) Multiplayer.PlayerName = name;
+        if (command.Has("port")) Multiplayer.Port = (int)command.Number("port", Multiplayer.DefaultPort);
+        if (command.Has("delay_ms") || command.Has("jitter_ms") || command.Has("loss"))
+        {
+            Multiplayer.Impaired = new NetSession.Line(command.Number("delay_ms", 0.0) / 1000.0, command.Number("jitter_ms", 0.0) / 1000.0,
+                                                       Math.Clamp(command.Number("loss", 0.0), 0.0, 1.0));
+        }
+        if (command.Flag("open_panel", false)) (CarPanel.Visible, CarPanel.OpenOnline) = (true, true);
+        if (command.Has("hide_ui")) Program.DrawUI = !command.Flag("hide_ui", false);
+        if (command.Has("show_code")) CarPanel.ShowCode = command.Flag("show_code", false);
+        if (command.Flag("stop", false)) Multiplayer.Stop();
+        if (command.Flag("host", false)) Multiplayer.Host();
+        if (command.Flag("ready", false)) Multiplayer.Ready();
+        if (command.String("join") is { Length: > 0 } join) Multiplayer.Join(join);
+        if (command.String("let_in") is { Length: > 0 } guest) Multiplayer.LetIn(guest);
+        if (command.Has("laps")) RaceHud.Laps = (int)command.Number("laps", RaceHud.Laps);
+        if (command.Flag("start", false)) Multiplayer.StartRace();
+        return Done(Multiplayer.Report());
+    }
+
+    private static Reply Road(BridgeCommand command)
+    {
+        if (command.Flag("clear", false))
+        {
+            Roads.Clear();
+            return Done(new() { ["laid"] = false });
+        }
+        if (KsaWorld.ControlledVehicle is not { } flown || KsaWorld.ParentBody(flown) is not { } body)
+        {
+            return Failed("no body under the craft");
+        }
+        if (command.Has("opponent"))
+        {
+            if (command.Has("gap")) Opponents.Gap = Math.Clamp(command.Number("gap", Opponents.Gap), 0.0, Rival.MostGap);
+            if (command.Has("flat_out")) Opponents.FlatOut = command.Flag("flat_out", false);
+            if (command.Flag("opponent", true)) Opponents.Add();
+            else Opponents.Clear();
+            Opponents.Update();
+            return Done(new() { ["opponents"] = Opponents.Count, ["message"] = Opponents.Message });
+        }
+        if (command.String("course") is { Length: > 0 } course)
+        {
+            Courses.Lay(course);
+            Courses.Update();
+            Courses.Finish();
+            return Done(new() { ["course"] = Courses.Laid, ["message"] = Courses.Message, ["laid"] = Roads.Any });
+        }
+        if (command.Has("loop_stand") || command.Flag("loop_where", false))
+        {
+            if (Roads.LoopsOn(body) is not { Count: > 0 } loops) return Failed("no loop is laid here");
+            RoadLoop loop = loops[0];
+            if (command.Has("loop_stand"))
+            {
+                double3 on = loop.Point(Math.Clamp(command.Number("loop_stand", 0.0), 0.0, loop.LengthM), 0.0, out double3 along, out double3 facing);
+                Buggies.Stand(flown, on + (facing * 0.5), facing, along);
+            }
+            double3 at = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            bool onIt = loop.TryLocate(at, out double s, out double left, out double over, out _);
+            return Done(new()
+            {
+                ["over_ground_m"] = Math.Round(Vec.Len(at) - body.MeanRadius - body.GetTerrainHeightFromDirCcf(Vec.Unit(at), accurate: true), 2),
+                ["on_loop"] = onIt, ["loop_s_m"] = onIt ? Math.Round(s, 1) : null, ["loop_left_m"] = onIt ? Math.Round(left, 2) : null,
+                ["over_asphalt_m"] = onIt ? Math.Round(over, 2) : null,
+            });
+        }
+        if (command.Has("racing_line"))
+        {
+            RacingLine.Set(command.Flag("racing_line", true));
+            return Done(RacingLine.Report());
+        }
+        if (command.Has("box_top"))
+        {
+            if (!RoadColliders.Installed) return Failed("the road colliders are not hooked");
+            double size = command.Number("box_size", 12.0);
+            double3 over = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            Roads.TestBox(body, over, size, command.Number("box_thick", 0.5), command.Number("box_top", 0.6));
+            return Done(new() { ["box_m"] = size, ["drawn"] = false, ["adds_so_far"] = RoadColliders.Adds });
+        }
+        if (command.Has("mesh_test") || command.Has("mesh_size") || command.Has("mesh_bend"))
+        {
+            if (!RoadDrawHook.Installed) return Failed("the road hook is not installed");
+            double bend = command.Number("mesh_bend", 0.0);
+            double3 under = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            Dictionary<string, object?> report = Roads.TestMesh(body, under, command.Number("mesh_size", 10.0),
+                command.Number("mesh_test", 3.0), bend, (int)command.Number("mesh_cells", bend == 0.0 ? MeshPatch.MaxCells : 12));
+            return report.TryGetValue("error", out object? error) ? new Reply(false, error?.ToString() ?? "failed", report) : Done(report);
+        }
+        if (command.Has("clutter_near"))
+        {
+            double3 hereCcf = (KsaWorld.PositionEcl(flown) - body.GetPositionEcl()).Transform(body.GetCcf2Cce().Inverse());
+            List<Dictionary<string, object?>> near = Roads.ClutterNear(body, hereCcf, Math.Clamp(command.Number("clutter_near", 10.0), 1.0, 60.0));
+            return Done(new() { ["cover_here"] = Roads.SurfaceOn(body)?.Over(Vec.Unit(hereCcf)).ToString(), ["count"] = near.Count, ["instances"] = near.Take(40).ToList() });
+        }
+        if (command.Flag("probe_clutter", false)) return Done(Roads.ProbeClutter(body).ToDictionary(k => k.Key, k => (object?)k.Value));
+
+        Circuit circuit;
+        if (command.String("circuit") is { Length: > 0 } name)
+        {
+            if (CircuitLibrary.Load(name, out string why) is not { } read) return Failed(why);
+            circuit = read;
+
+            // With a place it is laid there and not where its file has it, on whatever body the craft is on.
+            if (command.Has("lat") && command.Has("lon"))
+            {
+                circuit = read.MovedTo(command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0), body.MeanRadius, body.Id);
+            }
+            else if (read.Body != body.Id)
+            {
+                return Failed($"'{read.Name}' is on {read.Body}: give lat and lon to lay it here");
+            }
+            if (command.String("save_as") is { Length: > 0 } kept && !CircuitLibrary.Save(circuit with { Name = kept, RadiusM = body.MeanRadius }, out string notKept))
+            {
+                return Failed(notKept);
+            }
+        }
+        else if (!(command.Has("lat") && command.Has("lon")))
+        {
+            // With no place a test road is not laid, at 0, 0 or anywhere: the course that is laid is the one worked on, and with none, nothing is.
+            if (Roads.CircuitOn(body) is not { } laid)
+            {
+                return command.Has("drag_node") || command.Has("edit") ? Failed("no roads are laid: give lat and lon for a test road") : Done(new() { ["laid"] = false });
+            }
+            circuit = laid;
+            if (!command.Has("drag_node") && !command.Has("edit")) return Done(new() { ["laid"] = true, ["course"] = Courses.Laid, ["roads"] = laid.Roads.Count });
+        }
+        else
+        {
+            double width = Math.Clamp(command.Number("width", 8.0), 1.0, 40.0), length = Math.Clamp(command.Number("length", 300.0), 10.0, 20_000.0);
+            circuit = command.Has("loop")
+                ? LoopCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0), length, width,
+                              Math.Clamp(command.Number("loop", 110.0), Circuit.MinLoopM, Circuit.MaxLoopM))
+                : TestCircuit(body, command.Number("lat", 0.0), command.Number("lon", 0.0), command.Number("heading", 0.0), length, width);
+            if (command.String("save_as") is { Length: > 0 } saveAs && !CircuitLibrary.Save(circuit with { Name = saveAs, RadiusM = body.MeanRadius }, out string failed))
+            {
+                return Failed(failed);
+            }
+        }
+
+        if (command.Has("edit"))
+        {
+            RoadEditor.AskEnabled = command.Flag("edit", false);
+            RoadEditor.AskCircuit = circuit;
+            if (command.Has("view_distance"))
+            {
+                RoadEditor.AskView = (command.Number("view_yaw", 0.0), command.Number("view_pitch", 60.0), command.Number("view_distance", 250.0));
+            }
+            return Done(new() { ["editing"] = RoadEditor.AskEnabled, ["roads"] = circuit.Roads.Count });
+        }
+
+        // A point dragged a metre a step, as the editor lays it: what each frame of a drag costs.
+        if (command.Has("drag_node") && circuit.Find((int)command.Number("drag_node", 0.0)) is { } dragged)
+        {
+            Roads.CachesDragGround = command.Flag("ground_cache", true);
+            Roads.TakesGoneRuns = command.Flag("take_gone", true);
+            double stepDeg = command.Number("step_m", 1.0) / 111_319.0;
+            int stale = 0;
+            HashSet<int> touched = [dragged.Id];
+            foreach (Circuit.Road road in circuit.Roads.Where(r => r.Touches(dragged.Id)))
+            {
+                touched.Add(road.From);
+                touched.Add(road.To);
+            }
+            List<double> lays = [], meshes = [];
+            int reads = 0, steps = (int)Math.Clamp(command.Number("steps", 20.0), 1.0, 200.0);
+            for (int k = 0; k < steps; k++)
+            {
+                Circuit moved = circuit.MoveNode(dragged.Id, dragged.LatDeg + (k * stepDeg), dragged.LonDeg + (k * stepDeg));
+                Roads.Lay(body, moved, 0.07, 6.0, whole: false, touched);
+                lays.Add(Roads.LastLay.Ms);
+                reads += Roads.LastLay.TerrainReads;
+                Roads.MeshPending();
+                meshes.Add(Roads.LastDragMeshMs);
+                stale = Math.Max(stale, Roads.StaleRuns);
+            }
+            Roads.Lay(body, circuit, 0.07, 2.0, whole: true);
+            Roads.TakesGoneRuns = true;
+            return Done(new()
+            {
+                ["steps"] = steps, ["touched_points"] = touched.Count, ["ground_cache"] = Roads.CachesDragGround,
+                ["lay_ms_first"] = Math.Round(lays[0], 1), ["lay_ms_mean_after"] = Math.Round(lays.Skip(1).DefaultIfEmpty(0.0).Average(), 1),
+                ["lay_ms_worst_after"] = Math.Round(lays.Skip(1).DefaultIfEmpty(0.0).Max(), 1), ["terrain_reads_a_step"] = reads / steps,
+                ["mesh_ms_mean"] = Math.Round(meshes.Average(), 1), ["mesh_ms_worst"] = Math.Round(meshes.Max(), 1),
+                ["whole_lay_ms"] = Math.Round(Roads.LastLay.Ms, 1), ["most_stale_runs"] = stale,
+            });
+        }
+
+        (int points, double low, double high) = Roads.Lay(body, circuit, command.Number("lift", 0.07),
+            Math.Clamp(command.Number("spacing", 2.0), 0.25, 20.0), whole: true);
+        KsaWorld.TrySeaLevel(body, out double sea);
+        if (command.Flag("clutter", true)) Roads.ClearClutter(command.Number("margin", 1.5));
+        Dictionary<string, object?> reply = new()
+        {
+            ["laid"] = Roads.Any, ["roads"] = circuit.Roads.Count, ["points"] = points, ["cleared_before"] = Roads.ClutterTaken,
+            ["lowest_ground_m"] = Math.Round(low - sea, 2), ["highest_ground_m"] = Math.Round(high - sea, 2),
+            ["library"] = CircuitLibrary.Names(),
+        };
+        foreach ((string key, object? value) in Roads.Status()) reply[key] = value;
+        return Done(reply);
+    }
+
+    // A through road with a bend in it, a side road off its middle and a road closing the two into a
+    // loop: every kind of meeting the layout has, starting at the place asked for.
+    private static Circuit TestCircuit(KSA.Celestial body, double lat, double lon, double headingDeg, double length, double width)
+    {
+        double heading = headingDeg * Math.PI / 180.0;
+        double perDeg = body.MeanRadius * Math.PI / 180.0;
+        (double Lat, double Lon) At(double ahead, double right)
+        {
+            double north = (ahead * Math.Cos(heading)) - (right * Math.Sin(heading));
+            double east = (ahead * Math.Sin(heading)) + (right * Math.Cos(heading));
+            return (lat + (north / perDeg), lon + (east / (perDeg * Math.Cos(lat * Math.PI / 180.0))));
+        }
+
+        (double Lat, double Lon) b = At(0.5 * length, 0.0), c = At(length, 0.3 * length), d = At(0.5 * length, 0.5 * length);
+        return new Circuit { Name = "Test", Body = body.Id, WidthM = width }
+            .AddNode(lat, lon, out int start).Extend(start, b.Lat, b.Lon, out int mid).Extend(mid, c.Lat, c.Lon, out int end)
+            .Extend(mid, d.Lat, d.Lon, out int side).Connect(side, end);
+    }
+
+    // A straight road to a loop and a straight road on from where it comes down, to try a loop on.
+    private static Circuit LoopCircuit(Celestial body, double lat, double lon, double headingDeg, double runUp, double width, double loop)
+    {
+        double heading = headingDeg * Math.PI / 180.0, perDeg = Math.PI * body.MeanRadius / 180.0;
+        (double Lat, double Lon) At(double ahead, double right)
+        {
+            double north = (ahead * Math.Cos(heading)) - (right * Math.Sin(heading));
+            double east = (ahead * Math.Sin(heading)) + (right * Math.Cos(heading));
+            return (lat + (north / perDeg), lon + (east / (perDeg * Math.Cos(lat * Math.PI / 180.0))));
+        }
+
+        // By the editor's own edit, and the road on from where it comes down carried further.
+        double on = runUp + RoadLoop.Reach(loop), aside = -(width + Circuit.LoopClearM);
+        (double Lat, double Lon) foot = At(runUp, 0.0), end = At(on + 250.0, aside);
+        return new Circuit { Name = "Loop", Body = body.Id, WidthM = width, RadiusM = body.MeanRadius }
+            .AddNode(lat, lon, out int start).Extend(start, foot.Lat, foot.Lon, out int from)
+            .PutLoop(from, loop, body.MeanRadius, out _, out int onward)
+            .MoveNode(onward, end.Lat, end.Lon);
     }
 
     // The ground's height against sea level at lat/lon, negative where it is seabed -- or along a line

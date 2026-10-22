@@ -329,4 +329,91 @@
     <EVADoor SeatId="KSACars_Eldo_SeatPassenger" />
   </SubPartGameData>
 
+  <PartGameData Id="KSACars_Prefab_F1" DisplayName="Ferrari F2004">
+    <EditorTag Value="Vehicles" />
+    <EditorTag Value="NoFaceSnapping" />
+    <Diameter M="2" />
+    <Connector Id="_f1ConnectorAft" />
+    <Control />
+    <Battery>
+      <MaximumCapacity J="2000" />
+    </Battery>
+
+    <!-- The rain light's switch: KSA lights the emissive lens while it is on. -->
+    <PowerConsumer LightSwitch="true">
+      <Consumed W="0.001" />
+    </PowerConsumer>
+
+    <!--
+      One seat. Position is the eye, 0.63 m over the seated kitten's origin: the kitten sits high and
+      forward of a driver, because its head is wider than the cockpit and has to clear the rim and the
+      roll hoop.
+    -->
+    <IVASeat Id="KSACars_F1_SeatDriver">
+      <Position X="0.750" Y="0.200" Z="0.000" />
+      <ForwardAxis Y="1" />
+      <UpAxis X="1" />
+    </IVASeat>
+
+    <!--
+      605 kg with its driver, low and a little rearward. The box is longer and wider than the car: each
+      tyre takes out most of its own side slip every step, and with hubs 1.5 m from the middle a box the
+      car's size has too little yaw inertia for four of them, so the car rocks. This is the Eldorado's
+      ratio of inertia to mass, which settles.
+    -->
+    <SolidCuboidMass>
+      <Mass Kg="605" />
+      <LocationAsmb X="0.30" Y="-0.15" />
+      <LengthX M="0.5" />
+      <LengthY M="5.6" />
+      <LengthZ M="2.0" />
+    </SolidCuboidMass>
+
+    <!--
+      The springs hold it up; these touch only in a crash. The hull box starts 14 cm up and each
+      wheel's pad the same, over springs that move 2 cm.
+    -->
+    <Collider Id="KSACars_F1Collider">
+      <Box Id="KSACars_F1HullCollider">
+        <LocationAsmb X="0.42" Y="0.20" Z="0" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.56" />
+        <LengthY M="4.50" />
+        <LengthZ M="1.36" />
+      </Box>
+      <Box Id="KSACars_F1PadFLCollider">
+        <LocationAsmb X="0.36" Y="1.525" Z="0.735" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.44" />
+        <LengthY M="0.50" />
+        <LengthZ M="0.30" />
+      </Box>
+      <Box Id="KSACars_F1PadFRCollider">
+        <LocationAsmb X="0.36" Y="1.525" Z="-0.735" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.44" />
+        <LengthY M="0.50" />
+        <LengthZ M="0.30" />
+      </Box>
+      <Box Id="KSACars_F1PadRLCollider">
+        <LocationAsmb X="0.36" Y="-1.525" Z="0.7025" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.44" />
+        <LengthY M="0.50" />
+        <LengthZ M="0.30" />
+      </Box>
+      <Box Id="KSACars_F1PadRRCollider">
+        <LocationAsmb X="0.36" Y="-1.525" Z="-0.7025" />
+        <Collider2Asmb X="0" Y="0" Z="0" />
+        <LengthX M="0.44" />
+        <LengthY M="0.50" />
+        <LengthZ M="0.30" />
+      </Box>
+    </Collider>
+  </PartGameData>
+
+  <SubPartGameData Id="KSACars_F1Door_SubPart">
+    <EVADoor SeatId="KSACars_F1_SeatDriver" />
+  </SubPartGameData>
+
 </Assets>

@@ -82,7 +82,7 @@ for path in "$OUT"/*/; do
     dir="$(basename "$path")"
 
     mkdir -p "$TARGET/$dir"
-    cp "$path"/* "$TARGET/$dir/"
+    cp -r "$path"/. "$TARGET/$dir/"
     found_assets=1
 done
 

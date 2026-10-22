@@ -19,36 +19,69 @@ internal static class CraftSpawner
     {
         try
         {
-            if (Universe.CurrentSystem is not { } system || platform.Parent is not { } parent) return null;
-            if (LoadParts(craftName) is not { } parts) return null;
-
-            double3 up = KsaWorld.LocalUp(platform);
-            double3 spawnEcl = KsaWorld.PositionEcl(platform) + up * 500.0;
-            if (!ToParentInertial(parent, spawnEcl, KsaWorld.VelocityEcl(platform), out double3 posCci, out double3 velCci))
-            {
-                return null;
-            }
-
-            Orbit orbit = Orbit.CreateFromStateCci(parent, Universe.GetElapsedTime(), posCci, velCci,
-                                                   new byte4(255, 80, 80, 255));
-
-            using ShapesUnlock shapes = ConstraintSim.UnlockShapesBlocking();
-            Vehicle craft = Vehicle.CreateVehicle(system, platform.Body2Cce, bodyRates: default,
-                                                  parent, id, parts.Root, orbit);
-            parent.Children.Add(craft);
-            craft.Parts.RecomputeAllDerivedData();
-            craft.UpdateAfterPartTreeModification();
-            craft.UpdatePerFrameData();
-            craft.TeleportToLocation(body, latitudeDeg, longitudeDeg);
-
-            Log.Info($"parked '{id}' ({craftName}) at {latitudeDeg:F4}, {longitudeDeg:F4} on {body.Id}");
-            return craft;
+            return LoadParts(craftName) is { } parts ? Park(platform, parts, $"'{id}' ({craftName})", id, body, latitudeDeg, longitudeDeg) : null;
         }
         catch (Exception e)
         {
             Log.Error("parked spawn failed", e);
             return null;
         }
+    }
+
+    /// <summary>
+    /// A second craft of the one part <paramref name="like"/> is, set down as <see cref="SpawnParked"/>
+    /// sets one down. From the part's own template, so it asks nothing of any vehicle library: a
+    /// player's has no car in it unless they saved one.
+    /// </summary>
+    public static Vehicle? SpawnLike(Vehicle like, string id, Celestial body, double latitudeDeg, double longitudeDeg) =>
+        SpawnOf(like.Parts.Root.Template, like, id, body, latitudeDeg, longitudeDeg);
+
+    /// <summary>
+    /// A craft of one part, from its template, built beside <paramref name="platform"/> and set down
+    /// as <see cref="SpawnParked"/> sets one down: for a car another game is driving, which may be
+    /// one this game has nobody in.
+    /// </summary>
+    public static Vehicle? SpawnOf(PartTemplate template, Vehicle platform, string id, Celestial body, double latitudeDeg, double longitudeDeg)
+    {
+        try
+        {
+            Part part = new(template.Id, template);
+            PartTree parts = part.CreateOwnTree();
+            parts.ReinitializeDerivedValues();
+            return Park(platform, parts, $"'{id}' (a {template.Id})", id, body, latitudeDeg, longitudeDeg);
+        }
+        catch (Exception e)
+        {
+            Log.Error("making a second car failed", e);
+            return null;
+        }
+    }
+
+    private static Vehicle? Park(Vehicle platform, PartTree parts, string what, string id, Celestial body, double latitudeDeg, double longitudeDeg)
+    {
+        if (Universe.CurrentSystem is not { } system || platform.Parent is not { } parent) return null;
+
+        double3 up = KsaWorld.LocalUp(platform);
+        double3 spawnEcl = KsaWorld.PositionEcl(platform) + up * 500.0;
+        if (!ToParentInertial(parent, spawnEcl, KsaWorld.VelocityEcl(platform), out double3 posCci, out double3 velCci))
+        {
+            return null;
+        }
+
+        Orbit orbit = Orbit.CreateFromStateCci(parent, Universe.GetElapsedTime(), posCci, velCci,
+                                               new byte4(255, 80, 80, 255));
+
+        using ShapesUnlock shapes = ConstraintSim.UnlockShapesBlocking();
+        Vehicle craft = Vehicle.CreateVehicle(system, platform.Body2Cce, bodyRates: default,
+                                              parent, id, parts.Root, orbit);
+        parent.Children.Add(craft);
+        craft.Parts.RecomputeAllDerivedData();
+        craft.UpdateAfterPartTreeModification();
+        craft.UpdatePerFrameData();
+        craft.TeleportToLocation(body, latitudeDeg, longitudeDeg);
+
+        Log.Info($"parked {what} at {latitudeDeg:F4}, {longitudeDeg:F4} on {body.Id}");
+        return craft;
     }
 
     // The stock library first, then the player's own, which is where tools/install-testcraft.sh puts
@@ -64,7 +97,7 @@ internal static class CraftSpawner
         }
         catch (Exception e)
         {
-            Log.Warn($"spawn: could not load '{craftName}' ({e.GetType().Name})");
+            Log.Error($"spawn: could not load '{craftName}'", e);
         }
 
         return null;

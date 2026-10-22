@@ -35,6 +35,9 @@ _user_dir: Path | None = None
 
 def user_dir() -> Path:
     global _user_dir
+    # KSA_USER_DIR names another profile, such as a Borea instance's, for a second game on this machine.
+    if _user_dir is None and os.environ.get("KSA_USER_DIR"):
+        _user_dir = Path(os.environ["KSA_USER_DIR"])
     if _user_dir is None:
         out = subprocess.run([str(REPO / "tools" / "ksa-user-dir.sh")], capture_output=True, text=True)
         _user_dir = Path(out.stdout.strip())
@@ -236,6 +239,63 @@ TOOLS = {
                    {"lat": _num("deg"), "lon": _num("deg"), "to_lat": _num("deg"), "to_lon": _num("deg"),
                     "steps": _num("count")}, ["lat", "lon"],
                    lambda a: [_text(json.dumps(send("ground", **a)))]),
+    "ksa_road": ("loop=<m> lays a road to a loop of that length and a road on from it; loop_stand=<m> stands the flown car on the laid loop that far round and loop_where=true says how high it is and where on the loop. Lay the roads of a circuit from the library (circuit), with lat/lon its first point put there and turned by heading, on whatever body the craft is on, and save_as keeping it so; or a test circuit with a junction from lat/lon "
+                 "along heading (deg, 0 north), length and width in metres, kept in the library with save_as; a test "
+                 "circuit or loop is laid only with both lat and lon, and with neither, edit and drag_node work on the "
+                 "course that is laid and anything else only says what is laid. lift is "
+                 "above the ground, spacing between points, margin how far past the edge clutter is cleared "
+                 "(clutter=false leaves it); clear=true takes the roads up. edit=true opens that circuit in the road "
+                 "editor instead, with its free camera at view_yaw and view_pitch (deg) and view_distance (m). "
+                 "probe_clutter=true lays nothing and measures the mod's clutter positions against the game's. "
+                 "box_top puts one collider box (box_size square, box_thick deep) under the flown craft with its "
+                 "top that far above the ground, which nothing draws; box_size=0 takes it away. mesh_test draws a "
+                 "curved patch made at runtime that far above the ground under the flown craft (default 3), mesh_size "
+                 "across (default 10); mesh_bend carries its far end that many metres aside and, unless mesh_cells says "
+                 "otherwise, makes it of 12 cells a side instead of 32, written over the same room; mesh_size=0 stops "
+                 "it being drawn. The reply has what was reserved, what KSA's mesh buffers have free and any error. "
+                 "A laying's reply has the runs and meshes drawn and any left out, the vertices and indices "
+                 "uploaded, the pool's places used, had and allowed, what KSA's buffers have free, the collider "
+                 "meshes and their triangles, and a *_warning for whatever of that failed: a road that is not "
+                 "drawn is still laid.",
+                 {"circuit": {"type": "string"}, "save_as": {"type": "string"}, "lat": _num("deg"), "lon": _num("deg"),
+                  "heading": _num("deg"), "length": _num("m"), "width": _num("m"), "lift": _num("m"), "spacing": _num("m"),
+                  "margin": _num("m"), "clutter": {"type": "boolean"}, "clear": {"type": "boolean"},
+                  "edit": {"type": "boolean"}, "probe_clutter": {"type": "boolean"}, "box_top": _num("m"),
+                  "box_size": _num("m"), "box_thick": _num("m"), "mesh_test": _num("m"), "drag_node": _num("point id"), "steps": _num("layings"), "ground_cache": {"type": "boolean"},
+                  "mesh_size": _num("m"), "mesh_bend": _num("m"), "mesh_cells": _num("a side"), "view_yaw": _num("deg"), "view_pitch": _num("deg"),
+                  "view_distance": _num("m")}, [],
+                 lambda a: [_text(json.dumps(send("road", **a)))]),
+    "ksa_lap": ("A driver that follows a route round the laid circuit (lay one with ksa_road first), stepped inside the "
+                "physics window; it answers at once and never waits for the lap. start=true sets it going on craft (the "
+                "flown one unless named): route is the circuit's point ids to pass through in order, comma separated and "
+                "ending on the first for laps ('1,2,3,5,1'), or without it the circuit's first road followed round; laps "
+                "(default 1); speed is the cruise in m/s (default the car's top speed), held down for each bend; offset "
+                "is metres left of the road's centre; timeout in simulated seconds (default 600); place=false leaves the "
+                "car where it is instead of standing it on the road at the route's start, facing along it; rows=true "
+                "keeps a line a step, with whether the hull was on anything; jump=true takes crests and dips at "
+                "whatever the bends allow, where it otherwise slows to stay on its springs. status=true, or no flag, answers whether it is running, why it ended (Finished, "
+                "OffRoad, Flipped, Stuck, TimedOut, Failed, Stopped, NotDriven, RoadsRelaid) and the summary so far: "
+                "laps, time, cross-track error, time off the asphalt, in the air and with the hull down, hub heights. "
+                "stop=true ends it. "
+                "When it ends the summary is written to Logs/bridge/KSACars/laps/<utc>-<craft>.json, with the rows "
+                "beside it as .csv, added to each second while it runs.",
+                {"craft": {"type": "string"}, "start": {"type": "boolean"}, "status": {"type": "boolean"},
+                 "stop": {"type": "boolean"}, "route": {"type": "string"}, "laps": _num("count"), "speed": _num("m/s"),
+                 "offset": _num("m left"), "timeout": _num("sim seconds"), "place": {"type": "boolean"},
+                 "rows": {"type": "boolean"}, "jump": {"type": "boolean"}, "racing": {"type": "boolean"}, "push": _num("0..1"), "jump_zones": {"type": "string"}, "tune": {"type": "string"}, "inside": _num("m")}, [],
+                lambda a: [_text(json.dumps(send("lap", **a), indent=1))]),
+    "ksa_online": ("Race other games, as the panel's Race online does: host=true hosts on port (default 50000), "
+                   "ready=true opens a guest's socket and finds its code, join is the host's code or host:port, let_in a "
+                   "guest's code for the host to open the way to, laps and start=true start the race, stop=true leaves "
+                   "it; name is the racer's name. Answers where the race is: codes, the router's answer, who is in it, "
+                   "and for each other racer's car how far it is from where its game says (off_by_m). delay_ms, "
+                   "jitter_ms and loss (0..1) make every datagram this game sends late and lost so, a line across "
+                   "the world on one machine; all three 0 clears it. open_panel=true opens the panel's Race online section, hide_ui=true hides KSA's interface as F2 does, and show_code=true shows the panel's codes as its eye does. Set KSA_USER_DIR to drive a second game's profile.",
+                   {"host": {"type": "boolean"}, "port": _num("UDP port"), "ready": {"type": "boolean"},
+                    "join": {"type": "string"}, "let_in": {"type": "string"}, "laps": _num("count"),
+                    "start": {"type": "boolean"}, "stop": {"type": "boolean"}, "name": {"type": "string"},
+                    "open_panel": {"type": "boolean"}, "hide_ui": {"type": "boolean"}, "show_code": {"type": "boolean"}, "delay_ms": _num("ms each way"), "jitter_ms": _num("ms either way"), "loss": _num("0..1")}, [],
+                   lambda a: [_text(json.dumps(send("online", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),
     "ksa_drive": ("Drive a buggy: hold throttle (-1..1, negative brakes then reverses) and steer (-1 right..1 "
@@ -244,14 +304,14 @@ TOOLS = {
                   "not when the hold ends. focus=true flies it and follows it first; crew=true fills its seats as "
                   "the launch window's Fill Seats does, seat_kittens names who sits where; eva=true lets the driver "
                   "(or kitten) out; flip=true tips it onto its roof and unflip=true sets it back on its wheels, as the "
-                  "panel's button does; lights is off, low or high; scoop=true puts the scoop on (or 'Scoop XXL' for the larger one, false for none), and rock_weight (0.0001..1) is what a rock weighs under it as a share of KSA's; boost=true holds the tail rockets lit for seconds; downforce=true lights the rockets that press the car down; lift (0..1) lights the rockets at that throttle, 0.5 hovers, 0 cuts them; off the "
+                  "panel's button does; lights is off, low or high; scoop=true puts the scoop on (or 'Scoop XXL' for the larger one, false for none), and rock_weight (0.0001..1) is what a rock weighs under it as a share of KSA's; boost=true holds the tail rockets lit for seconds; downforce=true lights the rockets that press the car down; game_drag=true leaves KSA's own air drag on every car, to compare against (false, the default, keeps it off a car on its wheels); hull_margin=false leaves the physics engine's own speculative margin on a car on a road, to compare against (true, the default, holds it short); lift (0..1) lights the rockets at that throttle, 0.5 hovers, 0 cuts them; off the "
                   "ground throttle leans the nose down, steer banks left, and turn (-1..1) yaws left. cam_elevation_deg (above the car), cam_azimuth_deg and cam_distance (KSA's "
-                  "orbit distance power, about 1-2 for a car) move the orbit camera on the flown craft.",
+                  "orbit distance power, about 1-2 for a car) move the orbit camera on the flown craft; camera is close, medium, far or free, as the gamepad's Back chooses.",
                   {"craft": {"type": "string"}, "throttle": _num("-1..1"), "steer": _num("-1..1"),
-                   "seconds": _num("sim seconds"), "focus": {"type": "boolean"},
+                   "seconds": _num("sim seconds"), "focus": {"type": "boolean"}, "camera": {"type": "string"},
                    "crew": {"type": "boolean"}, "seat_kittens": {"type": "string"},
                    "eva": {"type": "boolean"}, "kitten": {"type": "string"},
-                   "flip": {"type": "boolean"}, "unflip": {"type": "boolean"}, "lights": {"type": "string"}, "scoop": {"type": ["boolean", "string"]}, "rock_weight": _num("share"), "boost": {"type": "boolean"}, "downforce": {"type": "boolean"}, "lift": _num("0..1"), "turn": _num("-1..1"),
+                   "flip": {"type": "boolean"}, "unflip": {"type": "boolean"}, "lights": {"type": "string"}, "scoop": {"type": ["boolean", "string"]}, "rock_weight": _num("share"), "boost": {"type": "boolean"}, "downforce": {"type": "boolean"}, "game_drag": {"type": "boolean"}, "hull_margin": {"type": "boolean"}, "lift": _num("0..1"), "turn": _num("-1..1"),
                    "cam_elevation_deg": _num("deg"), "cam_azimuth_deg": _num("deg"), "cam_distance": _num("power"),
                    "log_every_s": _num("seconds between drive log lines")}, [],
                   lambda a: [_text(json.dumps(send("drive", **a), indent=1))]),

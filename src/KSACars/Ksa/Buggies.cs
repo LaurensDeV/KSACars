@@ -23,6 +23,10 @@ internal sealed class Buggies
         public Part?[] Wheels { get; } = new Part?[profile.Corners.Length];
         public Part?[] Arms { get; } = new Part?[profile.Corners.Length];
         public Part?[] Coils { get; } = new Part?[profile.Corners.Length];
+        public Part?[] Uprights { get; } = new Part?[profile.Corners.Length];
+        public double AirborneSeconds { get; set; }
+        public bool DragShed { get; set; }
+        public double GameSkinAreaM2 { get; set; }
         public Part? Steering { get; set; }
         public DriveInput Input { get; set; }
         public bool Stepped { get; set; }
@@ -30,11 +34,28 @@ internal sealed class Buggies
         public double StepSeconds { get; set; }
         public string Skipped { get; set; } = "";
         public double[] HubHeights { get; } = new double[profile.Corners.Length];
+        public double3 LeftVelocityCcf;
+        public bool LeftValid;
+
+        /// <summary>How far each hub was above the road under it last step, or null with no road under it.</summary>
+        public double?[] RoadOver { get; } = new double?[profile.Corners.Length];
+
+        /// <summary>Which laying of the roads <see cref="RoadOver"/> is of.</summary>
+        public int RoadGeneration { get; set; }
         public double Level { get; set; } = 1.0;
         public double SinceLog { get; set; }
         public KittenRenderable? HandsOn { get; set; }
         public DriverHands? Hands { get; set; }
         public bool Scraping { get; set; }
+
+        /// <summary>Where the car was in the body's own frame as its last physics step began, the way it faced and how fast it was going over the ground.</summary>
+        public double3 PlaceCcf;
+        public double3 AheadCcf;
+        public double3 VelocityCcf;
+        public doubleQuat Body2Ccf = doubleQuat.Identity;
+        public double3 SpinBody;
+        public double SpeedMs;
+        public bool PlaceValid;
         public double SpringLift { get; set; }
         public double YawRate { get; set; }
         public double SideSpeed { get; set; }
@@ -52,6 +73,9 @@ internal sealed class Buggies
         public bool Pressed { get; set; }
         public bool Boosting { get; set; }
         public Part?[] ScoopBlades { get; } = new Part?[profile.Scoops.Length];
+
+        /// <summary>What the driver wears on its head, where the car has it: a shell and its visor.</summary>
+        public Part?[] HeadGear { get; } = new Part?[HeadGearSuffixes.Length];
         public Part?[] HatchCups { get; } = new Part?[profile.Hatches.Length];
         public Part?[] HatchBlades { get; } = new Part?[profile.Hatches.Length * Hatch.Blades];
 
@@ -75,6 +99,10 @@ internal sealed class Buggies
 
     // Cars asked to be set back on their wheels, and whether instead to be tipped onto the roof.
     private static readonly Dictionary<Vehicle, bool> ToRight = [];
+
+    // Cars asked to be stood on a road: the place on its surface under the centre of mass, the road's
+    // own up there and the way to face, in the body's own frame.
+    private static readonly Dictionary<Vehicle, (double3 At, double3 Up, double3 Ahead)> ToStand = [];
 
     private static bool _complained;
     private long _posedAtMs;
@@ -112,6 +140,7 @@ internal sealed class Buggies
             foreach (Vehicle v in gone)
             {
                 Active.Remove(v);
+                HullMargins.TryRemove(v, out _);
                 RailsHook.Forget(v);
             }
         }
@@ -140,6 +169,10 @@ internal sealed class Buggies
         Active.Clear();
         Held.Clear();
         ToRight.Clear();
+        ToStand.Clear();
+        Puppets.Clear();
+        PullSeen.Clear();
+        HullMargins.Clear();
     }
 
     /// <summary>Holds a buggy's throttle and steering for so many simulated seconds, whoever is flying.</summary>
@@ -154,6 +187,22 @@ internal sealed class Buggies
     /// <summary>The car a craft is, or null when it is not one.</summary>
     public static Entry? Of(Vehicle craft) => Active.GetValueOrDefault(craft);
 
+    /// <summary>Every car in the world. For the frame hook, where the cars are found.</summary>
+    public static IReadOnlyCollection<Entry> Cars => Active.Values;
+
+    private static readonly List<(double3 Place, double3 Facing)> Ahead = [];
+
+    // The share of its drag a car is spared in the wake of another on the same body, where each was last stepped.
+    private static double TowOf(Entry e)
+    {
+        Ahead.Clear();
+        foreach (Entry other in Active.Values)
+        {
+            if (!ReferenceEquals(other, e) && other.PlaceValid && ReferenceEquals(other.Craft.Parent, e.Craft.Parent)) Ahead.Add((other.PlaceCcf, other.AheadCcf));
+        }
+        return Ahead.Count == 0 ? 0.0 : Slipstream.Tow(e.PlaceCcf, e.AheadCcf, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(Ahead));
+    }
+
     /// <summary>
     /// Sets a car back on its wheels where it lies, at its next physics step. <paramref name="tip"/>
     /// turns it onto its roof instead, for the bridge to have something to right.
@@ -163,6 +212,79 @@ internal sealed class Buggies
         if (!Active.ContainsKey(craft)) return false;
         ToRight[craft] = tip;
         return true;
+    }
+
+    /// <summary>
+    /// Stands a car on a surface at its next physics step, on its wheels, at rest and facing
+    /// <paramref name="aheadCcf"/>: <paramref name="atCcf"/> is the place on the surface its centre of
+    /// mass is put over and <paramref name="upCcf"/> the surface's own up, in the body's own frame.
+    /// </summary>
+    public static bool Stand(Vehicle craft, double3 atCcf, double3 upCcf, double3 aheadCcf)
+    {
+        if (!Active.ContainsKey(craft)) return false;
+        ToStand[craft] = (atCcf, upCcf, aheadCcf);
+        return true;
+    }
+
+    /// <summary>
+    /// Puts a car where another game says it is, at every physics step until it is let go with null:
+    /// in the body's own frame, turned as given, moving as given. The drive is still stepped, so its
+    /// wheels turn and its springs work, and what it pushes is written over.
+    /// </summary>
+    public static void Puppet(Vehicle craft, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody)? pose)
+    {
+        if (pose is { } p) Puppets[craft] = p;
+        else Puppets.Remove(craft);
+    }
+
+    private static readonly Dictionary<Vehicle, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody)> Puppets = [];
+
+    // Further out than this a car is put where it is wanted outright; nearer, it is drawn there over a few steps, so a late datagram is not a jolt.
+    private const double SnapM = 3.0, PullSeconds = 0.1;
+
+    // A puppet told to move slower than this, and as near as this to where it is told to be, is at rest.
+    private const double RestMs = 0.05, RestM = 0.05;
+
+    private static readonly Dictionary<Vehicle, (double Seconds, int Steps, int Snaps, double Worst)> PullSeen = [];
+
+    // Once a second, how far a puppet was from where it was wanted before each step's pull, and how often it was put there outright.
+    private static void PullLog(Entry e, double3 off, bool snap, double dt)
+    {
+        (double seconds, int steps, int snaps, double worst) = PullSeen.GetValueOrDefault(e.Craft);
+        (seconds, steps, snaps, worst) = (seconds + dt, steps + 1, snaps + (snap ? 1 : 0), Math.Max(worst, Vec.Len(off)));
+        if (seconds >= 1.0)
+        {
+            Log.Info($"puppet {KsaWorld.DisplayName(e.Craft)}: {steps} steps, {snaps} put outright, worst {worst:F2} m off, now {Vec.Len(off):F2} m at {e.SpeedMs:F1} m/s");
+            (seconds, steps, snaps, worst) = (0.0, 0, 0, 0.0);
+        }
+        PullSeen[e.Craft] = (seconds, steps, snaps, worst);
+    }
+
+    private static void Pull(Entry e, (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody) pose, double dt)
+    {
+        Vehicle craft = e.Craft;
+        if (!craft.HasPhysicsBubble || dt > 0.1) return;
+        PhysicsStates states = craft.GetPhysicsStatesMutable();
+        PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic, out double3 positionCcf, out _, out doubleQuat body2Ccf);
+        doubleQuat body2Phys = states.Kinematic.Body2Phys;
+        doubleQuat ccf2Body = body2Ccf.Inverse();
+
+        double3 off = pose.At - positionCcf;
+        // Standing where it is told to stand, it is left on KSA's rails: woken every step, its physics is built again every step,
+        // and a puppet waiting on the grid ran the whole world at a twentieth of its speed.
+        if (craft.Situation.IsOnRails() && Vec.Len(pose.Velocity) < RestMs && Vec.Len(off) < RestM) return;
+        bool snap = Vec.Len(off) > SnapM;
+        PullLog(e, off, snap, dt);
+        if (snap) states.Kinematic.PositionPhys += off.Transform(ccf2Body).Transform(body2Phys);
+        states.Kinematic.Body2Phys = body2Phys * (ccf2Body * pose.Body2Ccf);
+
+        // Moving as it is, and closing what is left between where it is and where it is wanted.
+        PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic, out _, out double3 nowVelocity, out doubleQuat nowBody2Ccf);
+        double3 wanted = pose.Velocity + (snap ? Vec.Zero : off / Math.Max(PullSeconds, dt));
+        states.Kinematic.VelocityPhys += (wanted - nowVelocity).Transform(nowBody2Ccf.Inverse()).Transform(states.Kinematic.Body2Phys);
+        states.Kinematic.AngularVelocityPhys = pose.SpinBody.Transform(states.Kinematic.Body2Phys);
+        e.LeftValid = false;
+        if (craft.Situation.IsOnRails()) craft.TakeOffRails();
     }
 
     /// <summary>
@@ -185,7 +307,7 @@ internal sealed class Buggies
                   beam.Intensity, ELightFlags.CastsShadows | ELightFlags.SoftShadows, in asmb2Ego, viewport);
 
             BeamShape tail = Headlights.Tail;
-            bool braking = Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed);
+            bool braking = Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed, e.Input.Brake);
             float brake = braking ? Headlights.BrakeBoost : 1f;
             Shine(e, e.Drive.Profile.TailLamps, Headlights.Aim(up, -forward, tail.DipRad), tail, Headlights.TailColour,
                   tail.Intensity * brake, ELightFlags.None, in asmb2Ego, viewport);
@@ -305,6 +427,11 @@ internal sealed class Buggies
             {
                 if (id.EndsWith(e.Drive.Profile.SubpartPrefix + suffix, StringComparison.Ordinal)) return rgb;
             }
+            foreach ((string suffix, uint rgb) in e.Drive.Profile.BrakeLenses)
+            {
+                if (!id.EndsWith(e.Drive.Profile.SubpartPrefix + suffix, StringComparison.Ordinal)) continue;
+                return Headlights.BrakeLens(rgb, Headlights.Braking(e.Input.Throttle, e.Drive.ForwardSpeed, e.Input.Brake));
+            }
             return null;
         }
         return null;
@@ -368,6 +495,7 @@ internal sealed class Buggies
             ["lights"] = e.Beam.ToString().ToLowerInvariant(),
             ["scoop"] = e.ScoopOn ? e.Drive.Profile.Scoops[e.Scoop].Name : "off",
             ["boosting"] = e.Boosting,
+            ["game_drag"] = !e.DragShed,
             ["downforce"] = e.Downforce,
             ["clutter_collisions"] = KsaWorld.ClutterCollisions,
             ["rock_weight"] = KsaWorld.RockWeight,
@@ -388,6 +516,11 @@ internal sealed class Buggies
             ["orbit_off_m"] = OrbitOffPhysics(craft, out double orbitOffMs) is double off ? Math.Round(off, 2) : -1.0,
             ["orbit_off_ms"] = Math.Round(orbitOffMs, 3),
             ["hands_miss_cm"] = e.Hands is { } h2 ? Math.Round(h2.MissCm, 2) : -1.0,
+            ["head_gear_found"] = e.HeadGear.Count(g => g is not null),
+            ["head_gear_at"] = e.HeadGear.FirstOrDefault(g => g is not null) is { } gear
+                ? $"{gear.PositionParentAsmb.X:F3} {gear.PositionParentAsmb.Y:F3} {gear.PositionParentAsmb.Z:F3} scale {gear.Scale.X:F3}" : "",
+            ["head_bone"] = e.Hands?.Head is { } hp
+                ? $"x {hp.RowX.X:F3} {hp.RowX.Y:F3} {hp.RowX.Z:F3} y {hp.RowY.X:F3} {hp.RowY.Y:F3} {hp.RowY.Z:F3} z {hp.RowZ.X:F3} {hp.RowZ.Y:F3} {hp.RowZ.Z:F3} t {hp.TranslationCm.X:F1} {hp.TranslationCm.Y:F1} {hp.TranslationCm.Z:F1}" : "",
         };
     }
 
@@ -483,8 +616,10 @@ internal sealed class Buggies
             e.Wheels[i] = SubPart(e.Part, p.SubpartPrefix + "Wheel" + p.Corners[i].Key);
             e.Arms[i] = SubPart(e.Part, p.SubpartPrefix + "Arm" + p.Corners[i].Key);
             e.Coils[i] = SubPart(e.Part, p.SubpartPrefix + "Coil" + p.Corners[i].Key);
+            e.Uprights[i] = SubPart(e.Part, p.SubpartPrefix + "Upright" + p.Corners[i].Key);
         }
         e.Steering = SubPart(e.Part, p.SubpartPrefix + "Steering");
+        for (int k = 0; k < HeadGearSuffixes.Length; k++) e.HeadGear[k] = SubPart(e.Part, p.SubpartPrefix + HeadGearSuffixes[k]);
         for (int k = 0; k < p.Scoops.Length; k++) e.ScoopBlades[k] = SubPart(e.Part, p.SubpartPrefix + p.Scoops[k].SubpartSuffix);
         for (int k = 0; k < p.Hatches.Length; k++)
         {
@@ -518,11 +653,17 @@ internal sealed class Buggies
     /// </summary>
     public static void Physics(Vehicle craft, double dt)
     {
-        if (Active.Count == 0 || !Active.TryGetValue(craft, out Entry? e)) return;
+        if (!Active.TryGetValue(craft, out Entry? e))
+        {
+            // No longer a car the mod drives: it gets KSA's air drag back, here, where the worker is not reading it.
+            if (Shed.Count > 0 && Shed.Remove(craft)) craft.GetPhysicsStatesMutable().Props.RecomputeAerodynamicProperties();
+            return;
+        }
 
         try
         {
             Step(e, dt);
+            if (dt > 0.0 && Puppets.TryGetValue(craft, out (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody) pose)) Pull(e, pose, dt);
         }
         catch (Exception ex)
         {
@@ -533,12 +674,29 @@ internal sealed class Buggies
         }
     }
 
+    // KSA's height field is asked in its own frame, and a wheel's direction is in the body's.
+    private sealed class GroundCcf(TerrainHeights ground, doubleQuat ccf2Cce) : ITerrainHeights
+    {
+        public bool TryHeight(double3 dirFromCentre, out double metres) =>
+            ground.TryHeight(dirFromCentre.Transform(ccf2Cce), out metres);
+    }
+
     private static void Step(Entry e, double dt)
     {
         Vehicle craft = e.Craft;
         e.Input = ReadInput(craft);
         e.Turn = ReadTurn(craft);
         bool boost = craft.GetSprintInput();
+        PadDrive? pad = GamepadInput.For(craft);
+        if (pad is { } asked)
+        {
+            // The stick leans a car that is off the ground; on it the triggers alone are the throttle.
+            double lean = e.AirborneSeconds > 0.0 ? asked.Lean : 0.0;
+            e.Input = Gamepad.Merge(e.Input, asked.Input with { Throttle = asked.Input.Throttle + lean });
+            e.Turn = Math.Clamp(e.Turn + asked.Turn, -1.0, 1.0);
+            boost |= asked.Boost;
+        }
+        if (BrakeHeld && ReferenceEquals(craft, KsaWorld.ControlledVehicle)) e.Input = e.Input with { Brake = 1.0 };
         if (Held.TryGetValue(craft, out (DriveInput Input, double Turn, bool Boost, double Seconds) held))
         {
             e.Input = held.Input;
@@ -554,6 +712,8 @@ internal sealed class Buggies
         // KSA's own engine keys: start and shutdown light and cut the rockets, and the throttle keys move
         // the mod's throttle, because KSA pins its own at full on a craft with no engine.
         (bool more, bool less) = KsaWorld.ThrottleKeys(craft);
+        more |= pad is { ThrottleUp: true };
+        less |= pad is { ThrottleDown: true };
         if (dt > 0.0) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
         e.Lit = e.Drive.Profile.HasRockets && (KsaWorld.EngineOn(craft) ?? e.Lit);
         e.HatchWanted[(int)ThrusterGroup.Lift] = e.Lit;
@@ -576,12 +736,15 @@ internal sealed class Buggies
 
         bool railed = craft.Situation.IsOnRails();
         e.Railed = railed;
-        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && !e.Lit && !e.HatchWanted[(int)ThrusterGroup.Boost] && !e.Downforce;
+        bool lapping = !warped && Laps.Driving(craft);
+        bool idle = e.Input.Throttle == 0.0 && e.Input.Steer == 0.0 && !e.Lit && !e.HatchWanted[(int)ThrusterGroup.Boost] && !e.Downforce
+                    && !lapping;
 
         // KSA only rails a car that has stood still, so one on rails with nobody at the wheel is parked:
         // it is exactly where it was, and costs nothing. Its speed from before it stopped says nothing.
         bool righting = ToRight.Remove(craft, out bool tip);
-        if (railed && idle && !righting) return;
+        bool standing = ToStand.Remove(craft, out (double3 At, double3 Up, double3 Ahead) stand);
+        if (railed && idle && !righting && !standing) return;
 
         PhysicsStates states = craft.GetPhysicsStatesMutable();
 
@@ -603,12 +766,16 @@ internal sealed class Buggies
         doubleQuat body2Phys = states.Kinematic.Body2Phys;
         double3 spinBody = states.Kinematic.AngularVelocityPhys.Transform(body2Phys.Inverse());
         double3 velocityBody = velocityCcf.Transform(ccf2Body);
+        (e.PlaceCcf, e.VelocityCcf, e.SpeedMs, e.PlaceValid) = (positionCcf, velocityCcf, Vec.Len(velocityCcf), true);
+        (e.Body2Ccf, e.SpinBody) = (body2Ccf, spinBody);
 
         double3 com = craft.CenterOfMassAsmb;
         doubleQuat part2Asmb = e.Part.Asmb2VehicleAsmb;
         double3 partOrigin = e.Part.PositionVehicleAsmb;
         double3 up = part2Asmb * new double3(1, 0, 0);
         double3 forward = part2Asmb * new double3(0, 1, 0);
+        e.AheadCcf = body2Ccf * forward;
+        e.Drive.Tow = TowOf(e);
 
         doubleQuat ccf2Cce = body.GetCcf2Cce();
         TerrainHeights ground = new(body, accurate: true);
@@ -618,6 +785,25 @@ internal sealed class Buggies
         Span<WheelContact> contacts = stackalloc WheelContact[corners.Length];
         Span<double3> hubs = stackalloc double3[corners.Length];
         for (int i = 0; i < corners.Length; i++) hubs[i] = partOrigin + (part2Asmb * corners[i].Hub) - com;
+
+        if (standing)
+        {
+            double3 to = stand.At + (stand.Up * Righting.StandingHeight(corners, hubs, up));
+            doubleQuat turn = Righting.Facing(up, forward, stand.Up.Transform(ccf2Body), stand.Ahead.Transform(ccf2Body));
+            states.Kinematic.PositionPhys += (to - positionCcf).Transform(ccf2Body).Transform(body2Phys);
+            states.Kinematic.Body2Phys = body2Phys * turn;
+            states.Kinematic.AngularVelocityPhys = default;
+
+            // Read again where it now is: standing still over the ground is a different speed at a different place.
+            PhysicsStates.GetStatesCcf(in states.Origin, in states.Kinematic,
+                                       out double3 nowCcf, out double3 stillCcf, out doubleQuat nowBody2Ccf);
+            states.Kinematic.VelocityPhys -= stillCcf.Transform(nowBody2Ccf.Inverse()).Transform(states.Kinematic.Body2Phys);
+            Array.Clear(e.RoadOver);
+            if (railed) craft.TakeOffRails();
+            Log.Info($"{KsaWorld.DisplayName(craft)} stood on the road, moved {Vec.Len(to - positionCcf):F1} m and "
+                     + $"{Vec.Len(nowCcf - to):F3} m from where it was asked to be, facing {Vec.Dot((nowBody2Ccf * forward), stand.Ahead):F3} along it");
+            return;
+        }
 
         if (righting)
         {
@@ -629,6 +815,7 @@ internal sealed class Buggies
             double3 groundUp = upCcf.Transform(ccf2Body);
             double comHeight = comRadius - (body.MeanRadius + under);
             if (pads.TryHeightOver(positionCcf, out double overPad)) comHeight = Math.Min(comHeight, overPad);
+            if (Roads.TryHeightOver(body, positionCcf, null, out double overRoad)) comHeight = Math.Min(comHeight, overRoad);
             RightingMove move = tip
                 ? new RightingMove(doubleQuat.CreateFromAxisAngle(forward, Math.PI), 1.5 - comHeight)
                 : Righting.Solve(corners, hubs, up, forward, groundUp, comHeight);
@@ -644,30 +831,49 @@ internal sealed class Buggies
             return;
         }
 
-        for (int i = 0; i < corners.Length; i++)
+        // Whose push a sudden change of speed is: the engine's between two windows, or the drive's in one.
+        double3 since = velocityCcf - e.LeftVelocityCcf;
+        if (e.LeftValid && !warped && Vec.Len(since) > JoltMs + (20.0 * dt))
         {
-            double3 hub = hubs[i];
-
-            double3 atCcf = positionCcf + hub.Transform(body2Ccf);
-            double radius = Vec.Len(atCcf);
-            if (!(radius > 0.0)) continue;
-            double3 dirCcf = atCcf / radius;
-            if (!ground.TryHeight(dirCcf.Transform(ccf2Cce), out double height)) continue;
-
-            double hubHeight = radius - (body.MeanRadius + height);
-            if (pads.TryHeightOver(atCcf, out double overPad)) hubHeight = Math.Min(hubHeight, overPad);
-
-            e.HubHeights[i] = hubHeight;
-            contacts[i] = new WheelContact(
-                Valid: true,
-                HubHeight: hubHeight,
-                GroundUp: dirCcf.Transform(ccf2Body),
-                HubVelocity: velocityBody + Vec.Cross(spinBody, hub));
+            double3 inBody = since.Transform(ccf2Body);
+            Log.Info($"jolt: the engine changed {KsaWorld.DisplayName(craft)}'s velocity by {Vec.Len(since):F1} m/s between two steps: "
+                     + $"{Vec.Dot(inBody, forward):F1} ahead, {Vec.Dot(inBody, up):F1} up, {Vec.Dot(inBody, Vec.Cross(up, forward)):F1} left, "
+                     + $"at {Vec.Len(velocityCcf):F1} m/s, step {dt * 1000.0:F1} ms");
         }
+        e.LeftValid = false;
+
+        if (e.RoadGeneration != Roads.Generation)
+        {
+            Array.Clear(e.RoadOver);
+            e.RoadGeneration = Roads.Generation;
+        }
+
+        IReadOnlyList<RoadLoop> loops = Roads.LoopsOn(body);
+        bool looped = WheelGround.Read(positionCcf, body2Ccf, velocityBody, spinBody, hubs,
+                                       body.MeanRadius, new GroundCcf(ground, ccf2Cce), pads.TryHeightOver,
+                                       Roads.SurfaceOn(body), e.RoadOver, contacts, e.HubHeights, loops);
+
+        // A lap's driver has the wheel, ahead of the keys and of anything held: asked here, where the
+        // ground under the wheels is known and the drive has not been stepped.
+        if (lapping) e.Input = Laps.Step(craft, positionCcf, body2Ccf, velocityCcf, up, forward, hubs, e.HubHeights, dt, e.Scraping);
 
         double mass = craft.TotalMass;
         double gravity = Vec.Len(KsaWorld.GravityAt(craft, KsaWorld.PositionEcl(craft)));
         double air = KsaWorld.ReferenceAirDensityKgPerM3 * KsaWorld.AirDensityRatioAt(craft, KsaWorld.PositionEcl(craft));
+
+        // On a loop the mod has the wheel, and the keys the throttle: it is carried aside as it goes round.
+        if (looped && !warped)
+        {
+            double speedNow = Vec.Len(velocityBody);
+            foreach (RoadLoop loop in loops)
+            {
+                if (loop.Steer(positionCcf, body2Ccf, speedNow, BuggyDrive.Wheelbase(e.Drive.Profile)) is not { } angle) continue;
+                double lockRad = BuggyDrive.SteerLock(e.Drive.Profile, Vec.Dot(velocityBody, forward), gravity,
+                                                      BuggyDrive.WingLoad(e.Drive.Profile, speedNow, air, mass));
+                e.Input = e.Input with { Steer = lockRad > 0.0 ? Math.Clamp(angle / lockRad, -1.0, 1.0) : 0.0 };
+                break;
+            }
+        }
 
         // Both sets of rockets at once hold the car where it is, so neither pushes on its own.
         bool hovering = e.Pressed && e.Rockets > 0.0;
@@ -686,6 +892,15 @@ internal sealed class Buggies
         try { e.Scraping = craft.Situation.HasTerrainContact(); } catch { e.Scraping = false; }
         LogWhileDriven(e, dt);
 
+        // On a road's asphalt the wheels hold the hull clear, and all the engine's guess at what it
+        // will hit next finds there is a triangle's edge ahead to take its speed off against.
+        bool onRoad = false;
+        for (int i = 0; i < e.RoadOver.Length && i < e.Drive.Grounded.Length; i++) onRoad |= e.RoadOver[i] is not null && e.Drive.Grounded[i];
+        onRoad |= looped;
+        // Round a loop a car turns as fast as the loop does under it, and closes on nothing by that.
+        double closing = Math.Abs(Vec.Dot(velocityBody, contacts[0].Valid ? contacts[0].GroundUp : up)) + (looped ? 0.0 : HullReachM * Vec.Len(spinBody));
+        HullMargins[craft] = HoldsHullMargin && onRoad && !warped ? (float)(HullMarginM + (2.0 * closing * dt)) : float.MaxValue;
+
         double3 dv = impulse.Linear / mass;
         Symmetric3x3 inverse = Symmetric3x3.Invert(craft.TotalMassPropsBody.Inertia);
         double3 l = impulse.Angular;
@@ -693,19 +908,87 @@ internal sealed class Buggies
                          (inverse.YX * l.X) + (inverse.YY * l.Y) + (inverse.ZY * l.Z),
                          (inverse.ZX * l.X) + (inverse.ZY * l.Y) + (inverse.ZZ * l.Z));
 
+        // A loop presses a car at several times its weight, which its springs have no travel for: each hub is held on its stop.
+        if (looped && !warped)
+        {
+            DriveImpulse stop = e.Drive.BumpStops(contacts, hubs, up, velocityBody + dv, spinBody + dw, mass,
+                (new double3(inverse.XX, inverse.YX, inverse.ZX), new double3(inverse.YX, inverse.YY, inverse.ZY), new double3(inverse.ZX, inverse.ZY, inverse.ZZ)), dt);
+            dv += stop.Linear / mass;
+            double3 w = stop.Angular;
+            dw += new double3((inverse.XX * w.X) + (inverse.YX * w.Y) + (inverse.ZX * w.Z),
+                              (inverse.YX * w.X) + (inverse.YY * w.Y) + (inverse.ZY * w.Z),
+                              (inverse.ZX * w.X) + (inverse.ZY * w.Y) + (inverse.ZZ * w.Z));
+        }
+
+        // A deck's barrier, where a side of the car is at one: the mod's own push, which rubs as a rail does and not as KSA's ground.
+        if (!warped && Roads.SurfaceOn(body) is { } roads)
+        {
+            double3 left = Vec.Cross(up, forward);
+            Span<double3> sides = stackalloc double3[corners.Length], outward = stackalloc double3[corners.Length];
+            Span<double> past = stackalloc double[corners.Length];
+            bool any = false;
+            for (int i = 0; i < corners.Length; i++)
+            {
+                double reach = Vec.Dot(hubs[i], left);
+                sides[i] = hubs[i] + (left * (Math.Sign(reach) * (e.Drive.Profile.Side - Math.Abs(corners[i].Hub.Z))));
+                past[i] = double.NegativeInfinity;
+                // The wall is plumb and a car on a banked deck is not, so its side is asked low and high, where a collider's edge leads.
+                double3 sideCcf = positionCcf + (body2Ccf * sides[i]);
+                double pastM = double.NegativeInfinity;
+                double3 outCcf = default;
+                foreach (RoadLoop loop in loops)
+                {
+                    if (loop.TryBarrier(sideCcf, out pastM, out outCcf)) break;
+                }
+                if (double.IsNegativeInfinity(pastM) && !roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] - (up * SideLowM))), out pastM, out outCcf)) continue;
+                if (roads.TryBarrier(positionCcf + (body2Ccf * (sides[i] + (up * SideHighM))), out double high, out _)) pastM = Math.Max(pastM, high);
+                // Across the car's own floor: on a banked deck the level way out has a share of the car's up, along which the springs push every step.
+                double3 across = Barrier.Across(outCcf.Transform(ccf2Body), up);
+                if (Vec.Len(across) < 0.5) continue;
+                (past[i], outward[i]) = (pastM + Barrier.ClearM, across);
+                any |= past[i] > 0.0;
+            }
+            if (any)
+            {
+                DriveImpulse wall = Barrier.Hold(sides, outward, past, velocityBody + dv, spinBody + dw, mass,
+                    (new double3(inverse.XX, inverse.YX, inverse.ZX), new double3(inverse.YX, inverse.YY, inverse.ZY), new double3(inverse.ZX, inverse.ZY, inverse.ZZ)), dt);
+                dv += wall.Linear / mass;
+                double3 w = wall.Angular;
+                dw += new double3((inverse.XX * w.X) + (inverse.YX * w.Y) + (inverse.ZX * w.Z),
+                                  (inverse.YX * w.X) + (inverse.YY * w.Y) + (inverse.ZY * w.Z),
+                                  (inverse.ZX * w.X) + (inverse.ZY * w.Y) + (inverse.ZZ * w.Z));
+            }
+        }
+
         // The wheels are off the ground, so the keys that drove them fly the car instead.
         // Under warp the wheels are not stepped, so the hull's own contact says whether it is down.
         bool airborne = warped ? !e.Scraping : !e.Drive.Grounded.Any(g => g);
+        ShedGameDrag(e, craft, ref states.Props, airborne, burning, dt);
         double3 groundUpBody = Vec.Unit(positionCcf).Transform(ccf2Body);
         LiftPush lift = Lift.Step(new LiftInput(e.Rockets, e.Input.Throttle, e.Input.Steer, e.Turn), airborne, up, forward,
                                   groundUpBody, spinBody, gravity, dt);
         dv += hovering ? Hover.Push(up, groundUpBody, e.Climb, gravity, dt) : lift.Velocity + Downforce.Push(pressed, up, dt);
+        // KSA turns the planet's frame under a craft off the ground, and nothing else holds a hover over a place.
+        if (hovering && airborne && !e.Scraping)
+        {
+            double3 frame = Hover.FrameAccel(KsaWorld.SpinOf(body), positionCcf, velocityCcf).Transform(ccf2Body);
+            dv += Hover.Hold(velocityBody, groundUpBody, frame, e.Input.Throttle != 0.0 || e.Input.Steer != 0.0, dt);
+        }
         dv += Boost.Push(e.Boosting, forward, dt);
         dw += lift.Spin;
         if (!Vec.IsFinite(dv) || !Vec.IsFinite(dw)) return;
 
         states.Kinematic.VelocityPhys += dv.Transform(body2Phys);
         states.Kinematic.AngularVelocityPhys += dw.Transform(body2Phys);
+        e.LeftVelocityCcf = velocityCcf + dv.Transform(body2Ccf);
+        e.LeftValid = true;
+        if (Vec.Len(impulse.Linear) / mass > JoltMs)
+        {
+            double3 push = impulse.Linear / mass;
+            Log.Info($"jolt: the drive pushed {KsaWorld.DisplayName(craft)} {Vec.Len(push):F1} m/s in a step: {Vec.Dot(push, forward):F1} ahead, "
+                     + $"{Vec.Dot(push, up):F1} up, at {Vec.Len(velocityCcf):F1} m/s, step {dt * 1000.0:F1} ms, "
+                     + $"hubs {string.Join(" ", e.HubHeights.Select(t => t.ToString("F3")))}");
+        }
 
         // Woken the way KSA wakes a landed craft something has bumped into. Not rebuilt from its orbit,
         // as a craft in flight is: a landed craft on rails is held to the ground, not to that orbit, and
@@ -713,8 +996,65 @@ internal sealed class Buggies
         if (railed) craft.TakeOffRails();
     }
 
+    /// <summary>
+    /// Whether the brake key is down, for the car being flown: read in the frame hook, where the
+    /// keyboard is, and taken in the physics window.
+    /// </summary>
+    public static volatile bool BrakeHeld;
+
+    /// <summary>
+    /// How far ahead of itself the physics engine looks for what each car's hull will touch, where
+    /// that is held short: read on a worker by <see cref="RoadColliders"/>, which is where it is set.
+    /// The engine's own is as far as the hull moves in a step, and at speed over a road's mesh it
+    /// takes a triangle ahead for a wall. docs/KSA-MODDING-NOTES.md has the mechanism.
+    /// </summary>
+    public static readonly System.Collections.Concurrent.ConcurrentDictionary<Vehicle, float> HullMargins = new();
+
+    /// <summary>Whether a car on a road has that margin held short. The bridge clears it to compare.</summary>
+    public static bool HoldsHullMargin { get; set; } = true;
+
+    // The margin a car on a road is held to, under the least any hull stands over its wheels; and how
+    // far from the middle a hull's corner is, which is what a turning car closes on the ground with.
+    private const double HullMarginM = 0.05, HullReachM = 2.5;
+
+    // How far under a hub and over it a wheel's collider reaches, which on a banked deck is what meets a plumb wall first.
+    private const double SideLowM = 0.2, SideHighM = 0.25;
+
+    // The subparts a car may have for its driver's head, by what their Ids end in after the car's prefix.
+    private static readonly string[] HeadGearSuffixes = ["Helmet", "HelmetVisor"];
+
+    // A change of speed in one step that no spring, tyre or brake makes.
+    private const double JoltMs = 3.0;
+
     // Once a second in play; the bridge shortens it to watch a manoeuvre.
     public static double LogEverySeconds { get; set; } = 1.0;
+
+    /// <summary>Whether KSA's own air drag is kept off a car on its wheels. The bridge clears it to compare.</summary>
+    public static bool ShedsGameDrag { get; set; } = true;
+
+    // Crafts whose aerodynamic record this has zeroed, so one that stops being a car can be given it back.
+    private static readonly HashSet<Vehicle> Shed = [];
+
+    // KSA drags a craft by its colliders' bounding box, a car on its wheels included, and skips all of it
+    // while the record's area is zero. Zeroed every step, because KSA rebuilds it when a kitten boards;
+    // rebuilt from the same box once the car is flying. docs/KSA-MODDING-NOTES.md has the mechanism.
+    private static void ShedGameDrag(Entry e, Vehicle craft, ref VehicleProperties props, bool airborne, bool burning, double dt)
+    {
+        e.AirborneSeconds = airborne ? e.AirborneSeconds + dt : 0.0;
+        bool shed = ShedsGameDrag && BuggyDrive.ShedsGameDrag(e.AirborneSeconds, burning);
+        if (shed)
+        {
+            props.AerodynamicCdABody = default;
+            Shed.Add(craft);
+        }
+        else if (e.DragShed)
+        {
+            props.RecomputeAerodynamicProperties();
+            Shed.Remove(craft);
+        }
+        e.DragShed = shed;
+        e.GameSkinAreaM2 = 0.1 * props.TotalSurfaceArea;
+    }
 
     private static void LogWhileDriven(Entry e, double dt)
     {
@@ -729,7 +1069,8 @@ internal sealed class Buggies
                  + $"travel {string.Join(" ", d.Travel.Select(t => t.ToString("F3")))}, "
                  + $"hubs {string.Join(" ", e.HubHeights.Select(t => t.ToString("F2")))} m, level {e.Level:F3}, "
                  + $"yaw {e.YawRate * 180.0 / Math.PI:F0} deg/s, sideways {e.SideSpeed:F1} m/s, step {dt * 1000.0:F1} ms, "
-                 + $"lift {e.SpringLift:F2} g{(e.Scraping ? ", SCRAPING" : "")}");
+                 + $"lift {e.SpringLift:F2} g, game drag {(e.DragShed ? "off" : "on")} (skin {e.GameSkinAreaM2:F2} m2)"
+                 + $"{(e.Scraping ? ", SCRAPING" : "")}");
     }
 
     // The craft's own held controls, so the player's bindings carry over: the pitch keys are the
@@ -792,8 +1133,11 @@ internal sealed class Buggies
             doubleQuat armTurn = doubleQuat.CreateFromAxisAngle(new double3(0, 0, 1), angle);
 
             Place(e.Arms[i], corner.ArmPivot, armTurn, null);
-            Place(e.Wheels[i], BuggyDrive.OnArm(corner, corner.Hub, angle),
-                  BuggyDrive.WheelRotation(d.Spin[i], corner.Steers ? d.SteerAngle : 0.0), null);
+            double3 hub = BuggyDrive.OnArm(corner, corner.Hub, angle);
+            double steer = corner.Steers ? d.SteerAngle : 0.0;
+            Place(e.Wheels[i], hub, BuggyDrive.WheelRotation(d.Spin[i], steer), null);
+            // An upright rises and steers with its wheel and does not turn with it.
+            Place(e.Uprights[i], hub, BuggyDrive.WheelRotation(0.0, steer), null);
 
             (doubleQuat coil, double3 squash) = BuggyDrive.CoilPose(corner, angle);
             Place(e.Coils[i], corner.CoilTop, coil, squash);
@@ -821,6 +1165,23 @@ internal sealed class Buggies
                 (double3 at, doubleQuat turned, double3 size) = Hatch.Blade(hatches[k], b, e.HatchOpen[(int)hatches[k].Group]);
                 Place(e.HatchBlades[(k * Hatch.Blades) + b], at, turned, size);
             }
+        }
+
+        // On the driver's head while there is one at the wheel, by its head bone as it was last posed;
+        // shrunk to nothing in the seat with nobody in it, and with the camera in it: KSA hides the
+        // kitten's own head from a view out of its seat, and that view is inside the helmet.
+        IVASeat? driverSeat = DriverSeat(e);
+        DriverHands.HeadPose? head = driverSeat is { Renderable: { } seated } && ReferenceEquals(seated, e.HandsOn)
+                                     && !KsaWorld.ViewIsFrom(driverSeat) ? e.Hands?.Head : null;
+        foreach (Part? gear in e.HeadGear)
+        {
+            if (head is null)
+            {
+                Place(gear, d.Profile.DriverEye - new double3(SteeringGrip.SeatedDrop, 0, 0), doubleQuat.Identity, new double3(0.001, 0.001, 0.001));
+                continue;
+            }
+            (double3 at, doubleQuat turn, double scale) = HeadGear.Pose(d.Profile, head.RowX, head.RowY, head.RowZ, head.TranslationCm);
+            Place(gear, at, turn, new double3(scale, scale, scale));
         }
 
         // Hidden by being shrunk to nothing inside the hull: a subpart has no switch for being drawn.

@@ -1,0 +1,352 @@
+{
+ "best": {
+  "grip_share": 0.9886195495179972,
+  "brake_share": 1.4959980339773544,
+  "tip_share": 1.0780281829031308,
+  "crest_share": 0.8151922803335905,
+  "dip_share": 0.3781225981765214,
+  "look_ahead_seconds": 0.16977757529156667,
+  "least_look_ahead_m": 9.494776163987696,
+  "brake_on_ms": 0.4740935609050473,
+  "brake_on_share": 0.06186465721221678,
+  "brake_off_ms": 0.7568204196468429,
+  "brake_lead_seconds": 0.0,
+  "full_throttle_under_ms": 0.3317959586323468,
+  "dip_brake_share": 0.7674155370063422,
+  "brake_band_ms": 0.0,
+  "least_brake": 0.07193855319984467,
+  "inside_m": 1.4114059892087287,
+  "pace_00": 1.0,
+  "nudge_00": 0.0,
+  "pace_01": 1.0,
+  "nudge_01": 0.0,
+  "pace_02": 1.0,
+  "nudge_02": 0.0,
+  "pace_03": 1.0,
+  "nudge_03": 0.0,
+  "pace_04": 1.0,
+  "nudge_04": 0.0,
+  "pace_05": 1.0,
+  "nudge_05": 0.0,
+  "pace_06": 1.0,
+  "nudge_06": 0.0,
+  "pace_07": 1.0,
+  "nudge_07": 0.0,
+  "pace_08": 1.0,
+  "nudge_08": 0.0,
+  "pace_09": 1.0,
+  "nudge_09": 0.0,
+  "pace_10": 1.0,
+  "nudge_10": 0.0,
+  "pace_11": 1.0,
+  "nudge_11": 0.0,
+  "pace_12": 1.0,
+  "nudge_12": 0.0,
+  "pace_13": 1.0,
+  "nudge_13": 0.0,
+  "pace_14": 1.0,
+  "nudge_14": 0.0,
+  "pace_15": 1.0,
+  "nudge_15": 0.0,
+  "pace_16": 1.0,
+  "nudge_16": 0.0,
+  "pace_17": 1.0,
+  "nudge_17": 0.0,
+  "pace_18": 1.0,
+  "nudge_18": 0.0,
+  "pace_19": 1.0,
+  "nudge_19": 0.0,
+  "pace_20": 1.0,
+  "nudge_20": 0.0,
+  "pace_21": 1.0,
+  "nudge_21": 0.0,
+  "pace_22": 1.0,
+  "nudge_22": 0.0,
+  "pace_23": 1.0,
+  "nudge_23": 0.0
+ },
+ "time": 419.843,
+ "rounds": [
+  {
+   "round": 1,
+   "best_of_round": 442.803,
+   "faults": 8,
+   "time": 442.803,
+   "spread": 0.24
+  },
+  {
+   "round": 2,
+   "best_of_round": 440.425,
+   "faults": 5,
+   "time": 440.425,
+   "spread": 0.04568136734450974
+  },
+  {
+   "round": 3,
+   "best_of_round": 439.035,
+   "faults": 4,
+   "time": 439.035,
+   "spread": 0.1086868397116688
+  },
+  {
+   "round": 4,
+   "best_of_round": 431.27,
+   "faults": 10,
+   "time": 431.27,
+   "spread": 0.20687347709927464
+  },
+  {
+   "round": 5,
+   "best_of_round": 429.028,
+   "faults": 7,
+   "time": 429.028,
+   "spread": 0.03937609708836662
+  },
+  {
+   "round": 6,
+   "best_of_round": 427.727,
+   "faults": 7,
+   "time": 427.727,
+   "spread": 0.0936851018586852
+  },
+  {
+   "round": 7,
+   "best_of_round": 427.002,
+   "faults": 14,
+   "time": 427.002,
+   "spread": 0.1783193146964338
+  },
+  {
+   "round": 8,
+   "best_of_round": 426.75,
+   "faults": 9,
+   "time": 426.75,
+   "spread": 0.033941125496954286
+  },
+  {
+   "round": 9,
+   "best_of_round": 426.176,
+   "faults": 14,
+   "time": 426.176,
+   "spread": 0.03230160462317654
+  },
+  {
+   "round": 10,
+   "best_of_round": 425.704,
+   "faults": 15,
+   "time": 425.704,
+   "spread": 0.07685320138585636
+  },
+  {
+   "round": 11,
+   "best_of_round": 425.283,
+   "faults": 15,
+   "time": 425.283,
+   "spread": 0.07314081925226852
+  },
+  {
+   "round": 12,
+   "best_of_round": 425.283,
+   "faults": 16,
+   "time": 425.283,
+   "spread": 0.027843105267843907
+  },
+  {
+   "round": 13,
+   "best_of_round": 424.397,
+   "faults": 11,
+   "time": 424.397,
+   "spread": 0.026498148328171503
+  },
+  {
+   "round": 14,
+   "best_of_round": 423.601,
+   "faults": 19,
+   "time": 423.601,
+   "spread": 0.12609079663838632
+  },
+  {
+   "round": 15,
+   "best_of_round": 423.069,
+   "faults": 15,
+   "time": 423.069,
+   "spread": 0.024
+  },
+  {
+   "round": 16,
+   "best_of_round": 423.045,
+   "faults": 19,
+   "time": 423.045,
+   "spread": 0.05710170918063717
+  },
+  {
+   "round": 17,
+   "best_of_round": 423.045,
+   "faults": 18,
+   "time": 423.045,
+   "spread": 0.0543434198558344
+  },
+  {
+   "round": 18,
+   "best_of_round": 422.962,
+   "faults": 18,
+   "time": 422.962,
+   "spread": 0.05171836927481867
+  },
+  {
+   "round": 19,
+   "best_of_round": 422.952,
+   "faults": 18,
+   "time": 422.952,
+   "spread": 0.09844024272091653
+  },
+  {
+   "round": 20,
+   "best_of_round": 422.12,
+   "faults": 23,
+   "time": 422.12,
+   "spread": 0.01873702037173704
+  },
+  {
+   "round": 21,
+   "best_of_round": 421.159,
+   "faults": 19,
+   "time": 421.159,
+   "spread": 0.04457982867410845
+  },
+  {
+   "round": 22,
+   "best_of_round": 421.159,
+   "faults": 19,
+   "time": 421.159,
+   "spread": 0.016970562748477143
+  },
+  {
+   "round": 23,
+   "best_of_round": 420.768,
+   "faults": 20,
+   "time": 420.768,
+   "spread": 0.01615080231158827
+  },
+  {
+   "round": 24,
+   "best_of_round": 420.319,
+   "faults": 19,
+   "time": 420.319,
+   "spread": 0.03842660069292818
+  },
+  {
+   "round": 25,
+   "best_of_round": 420.319,
+   "faults": 21,
+   "time": 420.319,
+   "spread": 0.014628163850453707
+  },
+  {
+   "round": 26,
+   "best_of_round": 420.31,
+   "faults": 21,
+   "time": 420.31,
+   "spread": 0.013921552633921953
+  },
+  {
+   "round": 27,
+   "best_of_round": 420.271,
+   "faults": 19,
+   "time": 420.271,
+   "spread": 0.013249074164085748
+  },
+  {
+   "round": 28,
+   "best_of_round": 420.271,
+   "faults": 24,
+   "time": 420.271,
+   "spread": 0.03152269915959658
+  },
+  {
+   "round": 29,
+   "best_of_round": 420.271,
+   "faults": 20,
+   "time": 420.271,
+   "spread": 0.03
+  },
+  {
+   "round": 30,
+   "best_of_round": 420.221,
+   "faults": 18,
+   "time": 420.221,
+   "spread": 0.057101709180637165
+  },
+  {
+   "round": 31,
+   "best_of_round": 420.221,
+   "faults": 22,
+   "time": 420.221,
+   "spread": 0.0271717099279172
+  },
+  {
+   "round": 32,
+   "best_of_round": 420.133,
+   "faults": 22,
+   "time": 420.133,
+   "spread": 0.025859184637409327
+  },
+  {
+   "round": 33,
+   "best_of_round": 419.932,
+   "faults": 23,
+   "time": 419.932,
+   "spread": 0.009844024272091655
+  },
+  {
+   "round": 34,
+   "best_of_round": 419.932,
+   "faults": 24,
+   "time": 419.932,
+   "spread": 0.0234212754646713
+  },
+  {
+   "round": 35,
+   "best_of_round": 419.932,
+   "faults": 19,
+   "time": 419.932,
+   "spread": 0.04457982867410846
+  },
+  {
+   "round": 36,
+   "best_of_round": 419.853,
+   "faults": 19,
+   "time": 419.853,
+   "spread": 0.042426406871192854
+  },
+  {
+   "round": 37,
+   "best_of_round": 419.853,
+   "faults": 18,
+   "time": 419.853,
+   "spread": 0.02018850288948534
+  },
+  {
+   "round": 38,
+   "best_of_round": 419.853,
+   "faults": 20,
+   "time": 419.853,
+   "spread": 0.01921330034646409
+  },
+  {
+   "round": 39,
+   "best_of_round": 419.853,
+   "faults": 20,
+   "time": 419.853,
+   "spread": 0.01828520481306713
+  },
+  {
+   "round": 40,
+   "best_of_round": 419.843,
+   "faults": 17,
+   "time": 419.843,
+   "spread": 0.017401940792402443
+  }
+ ],
+ "first": null
+}

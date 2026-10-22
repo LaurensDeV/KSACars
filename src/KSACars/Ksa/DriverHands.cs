@@ -51,6 +51,7 @@ internal sealed class DriverHands(BuggyDrive drive) : IAnimProcessor
             double left = Hold(skeleton, bones[3], bones[4], bones[5], SteeringGrip.ToKittenModel(_drive.Profile, leftPart), 1.0);
             MissCm = Math.Max(right, left);
             Solves++;
+            ReadHead(skeleton);
         }
         catch (Exception e)
         {
@@ -58,6 +59,29 @@ internal sealed class DriverHands(BuggyDrive drive) : IAnimProcessor
             Log.Warn($"driver's hands: {e.Message}; the kitten keeps its seated pose");
         }
     }
+
+    /// <summary>
+    /// What carries a point of the kitten's unposed mesh to where its head has it this frame, in the
+    /// model's centimetres: three rows and a translation, or null before the first solve and where the
+    /// kitten has no head bone. Swapped whole, since the frame hook reads it.
+    /// </summary>
+    public HeadPose? Head { get; private set; }
+
+    public sealed record HeadPose(double3 RowX, double3 RowY, double3 RowZ, double3 TranslationCm);
+
+    private int _head = -2;
+
+    private void ReadHead(Skeleton skeleton)
+    {
+        if (_head == -2) _head = skeleton.BoneNames?.IndexOf(HeadBone) ?? -1;
+        if (_head < 0 || skeleton.InverseBindPose is not { } unposed) return;
+
+        float4x4 m = unposed.AsSpan()[_head] * skeleton.WorldTransforms[_head];
+        Head = new HeadPose(new double3(m.M11, m.M12, m.M13), new double3(m.M21, m.M22, m.M23), new double3(m.M31, m.M32, m.M33),
+                            double3.Unpack(m.Translation));
+    }
+
+    private const string HeadBone = "Head_M";
 
     private int[]? Resolve(Skeleton skeleton)
     {

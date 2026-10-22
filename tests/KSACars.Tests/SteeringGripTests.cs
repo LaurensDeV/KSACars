@@ -56,6 +56,24 @@ public class SteeringGripTests
         }
     }
 
+    [Theory]
+    [InlineData(-20.0)]
+    [InlineData(-6.0)]
+    [InlineData(0.0)]
+    [InlineData(6.0)]
+    [InlineData(20.0)]
+    public void TheF2004sDriverReachesItsWheel(double steerDeg)
+    {
+        BuggyProfile f = BuggyProfile.F2004;
+        (double3 left, double3 right) = SteeringGrip.GripsPart(f, steerDeg * Math.PI / 180.0);
+        foreach ((double3 grip, double3 shoulder) in new[] { (left, LeftShoulder), (right, RightShoulder) })
+        {
+            double3 g = SteeringGrip.ToKittenModel(f, grip);
+            double3 wrist = g + (Vec.Unit(shoulder - g) * (SteeringGrip.PalmMetres * 100.0));
+            Assert.True(Vec.Len(wrist - shoulder) < ArmCm * 0.98, $"{Vec.Len(wrist - shoulder):F1} cm at {steerDeg} deg");
+        }
+    }
+
     [Fact]
     public void EachHandIsOnItsOwnSideAndTurningLeftLiftsTheRightHand()
     {

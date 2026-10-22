@@ -174,6 +174,77 @@ internal static partial class KsaWorld
         }
     }
 
+    // How much of the cursor's ray is walked for a road: a road is pointed at from nearer than this.
+    private const double RoadReachM = 6000.0;
+
+    /// <summary>
+    /// Where the cursor's ray comes down on a laid road's asphalt, with the body, the place in its own
+    /// frame and the way the asphalt faces there. The ground's ray goes through a raised road to what
+    /// is under it, so a road is asked first.
+    /// </summary>
+    public static bool TryCursorRoadPoint(out double3 groundEcl, out double latitudeDeg, out double longitudeDeg,
+                                          out Celestial? body, out double3 atCcf, out double3 upCcf)
+    {
+        groundEcl = default;
+        latitudeDeg = 0.0;
+        longitudeDeg = 0.0;
+        body = null;
+        atCcf = default;
+        upCcf = default;
+
+        try
+        {
+            if (!TryCursorRayEcl(out double3 eye, out double3 direction)) return false;
+            if (Universe.CurrentSystem is not { } system) return false;
+
+            for (int i = 0; i < system.Count; i++)
+            {
+                if (system.GetIndex(i) is not Celestial on || Roads.SurfaceOn(on) is not { } roads) continue;
+
+                double3 centre = on.GetPositionEcl();
+                double top = MaxTerrainHeightMetres(on);
+                double reach = 2.0 * (Vec.Len(eye - centre) + on.MeanRadius + top);
+                double to = TerrainRay.TryFirstHit(eye, direction, reach, centre, on.MeanRadius, top,
+                                                   new TerrainHeights(on, accurate: true), out double ground)
+                    ? ground + 1.0
+                    : RoadReachM;
+
+                doubleQuat cce2Ccf = on.GetCce2Ccf();
+                double3 eyeCcf = (eye - centre).Transform(cce2Ccf), dirCcf = direction.Transform(cce2Ccf);
+                if (!roads.TryRay(eyeCcf, dirCcf, Math.Max(0.0, to - RoadReachM), to, out double range, out upCcf)) continue;
+
+                atCcf = eyeCcf + (Vec.Unit(dirCcf) * range);
+                groundEcl = eye + (Vec.Unit(direction) * range);
+                double3 cce = groundEcl - centre;
+                latitudeDeg = on.GetLatitudeFromCce(cce);
+                longitudeDeg = on.GetLongitudeFromCce(cce);
+                body = on;
+                return true;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Where a craft is in its parent body's own frame, off its drawn position: good to a few metres.</summary>
+    public static bool TryPlaceCcf(Vehicle craft, Celestial body, out double3 atCcf)
+    {
+        atCcf = default;
+        try
+        {
+            atCcf = (PositionEcl(craft) - body.GetPositionEcl()).Transform(body.GetCce2Ccf());
+            return Vec.IsFinite(atCcf);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Where a craft stands: the surface point under it, and its latitude and longitude.
     ///

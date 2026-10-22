@@ -10,6 +10,59 @@
 -->
 <Assets>
 
+  <!-- A road has no mesh here: the mod makes one while the game runs and draws it in these four: plain
+       asphalt for a junction and a deck's sides, lined asphalt for a run's own surface, which runs with
+       the road and carries its markings, earth for its verges and embankments, and the trim, which is
+       a kerb's red and white on its left half and a barrier's concrete on its right.
+       tools/model/road-textures.py writes all twelve textures, and the six of the line to drive. -->
+  <PbrMaterial Id="KSACars_Road_Material">
+    <Diffuse      Path="Textures/KSACars_Road_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_Road_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_Road_PBR.png"     Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RoadLined_Material">
+    <Diffuse      Path="Textures/KSACars_RoadLined_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadLined_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadLined_PBR.png"     Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RoadTrim_Material">
+    <Diffuse      Path="Textures/KSACars_RoadTrim_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadTrim_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadTrim_PBR.png"     Category="Default" />
+  </PbrMaterial>
+  <!-- A course's start: white in the left half of the picture and black in the right, a quad being one or the other. -->
+  <PbrMaterial Id="KSACars_RoadPaint_Material">
+    <Diffuse      Path="Textures/KSACars_RoadPaint_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadPaint_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadPaint_PBR.png"     Category="Default" />
+  </PbrMaterial>
+  <!-- The line to drive, a material a colour: blue for a car under the speed a place allows, then yellow, orange and red. -->
+  <PbrMaterial Id="KSACars_RaceLine0_Material">
+    <Diffuse      Path="Textures/KSACars_RaceLine0_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RaceLine_Normal.png"   Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RaceLine_PBR.png"      Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RaceLine1_Material">
+    <Diffuse      Path="Textures/KSACars_RaceLine1_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RaceLine_Normal.png"   Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RaceLine_PBR.png"      Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RaceLine2_Material">
+    <Diffuse      Path="Textures/KSACars_RaceLine2_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RaceLine_Normal.png"   Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RaceLine_PBR.png"      Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RaceLine3_Material">
+    <Diffuse      Path="Textures/KSACars_RaceLine3_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RaceLine_Normal.png"   Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RaceLine_PBR.png"      Category="Default" />
+  </PbrMaterial>
+  <PbrMaterial Id="KSACars_RoadEarth_Material">
+    <Diffuse      Path="Textures/KSACars_RoadEarth_Diffuse.png" Category="Default" />
+    <Normal       Path="Textures/KSACars_RoadEarth_Normal.png"  Category="Default" />
+    <AoRoughMetal Path="Textures/KSACars_RoadEarth_PBR.png"     Category="Default" />
+  </PbrMaterial>
+
   <!--
     The beach buggy's atlas and its one material. Authored in Blender over MCP; the number plate is
     lettered into the diffuse, on an island given fourteen times its share of texels so it reads.
@@ -848,6 +901,246 @@
     </SubPart>
 
     <Connector Id="_elConnectorAft">
+      <Transform>
+        <Position X="0.00000" />
+        <Rotation Z="3.14159" />
+        <Scale X="2.00000" Y="2.00000" Z="2.00000" />
+      </Transform>
+    </Connector>
+
+  </Part>
+
+  <!-- The Ferrari F2004's atlas and its one material. Authored in Blender over MCP. -->
+  <MeshAtlas Path="Meshes/KSACars_F1.glb" />
+
+  <PbrMaterial Id="KSACars_F1_Material">
+    <Diffuse Path="Textures/KSACars_F1_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_F1_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_F1_PBR.png" Category="Vessel" />
+    <Emissive Path="Textures/KSACars_F1_Emissive.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <!--
+    A wheel's spokes are set in from its outer face, so a left wheel is its own mesh: the right one
+    turned half a turn. An upright is the brake drum and duct inside a rim, which the mod moves with
+    the wheel and does not spin. The rain light is its own body so the mod can colour its glow.
+  -->
+  <SubPart Id="KSACars_F1Body_SubPart">
+    <PartModel Id="KSACars_Subpart_F1Body_Model">
+      <Mesh Id="KSACars_Subpart_F1Body" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1Body_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelFrontL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelFrontL_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelFrontL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelFrontL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelFrontR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelFrontR_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelFrontR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelFrontR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelRearL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelRearL_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelRearL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelRearL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1WheelRearR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1WheelRearR_Model">
+      <Mesh Id="KSACars_Subpart_F1WheelRearR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1WheelRearR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightFrontL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightFrontL_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightFrontL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightFrontL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightFrontR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightFrontR_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightFrontR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightFrontR_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightRearL_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightRearL_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightRearL" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightRearL_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1UprightRearR_SubPart">
+    <PartModel Id="KSACars_Subpart_F1UprightRearR_Model">
+      <Mesh Id="KSACars_Subpart_F1UprightRearR" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1UprightRearR_VM" />
+    </MeshView>
+  </SubPart>
+  <!--
+    The driver's helmet, in an atlas and a material of its own. Its mesh is in the kitten's own model
+    space with the head as it was bound, so the head bone's matrix places it: Sim/HeadGear.cs.
+  -->
+  <MeshAtlas Path="Meshes/KSACars_F1Helmet.glb" />
+
+  <PbrMaterial Id="KSACars_F1Helmet_Material">
+    <Diffuse Path="Textures/KSACars_F1Helmet_Diffuse.png" Category="Vessel" />
+    <Normal Path="Textures/KSACars_F1Helmet_Normal.png" Category="Vessel" />
+    <AoRoughMetal Path="Textures/KSACars_F1Helmet_PBR.png" Category="Vessel" />
+  </PbrMaterial>
+
+  <SubPart Id="KSACars_F1Helmet_SubPart">
+    <PartModel Id="KSACars_Subpart_F1Helmet_Model">
+      <Mesh Id="KSACars_Subpart_F1Helmet" />
+      <Material Id="KSACars_F1Helmet_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1Helmet_VM" />
+    </MeshView>
+  </SubPart>
+
+  <!-- Drawn in KSA's glass pass, so the driver's eyes show through the tint. -->
+  <SubPart Id="KSACars_F1HelmetVisor_SubPart">
+    <PartModelGlass Id="KSACars_Subpart_F1HelmetVisor_Model">
+      <Mesh Id="KSACars_Subpart_F1HelmetVisor" />
+      <Material Id="KSACars_F1Helmet_Material" />
+    </PartModelGlass>
+  </SubPart>
+
+  <SubPart Id="KSACars_F1Steering_SubPart">
+    <PartModel Id="KSACars_Subpart_F1Steering_Model">
+      <Mesh Id="KSACars_Subpart_F1Steering" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1Steering_VM" />
+    </MeshView>
+  </SubPart>
+  <SubPart Id="KSACars_F1RainLens_SubPart">
+    <PartModel Id="KSACars_Subpart_F1RainLens_Model">
+      <Mesh Id="KSACars_Subpart_F1RainLens" />
+      <Material Id="KSACars_F1_Material" />
+    </PartModel>
+    <MeshView>
+      <Mesh Id="KSACars_Subpart_F1RainLens_VM" />
+    </MeshView>
+  </SubPart>
+
+  <SubPart Id="KSACars_F1Door_SubPart">
+    <EditorTag Value="Hidden" />
+  </SubPart>
+
+  <!--
+    A 2004 Ferrari F2004. The wheels, their uprights and the steering wheel are separate bodies because
+    Ksa/Buggies.cs moves them, off the F2004's BuggyProfile.
+
+    +X is up from the ground, +Y forward, +Z the left side.
+  -->
+  <Part Id="KSACars_Prefab_F1" CrashTolerance="1e12">
+
+    <SubPart Id="KSACars_F1_Body" InstanceOf="KSACars_F1Body_SubPart" />
+    <SubPart Id="KSACars_F1_WheelFL" InstanceOf="KSACars_F1WheelFrontL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_WheelFR" InstanceOf="KSACars_F1WheelFrontR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="-0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_WheelRL" InstanceOf="KSACars_F1WheelRearL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_WheelRR" InstanceOf="KSACars_F1WheelRearR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="-0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightFL" InstanceOf="KSACars_F1UprightFrontL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightFR" InstanceOf="KSACars_F1UprightFrontR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="1.52500" Z="-0.73500" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightRL" InstanceOf="KSACars_F1UprightRearL_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_UprightRR" InstanceOf="KSACars_F1UprightRearR_SubPart">
+      <Transform>
+        <Position X="0.33000" Y="-1.52500" Z="-0.70250" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_Steering" InstanceOf="KSACars_F1Steering_SubPart">
+      <Transform>
+        <Position X="0.55800" Y="0.34000" Z="0.00000" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_RainLens" InstanceOf="KSACars_F1RainLens_SubPart" />
+
+    <!-- Beside the cockpit, outboard of the left sidepod: a kitten boards within a metre of its door. -->
+    <SubPart Id="KSACars_F1_Door" InstanceOf="KSACars_F1Door_SubPart">
+      <Transform>
+        <Position X="0.50000" Y="0.20000" Z="0.80000" />
+      </Transform>
+    </SubPart>
+
+    <!--
+      The driver's helmet and its visor, which the mod puts on the driver's head each frame. Last in
+      the list: a save pairs a part's subparts with these by their place in it. Declared as they are
+      with nobody at the wheel, shrunk away in the seat, so the editor and its thumbnail show none.
+    -->
+    <SubPart Id="KSACars_F1_Helmet" InstanceOf="KSACars_F1Helmet_SubPart">
+      <Transform>
+        <Position X="0.12000" Y="0.20000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
+    <SubPart Id="KSACars_F1_HelmetVisor" InstanceOf="KSACars_F1HelmetVisor_SubPart">
+      <Transform>
+        <Position X="0.12000" Y="0.20000" Z="0.00000" />
+        <Scale X="0.00100" Y="0.00100" Z="0.00100" />
+      </Transform>
+    </SubPart>
+
+    <Connector Id="_f1ConnectorAft">
       <Transform>
         <Position X="0.00000" />
         <Rotation Z="3.14159" />

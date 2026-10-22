@@ -223,14 +223,15 @@ internal static class Log
         }
     }
 
-    // Where the log might go, best first. KSA runs on Linux as well as Windows and puts its user
-    // data in a different place on each, so this tries the plausible locations rather than assuming
-    // one — and only ever uses a directory that already exists, so a wrong guess costs nothing but
-    // a failed Directory.Exists. The temp directory is the last resort and always works, which is
-    // why the mod can say where it is logging on startup rather than silently going quiet.
+    // Where the log might go, best first: KSA's own logs folder in the profile it was started with,
+    // which everything the mod keeps sits beside, then the places KSA has kept its user data on Windows
+    // and Linux, in case KSA no longer says where it is. Only a directory that already exists is used, and the temp directory is the
+    // last resort, so the mod can always say where it is logging.
     private static IEnumerable<string> CandidateDirectories()
     {
         const string game = "Kitten Space Agency";
+
+        if (KsaLogs() is { Length: > 0 } ksa) yield return ksa;
 
         // Windows, and Wine or Proton, which map Documents into the prefix the same way.
         string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -262,4 +263,27 @@ internal static class Log
 
         yield return Path.GetTempPath();
     }
+
+    // KSA's own logs folder, made if it is not there yet; null if this build of KSA has no such member. A launcher that
+    // keeps profiles apart, as Borea does through StarMap, has DocumentsFolderPath answer the profile's folder, and a
+    // fresh profile has no logs folder until KSA writes one: taken only if it was there, the shared one in Documents was.
+    // Apart, so that a member gone in a later KSA fails this call and not the method that falls back.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static string? KsaLogs()
+    {
+        try
+        {
+            string logs = Path.Combine(Profile(), "logs");
+            Directory.CreateDirectory(logs);
+            return logs;
+        }
+        catch (Exception e) when (e is MissingMemberException or TypeLoadException or TypeInitializationException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    // The getter itself, which is what StarMap patches: one of KSA's paths built from it could have it inlined.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static string Profile() => KSA.Constants.DocumentsFolderPath;
 }

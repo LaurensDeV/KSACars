@@ -198,10 +198,19 @@ public static SimStep GetJobSimStep(double dtPlayer)
     double num = _achievedSpeedFraction * GetSimulationSpeed();
     UniverseTime nextTime = _lastSimStep.NextTime;
     double num2 = dtPlayer * num;
+    double num3 = double.Max(_maxStepSimSeconds, dtPlayer);
+    if (num2 > num3)
+    {
+        num2 = num3;
+        _achievedSpeedFraction = num2 / (dtPlayer * GetSimulationSpeed());
+    }
     return new SimStep { PreviousTime = nextTime, NextTime = nextTime + num2, DeltaTime = num2 };
 }
 ```
-`Universe.cs:2264-2276`. So `PreviousTime(k) == NextTime(k−1)` by construction. **But `NextTime` is
+`Universe.cs:2627-2646` in 2026.10.13.5602, which added the cap: `ApplyVehicleSolvers` sets
+`_maxStepSimSeconds` to twice the step just applied, or less where the solvers ran long, so **a step is
+never more than double the one before it** and a warp takes several frames to reach its speed. A step
+is still never shorter than the frame. So `PreviousTime(k) == NextTime(k−1)` by construction. **But `NextTime` is
 `DeltaTime` rounded to the nanosecond** — `UniverseTime + double` goes through `Math.Round` — and every
 celestial is placed on `NextTime` (`CelestialUpdateTask.Prepare`), so it is the difference of the
 `NextTime`s, not the sum of the `DeltaTime`s, that reproduces the clock the planets are on. The two

@@ -7,9 +7,90 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-163 types and 370 members across 6 assemblies.
+252 types and 591 members across 12 assemblies.
+
+## BepuPhysics
+
+### BepuPhysics.Bodies
+
+- `BepuPhysics.BodyReference get_Item(BepuPhysics.BodyHandle)`
+
+### BepuPhysics.BodyHandle
+
+*referenced as a type only*
+
+### BepuPhysics.BodyReference
+
+- `ref BepuPhysics.Collidables.Collidable get_Collidable()`
+
+### BepuPhysics.Collidables.Box
+
+- `void .ctor(float, float, float)`
+
+### BepuPhysics.Collidables.Collidable
+
+- `float MaximumSpeculativeMargin`
+
+### BepuPhysics.Collidables.Mesh
+
+- `BepuUtilities.Memory.Buffer`1<BepuPhysics.Collidables.Triangle> Triangles`
+- `void .ctor(BepuUtilities.Memory.Buffer`1<BepuPhysics.Collidables.Triangle>, System.Numerics.Vector3, BepuUtilities.Memory.BufferPool, BepuUtilities.IThreadDispatcher)`
+- `void Dispose(BepuUtilities.Memory.BufferPool)`
+
+### BepuPhysics.Collidables.Shapes
+
+- `BepuPhysics.Collidables.TypedIndex Add<1>(ref !!0)`
+- `void Remove(BepuPhysics.Collidables.TypedIndex)`
+- `void RemoveAndDispose(BepuPhysics.Collidables.TypedIndex, BepuUtilities.Memory.BufferPool)`
+
+### BepuPhysics.Collidables.Triangle
+
+- `void .ctor(System.Numerics.Vector3, System.Numerics.Vector3, System.Numerics.Vector3)`
+
+### BepuPhysics.Collidables.TypedIndex
+
+*referenced as a type only*
+
+### BepuPhysics.RigidPose
+
+- `void .ctor(System.Numerics.Vector3, System.Numerics.Quaternion)`
+
+### BepuPhysics.Simulation
+
+- `BepuPhysics.Bodies get_Bodies()`
+- `BepuPhysics.Statics get_Statics()`
+
+### BepuPhysics.StaticDescription
+
+- `BepuPhysics.Collidables.TypedIndex Shape`
+- `BepuPhysics.RigidPose Pose`
+
+### BepuPhysics.StaticHandle
+
+*referenced as a type only*
+
+### BepuPhysics.Statics
+
+- `BepuPhysics.StaticHandle Add<1>(ref BepuPhysics.StaticDescription, ref !!0)`
+- `void ApplyDescription<1>(BepuPhysics.StaticHandle, ref BepuPhysics.StaticDescription, ref !!0)`
+- `void Remove(BepuPhysics.StaticHandle)`
 
 ## BepuUtilities
+
+### BepuUtilities.IThreadDispatcher
+
+*referenced as a type only*
+
+### BepuUtilities.Memory.BufferPool
+
+- `ulong GetTotalAllocatedByteCount()`
+- `void .ctor(int, int)`
+- `void Return<1>(ref BepuUtilities.Memory.Buffer`1<!!0>)`
+- `void Take<1>(int, ref BepuUtilities.Memory.Buffer`1<!!0>)`
+
+### BepuUtilities.Memory.Buffer`1
+
+*referenced as a type only*
 
 ### BepuUtilities.Symmetric3x3
 
@@ -21,7 +102,223 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `float ZY`
 - `float ZZ`
 
-## Brutal.Core.Numerics
+## Brutal.Collections
+
+### Brutal.Collections.NativeList`1
+
+*referenced as a type only*
+
+## Brutal.Core
+
+### Brutal.ByteSize
+
+- `ulong op_Implicit(Brutal.ByteSize)`
+- `void .ctor(nuint)`
+
+### Brutal.ElementCount
+
+- `Brutal.ElementCount op_Implicit(int)`
+
+### Brutal.Pointers.Ptr
+
+*referenced as a type only*
+
+## Brutal.Glfw
+
+### Brutal.GlfwApi.Glfw
+
+- `bool GetGamepadState(int, ref Brutal.GlfwApi.GlfwGamepadState)`
+- `bool JoystickIsGamepad(int)`
+- `string GetGamepadName(int)`
+
+### Brutal.GlfwApi.GlfwGamepadState
+
+*referenced as a type only*
+
+### Brutal.GlfwApi.GlfwKey
+
+*referenced as a type only*
+
+### Brutal.GlfwApi.GlfwKeyAction
+
+*referenced as a type only*
+
+### Brutal.GlfwApi.GlfwModifier
+
+*referenced as a type only*
+
+### Brutal.GlfwApi.GlfwWindow
+
+*referenced as a type only*
+
+## Brutal.ImGui
+
+### Brutal.ImGuiApi.ImColor8
+
+- `void .ctor(byte, byte, byte, byte)`
+
+### Brutal.ImGuiApi.ImDrawFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImDrawListExtensions
+
+- `void AddBezierQuadratic(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, float, int)`
+- `void AddCircle(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, float, Brutal.ImGuiApi.ImColor8, int, float)`
+- `void AddCircleFilled(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, float, Brutal.ImGuiApi.ImColor8, int)`
+- `void AddLine(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, float)`
+- `void AddRectFilled(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, float, Brutal.ImGuiApi.ImDrawFlags)`
+- `void AddText(Brutal.ImGuiApi.ImDrawListPtr, Brutal.ImGuiApi.ImFontPtr, float, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, Brutal.ImGuiApi.ImString, float, ref System.Nullable`1<Brutal.Numerics.float4>)`
+- `void AddText(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8, Brutal.ImGuiApi.ImString)`
+- `void AddTriangleFilled(Brutal.ImGuiApi.ImDrawListPtr, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImColor8)`
+
+### Brutal.ImGuiApi.ImDrawListPtr
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImFontPtr
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGui
+
+- `Brutal.ImGuiApi.ImDrawListPtr GetBackgroundDrawList(Brutal.ImGuiApi.ImGuiViewportPtr)`
+- `Brutal.ImGuiApi.ImDrawListPtr GetForegroundDrawList(Brutal.ImGuiApi.ImGuiViewportPtr)`
+- `Brutal.ImGuiApi.ImDrawListPtr GetWindowDrawList()`
+- `Brutal.ImGuiApi.ImFontPtr GetFont()`
+- `Brutal.ImGuiApi.ImGuiIOPtr GetIO()`
+- `Brutal.ImGuiApi.ImGuiViewportPtr GetMainViewport()`
+- `Brutal.Numerics.float2 CalcTextSize(Brutal.ImGuiApi.ImString, bool, float)`
+- `Brutal.Numerics.float2 GetItemRectMax()`
+- `Brutal.Numerics.float2 GetItemRectMin()`
+- `Brutal.Numerics.float2 GetMousePos()`
+- `Brutal.Numerics.float2 GetWindowPos()`
+- `Brutal.Numerics.float2 GetWindowSize()`
+- `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
+- `bool Begin(Brutal.ImGuiApi.ImString, ref bool, Brutal.ImGuiApi.ImGuiWindowFlags)`
+- `bool BeginCombo(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiComboFlags)`
+- `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
+- `bool Checkbox(Brutal.ImGuiApi.ImString, ref bool)`
+- `bool CollapsingHeader(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiTreeNodeFlags)`
+- `bool InputDouble(Brutal.ImGuiApi.ImString, ref double, double, double, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiInputTextFlags)`
+- `bool InputText(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
+- `bool InputTextWithHint(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImInputString, Brutal.ImGuiApi.ImGuiInputTextFlags, Brutal.ImGuiApi.ImGuiInputTextCallback, nint)`
+- `bool IsItemActive()`
+- `bool IsItemClicked(Brutal.ImGuiApi.ImGuiMouseButton)`
+- `bool IsItemDeactivated()`
+- `bool IsItemDeactivatedAfterEdit()`
+- `bool IsKeyDown(Brutal.ImGuiApi.ImGuiKey)`
+- `bool IsKeyPressed(Brutal.ImGuiApi.ImGuiKey, bool)`
+- `bool IsMouseClicked(Brutal.ImGuiApi.ImGuiMouseButton, bool)`
+- `bool IsMouseDown(Brutal.ImGuiApi.ImGuiMouseButton)`
+- `bool MenuItem(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, ref bool, bool)`
+- `bool RadioButton(Brutal.ImGuiApi.ImString, bool)`
+- `bool Selectable(Brutal.ImGuiApi.ImString, bool, Brutal.ImGuiApi.ImGuiSelectableFlags, ref System.Nullable`1<Brutal.Numerics.float2>)`
+- `bool SliderFloat(Brutal.ImGuiApi.ImString, ref float, float, float, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
+- `bool SliderInt(Brutal.ImGuiApi.ImString, ref int, int, int, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
+- `bool SmallButton(Brutal.ImGuiApi.ImString)`
+- `float GetCursorPosX()`
+- `float GetFontSize()`
+- `float GetFrameHeight()`
+- `void BeginDisabled(bool)`
+- `void End()`
+- `void EndCombo()`
+- `void EndDisabled()`
+- `void PopStyleColor(int)`
+- `void PopTextWrapPos()`
+- `void PushStyleColor(Brutal.ImGuiApi.ImGuiCol, ref Brutal.Numerics.float4)`
+- `void PushTextWrapPos(float)`
+- `void SameLine(float, float)`
+- `void Separator()`
+- `void SeparatorText(Brutal.ImGuiApi.ImString)`
+- `void SetClipboardText(Brutal.ImGuiApi.ImString)`
+- `void SetItemTooltip(Brutal.ImGuiApi.ImString)`
+- `void SetNextItemOpen(bool, Brutal.ImGuiApi.ImGuiCond)`
+- `void SetNextItemWidth(float)`
+- `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
+- `void SetNextWindowSizeConstraints(ref Brutal.Numerics.float2, ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiSizeCallback, Brutal.Pointers.Ptr)`
+- `void SetWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond)`
+- `void Text(Brutal.ImGuiApi.ImString)`
+- `void TextColored(ref Brutal.Numerics.float4, Brutal.ImGuiApi.ImString)`
+- `void TextDisabled(Brutal.ImGuiApi.ImString)`
+- `void TextWrapped(Brutal.ImGuiApi.ImString)`
+
+### Brutal.ImGuiApi.ImGuiCol
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiComboFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiCond
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiIOPtr
+
+- `ref Brutal.Numerics.float2 get_MouseDelta()`
+- `ref bool get_KeyCtrl()`
+- `ref bool get_KeyShift()`
+- `ref bool get_WantCaptureMouse()`
+- `ref bool get_WantTextInput()`
+- `ref float get_MouseWheel()`
+
+### Brutal.ImGuiApi.ImGuiInputTextCallback
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiInputTextFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiKey
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiMouseButton
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiSelectableFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiSizeCallback
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiSliderFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiTreeNodeFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImGuiViewportPtr
+
+- `ref Brutal.Numerics.float2 get_WorkPos()`
+- `ref Brutal.Numerics.float2 get_WorkSize()`
+
+### Brutal.ImGuiApi.ImGuiWindowFlags
+
+*referenced as a type only*
+
+### Brutal.ImGuiApi.ImInputString
+
+- `void .ctor(int, System.ReadOnlySpan`1<byte>)`
+- `void SetValue(System.ReadOnlySpan`1<char>)`
+
+### Brutal.ImGuiApi.ImString
+
+- `Brutal.ImGuiApi.ImString op_Implicit(string)`
+- `void .ctor(int, int)`
+- `void AppendFormatted(string, int, string)`
+- `void AppendFormatted<1>(!!0, int, string)`
+- `void AppendLiteral(System.ReadOnlySpan`1<char>)`
+
+## Brutal.Numerics
 
 ### Brutal.Numerics.Pack
 
@@ -47,6 +344,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 Cross(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 Unpack(ref Brutal.Numerics.float3, Float)`
+- `Brutal.Numerics.double3 get_UnitX()`
+- `Brutal.Numerics.double3 get_UnitZ()`
 - `Brutal.Numerics.double3 get_Zero()`
 - `Brutal.Numerics.double3 op_Addition(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 op_Division(Brutal.Numerics.double3, double)`
@@ -54,6 +353,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 op_Subtraction(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `Brutal.Numerics.double3 op_UnaryNegation(Brutal.Numerics.double3)`
 - `bool Equals(Brutal.Numerics.double3)`
+- `bool op_Inequality(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `double Dot(Brutal.Numerics.double3, Brutal.Numerics.double3)`
 - `double Length()`
 - `double LengthSquared()`
@@ -79,20 +379,32 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double get_M31()`
 - `double get_M32()`
 - `double get_M33()`
+- `void .ctor(double, double, double, double, double, double, double, double, double, double, double, double, double, double, double, double)`
 
 ### Brutal.Numerics.doubleQuat
 
 - `Brutal.Numerics.double3 op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.double3)`
+- `Brutal.Numerics.doubleQuat Conjugate(Brutal.Numerics.doubleQuat)`
 - `Brutal.Numerics.doubleQuat CreateFromAxisAngle(Brutal.Numerics.double3, double)`
+- `Brutal.Numerics.doubleQuat CreateFromRotationMatrix(Brutal.Numerics.double4x4)`
+- `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
+- `Brutal.Numerics.doubleQuat Normalize(Brutal.Numerics.doubleQuat)`
+- `Brutal.Numerics.doubleQuat Slerp(Brutal.Numerics.doubleQuat, Brutal.Numerics.doubleQuat, double)`
 - `Brutal.Numerics.doubleQuat get_Identity()`
 - `Brutal.Numerics.doubleQuat op_Multiply(Brutal.Numerics.doubleQuat, Brutal.Numerics.doubleQuat)`
+- `double LengthSquared()`
 - `double W`
 - `double X`
 - `double Y`
 - `double Z`
+- `void .ctor(double, double, double, double)`
 
 ### Brutal.Numerics.float2
 
+- `Brutal.Numerics.float2 op_Addition(Brutal.Numerics.float2, Brutal.Numerics.float2)`
+- `Brutal.Numerics.float2 op_Division(Brutal.Numerics.float2, float)`
+- `Brutal.Numerics.float2 op_Multiply(Brutal.Numerics.float2, float)`
+- `Brutal.Numerics.float2 op_Subtraction(Brutal.Numerics.float2, Brutal.Numerics.float2)`
 - `float X`
 - `float Y`
 - `void .ctor(float, float)`
@@ -102,6 +414,9 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.float3 Pack(ref Brutal.Numerics.double3, Float)`
 - `Brutal.Numerics.float3 get_Zero()`
 - `Brutal.Numerics.float3 op_UnaryNegation(Brutal.Numerics.float3)`
+- `float X`
+- `float Y`
+- `float Z`
 - `void .ctor(float, float, float)`
 
 ### Brutal.Numerics.float4
@@ -114,6 +429,16 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.float4x4 CreateFromQuaternion(Brutal.Numerics.floatQuat)`
 - `Brutal.Numerics.float4x4 CreateTranslation(Brutal.Numerics.float3)`
 - `Brutal.Numerics.float4x4 op_Multiply(Brutal.Numerics.float4x4, Brutal.Numerics.float4x4)`
+- `float get_M11()`
+- `float get_M12()`
+- `float get_M13()`
+- `float get_M21()`
+- `float get_M22()`
+- `float get_M23()`
+- `float get_M31()`
+- `float get_M32()`
+- `float get_M33()`
+- `void .ctor(float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float)`
 
 ### Brutal.Numerics.floatQuat
 
@@ -124,82 +449,53 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `int X`
 - `int Y`
 
-## Brutal.Glfw
+## Brutal.Render.Mesh
 
-### Brutal.GlfwApi.GlfwKey
-
-*referenced as a type only*
-
-### Brutal.GlfwApi.GlfwKeyAction
+### Brutal.Render.Mesh.IIndexBufferStorage
 
 *referenced as a type only*
 
-### Brutal.GlfwApi.GlfwModifier
+### Brutal.Render.Mesh.IVertexBufferMap`1
 
 *referenced as a type only*
 
-### Brutal.GlfwApi.GlfwWindow
+### Brutal.Render.Mesh.MeshExtensions
+
+- `void SetIndicesFromData<1>(Brutal.Render.Mesh.IIndexBufferStorage, System.Span`1<!!0>)`
+- `void SetVerticesFromData<2>(Brutal.Render.Mesh.IVertexBufferMap`1<!!0>, !!0, System.Span`1<!!1>)`
+
+## Brutal.Vulkan
+
+### Brutal.VulkanApi.CommandBuffer
 
 *referenced as a type only*
 
-## Brutal.ImGui
-
-### Brutal.ImGuiApi.ImGui
-
-- `Brutal.ImGuiApi.ImGuiIOPtr GetIO()`
-- `Brutal.ImGuiApi.ImGuiViewportPtr GetMainViewport()`
-- `Brutal.Numerics.float2 GetMousePos()`
-- `bool Begin(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiWindowFlags)`
-- `bool Begin(Brutal.ImGuiApi.ImString, ref bool, Brutal.ImGuiApi.ImGuiWindowFlags)`
-- `bool Button(Brutal.ImGuiApi.ImString, ref System.Nullable`1<Brutal.Numerics.float2>)`
-- `bool Checkbox(Brutal.ImGuiApi.ImString, ref bool)`
-- `bool IsItemActive()`
-- `bool IsItemDeactivatedAfterEdit()`
-- `bool IsMouseClicked(Brutal.ImGuiApi.ImGuiMouseButton, bool)`
-- `bool IsMouseDown(Brutal.ImGuiApi.ImGuiMouseButton)`
-- `bool MenuItem(Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImString, ref bool, bool)`
-- `bool RadioButton(Brutal.ImGuiApi.ImString, bool)`
-- `bool SliderFloat(Brutal.ImGuiApi.ImString, ref float, float, float, Brutal.ImGuiApi.ImString, Brutal.ImGuiApi.ImGuiSliderFlags)`
-- `bool SmallButton(Brutal.ImGuiApi.ImString)`
-- `void End()`
-- `void SameLine(float, float)`
-- `void SetNextWindowPos(ref Brutal.Numerics.float2, Brutal.ImGuiApi.ImGuiCond, ref System.Nullable`1<Brutal.Numerics.float2>)`
-- `void Text(Brutal.ImGuiApi.ImString)`
-- `void TextDisabled(Brutal.ImGuiApi.ImString)`
-
-### Brutal.ImGuiApi.ImGuiCond
+### Brutal.VulkanApi.VkBuffer
 
 *referenced as a type only*
 
-### Brutal.ImGuiApi.ImGuiIOPtr
-
-- `ref bool get_KeyShift()`
-- `ref bool get_WantCaptureMouse()`
-
-### Brutal.ImGuiApi.ImGuiMouseButton
+### Brutal.VulkanApi.VkCommandBufferLevel
 
 *referenced as a type only*
 
-### Brutal.ImGuiApi.ImGuiSliderFlags
+### Brutal.VulkanApi.VkDeviceExtensions
 
-*referenced as a type only*
+- `void End<1>(!!0)`
 
-### Brutal.ImGuiApi.ImGuiViewportPtr
+## Brutal.Vulkan.Abstractions
 
-- `ref Brutal.Numerics.float2 get_WorkPos()`
-- `ref Brutal.Numerics.float2 get_WorkSize()`
+### Brutal.VulkanApi.Abstractions.CommandBufferExtensions
 
-### Brutal.ImGuiApi.ImGuiWindowFlags
+- `void Begin(Brutal.VulkanApi.CommandBuffer)`
 
-*referenced as a type only*
+### Brutal.VulkanApi.Abstractions.LinearBufferPartitioner
 
-### Brutal.ImGuiApi.ImString
+- `Brutal.ByteSize get_CurrentOffset()`
+- `Brutal.ByteSize get_FreeSpace()`
 
-- `Brutal.ImGuiApi.ImString op_Implicit(string)`
-- `void .ctor(int, int)`
-- `void AppendFormatted(string, int, string)`
-- `void AppendFormatted<1>(!!0, int, string)`
-- `void AppendLiteral(System.ReadOnlySpan`1<char>)`
+### Brutal.VulkanApi.Abstractions.StagingPool
+
+- `Brutal.VulkanApi.CommandBuffer NextCommandBuffer()`
 
 ## KSA
 
@@ -207,11 +503,16 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `System.Collections.Generic.List`1<KSA.IAnimProcessor> AnimProcessors`
 
+### KSA.AssetManager`1
+
+*referenced as a type only*
+
 ### KSA.Astronomical
 
 - `Brutal.Numerics.double3 GetPositionEcl()`
 - `Brutal.Numerics.double3 GetVelocityEcl()`
 - `KSA.AtmosphereReference GetAtmosphereReference()`
+- `KSA.KeyHash get_Hash()`
 - `KSA.OrbitView OrbitView`
 - `KSA.Rendering.Water.Data.OceanReference GetOceanReference()`
 - `double get_MaxTerrainRadius()`
@@ -227,6 +528,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `KSA.PhysicalAtmosphereReference Physical`
 
+### KSA.BoundingBoxCdA
+
+*referenced as a type only*
+
 ### KSA.BoxColliderTemplate
 
 - `KSA.DistanceReference LengthX`
@@ -237,9 +542,19 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `float DisplaceEnergyPerKg`
 
-### KSA.BubbleOrigin
+### KSA.BubbleFrame
 
 *referenced as a type only*
+
+### KSA.BubbleFrameEx
+
+- `bool IsCcf(KSA.BubbleFrame)`
+
+### KSA.BubbleOrigin
+
+- `Brutal.Numerics.double3 PositionBub`
+- `KSA.BubbleFrame BubFrame`
+- `KSA.IParentBody Parent`
 
 ### KSA.Camera
 
@@ -253,12 +568,22 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.IFollowable get_Following()`
 - `KSA.Ray ScreenToEgoRay(Brutal.Numerics.float2)`
 - `float GetFieldOfView()`
+- `void SetFieldOfView(float)`
 - `void SetFollow(KSA.IFollowable, bool, bool, bool)`
+
+### KSA.CameraMode
+
+*referenced as a type only*
+
+### KSA.CameraReferenceFrame
+
+*referenced as a type only*
 
 ### KSA.Celestial
 
 - `Brutal.Numerics.double3 GetDirCcfFromLatLon(double, double)`
 - `Brutal.Numerics.double3 GetSurfacePositionEclFromCce(Brutal.Numerics.double3, bool)`
+- `Brutal.Numerics.doubleQuat GetCce2Ccf()`
 - `Brutal.Numerics.doubleQuat GetCcf2Cce()`
 - `KSA.CelestialTemplate get_BodyTemplate()`
 - `double GetLatitudeFromCce(Brutal.Numerics.double3)`
@@ -285,13 +610,30 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `KSA.AnimatedRenderable CharacterModel`
 
+### KSA.ClutterCubeCellGrid
+
+*referenced as a type only*
+
 ### KSA.ClutterEcotypePhysicalData
 
 - `KSA.ClutterEcotypeReference EcotypeReference`
+- `KSA.MultiCubeCellGrid VesselGrid`
+- `bool TryGetCellData(Cell, ref System.ReadOnlySpan`1<CollisionData>)`
+
+### KSA.ClutterEcotypePhysicalData+CollisionData
+
+- `Brutal.Numerics.float3 CcfDirDelta`
+- `uint SubCellId`
 
 ### KSA.ClutterEcotypeReference
 
 - `System.Collections.Generic.List`1<KSA.ClutterObjectTemplate> ClutterObjects`
+
+### KSA.ClutterEcotypeRenderData
+
+- `KSA.ClutterCubeCellGrid CubeCellGrid`
+- `KSA.GroundClutterPlacementData PlacementData`
+- `string get_EcotypeName()`
 
 ### KSA.ClutterObjectTemplate
 
@@ -319,11 +661,34 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.ConstraintSim
 
+- `BepuPhysics.Simulation Simulation`
+- `KSA.BubbleClutterStatics get_ClutterStatics()`
+- `KSA.ShapesUnlock UnlockShapes()`
 - `KSA.ShapesUnlock UnlockShapesBlocking()`
+- `System.Collections.Generic.Dictionary`2<BepuPhysics.BodyHandle, KSA.VehicleUpdateState> HandleToState`
+- `bool TryResetForPool()`
+- `void DetectCollisions(double)`
+- `void Simulate(double, ref KSA.SimStep)`
 
 ### KSA.CrewAssignmentWindow
 
 - `void FillSeats(System.Collections.Generic.List`1<KSA.IVASeat>, KSA.PartTree, string, bool)`
+
+### KSA.CrewDisposition
+
+*referenced as a type only*
+
+### KSA.CubeCellGrid
+
+- `Brutal.Numerics.double3 GetCellAnchorDirection(Cell)`
+- `int GridResolution`
+
+### KSA.CubeCellGrid+Cell
+
+- `int FaceId`
+- `int X`
+- `int Y`
+- `void .ctor(int, int, int)`
 
 ### KSA.CylinderColliderTemplate
 
@@ -372,6 +737,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 *referenced as a type only*
 
+### KSA.FixedController
+
+- `Brutal.Numerics.double3 CameraOffset`
+- `Brutal.Numerics.double3 CameraRotation`
+
 ### KSA.GameAudio
 
 - `KSA.Camera GetAudioCamera()`
@@ -383,8 +753,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.GameSaves
 
+- `string get_SaveFolderPath()`
 - `void LoadSaveGame(string)`
 - `void MakeUncompressedSave(string)`
+- `void Refresh()`
 
 ### KSA.GameSettings
 
@@ -420,9 +792,44 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void DrawLine(Brutal.Numerics.double3, Brutal.Numerics.double3, Brutal.Numerics.float4)`
 - `void DrawSphere(Brutal.Numerics.double3, float, Brutal.Numerics.float4)`
 
+### KSA.GltfPbrAssetRef
+
+- `KSA.GpuObjectAssetRef[] Materials`
+- `KSA.GpuTextureAssetRef[] Textures`
+- `KSA.IMeshAsset[] Meshes`
+- `int[] MaterialIndices`
+- `void .ctor(Core.AssetName)`
+
+### KSA.GltfPbrSystem`1
+
+*referenced as a type only*
+
+### KSA.GpuMaterialSystem
+
+*referenced as a type only*
+
+### KSA.GpuObjectAssetRef
+
+*referenced as a type only*
+
+### KSA.GpuTextureAssetRef
+
+*referenced as a type only*
+
+### KSA.GroundClutterPlacementData
+
+- `ExclusionData GetExclusionData(Cell)`
+- `void ExcludeCell(Cell, ExclusionData)`
+
 ### KSA.GroundClutterRenderer
 
 - `System.Collections.Generic.Dictionary`2<KSA.KeyHash, KSA.ClutterEcotypePhysicalData[]> PlanetPhysicalData`
+- `System.Collections.Generic.Dictionary`2<KSA.KeyHash, KSA.ClutterEcotypeRenderData[]> PlanetEcotypeRenderData`
+- `void QueueExclusionUpload(KSA.KeyHash, int, Cell)`
+
+### KSA.GroundClutterRenderer+ExclusionData
+
+*referenced as a type only*
 
 ### KSA.IAnimProcessor
 
@@ -448,8 +855,23 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.IGameViewport
 
+- `KSA.FixedController get_FixedController()`
+- `KSA.IVAController get_IvaController()`
 - `KSA.OrbitController get_OrbitController()`
 - `float get_IvaAudio()`
+- `void SetCameraMode(KSA.CameraMode)`
+
+### KSA.IHandleManager`1
+
+*referenced as a type only*
+
+### KSA.IMeshAsset
+
+*referenced as a type only*
+
+### KSA.IMeshRenderer`1
+
+*referenced as a type only*
 
 ### KSA.IOrbiter
 
@@ -458,6 +880,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.IParentBody
 
 - `Brutal.Numerics.double3 GetAngularVelocityCce()`
+- `Brutal.Numerics.double3 GetAngularVelocityCci()`
 - `Brutal.Numerics.doubleQuat GetCce2Cci()`
 - `Brutal.Numerics.doubleQuat GetCci2Cce()`
 - `System.Collections.Generic.List`1<KSA.IOrbiter> get_Children()`
@@ -466,6 +889,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.IPosition
 
 - `Brutal.Numerics.double3 GetPositionEcl()`
+
+### KSA.IVAController
+
+- `KSA.IVASeat Seat`
 
 ### KSA.IVASeat
 
@@ -482,6 +909,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.float2 get_Position()`
 - `KSA.Camera GetCamera()`
+- `KSA.CameraMode get_Mode()`
 - `bool get_Visible()`
 - `int get_Height()`
 - `int get_Width()`
@@ -509,12 +937,25 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.InputAction Action`
 - `KSA.Vehicle Vehicle`
 
+### KSA.InstanceData
+
+*referenced as a type only*
+
+### KSA.InterleavedVertex
+
+- `Brutal.Numerics.float2 Uv0`
+- `Brutal.Numerics.float3 Normal`
+
 ### KSA.KinematicStates
 
 - `Brutal.Numerics.double3 AngularVelocityPhys`
 - `Brutal.Numerics.double3 PositionPhys`
 - `Brutal.Numerics.double3 VelocityPhys`
 - `Brutal.Numerics.doubleQuat Body2Phys`
+
+### KSA.KittenEva
+
+- `bool BoardVehicle(KSA.Vehicle, KSA.EVADoor)`
 
 ### KSA.KittenRenderable
 
@@ -553,13 +994,47 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `BepuUtilities.Symmetric3x3 Inertia`
 
+### KSA.MeshIndirectRef
+
+- `KSA.MeshOffsetData Data`
+- `int get_IndexCount()`
+- `int get_IndexOffset()`
+- `int get_VertexOffset()`
+- `void .ctor(Core.AssetName, KSA.MeshOffsetData, int, KSA.IHandleManager`1<int>)`
+- `void set_BoundingRadius(float)`
+
+### KSA.MeshIndirectSystem`1
+
+*referenced as a type only*
+
+### KSA.MeshOffsetData
+
+- `Brutal.ElementCount IndexCount`
+- `Brutal.ElementCount IndexOffset`
+- `Brutal.ElementCount VertexCount`
+- `Brutal.ElementCount VertexOffset`
+
+### KSA.MeshRenderTechnique
+
+*referenced as a type only*
+
 ### KSA.Mod
 
+- `string get_Id()`
+
+### KSA.ModEntry
+
+- `bool Enabled`
 - `string get_Id()`
 
 ### KSA.ModLibrary
 
 - `!!0 Get<1>(string)`
+- `KSA.ModManifest Manifest`
+
+### KSA.ModManifest
+
+- `System.Collections.Generic.List`1<KSA.ModEntry> get_Mods()`
 
 ### KSA.ModuleBase
 
@@ -568,6 +1043,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.ModuleList
 
 - `System.Span`1<!!0> Get<1>()`
+
+### KSA.MultiCubeCellGrid
+
+- `System.Collections.Generic.HashSet`1<Cell> loadedCells`
 
 ### KSA.Orbit
 
@@ -580,24 +1059,38 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.OrbitView
 
+- `KSA.CameraReferenceFrame ReferenceFrame`
 - `double Azimuth`
 - `double DistancePower`
 - `double Elevation`
 
 ### KSA.Part
 
+- `Brutal.Numerics.double3 get_PositionParentAsmb()`
 - `Brutal.Numerics.double3 get_PositionVehicleAsmb()`
+- `Brutal.Numerics.double3 get_Scale()`
 - `Brutal.Numerics.doubleQuat get_Asmb2VehicleAsmb()`
 - `KSA.ModuleList SubtreeModules`
 - `KSA.Part get_FullPart()`
+- `KSA.PartTemplate Template`
+- `KSA.PartTree CreateOwnTree()`
 - `KSA.PowerConsumer LightSwitch`
 - `System.ReadOnlySpan`1<KSA.Part> get_SubParts()`
 - `bool IsLightSwitchedOff()`
 - `string get_Id()`
+- `void .ctor(string, KSA.PartTemplate, KSA.PartInstance, KSA.Part)`
 - `void ResetCachedPosMatrixValues()`
 - `void set_Asmb2ParentAsmb(Brutal.Numerics.doubleQuat)`
 - `void set_PositionParentAsmb(Brutal.Numerics.double3)`
 - `void set_Scale(Brutal.Numerics.double3)`
+
+### KSA.PartInstance
+
+*referenced as a type only*
+
+### KSA.PartTemplate
+
+*referenced as a type only*
 
 ### KSA.PartTree
 
@@ -605,6 +1098,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.Part get_Root()`
 - `System.ReadOnlySpan`1<KSA.Part> get_Parts()`
 - `void RecomputeAllDerivedData()`
+- `void ReinitializeDerivedValues()`
 - `void UpdateRenderData(ref Brutal.Numerics.double4x4, bool, KSA.IViewport, int)`
 
 ### KSA.PartTreeRenderData
@@ -627,6 +1121,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `ref KSA.BubbleOrigin Origin`
 - `ref KSA.KinematicStates Kinematic`
+- `ref KSA.VehicleProperties Props`
 - `void GetStatesCcf(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void GetStatesCci(ref KSA.BubbleOrigin, ref KSA.KinematicStates, ref Brutal.Numerics.double3, ref Brutal.Numerics.double3, ref Brutal.Numerics.doubleQuat)`
 - `void UpdateFromAnalytic(KSA.Orbit, ref KSA.StateVectors, Brutal.Numerics.doubleQuat, Brutal.Numerics.double3, KSA.Situation)`
@@ -652,20 +1147,28 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.PlanetRenderer GetPlanetRenderer()`
 - `KSA.Program get_Instance()`
 - `KSA.Rendering.Lighting.ILightSystem LightSystem`
+- `KSA.SuperMeshRenderSystem SuperMeshRenderSystem`
 - `KSA.Vehicle get_ControlledVehicle()`
 - `KSA.VehicleEditor Editor`
 - `System.ReadOnlySpan`1<KSA.Vehicle> get_VehiclesInFrame()`
+- `bool get_DrawUI()`
 - `double GetPlayerDeltaTime()`
 - `void set_ControlledVehicle(KSA.Vehicle)`
+- `void set_DrawUI(bool)`
 
 ### KSA.QuaternionEx
 
+- `Brutal.Numerics.doubleQuat AngleAxis(double, Brutal.Numerics.double3)`
 - `Brutal.Numerics.doubleQuat CreateFromXyzRadians(Brutal.Numerics.double3)`
 - `Brutal.Numerics.doubleQuat Inverse(Brutal.Numerics.doubleQuat)`
 
 ### KSA.Ray
 
 - `Brutal.Numerics.double3 Direction`
+
+### KSA.ReadOnlyPhysicsStates
+
+- `ref KSA.BubbleOrigin Origin`
 
 ### KSA.Rendering.Lighting.ELightFlags
 
@@ -697,12 +1200,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `void Request(int, string)`
 
+### KSA.SerializedId
+
+- `string get_Id()`
+
 ### KSA.ShapesUnlock
 
-*referenced as a type only*
+- `BepuPhysics.Collidables.Shapes get_Shapes()`
 
 ### KSA.SimSpeed
 
+- `double Value`
 - `void .ctor(double)`
 
 ### KSA.SimStep
@@ -740,6 +1248,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 PositionCci`
 - `Brutal.Numerics.double3 VelocityCci`
 
+### KSA.StaticMeshRenderable
+
+- `Brutal.Numerics.float4x4 Transform`
+- `void .ctor(KSA.IMeshRenderer`1<KSA.InstanceData>, Core.AssetName, KSA.IMeshRenderer`1<KSA.InstanceData>, bool)`
+- `void Draw(RenderCore.Systems.ViewHandle)`
+
 ### KSA.StaticObject
 
 - `KSA.StaticObjectTemplate Template`
@@ -759,9 +1273,24 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `System.Collections.Generic.List`1<Template> Colliders`
 
+### KSA.StaticsShouldntAwakenBodies
+
+- `ref KSA.StaticsShouldntAwakenBodies get_Shared()`
+
 ### KSA.StellarBody
 
 *referenced as a type only*
+
+### KSA.SuperMeshRenderSystem
+
+- `KSA.GltfPbrSystem`1<KSA.InterleavedVertex> GltfSystem`
+- `KSA.GpuMaterialSystem MaterialSystem`
+- `KSA.MeshIndirectSystem`1<KSA.InterleavedVertex> MeshIndirectSystem`
+- `KSA.MeshRenderTechnique MeshRendererStaticPbr`
+- `KSA.MeshRenderTechnique MeshRendererStaticPrePass`
+- `RenderCore.IVulkanContext DeviceCtx`
+- `RenderCore.Systems.ViewHandle ViewForViewport(KSA.IViewport)`
+- `void ClearBuckets(KSA.IViewport)`
 
 ### KSA.ThrusterMapFlags
 
@@ -783,11 +1312,16 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.SimStep GetLastSimStep()`
 - `KSA.UniverseTime GetElapsedTime()`
 - `bool IsPaused()`
+- `bool get_IsAutoWarpActive()`
+- `double GetAchivedSpeedFraction()`
 - `double GetElapsedSeconds()`
 - `double GetSimulationSpeed()`
 - `double get_SimulationSpeed()`
+- `void AutoWarpStop(bool)`
+- `void DestroyVehicle(KSA.Vehicle, KSA.CrewDisposition)`
 - `void DestroyVehicleFromEvent(KSA.Vehicle, KSA.VehicleDestructionEvent)`
 - `void SetSimulationSpeed(KSA.SimSpeed)`
+- `void SetSimulationSpeed(double, bool)`
 
 ### KSA.UniverseTime
 
@@ -812,6 +1346,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.Situation get_Situation()`
 - `KSA.ThrusterMapFlags GetThrusterFlags()`
 - `KSA.Vehicle CreateVehicle(KSA.CelestialSystem, Brutal.Numerics.doubleQuat, Brutal.Numerics.double3, KSA.IParentBody, string, KSA.Part, KSA.Orbit)`
+- `System.Nullable`1<Brutal.Numerics.doubleQuat> GetEnu2Cce()`
 - `System.ReadOnlySpan`1<KSA.IVASeat> get_Crew()`
 - `bool AreAllEnginesInactive()`
 - `bool GetSprintInput()`
@@ -838,6 +1373,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 *referenced as a type only*
 
+### KSA.VehicleProperties
+
+- `KSA.BoundingBoxCdA AerodynamicCdABody`
+- `float TotalSurfaceArea`
+- `void RecomputeAerodynamicProperties()`
+
 ### KSA.VehicleSave
 
 - `KSA.PartTree Load(KSA.IViewport)`
@@ -854,6 +1395,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.VehicleUpdateState
 
+- `KSA.ReadOnlyPhysicsStates GetReadOnlyStates()`
 - `KSA.Vehicle ReadOnlyVehicle`
 
 ### KSA.ViewportEx

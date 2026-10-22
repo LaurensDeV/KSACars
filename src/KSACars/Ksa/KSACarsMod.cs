@@ -21,6 +21,7 @@ public sealed class KSACarsMod
     private readonly BuggySound _buggySound = new();
     private readonly RocketSound _rocketSound = new();
     private readonly CraftMover _mover = new();
+    private readonly RoadEditor _roadEditor = new();
     private readonly FrameLatch _frame = new();
     private Bridge? _bridge;
 
@@ -49,6 +50,11 @@ public sealed class KSACarsMod
         BoostHook.Install();
         HudHook.Install();
         RailsHook.Install();
+        RoadDrawHook.Install();
+        RaceHudHook.Install();
+        WarpHook.Install();
+        ControlHook.Install();
+        RoadColliders.Install();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -66,8 +72,20 @@ public sealed class KSACarsMod
             // The fallback, and a no-op on every frame the GUI pass ran. See StepOnce.
             StepOnce();
 
+            // On every install: a player's opponents are laps too.
+            Laps.Update(dtPlayer);
+
             // After the step, so a command sees this frame's world.
             _bridge?.Update(dtPlayer, KsaWorld.InFlightScene && !KsaWorld.IsPaused ? KsaWorld.SimStepSeconds : 0.0);
+
+            // Here and not from the render hook: writing a mesh waits for the graphics card.
+            Courses.Update();
+            Roads.Update();
+            RacingLine.Update();
+            StartLine.Update();
+            Opponents.Update();
+            Multiplayer.Update();
+            RaceHud.Update();
         }
         catch (Exception e)
         {
@@ -97,7 +115,11 @@ public sealed class KSACarsMod
                 return;
             }
 
-            CarPanel.Draw(_mover);
+            CarPanel.Draw(_mover, _roadEditor);
+            NameTags.Draw();
+            StartLights.Draw();
+            ChaseCamera.DrawNote();
+            _roadEditor.Update();
             // After the panel, so a click on its checkbox is the panel's and not the world's; and
             // here rather than in the frame hook, which is past the point gizmos are drawn from.
             _mover.Update();
@@ -120,11 +142,15 @@ public sealed class KSACarsMod
             return;
         }
 
+        GamepadInput.Poll();
+        Buggies.BrakeHeld = KsaWorld.BrakeKeyDown;
+
         // Every frame rather than on the clock: the springs step inside the engine's own physics
         // window, so this only has to find the cars and show where their wheels ended up.
         KsaWorld.InvalidateCensus();
         _buggies.Sync(KsaWorld.Vehicles);
         _buggies.Pose();
+        ChaseCamera.Update();
         _buggySound.Update(_buggies, 1f);
         _rocketSound.Update(_buggies);
     }
@@ -132,6 +158,9 @@ public sealed class KSACarsMod
     [StarMapUnload]
     public void Unload()
     {
+        // Says goodbye to the other games and closes the port on the router.
+        Multiplayer.Stop();
+
         // Audio channels belong to the game and nothing else gives them back.
         _buggySound.StopAll();
         _rocketSound.StopAll();
@@ -145,6 +174,11 @@ public sealed class KSACarsMod
         BoostHook.Remove();
         HudHook.Remove();
         RailsHook.Remove();
+        RoadDrawHook.Remove();
+        RaceHudHook.Remove();
+        WarpHook.Remove();
+        ControlHook.Remove();
+        RoadColliders.Remove();
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
@@ -171,6 +205,10 @@ public sealed class KSACarsMod
         BoostHook.Remove();
         HudHook.Remove();
         RailsHook.Remove();
+        RoadDrawHook.Remove();
+        RaceHudHook.Remove();
+        WarpHook.Remove();
+        ControlHook.Remove();
         Log.Error("too many faults - cars disabled for this session");
     }
 }

@@ -37,4 +37,31 @@ public static class Righting
 
         return new RightingMove(turn, double.IsFinite(lift) ? lift : 0.0);
     }
+
+    /// <summary>
+    /// The turn, in the car's own frame, that stands it on a surface facing a given way: its
+    /// <paramref name="up"/> onto <paramref name="surfaceUp"/> and its <paramref name="forward"/> onto
+    /// <paramref name="ahead"/>, all four in that frame.
+    /// </summary>
+    public static doubleQuat Facing(double3 up, double3 forward, double3 surfaceUp, double3 ahead)
+    {
+        double3 normal = Vec.Unit(surfaceUp);
+        doubleQuat stand = Vec.Dot(Vec.Unit(up), normal) < -0.999
+            ? doubleQuat.CreateFromAxisAngle(Vec.Unit(forward), Math.PI)
+            : Vec.RotationFromTo(up, normal);
+        double3 now = Vec.RejectFrom(stand * forward, normal), wanted = Vec.RejectFrom(ahead, normal);
+        double swing = Math.Atan2(Vec.Dot(Vec.Cross(now, wanted), normal), Vec.Dot(now, wanted));
+        return doubleQuat.CreateFromAxisAngle(normal, swing) * stand;
+    }
+
+    /// <summary>How far above a surface the centre of mass is with every tyre just clear of it, the car standing square on it.</summary>
+    public static double StandingHeight(ReadOnlySpan<BuggyCorner> corners, ReadOnlySpan<double3> hubs, double3 up)
+    {
+        double height = 0.0;
+        for (int i = 0; i < corners.Length && i < hubs.Length; i++)
+        {
+            height = Math.Max(height, corners[i].Radius + Clearance - Vec.Dot(hubs[i], Vec.Unit(up)));
+        }
+        return height;
+    }
 }

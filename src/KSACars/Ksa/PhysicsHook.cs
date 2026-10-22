@@ -78,6 +78,8 @@ internal static class PhysicsHook
     {
         try
         {
+            // Once a window, whichever craft is prepared first: it catches what it throws itself.
+            Roads.SyncClutter();
             Buggies.Physics(__instance, simStep.DeltaTime);
         }
         catch (Exception e)

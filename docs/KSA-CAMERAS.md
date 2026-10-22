@@ -20,7 +20,7 @@ moved with it. A citation is still a pointer rather than a proof: check before r
 Grounded **only** in the decompiled engine at
 `../ksa-game-assemblies/current/src`.
 All citations are relative to that root. Nothing here is taken from any mod's own code or docs.
-Build: **2026.10.10.5554**. Line numbers move on every KSA update, so a citation that does not land
+Build: **2026.10.19.5638**. Line numbers move on every KSA update, so a citation that does not land
 on what it claims means this file is behind the corpus, not that the corpus is wrong.
 
 > **Its citations and its viewport sections are against 2026.8.22.5348, and section 2 in particular
@@ -37,6 +37,16 @@ on what it claims means this file is behind the corpus, not that the corpus is w
 > 2026.10.10.5554 changed no camera or controller file; `Program.cs` gained two profiler calls, which moves
 > its citations past line 2197 by one or two lines and leaves `Program.OnFrame`'s order alone.
 > Rechecked, citations not re-derived.
+> 2026.10.13.5602 changed one controller line: `OrbitController`'s chase frame is `Vehicle.GetHelm2Cce`,
+> the same rotation `GetCtrl2Cce` was, every `Ctrl` member of `Vehicle` being `Helm` now. A viewport
+> has a new state flag, `InsideVehicle`, set through `IViewport.SetInsideVehicle`, and
+> `ViewportEx.RendersInterior` is true in the IVA mode or with it; `PartTreeRenderData` asks that where
+> it asked for the IVA mode. `Program.OnFrame`'s order is as it was, its citations past line 2353 moved on by 79.
+> Rechecked, citations not re-derived.
+> 2026.10.19.5638 changed the camera and controller files in the decompiler's style alone. A save whose
+> followed craft is missing now follows and controls the first vehicle in the system, or the home body,
+> where it followed nothing (`Camera.cs:819`), and a viewport waits for its size to hold for 10 frames
+> before it resizes. `Program.OnFrame`'s order is as it was. Rechecked, citations not re-derived.
 > 2026.9.4.5400 replaced the `Viewport` class with `IViewport` / `ViewportBase` /
 > `GameViewport` and moved the list into `ViewportRegistry` — so every `Viewport.cs:N` citation
 > below points at a file that no longer exists, and the claims naming `Program.Viewports`,
@@ -455,7 +465,7 @@ stay attached to a rotating body a mod must still rewrite both **every frame**, 
 
 1. **`CameraRotation` defaults to `double3.Zero`.** `Cross(zero, up)` is zero,
    `.Normalized()` → `Double3Ex.Normalized` (`KSA/KSA/Double3Ex.cs:18-21`) → `double3.Normalize`
-   (`Brutal.Core.Numerics/Brutal.Numerics/double3.cs:722-727`), which **throws `DivideByZeroException`
+   (`Brutal.Numerics/Brutal.Numerics/double3.cs:746-755`), which **throws `DivideByZeroException`
    on a zero-length vector**. It does not produce NaN. With no try/catch in the frame loop (§1) this is
    a hard crash on the first frame after `SetCameraMode(Fixed)` with a non-null `Following`. Set
    `CameraRotation` **before** setting the mode.
@@ -703,7 +713,7 @@ Ordered by how easily a mod trips it. Reminder: **there is no try/catch in the f
 
 | # | Where | Cause | Exception |
 |---|---|---|---|
-| 1 | `FixedController.cs:40` | `CameraRotation` left at `double3.Zero` | `DivideByZeroException` via `Double3Ex.cs:20` → `double3.cs:722-727` |
+| 1 | `FixedController.cs:40` | `CameraRotation` left at `double3.Zero` | `DivideByZeroException` via `Double3Ex.cs:20` → `double3.cs:750-751` |
 | 2 | `FixedController.cs:40`, `:42` | `CameraRotation` parallel to `frame2Ecl`'s +Z (zenith/nadir, or Ecl +Z under `Stars`) | `DivideByZeroException` |
 | 3 | `Camera.cs:200-202` (`LookAtRotation`) | zero forward, or forward parallel to the supplied up | `DivideByZeroException` |
 | 4 | `FixedController.cs:58` | `Surface` frame on a vehicle at a parent's centre or exactly on its rotation axis | `InvalidOperationException` (`Nullable.Value`) |

@@ -18,6 +18,10 @@ namespace KSACars;
 /// kinematic state sixty times a second, with its velocity and orbit rebuilt on every one. What is
 /// held is the <em>choice</em>: the craft stays where it is, the ground under the cursor is marked,
 /// and the second click moves it once.</para>
+///
+/// <para>A car set down on a laid road is stood on its asphalt: KSA's placement knows the terrain
+/// alone, which under a raised road is the ground beneath the deck. It is placed as any craft is and
+/// then, once it has arrived, stood on the road by <see cref="Buggies.Stand"/>.</para>
 /// </summary>
 internal sealed class CraftMover
 {
@@ -43,9 +47,18 @@ internal sealed class CraftMover
     private readonly List<float2> _screen = [];
     private readonly List<float> _reach = [];
 
+    // As near as this across the ground a craft has arrived where it was sent, or needs no sending.
+    private const double ArrivedM = 30.0;
+
+    // How long a car sent to a road is waited for, in frames, before it is left where KSA put it.
+    private const int StandWithinFrames = 600;
+
     private Vehicle? _held;
     private Vehicle? _hovered;
     private int _trace;
+
+    // A car on its way to a road, to be stood on the asphalt once KSA has placed it.
+    private (Vehicle Craft, Celestial Body, double3 AtCcf, double3 UpCcf, int Frames)? _toStand;
 
     /// <summary>Whether clicks on the world pick craft up and set them down. Off, the mouse is not read.</summary>
     public bool Enabled { get; set; }
@@ -67,6 +80,8 @@ internal sealed class CraftMover
     /// </summary>
     public void Update()
     {
+        StandArrived();
+
         if (!Enabled)
         {
             Release();
@@ -113,7 +128,8 @@ internal sealed class CraftMover
     private Vehicle? UnderCursor()
     {
         _craft.Clear();
-        _craft.AddRange(KsaWorld.Vehicles);
+        // Another racer's car is theirs to move.
+        _craft.AddRange(KsaWorld.Vehicles.Where(v => !Multiplayer.IsOthers(v)));
         if (_craft.Count == 0) return null;
 
         _screen.Clear();
@@ -167,7 +183,7 @@ internal sealed class CraftMover
             return;
         }
 
-        if (!TryTarget(out double3 target, out double lat, out double lon, out string body))
+        if (!TryTarget(out double3 target, out double lat, out double lon, out string body, out RoadSpot? road))
         {
             Log.Info("nothing under the cursor to set it down on");
             return;
@@ -182,13 +198,60 @@ internal sealed class CraftMover
             return;
         }
 
-        if (KsaWorld.TryPlaceOnSurface(craft, body, lat, lon))
+        // A car a few metres from where it is wanted on a road is stood there as it is: placed first,
+        // it would be stood before KSA had moved it and then moved off the road again.
+        bool car = road is not null && Buggies.Of(craft) is not null;
+        if (car && Across(craft, road!.Value) < ArrivedM)
+        {
+            _toStand = (craft, road.Value.Body, road.Value.AtCcf, road.Value.UpCcf, StandWithinFrames);
+        }
+        else if (KsaWorld.TryPlaceOnSurface(craft, body, lat, lon))
         {
             Log.Info($"placed {KsaWorld.DisplayName(craft)} on {body} at "
-                     + $"{lat:F4}, {lon:F4}");
+                     + $"{lat:F4}, {lon:F4}{(car ? ", to be stood on the road there" : "")}");
+            if (car) _toStand = (craft, road!.Value.Body, road.Value.AtCcf, road.Value.UpCcf, StandWithinFrames);
         }
 
         _held = null;
+    }
+
+    // A place on a laid road's asphalt: the body, the place in its own frame and the way the asphalt faces.
+    private readonly record struct RoadSpot(Celestial Body, double3 AtCcf, double3 UpCcf);
+
+    // How far across the ground a craft is from a place on a road, whatever their heights.
+    private static double Across(Vehicle craft, RoadSpot spot)
+    {
+        if (!KsaWorld.TryPlaceCcf(craft, spot.Body, out double3 at)) return double.MaxValue;
+        return Vec.Len(Vec.Cross(Vec.Unit(at), Vec.Unit(spot.AtCcf))) * Vec.Len(spot.AtCcf);
+    }
+
+    // Stands the car that was sent to a road on it, once KSA has put it on the ground there.
+    private void StandArrived()
+    {
+        if (_toStand is not { } s) return;
+
+        if (!KsaWorld.IsAlive(s.Craft) || Buggies.Of(s.Craft) is not { } car || s.Frames <= 0)
+        {
+            _toStand = null;
+            return;
+        }
+
+        RoadSpot spot = new(s.Body, s.AtCcf, s.UpCcf);
+        if (Across(s.Craft, spot) >= ArrivedM)
+        {
+            _toStand = s with { Frames = s.Frames - 1 };
+            return;
+        }
+
+        // Facing as it was, as near as the road's own lean allows.
+        double3 ahead = Vec.RejectFrom(car.AheadCcf, s.UpCcf);
+        if (Vec.Len(ahead) < 0.1) ahead = Vec.RejectFrom(Vec.Cross(s.UpCcf, new double3(0, 0, 1)), s.UpCcf);
+        if (Vec.Len(ahead) < 0.1) ahead = Vec.RejectFrom(new double3(1, 0, 0), s.UpCcf);
+        if (Buggies.Stand(s.Craft, s.AtCcf, s.UpCcf, Vec.Unit(ahead)))
+        {
+            Log.Info($"standing {KsaWorld.DisplayName(s.Craft)} on the road it was set down on");
+        }
+        _toStand = null;
     }
 
     // Where the next click would put the held craft.
@@ -198,14 +261,23 @@ internal sealed class CraftMover
     // taking the ray lands a vehicle-height's worth of parallax past it. Aiming at the held craft
     // itself therefore leaves it exactly where it is, which is what clicking it twice should do.
     private bool TryTarget(out double3 groundEcl, out double latitudeDeg, out double longitudeDeg,
-                           out string bodyName)
+                           out string bodyName, out RoadSpot? road)
     {
+        road = null;
         // The hover is already worked out this frame; asking again would project every craft
         // twice more per frame for the same answer.
         if (_hovered is { } over
             && KsaWorld.TryCraftSurfacePoint(over, out groundEcl, out latitudeDeg,
                                              out longitudeDeg, out bodyName))
         {
+            return true;
+        }
+
+        if (KsaWorld.TryCursorRoadPoint(out groundEcl, out latitudeDeg, out longitudeDeg, out Celestial? on,
+                                        out double3 atCcf, out double3 upCcf) && on is not null)
+        {
+            bodyName = on.Id ?? string.Empty;
+            road = new RoadSpot(on, atCcf, upCcf);
             return true;
         }
 
@@ -240,7 +312,7 @@ internal sealed class CraftMover
         // marker sitting over the craft it is marking.
         DrawFootprint(_held, heldEcl, HeldColour);
 
-        if (!TryTarget(out double3 groundEcl, out _, out _, out _)) return;
+        if (!TryTarget(out double3 groundEcl, out _, out _, out _, out _)) return;
 
         // Where it would land: a ring on the ground, a short stalk so the spot reads against
         // sloping terrain, and the line from the craft to it.
