@@ -178,6 +178,18 @@ public class MultiplayerTests
     }
 
     [Fact]
+    public void AMachinesTailscaleAddressIsFoundAmongItsOwn()
+    {
+        IPAddress[] own = [IPAddress.Parse("192.168.129.1"), IPAddress.Parse("169.254.73.205"), IPAddress.Parse("100.101.102.103"), IPAddress.Parse("127.0.0.1")];
+        Assert.Equal(IPAddress.Parse("100.101.102.103"), JoinCode.TailscaleOf(own));
+        Assert.Null(JoinCode.TailscaleOf([IPAddress.Parse("192.168.129.1"), IPAddress.Parse("100.63.255.255"), IPAddress.Parse("100.128.0.1")]));
+        Assert.True(JoinCode.IsTailscale(IPAddress.Parse("100.64.0.1")));
+        Assert.True(JoinCode.IsTailscale(IPAddress.Parse("100.127.255.254")));
+        string code = JoinCode.Of(new IPEndPoint(IPAddress.Parse("100.101.102.103"), 50000));
+        Assert.Equal(("100.101.102.103", 50000), JoinCode.Read(code, out _));
+    }
+
+    [Fact]
     public void ACodeReadsBackAsTheAddressItWasMadeOf()
     {
         foreach (string at in (string[])["203.0.113.7:50000", "1.2.3.4:1", "255.255.255.255:65535", "86.12.200.3:61234"])

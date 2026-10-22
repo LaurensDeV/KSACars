@@ -86,12 +86,23 @@ internal static class JoinCode
         return (address.ToString(), p);
     }
 
+    /// <summary>Whether an address is in the range Tailscale hands its machines, 100.64.0.0/10.</summary>
+    public static bool IsTailscale(IPAddress address)
+    {
+        if (address.AddressFamily != AddressFamily.InterNetwork) return false;
+        byte[] b = address.GetAddressBytes();
+        return b[0] == 100 && b[1] is >= 64 and <= 127;
+    }
+
+    /// <summary>The first of a machine's own addresses that is a Tailscale one, or null.</summary>
+    public static IPAddress? TailscaleOf(IEnumerable<IPAddress> own) => own.FirstOrDefault(IsTailscale);
+
     /// <summary>Whether an address is one only its own network reaches, for saying a code will not work from outside.</summary>
     public static bool IsPrivate(IPAddress address)
     {
         if (address.AddressFamily != AddressFamily.InterNetwork) return IPAddress.IsLoopback(address);
         byte[] b = address.GetAddressBytes();
         return b[0] == 10 || b[0] == 127 || (b[0] == 172 && b[1] is >= 16 and <= 31) || (b[0] == 192 && b[1] == 168)
-               || (b[0] == 169 && b[1] == 254) || (b[0] == 100 && b[1] is >= 64 and <= 127);
+               || (b[0] == 169 && b[1] == 254) || IsTailscale(address);
     }
 }

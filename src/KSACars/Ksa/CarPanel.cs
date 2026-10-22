@@ -278,6 +278,11 @@ internal static class CarPanel
         Step(2, someone, "Send your code to your friends:");
         if (Multiplayer.HostCode is { } code) CodeLine("##host", code.Code);
         else Note("    finding your code...");
+        if (Multiplayer.TailscaleCode is { } tailscale)
+        {
+            Note("Friends on your Tailscale can use this one:");
+            CodeLine("##tailscale", tailscale);
+        }
         Streaming();
         Step(3, someone, "Wait for them to join.");
         Note("Someone can't get in? Paste their code:");

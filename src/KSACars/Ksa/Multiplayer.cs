@@ -181,6 +181,32 @@ internal static partial class Multiplayer
     /// <summary>The code a guest gives the host to be let in by, once a STUN server has said where it is seen.</summary>
     public static string? GuestCode => _session is { Is: NetSession.Role.Client, Public: { } seen } ? JoinCode.Of(seen) : null;
 
+    private static (long AtMs, IPAddress? Address) _tailscale;
+
+    /// <summary>The host's code on its Tailscale network, where this machine is on one: reached by any machine of that network, whatever the routers.</summary>
+    public static string? TailscaleCode
+    {
+        get
+        {
+            if (_session is not { Is: NetSession.Role.Host } s) return null;
+            long now = Environment.TickCount64;
+            // Asking every interface is slow for a frame, and Tailscale may be switched on while the panel is open.
+            if (_tailscale.AtMs == 0 || now - _tailscale.AtMs > 5000)
+            {
+                IPAddress? found = null;
+                try
+                {
+                    found = JoinCode.TailscaleOf(System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                        .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up)
+                        .SelectMany(n => n.GetIPProperties().UnicastAddresses).Select(a => a.Address));
+                }
+                catch (System.Net.NetworkInformation.NetworkInformationException) { }
+                _tailscale = (now, found);
+            }
+            return _tailscale.Address is { } at ? JoinCode.Of(new IPEndPoint(at, s.Port)) : null;
+        }
+    }
+
     /// <summary>This machine's address and the port on its own network, for a guest in the same house.</summary>
     public static string? LocalAddress
     {
@@ -874,7 +900,7 @@ internal static partial class Multiplayer
         Dictionary<string, object?> r = new()
         {
             ["active"] = Active, ["hosting"] = Hosting, ["joined"] = Joined, ["me"] = (int)Me, ["port"] = _session?.Port,
-            ["code"] = HostCode?.Code, ["guest_code"] = GuestCode, ["local"] = LocalAddress, ["router"] = RouterSays,
+            ["code"] = HostCode?.Code, ["tailscale_code"] = TailscaleCode, ["guest_code"] = GuestCode, ["local"] = LocalAddress, ["router"] = RouterSays,
             ["public"] = _session?.Public?.ToString(), ["host_offset_s"] = _session is { } s ? Math.Round(s.HostOffset, 4) : null,
             ["on_the_course"] = OnTheCourse, ["trouble"] = Trouble, ["world"] = WorldSays, ["countdown_s"] = Countdown is { } c ? Math.Round(c, 2) : null,
             ["held"] = _held, ["held_speed"] = HeldSpeed, ["speed"] = Universe.SimulationSpeed, ["universe_s"] = Math.Round(Universe.GetElapsedSeconds(), 3),
