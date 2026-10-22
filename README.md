@@ -103,7 +103,8 @@ A gamepad drives a car too, beside the keys, with the triggers and the stick as 
 | D-pad up | headlights: off, dipped, main beam |
 | Back (View, Select) | camera: close, medium, far, free |
 
-With a gamepad the camera follows behind the car; the panel's **Camera** buttons choose the same four as
+**Home** and **End** raise and lower the camera, for anyone without a mouse or a gamepad's right stick. With a
+gamepad the camera follows behind the car; the panel's **Camera** buttons choose the same four as
 Back, and **Free** gives KSA's own camera back. An Xbox pad needs nothing. A Steam Controller is read by the mod itself, through SDL, and wants Steam
 closed: while Steam runs it also turns the controller's buttons into keys, so Start pauses the game.
 

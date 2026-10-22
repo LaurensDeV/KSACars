@@ -31,6 +31,7 @@ internal static class ChaseCamera
     private static Camera? _camera;
     private static float _fovDeg, _fovWritten;
     private static double _distance, _distanceWritten;
+    private static double _elevationWritten = double.NaN;
 
     /// <summary>The mode chosen, from the panel or the gamepad's Back; with none the view chases at medium while a gamepad is being read.</summary>
     public static ChaseMode? Chosen { get; set; }
@@ -100,6 +101,7 @@ internal static class ChaseCamera
             }
 
             (double lookX, double lookY) = GamepadInput.Look;
+            lookY = Math.Clamp(lookY + KsaWorld.TiltKeys, -1.0, 1.0);
             if (!On)
             {
                 Release();
@@ -126,6 +128,12 @@ internal static class ChaseCamera
                 _distance = ChaseView.DistancePower(Mode);
             }
             view.ReferenceFrame = CameraReferenceFrame.Surface;
+            // A tilt a mouse dragged since the last frame is kept and not written over. Only a drag: KSA also turns the view
+            // by a stick it can see, which this has already counted.
+            if (KsaWorld.MouseHeld && double.IsFinite(_elevationWritten) && Math.Abs(view.Elevation - _elevationWritten) > 1e-6)
+            {
+                _tilt = Math.Clamp(_tilt + (view.Elevation - _elevationWritten), ChaseView.HighestRad, ChaseView.LowestRad);
+            }
 
             if (craft.GetEnu2Cce() is not { } enu2Cce) return;
             // The frame's axes turned as KSA's controller turns them, so the angle's sense is KSA's own.
@@ -155,7 +163,7 @@ internal static class ChaseCamera
             if (!KsaWorld.IsPaused) _clock += dt;
             (double shakeAzimuth, double shakeElevation) = ChaseView.Shake(_speed, _clock);
             view.Azimuth = _azimuth + shakeAzimuth;
-            view.Elevation = Math.Clamp(_tilt + _slope + (ChaseView.MostDropRad * _speed) + shakeElevation, -Math.PI / 2.0, Math.PI / 2.0);
+            view.Elevation = _elevationWritten = Math.Clamp(_tilt + _slope + (ChaseView.MostDropRad * _speed) + shakeElevation, -Math.PI / 2.0, Math.PI / 2.0);
 
             if (Math.Abs(FovDeg(camera) - _fovWritten) > 0.05f) _fovDeg = FovDeg(camera);
             _fovWritten = Math.Min(_fovDeg + (float)(ChaseView.MostFovDeg * _speed), Camera.MAXIMUM_FOV);
@@ -183,6 +191,6 @@ internal static class ChaseCamera
             view.DistancePower = _distance;
             _camera?.SetFieldOfView(_fovDeg);
         }
-        (_view, _camera) = (null, null);
+        (_view, _camera, _elevationWritten) = (null, null, double.NaN);
     }
 }

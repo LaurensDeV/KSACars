@@ -62,6 +62,7 @@ none of it has been seen as **KSACars** yet:
 - [x] The four camera modes chosen as the gamepad's Back chooses them (same games, bridge `drive` with `camera`): close,
       medium and far at 1.5, 2.2 and 3.2 of the car's radius, free handing KSA's camera back, the panel's Camera
       buttons following; and a race start putting both racers, on free, into the medium chase
+- [ ] Home and End raising and lowering the chase camera and KSA's own, and a mouse drag up or down kept by the chase
 - [ ] Back itself pressed on a Steam Controller and on an Xbox pad, and the "Camera:" note it shows
 - [x] A code hidden behind the eye button until it is pressed, and shown after (same games)
 - [x] Name tags over the other racer's car, with the interface up and hidden; the countdown and the F2 note at

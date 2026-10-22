@@ -635,6 +635,34 @@ internal static partial class KsaWorld
         catch { return Vec.Zero; }
     }
 
+    /// <summary>Whether any mouse button is held, as it is while KSA's camera is dragged.</summary>
+    public static bool MouseHeld
+    {
+        get
+        {
+            try { return Brutal.ImGuiApi.ImGui.IsMouseDown(Brutal.ImGuiApi.ImGuiMouseButton.Left) || Brutal.ImGuiApi.ImGui.IsMouseDown(Brutal.ImGuiApi.ImGuiMouseButton.Right) || Brutal.ImGuiApi.ImGui.IsMouseDown(Brutal.ImGuiApi.ImGuiMouseButton.Middle); }
+            catch { return false; }
+        }
+    }
+
+    /// <summary>
+    /// Home and End as a stick's up and down, for tilting the view without a mouse or a gamepad: KSA's own
+    /// camera tilts only by a drag or a stick, and neither key is one of its own. Not while a text field has the keyboard.
+    /// </summary>
+    public static double TiltKeys
+    {
+        get
+        {
+            try
+            {
+                if (Brutal.ImGuiApi.ImGui.GetIO().WantTextInput) return 0.0;
+                return (Brutal.ImGuiApi.ImGui.IsKeyDown(Brutal.ImGuiApi.ImGuiKey.Home) ? 1.0 : 0.0)
+                       - (Brutal.ImGuiApi.ImGui.IsKeyDown(Brutal.ImGuiApi.ImGuiKey.End) ? 1.0 : 0.0);
+            }
+            catch { return 0.0; }
+        }
+    }
+
     /// <summary>Whether the brake key, Space, is down and nobody is typing.</summary>
     public static bool BrakeKeyDown
     {
