@@ -7,8 +7,9 @@ namespace KSACars;
 /// and then held.
 ///
 /// <para>The sender's clock is put on this one by the least that has been seen between a state's
-/// sending and its arrival over the last few seconds: the quickest a datagram has come is the one
-/// least held up, and the window lets a clock that drifts be followed.</para>
+/// sending and its arrival over the last few seconds, the quickest a datagram has come being the one
+/// least held up, along a line: two worlds that run at different rates have a lag that grows or
+/// shrinks with time, and the least of it over the window would be seconds stale.</para>
 /// </summary>
 internal sealed class RemoteTrack
 {
@@ -21,10 +22,18 @@ internal sealed class RemoteTrack
     // How long a state's lag is remembered for the clocks' offset, s.
     private const double OffsetWindowSeconds = 5.0;
 
+    // The lag is fitted through the least of each of these spells of arrivals, s, once it has a few over this long.
+    private const double BinSeconds = 0.5, FitOverSeconds = 1.5;
+    private const int FitBins = 4;
+
+    // The sender's world runs between half and twice as fast as this one's, or the fit is not believed.
+    private const double LeastSlope = -0.5, MostSlope = 1.0;
+
     private const int Kept = 32;
 
     private readonly List<(double At, NetWire.State State)> _states = [];
-    private readonly Queue<(double Arrived, double Lag)> _lags = new();
+    private readonly Queue<(double Arrived, double Sent, double Lag)> _lags = new();
+    private (double Sent, double Lag, double Slope) _fit;
     private uint _newest;
     private bool _any;
 
@@ -33,6 +42,7 @@ internal sealed class RemoteTrack
     {
         _states.Clear();
         _lags.Clear();
+        _fit = default;
         (_any, _newest, HeardAt) = (false, 0, double.NegativeInfinity);
     }
 
@@ -47,20 +57,37 @@ internal sealed class RemoteTrack
         if (_any && state.Sequence == _newest) return;
         if (_any && unchecked((int)(state.Sequence - _newest)) < -1000) _states.Clear();
 
-        _lags.Enqueue((arrived, arrived - state.Sent));
+        _lags.Enqueue((arrived, state.Sent, arrived - state.Sent));
         while (_lags.Count > 1 && _lags.Peek().Arrived < arrived - OffsetWindowSeconds) _lags.Dequeue();
-        double offset = _lags.Min(l => l.Lag);
+        _fit = Fit(state.Sent);
 
         // Everything is put on the clock again, so a better offset moves the old states with the new.
-        for (int i = 0; i < _states.Count; i++) _states[i] = (_states[i].State.Sent + offset, _states[i].State);
+        for (int i = 0; i < _states.Count; i++) _states[i] = (Here(_states[i].State.Sent), _states[i].State);
         int at = _states.Count;
         while (at > 0 && unchecked((int)(_states[at - 1].State.Sequence - state.Sequence)) > 0) at--;
         if (at > 0 && _states[at - 1].State.Sequence == state.Sequence) return;
-        _states.Insert(at, (state.Sent + offset, state));
+        _states.Insert(at, (Here(state.Sent), state));
         if (_states.Count > Kept) _states.RemoveAt(0);
         if (!_any || unchecked((int)(state.Sequence - _newest)) > 0) _newest = state.Sequence;
         _any = true;
         HeardAt = arrived;
+    }
+
+    // A time on the sender's clock on this one.
+    private double Here(double sent) => sent + _fit.Lag + (_fit.Slope * (sent - _fit.Sent));
+
+    // The lag as a line in the sender's time, under every spell's least: its slope fitted through them, and lowered to the lowest.
+    private (double Sent, double Lag, double Slope) Fit(double newest)
+    {
+        (double Sent, double Lag)[] least = [.. _lags.GroupBy(l => Math.Floor(l.Arrived / BinSeconds)).Select(g => g.MinBy(l => l.Lag)).Select(l => (l.Sent - newest, l.Lag))];
+        double slope = 0.0;
+        if (least.Length >= FitBins && least.Max(l => l.Sent) - least.Min(l => l.Sent) >= FitOverSeconds)
+        {
+            double mx = least.Average(l => l.Sent), my = least.Average(l => l.Lag);
+            double sxx = least.Sum(l => (l.Sent - mx) * (l.Sent - mx)), sxy = least.Sum(l => (l.Sent - mx) * (l.Lag - my));
+            slope = Math.Clamp(sxy / sxx, LeastSlope, MostSlope);
+        }
+        return (newest, least.Min(l => l.Lag - (slope * l.Sent)), slope);
     }
 
     /// <summary>The car as it is to be drawn at a time on this game's clock, with the state its inputs are taken from; null before any has come.</summary>

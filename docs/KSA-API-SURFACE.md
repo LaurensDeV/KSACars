@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-252 types and 591 members across 12 assemblies.
+253 types and 593 members across 12 assemblies.
 
 ## BepuPhysics
 
@@ -503,6 +503,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `System.Collections.Generic.List`1<KSA.IAnimProcessor> AnimProcessors`
 
+### KSA.App
+
+- `int get_FramesPerSecond()`
+
 ### KSA.AssetManager`1
 
 *referenced as a type only*
@@ -767,6 +771,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.GameSettings+SimulationSettings
 
 - `bool GroundClutterCollisions`
+- `float MinTargetFrameRate`
 
 ### KSA.GasConditions
 

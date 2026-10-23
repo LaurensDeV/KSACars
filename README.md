@@ -180,14 +180,23 @@ takes it up during the session, every guest's follows.
    floats over their car.
 
 While anyone has joined, time warp and pause are off for everyone, the escape menu's included, so every
-copy of the world keeps the same time. A guest cannot lay or take up a course, add opponents or build
+copy of the world keeps the same time. If one player's PC draws too few frames to keep up, the race slows a
+little for everyone until it can, so nobody is left behind; turning vsync off and the shadows down on that PC
+keeps the race at full speed. A guest cannot lay or take up a course, add opponents or build
 roads: the world is the host's.
 
 The mod asks the host's router to open the port (UPnP). Most routers allow that, and then the code just
 works. If a guest cannot get in, the guest's panel shows a code of its own: send it to the host, who
 pastes it under **Let in**, then press **Join** again. That gets through most routers. Players in the
 same house can join with the code too: the mod sees it is their own router's and looks on the local network. A
-`host:port` from a tunnel such as playit.gg, or a VPN such as Tailscale, works in the code's place too.
+`host:port` from a tunnel such as playit.gg works in the code's place too.
+
+**If no code gets through, use [Tailscale](https://tailscale.com)**, which is free and goes through any
+router. Both players install it and sign in. The host then shares their PC with the guest from the
+Tailscale admin console (**Share...** on the machine) and the guest accepts. While the host is hosting
+on a PC with Tailscale, the panel shows a second code for friends on Tailscale, hidden like the first.
+The guest pastes that code and presses **Join**, and needs nothing else. If Windows asks whether
+StarMap may use the network, allow it.
 
 Everyone needs the same version of the game and of this mod, and every mod the host has enabled. The
 host uses UDP port 50000. Online racing is new: it has been raced between two copies of the game on one

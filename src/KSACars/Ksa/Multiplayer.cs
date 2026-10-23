@@ -100,6 +100,11 @@ internal static partial class Multiplayer
     private static Taking _taking;
     private static int _joinSeen;
     private static double _paceLogNext;
+
+    // This world's real pace, the last frame's length, the pace the host holds its race to and what it tells its guests.
+    private static readonly PaceMeter OwnPace = new();
+    private static readonly SharedPace Shared = new();
+    private static double _frameAt, _frameSeconds, _paceSaid = 1.0;
     private static double? _hiddenAt;
     private static int _courseSent = -1, _courseSeen = -1;
     private static double _courseSeenAt;
@@ -181,6 +186,32 @@ internal static partial class Multiplayer
     /// <summary>The code a guest gives the host to be let in by, once a STUN server has said where it is seen.</summary>
     public static string? GuestCode => _session is { Is: NetSession.Role.Client, Public: { } seen } ? JoinCode.Of(seen) : null;
 
+    private static (long AtMs, IPAddress? Address) _tailscale;
+
+    /// <summary>The host's code on its Tailscale network, where this machine is on one: reached by any machine of that network, whatever the routers.</summary>
+    public static string? TailscaleCode
+    {
+        get
+        {
+            if (_session is not { Is: NetSession.Role.Host } s) return null;
+            long now = Environment.TickCount64;
+            // Asking every interface is slow for a frame, and Tailscale may be switched on while the panel is open.
+            if (_tailscale.AtMs == 0 || now - _tailscale.AtMs > 5000)
+            {
+                IPAddress? found = null;
+                try
+                {
+                    found = JoinCode.TailscaleOf(System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                        .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up)
+                        .SelectMany(n => n.GetIPProperties().UnicastAddresses).Select(a => a.Address));
+                }
+                catch (System.Net.NetworkInformation.NetworkInformationException) { }
+                _tailscale = (now, found);
+            }
+            return _tailscale.Address is { } at ? JoinCode.Of(new IPEndPoint(at, s.Port)) : null;
+        }
+    }
+
     /// <summary>This machine's address and the port on its own network, for a guest in the same house.</summary>
     public static string? LocalAddress
     {
@@ -261,7 +292,8 @@ internal static partial class Multiplayer
         try
         {
             NetSession s = new(NetSession.Role.Host, PlayerName, MyCar(), Port, Now) { KsaBuild = Build.KsaRunning ?? "", Mods = EnabledMods() };
-            s.UniverseClock = () => (Universe.GetElapsedSeconds(), Universe.SimulationSpeed);
+            // The pace and not the speed asked of KSA, which makes up for frames too slow for its step and is no pace a guest should follow.
+            s.UniverseClock = () => (Universe.GetElapsedSeconds(), _paceSaid);
             s.TrackClock = Universe.GetElapsedSeconds;
             s.Impaired = _impaired;
             _session = s;
@@ -369,9 +401,23 @@ internal static partial class Multiplayer
         return (new IPEndPoint(ip, port), nearby);
     }
 
+    /// <summary>
+    /// For a developer, the frames a second this game is held to by sleeping in the frame hook, as a slow PC draws, which
+    /// KSA's own limit cannot do: it is saved and no longer read. 0 for as fast as it draws.
+    /// </summary>
+    public static int HeldFps { get; set; }
+
+    private static double _paddedAt;
+
     /// <summary>Once a frame, from the frame hook. Never throws.</summary>
     public static void Update()
     {
+        if (HeldFps > 0)
+        {
+            double wait = (1.0 / HeldFps) - (Now() - _paddedAt);
+            if (wait > 0.0) Thread.Sleep((int)(wait * 1000.0));
+            _paddedAt = Now();
+        }
         if (_session is not { } s) return;
         try
         {
@@ -662,26 +708,35 @@ internal static partial class Multiplayer
     // Every world's speed while racers are together: the host's its own, a guest's run to keep the host's universe time.
     private static void HoldTheClock(NetSession s)
     {
+        double now = Now();
+        double dt = _frameAt > 0.0 ? Math.Min(now - _frameAt, 1.0) : 0.0;
+        (_frameAt, _frameSeconds) = (now, dt);
+        OwnPace.Add(now, Universe.GetElapsedSeconds());
         if (!Together)
         {
             // The race let go of the world: it runs again as if nobody had held it.
             bool wasHeld = HeldSpeed is not null;
-            (HeldSpeed, Behind) = (null, null);
+            (HeldSpeed, Behind, _paceSaid) = (null, null, 1.0);
             if (wasHeld) Universe.SetSimulationSpeed(1.0, alert: false);
+            Shared.Update(dt, null, []);
             return;
         }
         if (Universe.IsAutoWarpActive) Universe.AutoWarpStop(resetSimulationSpeed: false);
+        double cap = 1.0 / Math.Max(1f, GameSettings.Current.Simulation.MinTargetFrameRate);
 
         if (s.Is == NetSession.Role.Host)
         {
             bool waiting = _handover is { Stage: Handing.Sent } || (_handover is null && s.Racers.Any(r => r.Id != NetSession.HostId && r.Craft.Length > 0 && !r.HasWorld));
-            HeldSpeed = waiting || (_handover is { Stage: Handing.Settling } && HeldSpeed is 0.0) ? 0.0 : 1.0;
+            double pace = Shared.Update(dt, OwnPace.Rate, s.Racers.Where(r => r.Id != NetSession.HostId && r.HasWorld).Select(r => (r.Pace.Rate, r.Behind)));
+            bool still = waiting || (_handover is { Stage: Handing.Settling } && HeldSpeed is 0.0);
+            _paceSaid = still ? 0.0 : pace;
+            HeldSpeed = still ? 0.0 : ClockLock.Asked(pace, dt, cap);
         }
         else if (_taking is Taking.Racing or Taking.Laying && s.HostUniverse is { } host)
         {
             double behind = host.Universe - Universe.GetElapsedSeconds();
             Behind = behind;
-            HeldSpeed = ClockLock.Speed(behind, host.Speed);
+            HeldSpeed = ClockLock.Asked(ClockLock.Speed(behind, host.Speed), dt, cap);
         }
         else
         {
@@ -692,7 +747,11 @@ internal static partial class Multiplayer
         if (Now() >= _paceLogNext)
         {
             _paceLogNext = Now() + 2.0;
-            Log.Info(FormattableString.Invariant($"online: pace: speed {Universe.SimulationSpeed:F3}, achieved {Universe.GetAchivedSpeedFraction():F3}, behind {Behind ?? 0.0:F2} s, universe {Universe.GetElapsedSeconds():F2}"));
+            string guests = s.Is == NetSession.Role.Host
+                ? string.Concat(s.Racers.Where(r => r.Id != NetSession.HostId && r.HasWorld).Select(r => FormattableString.Invariant($", {r.Name} at {r.Pace.Rate ?? double.NaN:F3} and {r.Behind:F2} s behind")))
+                : "";
+            Log.Info(FormattableString.Invariant(
+                $"online: pace: real {OwnPace.Rate ?? double.NaN:F3}, held to {(s.Is == NetSession.Role.Host ? Shared.Pace : s.HostUniverse?.Speed ?? double.NaN):F3}, speed {Universe.SimulationSpeed:F3}, {App.FramesPerSecond} fps, achieved {Universe.GetAchivedSpeedFraction():F3}, behind {Behind ?? 0.0:F2} s, universe {Universe.GetElapsedSeconds():F2}{guests}"));
         }
     }
 
@@ -718,7 +777,7 @@ internal static partial class Multiplayer
         }
         DriveInput input = mine.Input;
         s.Send(pose, (float)input.Throttle, (float)input.Steer, (float)input.Brake, (byte)Math.Clamp(mine.Drive.Gear, 0, 255), mine.Beam != BeamSetting.Off,
-               Universe.GetElapsedSeconds());
+               Universe.GetElapsedSeconds(), Behind ?? double.NaN);
     }
 
     // Each other racer's car, the craft of its Id in this world, where its game says it is. A racer who joined after this
@@ -874,13 +933,16 @@ internal static partial class Multiplayer
         Dictionary<string, object?> r = new()
         {
             ["active"] = Active, ["hosting"] = Hosting, ["joined"] = Joined, ["me"] = (int)Me, ["port"] = _session?.Port,
-            ["code"] = HostCode?.Code, ["guest_code"] = GuestCode, ["local"] = LocalAddress, ["router"] = RouterSays,
+            ["code"] = HostCode?.Code, ["tailscale_code"] = TailscaleCode, ["guest_code"] = GuestCode, ["local"] = LocalAddress, ["router"] = RouterSays,
             ["public"] = _session?.Public?.ToString(), ["host_offset_s"] = _session is { } s ? Math.Round(s.HostOffset, 4) : null,
             ["on_the_course"] = OnTheCourse, ["trouble"] = Trouble, ["world"] = WorldSays, ["countdown_s"] = Countdown is { } c ? Math.Round(c, 2) : null,
             ["held"] = _held, ["held_speed"] = HeldSpeed, ["speed"] = Universe.SimulationSpeed, ["universe_s"] = Math.Round(Universe.GetElapsedSeconds(), 3),
             ["behind_s"] = Behind is { } b ? Math.Round(b, 4) : null, ["recent"] = Said.ToArray(),
             // How much of the speed asked KSA gives: a world short of its speed is one whose physics cannot keep up.
             ["achieved"] = Math.Round(Universe.GetAchivedSpeedFraction(), 3),
+            // What it does not see: a frame slower than KSA's step loses the rest of it, which only the world's own clock against the wall shows.
+            ["real_pace"] = OwnPace.Rate is { } real ? Math.Round(real, 3) : null, ["shared_pace"] = Hosting ? Math.Round(Shared.Pace, 3) : null,
+            ["fps"] = App.FramesPerSecond, ["frame_ms"] = Math.Round(_frameSeconds * 1000.0, 1),
             ["camera"] = ChaseCamera.Mode.ToString(), ["camera_distance"] = KsaWorld.ControlledVehicle?.OrbitView is { } view ? Math.Round(view.DistancePower, 3) : null,
             ["line"] = _impaired is { } line ? $"{line.DelaySeconds * 1000:F0} ms, +-{line.JitterSeconds * 1000:F0} ms, {line.Loss * 100:F0}% lost" : null,
             ["dropped"] = _session?.Dropped,
@@ -896,6 +958,7 @@ internal static partial class Multiplayer
                 ["has_world"] = racer.HasWorld,
                 ["heard_s_ago"] = double.IsFinite(racer.Track.HeardAt) ? Math.Round(now - racer.Track.HeardAt, 2) : null,
                 ["s_m"] = racer.Track.Newest is { } newest ? Math.Round(newest.Pose.S, 1) : null,
+                ["pace"] = racer.Pace.Rate is { } pace ? Math.Round(pace, 3) : null, ["behind_s"] = double.IsFinite(racer.Behind) ? Math.Round(racer.Behind, 3) : null,
             };
             if (Remotes.TryGetValue(racer.Id, out Remote? remote) && remote.Craft is { } craft && Buggies.Of(craft) is { PlaceValid: true } e)
             {

@@ -4,6 +4,7 @@
 #
 #     ./tools/two-games.sh            # deploy, make or refresh both profiles, launch both
 #     ./tools/two-games.sh --race     # ...then load, park an F2004 in each, lay a course, host in A and join from B
+#     KSACARS_FPS_B=20 ./tools/two-games.sh --race   # ...with B held to 20 frames a second, as a slow PC is
 #
 # StarMap gives KSA a profile of its own with -InstancePath, as a Borea instance does, so each copy
 # has its own log, saves and bridge. Then drive either through the bridge:
@@ -11,9 +12,9 @@
 #     KSA_USER_DIR="$(./tools/two-games.sh --dir A)" python3 tools/ksa-mcp/server.py cli online '{}'
 #
 # Both copies share one graphics card, and at the player's settings two of them fill its memory and
-# one draws a frame every few seconds; the profiles are made with the graphics turned well down. Each
-# is held to 40 frames a second with vsync off, since KSA only limits frames with vsync off: limited
-# by the monitor, the copy in front takes the whole card and the one behind runs in slow motion.
+# one draws a frame every few seconds; the profiles are made with the graphics turned well down, and
+# vsync off: limited by the monitor, the copy in front takes the whole card and the one behind runs in
+# slow motion. KSA 2026.10.19.5638 saves an fps limit and no longer reads it.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -125,5 +126,7 @@ call A road '{"course":"Club Motorsports Flat"}'
 call A online '{"host":true,"name":"Alpha"}' >/dev/null
 sleep 4
 call B online '{"join":"127.0.0.1:50000","name":"Bravo"}' >/dev/null
+# KSA's own fps limit is saved and no longer read, so a slow PC is made by the bridge sleeping in B's frames.
+[[ -n "${KSACARS_FPS_B:-}" ]] && call B online "{\"fps\":$KSACARS_FPS_B}" >/dev/null
 sleep 15
 call B online '{}'

@@ -81,8 +81,9 @@ internal static class NetWire
 
     /// <param name="Sent">On the sender's own clock, s.</param>
     /// <param name="Steer">-1 to 1, a left turn positive, as the drive takes it.</param>
+    /// <param name="Behind">How far the sender's world is behind the host's universe time, s; NaN from the host, or from a game that does not say.</param>
     public sealed record State(byte Id, uint Sequence, double Sent, RacePose Pose, float Throttle, float Steer, float Brake,
-                               byte Gear, bool Lights) : Message(Kind.State);
+                               byte Gear, bool Lights, float Behind = float.NaN) : Message(Kind.State);
 
     public sealed record Ping(double Sent) : Message(Kind.Ping);
 
@@ -161,6 +162,8 @@ internal static class NetWire
                 w.F32(s.Brake);
                 w.U8(s.Gear);
                 w.U8(s.Lights ? (byte)1 : (byte)0);
+                // Last, so a game that reads no further takes the rest and is none the wiser.
+                w.F32(s.Behind);
                 break;
             case Ping p:
                 w.F64(p.Sent);
@@ -221,7 +224,7 @@ internal static class NetWire
                 Kind.Roster => ReadRoster(ref r),
                 Kind.State => new State(r.U8(), r.U32(), r.F64(),
                                         new RacePose(r.F64(), r.F64(), r.V3(), doubleQuat.Normalize(new doubleQuat(r.F32(), r.F32(), r.F32(), r.F32())), r.V3(), r.V3()),
-                                        r.F32(), r.F32(), r.F32(), r.U8(), r.U8() != 0),
+                                        r.F32(), r.F32(), r.F32(), r.U8(), r.U8() != 0, r.Left >= 4 ? r.F32() : float.NaN),
                 Kind.Ping => new Ping(r.F64()),
                 Kind.Pong => new Pong(r.F64(), r.F64()),
                 Kind.Start => new Start(r.U32(), r.F64(), r.U8()),
@@ -341,6 +344,8 @@ internal static class NetWire
     {
         private readonly ReadOnlySpan<byte> _from = from;
         private int _at;
+
+        public readonly int Left => _from.Length - _at;
 
         public ReadOnlySpan<byte> Take(int n)
         {

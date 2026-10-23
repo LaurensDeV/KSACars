@@ -142,7 +142,8 @@ public class MultiplayerTests
     {
         byte[] buffer = new byte[NetWire.BufferBytes];
         int n = NetWire.Write(new NetWire.State(2, 1, 0.0, new RacePose(1, 2, default, doubleQuat.Identity, default, default), 0, 0, 0, 0, false), buffer);
-        for (int cut = 0; cut < n; cut++) Assert.Null(NetWire.Read(buffer.AsSpan(0, cut), out _));
+        // The last four bytes are how far behind its sender is, which a game that does not say leaves off.
+        for (int cut = 0; cut < n - 4; cut++) Assert.Null(NetWire.Read(buffer.AsSpan(0, cut), out _));
         Assert.Null(NetWire.Read("hello there, this is not a race"u8, out _));
 
         // Of another version: dropped, and the version said.
@@ -175,6 +176,18 @@ public class MultiplayerTests
         Assert.Null(Stun.Answer(answer, transaction));
         byte[] buffer = new byte[NetWire.BufferBytes];
         Assert.False(Stun.IsStun(buffer.AsSpan(0, NetWire.Write(new NetWire.Ping(1.0), buffer))));
+    }
+
+    [Fact]
+    public void AMachinesTailscaleAddressIsFoundAmongItsOwn()
+    {
+        IPAddress[] own = [IPAddress.Parse("192.168.129.1"), IPAddress.Parse("169.254.73.205"), IPAddress.Parse("100.101.102.103"), IPAddress.Parse("127.0.0.1")];
+        Assert.Equal(IPAddress.Parse("100.101.102.103"), JoinCode.TailscaleOf(own));
+        Assert.Null(JoinCode.TailscaleOf([IPAddress.Parse("192.168.129.1"), IPAddress.Parse("100.63.255.255"), IPAddress.Parse("100.128.0.1")]));
+        Assert.True(JoinCode.IsTailscale(IPAddress.Parse("100.64.0.1")));
+        Assert.True(JoinCode.IsTailscale(IPAddress.Parse("100.127.255.254")));
+        string code = JoinCode.Of(new IPEndPoint(IPAddress.Parse("100.101.102.103"), 50000));
+        Assert.Equal(("100.101.102.103", 50000), JoinCode.Read(code, out _));
     }
 
     [Fact]
