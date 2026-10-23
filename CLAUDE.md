@@ -232,9 +232,10 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/RacePose.cs` | **a car measured against a laid course rather than the planet**: how far along the route it is, where it is and how it is turned and moving in the road's own frame there, so it is put in the same place on another player's copy of the course laid somewhere else |
 | `Sim/NetWire.cs` | what two games racing each other say, as UDP datagrams: a mark and a version so anything else is dropped, a hello, a welcome, the roster, a car's state, a ping, a start and a goodbye |
 | `Sim/NetSession.cs` | **a race between games over one UDP socket each**: a host that lets in a guest with its build and its mods, hands it a number, a box and its world, says its universe time and the pace it really goes at, passes every car's state on to the rest and starts the race, and a guest that speaks to it alone; read on a thread of its own and handled once a frame, on the caller's clock |
-| `Sim/RemoteTrack.cs` | another game's car as the states it has sent, put on this game's clock by the quickest any has come and drawn 0.1 s in the past between the two either side of then |
+| `Sim/RemoteTrack.cs` | another game's car as the states it has sent, put on this game's clock by a line under the quickest any have come, **which follows a world that runs at another rate**, and drawn 0.1 s in the past between the two either side of then |
 | `Sim/WorldTransfer.cs` | **the host's world on its way to a guest**: a save and the laid course in one zip, cut into pieces that go whole in a datagram, sent at 400 KB/s, the missing ones asked for again, and nothing unpacked outside its folder |
-| `Sim/ClockLock.cs` | a guest's world kept to the host's universe time by its speed alone: a gap closed over 5 s, never more than a tenth faster |
+| `Sim/ClockLock.cs` | a guest's world kept to the host's universe time by its speed alone: a gap closed over 5 s, never more than a tenth faster, and **the speed asked of KSA to make up a frame longer than its 33 ms step**, never more than 1.1 |
+| `Sim/RacePace.cs` | how fast a world really goes, its universe time against the wall, **which KSA's achieved fraction does not see**; and the pace a host holds its race to, under the slowest guest's while one falls behind |
 | `Sim/JoinCode.cs` | an IPv4 address and port as ten letters and digits of Crockford's base 32, and back, or a plain `host:port` |
 | `Sim/Stun.cs` | a STUN binding request and its answer: **where a socket is seen from outside every router**, asked of a free public server |
 | `Sim/Upnp.cs` | a UDP port opened on the home router through UPnP, and the address it is reached at, with what a router answers parsed apart from the asking |
@@ -319,7 +320,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 591 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 593 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -1275,9 +1276,26 @@ After that each world is simulated on its own: what is on rails stays the same, 
 other than the racers' cars, a rock pushed or a kitten on EVA, drifts apart.
 
 **Every world keeps the host's universe time, and nobody warps or pauses.** The host says its universe time
-five times a second, and a guest measures from those how fast the host's world really goes, which is under its
-speed while the host draws too slowly for KSA's 33 ms steps to keep up; `Sim/ClockLock.cs` runs the guest's
-world at that pace and up to a tenth faster or slower until the two agree. While anyone has joined,
+five times a second, and a guest measures from those how fast the host's world really goes; `Sim/ClockLock.cs`
+runs the guest's world at that pace and up to a tenth faster or slower until the two agree. **KSA steps a world
+by no more than 33 ms a frame** (`App.Run`, `1/MinTargetFrameRate`), so a game drawing 20 frames a second
+loses a third of every frame and its world runs at two thirds of real time, which KSA's achieved fraction does
+not see: in a race over the internet a guest drawing 20 fell 47 s behind, its car pulling away at two thirds
+of the pace on its own screen. So every world asks KSA for the speed that makes up a frame too long
+(`ClockLock.Asked`), never more than 1.1, a step of 37 ms; and **the host holds its race to the slowest
+guest** (`Sim/RacePace.cs`): each guest's pace measured from the universe times its states are sent at, and how
+far behind it is sent with each state, four bytes at its end that a game reading no further never sees, the
+host's pace drops a little under a guest's that has been short of it for two seconds while behind, and rises a
+hundredth a second while every guest keeps up, never under half. Every guest follows the host's measured pace,
+so a guest of 0.1.8 is held with the rest. `RacePaceTests` races a host at 60 frames a second against a guest at
+20 and holds it within 0.55 s of the host, where it fell 30 s behind before. **Seen between two copies on one
+machine**, the guest held to 20 frames a second by the bridge's `online` with `fps`, which sleeps in its frame
+hook since KSA 2026.10.19.5638 saves an fps limit and no longer reads one: the guest asking 1.1 and running at
+0.73, the race held to 0.71 to 0.75, the guest 0.27 to 0.39 s behind through a race, and each car drawn in the
+other's world at up to 83 m/s with one put outright where last night's were 5 to 11 times a second.
+**Not raced across the internet.** The `pace:` line in the log says
+each world's real pace, the speed asked, its frames a second and, on the host, each guest's pace and how far
+behind it is. While anyone has joined,
 `Ksa/WarpHook.cs` holds every world to that speed through both of KSA's `SetSimulationSpeed`, so the warp keys,
 auto-warp, the escape menu's pause and the editor's do nothing. A ping slower than half a second to come back
 is not used to set the clocks: the host's world stands still while it saves, and a ping answered then put a

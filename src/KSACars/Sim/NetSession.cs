@@ -32,6 +32,12 @@ internal sealed class NetSession : IDisposable
         public double HeardAt { get; set; }
         public RemoteTrack Track { get; } = new();
 
+        /// <summary>On the host, how fast this racer's world really goes, from the universe times its states are sent at.</summary>
+        public PaceMeter Pace { get; } = new();
+
+        /// <summary>On the host, how far this racer says its world is behind the host's, s; NaN until it says.</summary>
+        public double Behind { get; set; } = double.NaN;
+
         /// <summary>The Id of this racer's car in every copy of the world, once it has one.</summary>
         public string Craft { get; set; } = "";
 
@@ -333,10 +339,10 @@ internal sealed class NetSession : IDisposable
     /// This game's own car where it is, to the host or, from the host, to everyone; <paramref name="at"/>
     /// is the time it is there on <see cref="TrackClock"/>, this game's clock if none is set.
     /// </summary>
-    public void Send(RacePose pose, float throttle, float steer, float brake, byte gear, bool lights, double? at = null)
+    public void Send(RacePose pose, float throttle, float steer, float brake, byte gear, bool lights, double? at = null, double behind = double.NaN)
     {
         if (!Joined) return;
-        NetWire.State state = new(Me, ++_sequence, at ?? _clock(), pose, throttle, steer, brake, gear, lights);
+        NetWire.State state = new(Me, ++_sequence, at ?? _clock(), pose, throttle, steer, brake, gear, lights, (float)behind);
         if (Is == Role.Client) SendTo(state, _host);
         else foreach (Racer r in _racers.Values) SendTo(state, r.At);
     }
@@ -543,6 +549,8 @@ internal sealed class NetSession : IDisposable
                 return;
             case NetWire.State state when racer is not null && state.Id == racer.Id:
                 racer.Track.Add(state, TrackClock?.Invoke() ?? arrived);
+                racer.Pace.Add(arrived, state.Sent);
+                racer.Behind = state.Behind;
                 foreach (Racer other in _racers.Values) if (other != racer) SendTo(state, other.At);
                 return;
             case NetWire.Ping ping when racer is not null:

@@ -17,6 +17,20 @@ internal static class ClockLock
     public static double HostNow(double said, double saidAt, double speed, double hostClockNow) =>
         said + (Math.Max(0.0, hostClockNow - saidAt) * speed);
 
+    /// <summary>The most KSA is ever asked to run a racing world at: a step of 36.7 ms for its 33.3 a frame, the longest the cars race on.</summary>
+    public const double MostSpeed = 1.1;
+
+    /// <summary>
+    /// The speed to ask of KSA for a world to go at <paramref name="pace"/> universe seconds a wall second
+    /// when a frame took <paramref name="frameSeconds"/>: KSA steps a world by no more than
+    /// <paramref name="capSeconds"/> a frame, so a slower frame loses the rest unless the speed makes it up.
+    /// </summary>
+    public static double Asked(double pace, double frameSeconds, double capSeconds)
+    {
+        double lost = capSeconds > 0.0 && frameSeconds > capSeconds ? frameSeconds / capSeconds : 1.0;
+        return Math.Clamp(pace * lost, 0.0, MostSpeed);
+    }
+
     /// <summary>
     /// How fast to run a world that is <paramref name="behind"/> seconds behind the host's, which runs
     /// at <paramref name="hostSpeed"/>: stopped with the host's, and from stopped to a tenth faster.

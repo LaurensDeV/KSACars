@@ -142,7 +142,8 @@ public class MultiplayerTests
     {
         byte[] buffer = new byte[NetWire.BufferBytes];
         int n = NetWire.Write(new NetWire.State(2, 1, 0.0, new RacePose(1, 2, default, doubleQuat.Identity, default, default), 0, 0, 0, 0, false), buffer);
-        for (int cut = 0; cut < n; cut++) Assert.Null(NetWire.Read(buffer.AsSpan(0, cut), out _));
+        // The last four bytes are how far behind its sender is, which a game that does not say leaves off.
+        for (int cut = 0; cut < n - 4; cut++) Assert.Null(NetWire.Read(buffer.AsSpan(0, cut), out _));
         Assert.Null(NetWire.Read("hello there, this is not a race"u8, out _));
 
         // Of another version: dropped, and the version said.

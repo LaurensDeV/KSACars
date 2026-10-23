@@ -180,7 +180,9 @@ takes it up during the session, every guest's follows.
    floats over their car.
 
 While anyone has joined, time warp and pause are off for everyone, the escape menu's included, so every
-copy of the world keeps the same time. A guest cannot lay or take up a course, add opponents or build
+copy of the world keeps the same time. If one player's PC draws too few frames to keep up, the race slows a
+little for everyone until it can, so nobody is left behind; turning vsync off and the shadows down on that PC
+keeps the race at full speed. A guest cannot lay or take up a course, add opponents or build
 roads: the world is the host's.
 
 The mod asks the host's router to open the port (UPnP). Most routers allow that, and then the code just

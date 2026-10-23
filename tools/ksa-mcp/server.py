@@ -294,7 +294,7 @@ TOOLS = {
                    {"host": {"type": "boolean"}, "port": _num("UDP port"), "ready": {"type": "boolean"},
                     "join": {"type": "string"}, "let_in": {"type": "string"}, "laps": _num("count"),
                     "start": {"type": "boolean"}, "stop": {"type": "boolean"}, "name": {"type": "string"},
-                    "open_panel": {"type": "boolean"}, "hide_ui": {"type": "boolean"}, "show_code": {"type": "boolean"}, "delay_ms": _num("ms each way"), "jitter_ms": _num("ms either way"), "loss": _num("0..1")}, [],
+                    "open_panel": {"type": "boolean"}, "hide_ui": {"type": "boolean"}, "show_code": {"type": "boolean"}, "delay_ms": _num("ms each way"), "fps": _num("frames a second this game is held to, as a slow PC; 0 for unheld"), "jitter_ms": _num("ms either way"), "loss": _num("0..1")}, [],
                    lambda a: [_text(json.dumps(send("online", **a), indent=1))]),
     "ksa_save": ("Write the game to a save of this name, as KSA's save console command does.",
                  {"name": {"type": "string"}}, ["name"], lambda a: [_text(json.dumps(send("save", **a)))]),

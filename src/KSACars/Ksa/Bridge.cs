@@ -380,6 +380,7 @@ internal sealed class Bridge
             Multiplayer.Impaired = new NetSession.Line(command.Number("delay_ms", 0.0) / 1000.0, command.Number("jitter_ms", 0.0) / 1000.0,
                                                        Math.Clamp(command.Number("loss", 0.0), 0.0, 1.0));
         }
+        if (command.Has("fps")) Multiplayer.HeldFps = (int)Math.Clamp(command.Number("fps", 0.0), 0.0, 240.0);
         if (command.Flag("open_panel", false)) (CarPanel.Visible, CarPanel.OpenOnline) = (true, true);
         if (command.Has("hide_ui")) Program.DrawUI = !command.Flag("hide_ui", false);
         if (command.Has("show_code")) CarPanel.ShowCode = command.Flag("show_code", false);
