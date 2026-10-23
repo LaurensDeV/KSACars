@@ -1,3 +1,13 @@
+## [0.1.9](https://github.com/LaurensDeV/KSACars/compare/v0.1.8...v0.1.9) (2026-10-23)
+
+### Features
+
+* **online:** show the host's Tailscale code on the panel ([60ac18e](https://github.com/LaurensDeV/KSACars/commit/60ac18e5648b5708fab362cbe1058c52772e4c97))
+
+### Fixes
+
+* **online:** hold the race to the slowest racer's real pace ([ab498f4](https://github.com/LaurensDeV/KSACars/commit/ab498f482ab457001e7b3ed04ff842e7692b1dab))
+
 ## [0.1.8](https://github.com/LaurensDeV/KSACars/compare/v0.1.7...v0.1.8) (2026-10-22)
 
 ### Features
