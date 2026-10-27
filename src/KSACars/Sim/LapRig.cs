@@ -315,9 +315,11 @@ internal sealed class TrackRig
 
         // As Buggies does: past a tenth of a second the springs are left out.
         bool warped = dt > 0.1;
+        double3 spun = _car.Inertia;
+        (double3 X, double3 Y, double3 Z) rows = (new double3(1.0 / spun.X, 0, 0), new double3(0, 1.0 / spun.Y, 0), new double3(0, 0, 1.0 / spun.Z));
         DriveImpulse j = warped
             ? default
-            : Drive.Step(input, _contacts, _hubs, up, forward, _car.MassKg, _world.Gravity, _world.Air, dt);
+            : Drive.Step(input, _contacts, _hubs, up, forward, _car.MassKg, _world.Gravity, _world.Air, dt, rows);
 
         int grounded = warped ? 0 : Drive.Grounded.Count(g => g);
         double wings = 0.5 * _world.Air * p.DownforceAreaM2 * speed * speed;
@@ -331,11 +333,9 @@ internal sealed class TrackRig
         // Where there is a loop a wheel has its bump stop, which is what carries the car round one.
         if (looped && !warped)
         {
-            double3 inertia = _car.Inertia;
-            DriveImpulse stop = Drive.BumpStops(_contacts, _hubs, up, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _car.MassKg,
-                (new double3(1.0 / inertia.X, 0, 0), new double3(0, 1.0 / inertia.Y, 0), new double3(0, 0, 1.0 / inertia.Z)), dt);
+            DriveImpulse stop = Drive.BumpStops(_contacts, _hubs, up, doubleQuat.Conjugate(Attitude) * Velocity, Spin, _car.MassKg, rows, dt);
             Velocity += Attitude * (stop.Linear / _car.MassKg);
-            Spin += new double3(stop.Angular.X / inertia.X, stop.Angular.Y / inertia.Y, stop.Angular.Z / inertia.Z);
+            Spin += new double3(stop.Angular.X / spun.X, stop.Angular.Y / spun.Y, stop.Angular.Z / spun.Z);
         }
 
         Velocity -= Up * (_world.Gravity * dt);

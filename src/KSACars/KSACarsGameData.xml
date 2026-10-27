@@ -57,12 +57,17 @@
     <!--
       A fibreglass Manx on a VW pan is about 650 kg, with its centre of mass 0.6 m up and toward the
       engine. At the part origin, on the ground, nothing would lean in a corner or squat under power.
+      A box the car's size rather than a sphere, because yaw inertia is what lets the side grip settle:
+      a sphere gave a third of it, the grip overcorrected every step, and the car rocked on its wheels
+      at 12 deg/s at 60 fps and 25 at 30, with the drive spent holding the rocking.
     -->
-    <SolidSphereMass>
+    <SolidCuboidMass>
       <Mass Kg="650" />
       <LocationAsmb X="0.60" Y="-0.25" />
-      <Radius M="1.10" />
-    </SolidSphereMass>
+      <LengthX M="1.1" />
+      <LengthY M="3.6" />
+      <LengthZ M="1.7" />
+    </SolidCuboidMass>
 
     <!--
       The springs hold it up, not these. KSA's terrain friction is a fixed 0.95 for every collider, so

@@ -102,14 +102,96 @@ public sealed class BuggyDrive(BuggyProfile profile)
         return any ? Barrier.Hold(hubs, into, past, velocity, spin, mass, inverseInertia, dt, friction: 0.0) : default;
     }
 
+    // The most substeps one engine step is taken in, so a step longer than any car can carry is not
+    // stepped for ever.
+    private const int MostSubsteps = 8;
+
     /// <summary>
-    /// Advances one step and returns the impulse the ground and the engine put into the car.
+    /// The longest step any car is taken in, s: KSA's own longest frame, past which the tyres' settling
+    /// overshoots whatever the springs do. Only time warp asks for longer.
+    /// </summary>
+    public const double LongestStep = 1.0 / 30.0;
+
+    /// <summary>
+    /// The longest step this car is taken in, s: what <see cref="StepBudget"/> allows its springs, at
+    /// most <see cref="LongestStep"/>. <see cref="Step"/> takes several steps of it rather than soften
+    /// the springs, so the car drives the same however fast the game is drawing.
+    /// </summary>
+    public double StableStep
+    {
+        get
+        {
+            double omega = 2.0 * Math.PI * Profile.SpringHz;
+            double a = (1.0 + (2.0 * Profile.AntiRoll)) * RollLever * omega * omega;
+            double b = 4.0 * (Profile.DampingRatio + Profile.RollDamping) * RollLever * omega;
+            double springs = a > 0.0 ? (Math.Sqrt((b * b) + (4.0 * a * StepBudget)) - b) / (2.0 * a) : double.PositiveInfinity;
+            return Math.Min(springs, LongestStep);
+        }
+    }
+
+    /// <summary>How many substeps a step of this length is taken in.</summary>
+    public int Substeps(double dt) =>
+        !(dt > 0.0) ? 1 : Math.Clamp((int)Math.Ceiling(dt / StableStep), 1, MostSubsteps);
+
+    /// <summary>
+    /// The rate the springs are stepped at for an engine step of this length, Hz: the profile's own,
+    /// unless the step is longer than <see cref="MostSubsteps"/> substeps of <see cref="StableStep"/>.
+    /// </summary>
+    public double SpringHzAt(double dt) => SpringRate(dt / Substeps(dt)) / (2.0 * Math.PI);
+
+    /// <summary>
+    /// Advances one engine step and returns the impulse the ground and the engine put into the car.
+    ///
+    /// <para>A step longer than <see cref="StableStep"/> is taken in substeps, between which the car's own
+    /// motion is carried forward from the impulse: KSA's step is as long as a frame, up to 33 ms, and
+    /// softened springs made the car wallow the fewer frames a second the game drew.</para>
     /// </summary>
     /// <param name="hubs">Each corner's hub at rest, relative to the centre of mass, body frame.</param>
     /// <param name="up">The car's own up, body frame.</param>
     /// <param name="forward">The car's own forward, body frame.</param>
+    /// <param name="inverseInertia">The three rows of the inverse of the car's inertia, body frame.</param>
     public DriveImpulse Step(DriveInput input, ReadOnlySpan<WheelContact> contacts, ReadOnlySpan<double3> hubs,
-                             double3 up, double3 forward, double mass, double gravity, double airDensity, double dt)
+                             double3 up, double3 forward, double mass, double gravity, double airDensity, double dt,
+                             (double3 X, double3 Y, double3 Z) inverseInertia)
+    {
+        int steps = Substeps(dt);
+        if (steps <= 1) return StepOnce(input, contacts, hubs, up, forward, mass, gravity, airDensity, dt);
+
+        double h = dt / steps;
+        Span<WheelContact> now = stackalloc WheelContact[contacts.Length];
+        contacts.CopyTo(now);
+        DriveImpulse total = default;
+        for (int k = 0; k < steps; k++)
+        {
+            DriveImpulse j = StepOnce(input, now, hubs, up, forward, mass, gravity, airDensity, h);
+            total = new DriveImpulse(total.Linear + j.Linear, total.Angular + j.Angular);
+            if (k + 1 < steps) Carry(now, hubs, up, j, mass, gravity, inverseInertia, h);
+        }
+        return total;
+    }
+
+    // Each wheel's ground carried forward through a substep: the ground does not move, so only the car does.
+    // Gravity is taken along the car's own up, which is what the springs are sized against.
+    private static void Carry(Span<WheelContact> contacts, ReadOnlySpan<double3> hubs, double3 up, DriveImpulse j,
+                              double mass, double gravity, (double3 X, double3 Y, double3 Z) inverseInertia, double h)
+    {
+        double3 l = j.Angular;
+        double3 dv = (j.Linear / mass) - (up * (gravity * h));
+        double3 dw = new(Vec.Dot(inverseInertia.X, l), Vec.Dot(inverseInertia.Y, l), Vec.Dot(inverseInertia.Z, l));
+        for (int i = 0; i < contacts.Length; i++)
+        {
+            if (!contacts[i].Valid) continue;
+            double3 velocity = contacts[i].HubVelocity + dv + Vec.Cross(dw, hubs[i]);
+            contacts[i] = contacts[i] with
+            {
+                HubVelocity = velocity,
+                HubHeight = contacts[i].HubHeight + (Vec.Dot(velocity, contacts[i].GroundUp) * h),
+            };
+        }
+    }
+
+    private DriveImpulse StepOnce(DriveInput input, ReadOnlySpan<WheelContact> contacts, ReadOnlySpan<double3> hubs,
+                                  double3 up, double3 forward, double mass, double gravity, double airDensity, double dt)
     {
         int n = Profile.Corners.Length;
         if (!(dt > 0.0) || !(mass > 0.0) || contacts.Length != n || hubs.Length != n) return default;

@@ -6,6 +6,11 @@ namespace KSACars.Tests;
 public class BuggyDriveTests
 {
     private static readonly BuggyProfile P = BuggyProfile.Manx;
+
+    // The three rows of the inverse of a car's inertia, as the drive is given them.
+    private static (double3 X, double3 Y, double3 Z) Spun(TrackCar car) =>
+        (new double3(1.0 / car.Inertia.X, 0, 0), new double3(0, 1.0 / car.Inertia.Y, 0), new double3(0, 0, 1.0 / car.Inertia.Z));
+
     private const double G = 9.81;
     private const double Mass = 650.0;
 
@@ -16,14 +21,15 @@ public class BuggyDriveTests
     [InlineData("Manx", false)]
     public void ACarWithWingsIsTurnedIntoTheWayItFliesAndOneWithoutIsNot(string name, bool winged)
     {
-        BuggyProfile p = TrackCar.Of(name).Profile;
+        TrackCar car = TrackCar.Of(name);
+        BuggyProfile p = car.Profile;
         double3 up = new(1, 0, 0), forward = new(0, 1, 0);
         double3[] hubs = [.. p.Corners.Select(c => c.Hub - new double3(0.3, 0, 0))];
         double tilt = 15.0 * Math.PI / 180.0;
         double3 flying = ((forward * Math.Cos(tilt)) - (up * Math.Sin(tilt))) * 60.0;
         WheelContact[] contacts = [.. hubs.Select(_ => new WheelContact(true, 10.0, up, flying))];
 
-        DriveImpulse push = new BuggyDrive(p).Step(default, contacts, hubs, up, forward, 600.0, 9.81, 1.2, 1.0 / 60.0);
+        DriveImpulse push = new BuggyDrive(p).Step(default, contacts, hubs, up, forward, 600.0, 9.81, 1.2, 1.0 / 60.0, Spun(car));
 
         // About the car's left, a turn that takes its nose down.
         double noseDown = Vec.Dot(push.Angular, Vec.Cross(up, forward));
@@ -639,6 +645,41 @@ public class BuggyDriveTests
         Assert.True(highestHub < p.Corners[0].Radius + p.DroopTravel + 0.02, $"a hub {highestHub:F3} m up");
     }
 
+    // KSA's step is as long as a frame, and the springs' rate was softened to what a long one carries,
+    // so on a slow PC the car wallowed: the F2004 had 2.0 Hz at 30 frames a second where it has 3.5 at
+    // 60. A step longer than the car carries is taken in substeps instead, and the rate is the same.
+    [Theory]
+    [MemberData(nameof(EveryCarAtEveryStep))]
+    public void TheSpringsKeepTheirRateAtEveryStepTheGameTakes(int car, double dt)
+    {
+        BuggyProfile p = BuggyProfile.All[car];
+        Assert.Equal(p.SpringHz, new BuggyDrive(p).SpringHzAt(dt), 6);
+    }
+
+    // Each tyre takes most of its own side slip out every step, and four of them need the yaw inertia of
+    // a box the car's size: against a sphere's, a third of it, they overcorrected and the car rocked
+    // where it stood, 12 deg/s at 60 frames a second and 25 at 30, with the drive spent holding it.
+    [Theory]
+    [MemberData(nameof(EveryCarAtEveryStep))]
+    public void NoCarRocksWhereItStandsAtAnyStep(int car, double dt)
+    {
+        BuggyProfile p = BuggyProfile.All[car];
+        Rig rig = RigFor(p, dt);
+        rig.LeftGroundRise = 0.0005;
+
+        double yaw = 0.0, roll = 0.0;
+        for (double t = 0.0; t < 8.0; t += dt)
+        {
+            rig.Step(default);
+            if (t < 6.0) continue;
+            yaw = Math.Max(yaw, Math.Abs(rig.Spin.X));
+            roll = Math.Max(roll, Math.Abs(rig.Spin.Y));
+        }
+
+        Assert.True(yaw < 0.01, $"{p.DisplayName} rocks in yaw at up to {yaw * 180 / Math.PI:F2} deg/s where it stands");
+        Assert.True(roll < 0.01, $"{p.DisplayName} rocks in roll at up to {roll * 180 / Math.PI:F2} deg/s where it stands");
+    }
+
     // A rigid box on flat ground, +X up, integrated the way the engine does: the drive's impulse at the
     // start of the frame, then gravity and the motion over it.
     internal sealed class Rig(double dt, BuggyProfile? profile = null, double3? com = null)
@@ -657,8 +698,8 @@ public class BuggyDriveTests
         public doubleQuat Attitude = doubleQuat.Identity;
         public double3 Spin = Vec.Zero;
 
-        // What the engine gives each car, from KSACarsGameData.xml: the buggy's solid sphere, 1.1 m in
-        // radius, and the Eldorado's solid cuboid, 1.0 m tall, 5.6 m long and 2.0 m wide.
+        // What the engine gives each car, from KSACarsGameData.xml: the buggy's solid cuboid, 1.1 m tall,
+        // 3.6 m long and 1.7 m wide, and the Eldorado's, 1.0 m tall, 5.6 m long and 2.0 m wide.
         public double RigMass = Mass;
         public double Gravity = G;
         public double Air = 1.225;
@@ -671,7 +712,7 @@ public class BuggyDriveTests
             ? new double3((b.Y * b.Y) + (b.Z * b.Z), (b.X * b.X) + (b.Z * b.Z), (b.X * b.X) + (b.Y * b.Y)) * (RigMass / 12.0)
             : RigMass > 1000
             ? new double3((5.6 * 5.6) + (2.0 * 2.0), (1.0 * 1.0) + (2.0 * 2.0), (1.0 * 1.0) + (5.6 * 5.6)) * (RigMass / 12.0)
-            : new double3(1, 1, 1) * (0.4 * RigMass * 1.1 * 1.1);
+            : new double3((3.6 * 3.6) + (1.7 * 1.7), (1.1 * 1.1) + (1.7 * 1.7), (1.1 * 1.1) + (3.6 * 3.6)) * (RigMass / 12.0);
 
         // Where KSACarsGameData.xml puts the centre of mass.
         public static readonly double3 Com = new(0.60, -0.25, 0.0);
@@ -713,7 +754,8 @@ public class BuggyDriveTests
             }
 
             DriveImpulse j = Drive.Step(input, contacts, Hubs, new double3(1, 0, 0), new double3(0, 1, 0),
-                                        RigMass, Gravity, Air, dt);
+                                        RigMass, Gravity, Air, dt,
+                                        (new double3(1.0 / Inertia.X, 0, 0), new double3(0, 1.0 / Inertia.Y, 0), new double3(0, 0, 1.0 / Inertia.Z)));
             Velocity += Attitude * (j.Linear / RigMass);
             Spin += new double3(j.Angular.X / Inertia.X, j.Angular.Y / Inertia.Y, j.Angular.Z / Inertia.Z);
 

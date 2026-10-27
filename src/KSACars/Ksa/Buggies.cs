@@ -879,9 +879,15 @@ internal sealed class Buggies
         bool hovering = e.Pressed && e.Rockets > 0.0;
         // Pressing the car down is for the tyres' grip, which under warp there is none of.
         bool pressed = e.Pressed && !hovering && !warped;
+        // The inverse inertia is wanted before the step as well as after: a step longer than the springs can
+        // carry is taken in substeps, between which the car's own motion is carried forward.
+        Symmetric3x3 inverse = Symmetric3x3.Invert(craft.TotalMassPropsBody.Inertia);
+        (double3 X, double3 Y, double3 Z) rows = (new double3(inverse.XX, inverse.YX, inverse.ZX),
+                                                  new double3(inverse.YX, inverse.YY, inverse.ZY),
+                                                  new double3(inverse.ZX, inverse.ZY, inverse.ZZ));
         DriveImpulse impulse = warped
             ? default
-            : e.Drive.Step(e.Input, contacts, hubs, up, forward, mass, Downforce.Load(pressed, gravity), air, dt);
+            : e.Drive.Step(e.Input, contacts, hubs, up, forward, mass, Downforce.Load(pressed, gravity), air, dt, rows);
         e.Stepped = true;
         e.Level = contacts[0].Valid ? Vec.Dot(up, contacts[0].GroundUp) : e.Level;
         e.YawRate = Vec.Dot(spinBody, up);
@@ -902,22 +908,17 @@ internal sealed class Buggies
         HullMargins[craft] = HoldsHullMargin && onRoad && !warped ? (float)(HullMarginM + (2.0 * closing * dt)) : float.MaxValue;
 
         double3 dv = impulse.Linear / mass;
-        Symmetric3x3 inverse = Symmetric3x3.Invert(craft.TotalMassPropsBody.Inertia);
         double3 l = impulse.Angular;
-        double3 dw = new((inverse.XX * l.X) + (inverse.YX * l.Y) + (inverse.ZX * l.Z),
-                         (inverse.YX * l.X) + (inverse.YY * l.Y) + (inverse.ZY * l.Z),
-                         (inverse.ZX * l.X) + (inverse.ZY * l.Y) + (inverse.ZZ * l.Z));
+        double3 dw = new(Vec.Dot(rows.X, l), Vec.Dot(rows.Y, l), Vec.Dot(rows.Z, l));
 
         // A loop presses a car at several times its weight, which its springs have no travel for: each hub is held on its stop.
         if (looped && !warped)
         {
             DriveImpulse stop = e.Drive.BumpStops(contacts, hubs, up, velocityBody + dv, spinBody + dw, mass,
-                (new double3(inverse.XX, inverse.YX, inverse.ZX), new double3(inverse.YX, inverse.YY, inverse.ZY), new double3(inverse.ZX, inverse.ZY, inverse.ZZ)), dt);
+                rows, dt);
             dv += stop.Linear / mass;
             double3 w = stop.Angular;
-            dw += new double3((inverse.XX * w.X) + (inverse.YX * w.Y) + (inverse.ZX * w.Z),
-                              (inverse.YX * w.X) + (inverse.YY * w.Y) + (inverse.ZY * w.Z),
-                              (inverse.ZX * w.X) + (inverse.ZY * w.Y) + (inverse.ZZ * w.Z));
+            dw += new double3(Vec.Dot(rows.X, w), Vec.Dot(rows.Y, w), Vec.Dot(rows.Z, w));
         }
 
         // A deck's barrier, where a side of the car is at one: the mod's own push, which rubs as a rail does and not as KSA's ground.
@@ -951,12 +952,10 @@ internal sealed class Buggies
             if (any)
             {
                 DriveImpulse wall = Barrier.Hold(sides, outward, past, velocityBody + dv, spinBody + dw, mass,
-                    (new double3(inverse.XX, inverse.YX, inverse.ZX), new double3(inverse.YX, inverse.YY, inverse.ZY), new double3(inverse.ZX, inverse.ZY, inverse.ZZ)), dt);
+                    rows, dt);
                 dv += wall.Linear / mass;
                 double3 w = wall.Angular;
-                dw += new double3((inverse.XX * w.X) + (inverse.YX * w.Y) + (inverse.ZX * w.Z),
-                                  (inverse.YX * w.X) + (inverse.YY * w.Y) + (inverse.ZY * w.Z),
-                                  (inverse.ZX * w.X) + (inverse.ZY * w.Y) + (inverse.ZZ * w.Z));
+                dw += new double3(Vec.Dot(rows.X, w), Vec.Dot(rows.Y, w), Vec.Dot(rows.Z, w));
             }
         }
 

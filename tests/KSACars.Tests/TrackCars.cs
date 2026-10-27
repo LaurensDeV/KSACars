@@ -7,7 +7,7 @@ namespace KSACars;
 internal sealed partial record TrackCar
 {
     public static readonly TrackCar Manx = new(
-        "Manx", BuggyProfile.Manx, BuggyDriveTests.Rig.Com, 650.0, new double3(1, 1, 1) * (0.4 * 650.0 * 1.1 * 1.1), 0.18, 1.10);
+        "Manx", BuggyProfile.Manx, BuggyDriveTests.Rig.Com, 650.0, Cuboid(650.0, 1.1, 3.6, 1.7), 0.18, 1.10);
 
     public static readonly TrackCar Eldorado = new(
         "Eldorado", BuggyProfile.Eldorado, BuggyDriveTests.Rig.EldoradoCom, 2336.0, Cuboid(2336.0, 1.0, 5.6, 2.0), 0.25, 1.00);
