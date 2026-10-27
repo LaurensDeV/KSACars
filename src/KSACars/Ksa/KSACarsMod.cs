@@ -158,31 +158,52 @@ public sealed class KSACarsMod
     [StarMapUnload]
     public void Unload()
     {
-        // Says goodbye to the other games and closes the port on the router.
-        Multiplayer.Stop();
+        // Says goodbye to the other games and closes the port on the router. Nothing of the world is touched:
+        // the game is halfway through closing and what is left of it is nobody's to read.
+        Quietly("leaving the race", Multiplayer.Shutdown);
 
         // Audio channels belong to the game and nothing else gives them back.
-        _buggySound.StopAll();
-        _rocketSound.StopAll();
-        _buggies.Clear();
-        PhysicsHook.Remove();
-        SeatedCrewHook.Remove();
-        LightsHook.Remove();
-        LensColourHook.Remove();
-        FlamesHook.Remove();
-        CrashHook.Remove();
-        BoostHook.Remove();
-        HudHook.Remove();
-        RailsHook.Remove();
-        RoadDrawHook.Remove();
-        RaceHudHook.Remove();
-        WarpHook.Remove();
-        ControlHook.Remove();
-        RoadColliders.Remove();
+        Quietly("stopping the sounds", () =>
+        {
+            _buggySound.StopAll();
+            _rocketSound.StopAll();
+            _buggies.Clear();
+        });
+        Quietly("removing the patches", () =>
+        {
+            PhysicsHook.Remove();
+            SeatedCrewHook.Remove();
+            LightsHook.Remove();
+            LensColourHook.Remove();
+            FlamesHook.Remove();
+            CrashHook.Remove();
+            BoostHook.Remove();
+            HudHook.Remove();
+            RailsHook.Remove();
+            RoadDrawHook.Remove();
+            RaceHudHook.Remove();
+            WarpHook.Remove();
+            ControlHook.Remove();
+            RoadColliders.Remove();
+        });
         Log.Info("unloaded");
 
         // Last: the log batches its writes, so without this the tail of the session never reaches disk.
         Log.Shutdown();
+    }
+
+    // Each step of the unload apart, so one that fails on the way out neither reaches the game nor skips
+    // the rest -- the log's own shutdown among them, without which the tail of the session is lost.
+    private static void Quietly(string what, Action step)
+    {
+        try
+        {
+            step();
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"{what} failed on the way out: {e.GetBaseException().Message}");
+        }
     }
 
     private void Fault(string where, Exception e)

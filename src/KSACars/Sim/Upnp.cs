@@ -107,7 +107,7 @@ internal static class Upnp
         {
             found = await FindAsync(http, token);
         }
-        catch (Exception e) when (e is SocketException or HttpRequestException or TaskCanceledException or System.Xml.XmlException)
+        catch (Exception e) when (e is SocketException or HttpRequestException or OperationCanceledException or ObjectDisposedException or InvalidOperationException or System.Xml.XmlException)
         {
             return new Opened(null, null, $"no router answered: {e.Message}");
         }
@@ -127,7 +127,7 @@ internal static class Upnp
                 ? new Opened(gateway, external, "")
                 : new Opened(gateway, null, "the router opened the port and would not say its own address");
         }
-        catch (Exception e) when (e is SocketException or HttpRequestException or TaskCanceledException)
+        catch (Exception e) when (e is SocketException or HttpRequestException or OperationCanceledException or ObjectDisposedException or InvalidOperationException)
         {
             return new Opened(gateway, null, $"the router stopped answering: {e.Message}");
         }
@@ -141,7 +141,7 @@ internal static class Upnp
             using HttpClient http = new() { Timeout = TimeSpan.FromSeconds(2) };
             await PostAsync(http, gateway, "DeletePortMapping", DeletePortMapping(gateway.Service, port), CancellationToken.None);
         }
-        catch (Exception e) when (e is SocketException or HttpRequestException or TaskCanceledException)
+        catch (Exception e) when (e is SocketException or HttpRequestException or OperationCanceledException or ObjectDisposedException or InvalidOperationException)
         {
         }
     }

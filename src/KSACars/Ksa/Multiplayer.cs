@@ -368,15 +368,33 @@ internal static partial class Multiplayer
     /// <summary>Leaves or ends the race, closes the port on the router, and lets the world run as its player has it again.</summary>
     public static void Stop() => Stop(quiet: false);
 
+    /// <summary>
+    /// Says goodbye and closes the port on the router, for a game that is closing: nothing of the world is
+    /// touched, which is going with it, and the router is waited for, since nothing runs after this.
+    /// </summary>
+    public static void Shutdown()
+    {
+        if (_session is null) return;
+        _cancel?.Cancel();
+        _session.Dispose();
+        ClosePort()?.Wait(TimeSpan.FromSeconds(2));
+        (_session, _cancel, _opening, _finding, _handover, _course) = (null, null, null, null, null, null);
+    }
+
+    // The port on the router given back, or null with none open. Fire and forget while the game runs; a
+    // router that has gone has closed it anyway.
+    private static Task? ClosePort() =>
+        _opening is { IsCompletedSuccessfully: true } opened && opened.Result.Gateway is { } gateway
+        && opened.Result.External is not null && _session is { } s
+            ? Upnp.CloseAsync(gateway, s.Port)
+            : null;
+
     private static void Stop(bool quiet)
     {
         bool was = _session is not null;
         _cancel?.Cancel();
         _session?.Dispose();
-        if (_opening is { IsCompletedSuccessfully: true } opened && opened.Result.Gateway is { } gateway && opened.Result.External is not null && _session is { } s)
-        {
-            _ = Upnp.CloseAsync(gateway, s.Port);
-        }
+        _ = ClosePort();
         // Whoever leaves the race is left with their own car alone: the others' are taken out of their world.
         if (_session is { } ending) ClearOthers(ending);
         if (_handover is { } pending) Destroy(pending.Craft);
