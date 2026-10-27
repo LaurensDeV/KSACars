@@ -184,8 +184,6 @@ internal static class CarPanel
                 }
             }
 
-            RaceOnline();
-
             // Drawing roads is unfinished, so only a developer's install offers it, and never to a guest in another's world.
             if (Build.Developer && !guest)
             {
@@ -196,6 +194,9 @@ internal static class CarPanel
             }
 
             if (ImGui.Button("Unflip", null)) Buggies.Right(craft);
+
+            // Last, because unfolded it is most of a screen: everything above it stays in view.
+            RaceOnline();
         }
         ImGui.End();
     }
