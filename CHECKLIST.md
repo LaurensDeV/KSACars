@@ -19,6 +19,14 @@ none of it has been seen as **KSACars** yet:
 - [ ] An Xbox pad, through GLFW with no SDL beside the mod
 - [ ] The chase camera: behind the car, tilted with a slope the right way, looking into a corner, and the right
       stick looking round; and the view's frame put back when the panel's Chase camera is cleared
+- [ ] A mouse drag looking round and up and down from behind the car, and coming back behind it when the
+      button is let go; and KSA's own free orbit camera dragged anywhere it reaches with the mod loaded.
+      Reported by Laurens 2026-10-27: dragging with a chase camera on spun the view wildly, which was the
+      chase writing the view over every frame against the spring KSA turns its camera by
+- [ ] A car driving the same at 30 frames a second as at 60, which is what the drive's substeps are for;
+      and the buggy no longer rocking where it stands, now that its mass is a box and not a sphere
+- [ ] Closing the game with the window's X while hosting a race and while in someone else's, with nothing
+      in either log about it. Reported by Laurens 2026-10-27: networking errors on the way out
 - [ ] What speed does to the chase camera: the view wider, further back and lower by 65 m/s, a shake past 55,
       and the field of view and the distance as they were on leaving the car or the chase
 - [ ] The F2004's helmet gone from the first-person view out of its seat, and back in every other view

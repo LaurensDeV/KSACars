@@ -181,7 +181,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | --- | --- |
 | **`src/KSACars/Sim/`** | **no KSA types, linked into the tests wholesale** |
 | `Sim/BuggyProfile.cs` | **one car, as data** — where its hubs, arms and coil-overs are, and how its springs, tyres and engine are tuned; `All` is every car the mod drives. KSA has no wheels, so every one of these numbers is the mod's |
-| `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, and the poses its wheels, arms and coil-overs are drawn in |
+| `Sim/BuggyDrive.cs` | a car's springs, tyres and engine stepped against the ground under each hub, **as one impulse through the centre of mass and one about it**, in as many substeps as a step longer than the car can carry needs, and the poses its wheels, arms and coil-overs are drawn in |
 | `docs/F2004-REFERENCES.md` | what the F2004 was modelled from: dimensions, the rules of its year, blueprint stations, the kitten's measurements, and each photograph's author and licence |
 | `Sim/GroundPlane.cs` | the ground under a car as one plane through what is under its four wheels, **whose up is what the dampers measure closing speed along**: straight up, a car running down a slope is closing on the ground as far as they know |
 | `Sim/WheelGround.cs` | what is under each wheel this step — the nearest of the terrain, a launch pad and a road below its hub — as the contacts the drive is stepped against, **the wheels' alone**: a hull on a road is the road's colliders' to stop |
@@ -197,7 +197,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Sim/Hatch.cs` | the iris over each thruster — **where each of its six blades is, how it is turned and how big it is drawn** as it opens, and when its rocket may fire |
 | `Sim/Headlights.cs` | the dipped and main beams and the tail lamps, as the spotlights KSA is asked for — range, brightness, cone and dip — with the off/low/high setting and how it is kept in step with the part's light switch |
 | `Sim/Gamepad.cs` | a gamepad as a car's controls: the triggers as throttle and brake, the left stick as steer and the right as the pitch and roll keys, **each with its dead centre taken out and the rest stretched to full**, added to the keys, and which buttons went down since the read before |
-| `Sim/ChaseView.cs` | a view that stays behind a car, close, medium or far, or none, the four modes the gamepad's Back steps through: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, a stick to look round from there, and what speed does to it: a wider field of view, further back, lower, and a shake near 65 m/s |
+| `Sim/ChaseView.cs` | a view that stays behind a car, close, medium or far, or none, the four modes the gamepad's Back steps through: the orbit camera's heading eased towards the car's, **led into a corner by how fast the car turns and tilted as the car is on a slope**, a stick or a mouse drag to look round from there, which comes back behind the car once it is let go, and what speed does to it: a wider field of view, further back, lower, and a shake near 65 m/s |
 | `Sim/TerrainRay.cs` | where a ray from the eye first goes under the ground, walked out along it — **not the mean sphere's hit**, which lands behind a hill seen side-on |
 | `Sim/TerrainMask.cs` | the stretch of a line that lies below a body's highest ground, which is all of it the terrain ray has to walk |
 | `Sim/CursorAim.cs` | the cursor, from window pixels to the framebuffer pixels a camera's ray is asked for in |
@@ -276,12 +276,12 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `Ksa/Courses.cs` | **a circuit laid where the car being flown is, for a player**: its first point at the car, its first road the way the car faces, and the car stood on its start; asked from the panel, worked out beside the game and laid from the frame hook once that is done |
 | `Ksa/RocketSound.cs` | the rockets' roar: KSA's stock engine sound on one channel a car, fed the throttle each frame as KSA feeds an engine's |
 | `Ksa/DriverHands.cs` | the driver kitten's hands on the steering wheel — **an `IAnimProcessor` on the seated kitten's model**, the hook KSA turns its eyes with, solving each arm onto the rim after the seated animation and before skinning; reached through one private field, `KittenRenderable._characterAvatar`, and losing it leaves the hands in the lap; it also reads where the head bone has the head, for the helmet |
-| `Ksa/CarPanel.cs` | the panel shown while a car is flown, its Race online section folded until opened and told as numbered steps for a host and for a guest, a host's Tailscale code among them where it has one, every code hidden behind an eye button until asked for, with whatever would change the host's world greyed out for a guest and Build roads hidden from one, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, a course to lay and the line to drive, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
+| `Ksa/CarPanel.cs` | the panel shown while a car is flown, its Race online section **last and folded until opened**, since unfolded it is most of a screen and what is under it would want scrolling to, and told as numbered steps for a host and for a guest, a host's Tailscale code among them where it has one, every code hidden behind an eye button until asked for, with whatever would change the host's world greyed out for a guest and Build roads hidden from one, with the headlight switch, the scoop's choice and the rock weight, the craft mover's switch, a course to lay and the line to drive, the road editor's and the **Unflip** button — closable, leaving a small button that opens it again, and listed in ModMenu's menu when that mod is installed; a plain ImGui window from the GUI pass that never takes the keyboard, because KSA drops the flown craft's held keys while a window has it |
 | `Ksa/ModMenuEntry.cs` | a copy of ModMenu's attribute, which that mod finds by name — **not a dependency**, and inert without it |
 | `Ksa/BuggySound.cs` | a car's engine while it is being flown — an idle and a loaded loop crossfaded by throttle and re-pitched to its RPM every frame, silent past 4x warp |
 | `Ksa/SoundChannels.cs` | the listener, its pressure and a held channel moved or stopped, each guarded |
 | `Ksa/GamepadInput.cs` | the first gamepad SDL or GLFW knows, **read from the frame hook and handed to the physics window**, for the car being flown alone; KSA reads a gamepad for its menus only. Its buttons do what the boost, RCS and engine keys and the panel's Unflip and headlights do. **A Steam Controller has been seen read through SDL; no axis or button has been checked** |
-| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown, at the distance of the mode chosen on the panel or with the gamepad's Back, which is said on the screen for a moment, turned by a gamepad's right stick and tilted by Home and End, which KSA leaves free, and keeping a tilt a mouse drags: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends, as are the field of view and the distance that speed changes; at medium while a gamepad is read unless the panel's Camera or Back says otherwise |
+| `Ksa/ChaseCamera.cs` | KSA's orbit camera kept behind the car being flown, at the distance of the mode chosen on the panel or with the gamepad's Back, which is said on the screen for a moment, turned by a gamepad's right stick and tilted by Home and End, which KSA leaves free, and **taking a mouse's drag as its own look-round and tilt** rather than writing over it, since KSA springs its camera towards the view and is fed the view's own rate of change, so a drag thrown away every frame threw the camera round at the speed of the mouse: the followed craft's stored view written every frame, **in KSA's surface frame**, which is put back as the player had it when the chase ends, as are the field of view and the distance that speed changes; at medium while a gamepad is read unless the panel's Camera or Back says otherwise |
 | `Ksa/SdlPad.cs` | a gamepad through SDL where a `Native/SDL3` is beside the mod, for the pads GLFW cannot see, a Steam Controller among them; without it `GamepadInput` reads GLFW's. **Steam, while it runs, also turns a Steam Controller's buttons into keys**, which the mod cannot stop |
 | `Ksa/TerrainHeights.cs` | one body's height field, off the engine's own height map |
 | `Ksa/LaunchPads.cs` | a body's launch pads as the colliders KSA stands on each, posed as KSA poses them, so a wheel on a pad is sprung against the pad |
@@ -352,11 +352,17 @@ on its tail would: half the wings' area 1.8 m behind the centre of mass. Without
 turn it left a lip with, and the F2004 came down from a 180 m jump on its tail. A car with no wings is
 left as it was.
 
-**The springs are softened to what a step can carry.** The impulse is explicit, and past a step that
-depends on the car the roll mode overshoots: the car rocks from side to side every step and the unloaded
-tyre drives nothing, which halved the F2004's pull at KSA's 20 ms. `BuggyDrive.SpringRate` scales the rate
-down above that step, 19 ms for the F2004 and about 80 ms for the other two.
-`BuggyDriveTests.NoCarRocksOnItsSpringsOrLosesItsDriveAtAnyStep` fails without it.
+**A step longer than the car can carry is taken in substeps, so the frame rate does not change how a
+car drives.** The impulse is explicit, and past a step that depends on the car the roll mode overshoots:
+the car rocks from side to side every step and the unloaded tyre drives nothing, which halved the
+F2004's pull at KSA's 20 ms. `BuggyDrive.StableStep` is the longest step a car takes, what
+`SpringRate`'s budget allows its springs and at most `LongestStep`, KSA's own longest frame: 19 ms for
+the F2004 and 33 ms for the other two. `BuggyDrive.Step` takes as many substeps of it as the engine's
+step needs, up to eight, carrying the car's own motion forward between them from the impulse, and
+`SpringRate` softens the springs only past that. Without the substeps the F2004's springs were
+2.0 Hz at 30 frames a second where they are 3.5 at 60, and the car wallowed the slower the game drew.
+`BuggyDriveTests.TheSpringsKeepTheirRateAtEveryStepTheGameTakes` and
+`NoCarRocksOnItsSpringsOrLosesItsDriveAtAnyStep` are the two sides of it. **Not yet seen in game.**
 
 **KSA's own air drag is kept off a car on its wheels.** KSA drags every craft by the bounding box of its
 colliders, a skin term on the box's whole surface included: 3.1 m2 on the F2004, 5.2 on the Eldorado, and
@@ -398,11 +404,16 @@ as KSA does; `Sim/PadSurface.cs` drops a line from each hub onto them, and the h
 lesser of that and its height over the terrain. A surface up to half a metre above a hub counts as
 under the wheel; anything higher is a roof.
 
-**Yaw inertia is what lets the side grip settle, so the mass is a box the car's size.** The grip
+**Yaw inertia is what lets the side grip settle, so every car's mass is a box.** The grip
 removes a share of each wheel's sideways slip every step; against a sphere's inertia, a third of a
 car's, that share overshot, the car rocked on its wheels at 13 deg/s, and the rocking spent the grip
-the drive needed. `KSACarsGameData.xml` gives the Eldorado a `SolidCuboidMass`, and
-`BuggyDriveTests.AYawKickDiesAwayRatherThanRockingTheDriveAway` fails against the sphere.
+the drive needed. Each `<Part>` in `KSACarsGameData.xml` declares a `SolidCuboidMass`, the buggy's a box
+its own size and the other two's longer and wider than the car, which is what their hubs 1.5 m out
+need; `BuggyDriveTests.AYawKickDiesAwayRatherThanRockingTheDriveAway` and
+`NoCarRocksWhereItStandsAtAnyStep` fail against a sphere. The buggy kept its sphere until it was found
+rocking where it stood, 12 deg/s at 60 frames a second and 25 at 30. **Not yet seen in game**, and it
+changes how the buggy drives: with a box it bottoms its springs at the foot of a 20% ramp at 25 m/s,
+where the rocking used to slow it enough to carry it.
 
 **The Eldorado can fly, on thrust the mod applies itself.** A car flies if its profile has
 `RocketNozzles`; the buggy has none. `Sim/Lift.cs` adds to the same velocity and spin
@@ -1338,7 +1349,8 @@ own address.
 
 **Nobody signs in to anything.** The host's port is opened on its router through UPnP where the router
 allows it (`Sim/Upnp.cs`), leased for four hours so a crash leaves it to close, and closed when the race
-is; every game asks a public STUN server where its socket is seen from outside (`Sim/Stun.cs`); and an
+is — on the way out of the game by `Multiplayer.Shutdown`, which says goodbye, waits for the router and
+touches nothing of the world, that being halfway closed and nobody's to read; every game asks a public STUN server where its socket is seen from outside (`Sim/Stun.cs`); and an
 address is a ten-character code (`Sim/JoinCode.cs`). Where a router will not open the port, a guest gives
 the host its own code and the host's Let in sends to it for 30 s, which opens the way through both
 routers from inside. A code that is the guest's own public address is a host behind the same router, which
