@@ -19,19 +19,20 @@ none of it has been seen as **KSACars** yet:
 - [ ] An Xbox pad, through GLFW with no SDL beside the mod
 - [ ] The chase camera: behind the car, tilted with a slope the right way, looking into a corner, and the right
       stick looking round; and the view's frame put back when the panel's Chase camera is cleared
-- [ ] A mouse drag looking round and up and down from behind the car, and coming back behind it when the
-      button is let go; and KSA's own free orbit camera dragged anywhere it reaches with the mod loaded.
-      Reported by Laurens 2026-10-27 **twice**: dragging with the medium chase camera on spun the view
-      wildly. The first fix took the drag as the chase's own look-round, and he saw it spin again on that
-      build -- the chase still held the drag to its own limits, 3 degrees of tilt above where it starts,
-      and wrote over everything past them. It now writes neither angle while a button holds the view. A
-      `cam:` line goes in the log twice a second while the view is dragged, so a third report can be read
-      rather than guessed at -- and it was: on that build the drag itself tracked the mouse exactly, and
-      letting go spun the view a whole turn. Past 360 degrees of dragging KSA takes a turn off both the
-      view and the camera it springs towards it, the chase was keeping its heading unwrapped through that,
-      and the first angle it wrote after the drag was a turn away from where the camera stood. It now
-      keeps the view's own number, and `Follow` comes round no faster than 92 deg/s, since a view left
-      half a turn round came back in a third of a second
+- [x] A mouse drag looking round and up and down from behind the car, and coming back behind it when the
+      button is let go (2026.10.19.5638, Laurens, 2026-10-27, medium chase camera). Took three goes, each
+      reported as the view spinning wildly. The first took the drag as the chase's own look-round, which
+      still held it to the chase's own limits -- 3 degrees of tilt above where a chase starts -- and wrote
+      over everything past them. The second wrote neither angle while a button holds the view, and letting
+      go then spun the view a whole turn: the `cam:` line, which goes in the log twice a second while the
+      view is dragged, read `azimuth -82.4` against `heading 277.6`, the same direction 360 degrees apart.
+      Past a whole turn of dragging KSA takes 360 degrees off both the view and the camera it springs
+      towards it, and the chase was keeping its heading unwrapped through that, so the first angle it wrote
+      when the button came up was a turn from where the camera stood. It keeps the view's own number now,
+      and `Follow` comes round no faster than 92 deg/s, a view left half a turn round having come back in a
+      third of a second. **Two fixes went out on a plausible mechanism before the diagnostic did**
+- [ ] KSA's own free orbit camera, with the chase off, dragged anywhere it reaches with the mod loaded:
+      the chase used to write that view every frame and hold its elevation to its own lower limit
 - [x] The F2004 on the drive's substeps (2026.10.19.5638, bridge, Chaco, steps 20 to 25 ms, so two
       substeps of its 19 ms every frame): pulls away clean through four gears, 0 to 51 m/s in 4.6 s,
       travel steady at -11 mm front and -1 mm rear, yaw and sideways 0, no jolt from the drive
