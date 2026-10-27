@@ -34,13 +34,23 @@ public static class ChaseView
         angle + (Math.Round((to - angle) / (2.0 * Math.PI)) * 2.0 * Math.PI);
 
     /// <summary>
+    /// The fastest the view comes round to the car, rad/s. <see cref="FollowSeconds"/> is for the few
+    /// degrees a turning car gets ahead of the view; a view a drag left over the car's shoulder has to come
+    /// back half a turn, which at that rate is a whip.
+    /// </summary>
+    public const double MostTurnRadPerSec = 1.6;
+
+    /// <summary>
     /// The view's heading a frame on. The share of the way it goes depends on the frame's length alone, so
-    /// it neither overshoots on a long frame nor crawls on a short one, and it goes the short way round.
+    /// it neither overshoots on a long frame nor crawls on a short one, it goes the short way round, and it
+    /// never turns faster than <see cref="MostTurnRadPerSec"/>.
     /// </summary>
     public static double Follow(double azimuth, double heading, double look, double dt)
     {
         double wanted = Nearest(heading + (Math.Clamp(look, -1.0, 1.0) * LookRoundRad), azimuth);
-        return azimuth + ((wanted - azimuth) * (1.0 - Math.Exp(-Math.Max(dt, 0.0) / FollowSeconds)));
+        double step = (wanted - azimuth) * (1.0 - Math.Exp(-Math.Max(dt, 0.0) / FollowSeconds));
+        double most = MostTurnRadPerSec * Math.Max(dt, 0.0);
+        return azimuth + Math.Clamp(step, -most, most);
     }
 
     /// <summary>How far ahead of a turning car the view looks, as the time the car takes to turn there.</summary>

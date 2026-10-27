@@ -26,7 +26,12 @@ none of it has been seen as **KSACars** yet:
       build -- the chase still held the drag to its own limits, 3 degrees of tilt above where it starts,
       and wrote over everything past them. It now writes neither angle while a button holds the view. A
       `cam:` line goes in the log twice a second while the view is dragged, so a third report can be read
-      rather than guessed at
+      rather than guessed at -- and it was: on that build the drag itself tracked the mouse exactly, and
+      letting go spun the view a whole turn. Past 360 degrees of dragging KSA takes a turn off both the
+      view and the camera it springs towards it, the chase was keeping its heading unwrapped through that,
+      and the first angle it wrote after the drag was a turn away from where the camera stood. It now
+      keeps the view's own number, and `Follow` comes round no faster than 92 deg/s, since a view left
+      half a turn round came back in a third of a second
 - [x] The F2004 on the drive's substeps (2026.10.19.5638, bridge, Chaco, steps 20 to 25 ms, so two
       substeps of its 19 ms every frame): pulls away clean through four gears, 0 to 51 m/s in 4.6 s,
       travel steady at -11 mm front and -1 mm rear, yaw and sideways 0, no jolt from the drive

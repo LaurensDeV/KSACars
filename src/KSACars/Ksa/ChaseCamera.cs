@@ -171,7 +171,10 @@ internal static class ChaseCamera
             double drop = ChaseView.MostDropRad * _speed;
             if (dragging)
             {
-                _azimuth = ChaseView.Nearest(view.Azimuth - shakeAzimuth, _azimuth);
+                // The view's own number, not the nearest turn of it to this one: past a whole turn of dragging KSA
+                // takes 360 degrees off both the view and the camera it springs towards it, and a heading kept
+                // unwrapped through that is a target a turn away from where the camera is -- which it spins to reach.
+                _azimuth = view.Azimuth - shakeAzimuth;
                 _tilt = Math.Clamp(view.Elevation - _slope - drop - shakeElevation, ChaseView.HighestDraggedRad, ChaseView.LowestDraggedRad);
                 Dragged(view);
             }
