@@ -23,8 +23,18 @@ none of it has been seen as **KSACars** yet:
       button is let go; and KSA's own free orbit camera dragged anywhere it reaches with the mod loaded.
       Reported by Laurens 2026-10-27: dragging with a chase camera on spun the view wildly, which was the
       chase writing the view over every frame against the spring KSA turns its camera by
-- [ ] A car driving the same at 30 frames a second as at 60, which is what the drive's substeps are for;
-      and the buggy no longer rocking where it stands, now that its mass is a box and not a sphere
+- [x] The F2004 on the drive's substeps (2026.10.19.5638, bridge, Chaco, steps 20 to 25 ms, so two
+      substeps of its 19 ms every frame): pulls away clean through four gears, 0 to 51 m/s in 4.6 s,
+      travel steady at -11 mm front and -1 mm rear, yaw and sideways 0, no jolt from the drive
+- [x] The buggy stands still with its mass a box (same run): yaw 0 deg/s, sideways 0, level 1.000,
+      travel -1 mm, where a sphere's yaw inertia had it rocking 12 deg/s at 60 frames a second and 25
+      at 30. It drives and steers, 0.96 to 1.00 g, and full-lock turns leave a clean diagonal of travel
+- [ ] A car driving the same at 30 frames a second as at 60, side by side: the substeps are seen
+      working at the game's own 20 to 25 ms, not measured against 60 fps in game
+- [ ] `spawn` parks the buggy 18 cm into the ground -- wheels buried, hull scraping, travel pinned at
+      the bump stop -- because KSA's `TeleportToLocation` rests the lowest collider on the ground and
+      the buggy's tyre pads sit 18 cm above where its tyres touch. Unflip seats it. Not new, and the
+      F2004 parks right
 - [ ] Closing the game with the window's X while hosting a race and while in someone else's, with nothing
       in either log about it. Reported by Laurens 2026-10-27: networking errors on the way out
 - [ ] What speed does to the chase camera: the view wider, further back and lower by 65 m/s, a shake past 55,
