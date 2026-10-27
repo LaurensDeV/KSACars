@@ -16,8 +16,9 @@ internal static class ChaseCamera
     private static long _atMs;
     private static bool _complained;
 
-    // What the player set with the stick, apart from the slope's share of what is written.
+    // What the player set with the stick or the mouse, apart from the slope's share of what is written.
     private static double _tilt;
+    private static double _look;
     private static double _slope;
     private static double _heading;
     private static double _turnRate;
@@ -31,7 +32,7 @@ internal static class ChaseCamera
     private static Camera? _camera;
     private static float _fovDeg, _fovWritten;
     private static double _distance, _distanceWritten;
-    private static double _elevationWritten = double.NaN;
+    private static double _azimuthWritten, _elevationWritten = double.NaN;
 
     /// <summary>The mode chosen, from the panel or the gamepad's Back; with none the view chases at medium while a gamepad is being read.</summary>
     public static ChaseMode? Chosen { get; set; }
@@ -105,8 +106,13 @@ internal static class ChaseCamera
             if (!On)
             {
                 Release();
-                view.Azimuth -= lookX * ChaseView.StickRadPerSec * dt;
-                view.Elevation = ChaseView.Tilt(view.Elevation, lookY, dt);
+                // Only what is asked for, and to KSA's own limits: written every frame, the chase's lower limit held
+                // the player's own camera at it and the spring KSA turns the camera by threw it about on every drag.
+                if (lookX != 0.0) view.Azimuth -= lookX * ChaseView.StickRadPerSec * dt;
+                if (lookY != 0.0)
+                {
+                    view.Elevation = Math.Clamp(view.Elevation - (lookY * ChaseView.StickRadPerSec * dt), -Math.PI / 2.0, Math.PI / 2.0);
+                }
                 return;
             }
 
@@ -116,7 +122,7 @@ internal static class ChaseCamera
                 _view = view;
                 _frameBefore = view.ReferenceFrame;
                 _tilt = Math.Min(view.Elevation, ChaseView.StartElevationRad);
-                (_slope, _turnRate, _heading, _speed, _azimuth) = (0.0, 0.0, double.NaN, 0.0, view.Azimuth);
+                (_slope, _turnRate, _heading, _speed, _azimuth, _look) = (0.0, 0.0, double.NaN, 0.0, view.Azimuth, 0.0);
                 _camera = camera;
                 _fovDeg = _fovWritten = FovDeg(camera);
                 _distance = _distanceWritten = view.DistancePower;
@@ -128,14 +134,25 @@ internal static class ChaseCamera
                 _distance = ChaseView.DistancePower(Mode);
             }
             view.ReferenceFrame = CameraReferenceFrame.Surface;
-            // A tilt a mouse dragged since the last frame is kept and not written over. Only a drag: KSA also turns the view
-            // by a stick it can see, which this has already counted.
-            if (KsaWorld.MouseHeld && double.IsFinite(_elevationWritten) && Math.Abs(view.Elevation - _elevationWritten) > 1e-6)
-            {
-                _tilt = Math.Clamp(_tilt + (view.Elevation - _elevationWritten), ChaseView.HighestRad, ChaseView.LowestRad);
-            }
+            // What a mouse dragged since the last frame becomes this view's own look-round and tilt, rather than being
+            // written over: KSA springs its camera towards the view and feeds it the view's own rate of change, so a
+            // drag discarded every frame threw the camera round at the speed of the mouse. Only a drag: KSA also turns
+            // the view by a stick it can see, which this has already counted.
+            bool held = KsaWorld.MouseHeld && double.IsFinite(_elevationWritten);
+            double dragged = held ? ChaseView.Nearest(view.Azimuth, _azimuthWritten) - _azimuthWritten : 0.0;
+            if (held) _tilt = Math.Clamp(_tilt + (view.Elevation - _elevationWritten), ChaseView.HighestRad, ChaseView.LowestRad);
+            // The view turns by as much of the drag as the look-round takes, so at full lock it stops rather than
+            // being pulled against what is written.
+            double looked = ChaseView.Looked(_look, dragged, held, dt);
+            if (held) _azimuth += looked - _look;
+            _look = looked;
 
-            if (craft.GetEnu2Cce() is not { } enu2Cce) return;
+            if (craft.GetEnu2Cce() is not { } enu2Cce)
+            {
+                // Nothing is written this frame, so next frame's drag cannot be read against what was.
+                _elevationWritten = double.NaN;
+                return;
+            }
             // The frame's axes turned as KSA's controller turns them, so the angle's sense is KSA's own.
             double3 east = double3.UnitX.Transform(enu2Cce);
             double3 up = double3.UnitZ.Transform(enu2Cce);
@@ -153,7 +170,7 @@ internal static class ChaseCamera
                     _turnRate = ChaseView.Ease(_turnRate, rate, 0.25, dt);
                 }
                 _heading = heading;
-                _azimuth = ChaseView.Follow(_azimuth, heading + ChaseView.Lead(_turnRate), -lookX, dt);
+                _azimuth = ChaseView.Follow(_azimuth, heading + ChaseView.Lead(_turnRate) + _look, -lookX, dt);
                 // Nose down is a view turned down with it, so a road falling away stays in the picture.
                 _slope = ChaseView.Ease(_slope, Math.Asin(Math.Clamp(Vec.Dot(ahead, up), -1.0, 1.0)), ChaseView.FollowSeconds, dt);
             }
@@ -162,7 +179,7 @@ internal static class ChaseCamera
             _speed = ChaseView.Ease(_speed, ChaseView.SpeedShare(car.SpeedMs), 0.4, dt);
             if (!KsaWorld.IsPaused) _clock += dt;
             (double shakeAzimuth, double shakeElevation) = ChaseView.Shake(_speed, _clock);
-            view.Azimuth = _azimuth + shakeAzimuth;
+            view.Azimuth = _azimuthWritten = _azimuth + shakeAzimuth;
             view.Elevation = _elevationWritten = Math.Clamp(_tilt + _slope + (ChaseView.MostDropRad * _speed) + shakeElevation, -Math.PI / 2.0, Math.PI / 2.0);
 
             if (Math.Abs(FovDeg(camera) - _fovWritten) > 0.05f) _fovDeg = FovDeg(camera);
@@ -191,6 +208,6 @@ internal static class ChaseCamera
             view.DistancePower = _distance;
             _camera?.SetFieldOfView(_fovDeg);
         }
-        (_view, _camera, _elevationWritten) = (null, null, double.NaN);
+        (_view, _camera, _azimuthWritten, _elevationWritten, _look) = (null, null, 0.0, double.NaN, 0.0);
     }
 }
