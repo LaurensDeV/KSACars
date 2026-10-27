@@ -1,3 +1,14 @@
+## [0.1.10](https://github.com/LaurensDeV/KSACars/compare/v0.1.9...v0.1.10) (2026-10-27)
+
+### Fixes
+
+* **camera:** let a mouse drag have the view outright ([2d7d943](https://github.com/LaurensDeV/KSACars/commit/2d7d943f82777d6bb208c2d4a19cf630f510b89b))
+* **camera:** no spin round when a drag is let go ([96de159](https://github.com/LaurensDeV/KSACars/commit/96de159566014154aa4072a159e1b339bebc7fc5))
+* **camera:** take a mouse drag as the chase's own look-round ([2d8ad17](https://github.com/LaurensDeV/KSACars/commit/2d8ad17e6737c3946fdde45348d86e678d729cbc))
+* **cars:** drive the same however fast the game draws ([82d46ea](https://github.com/LaurensDeV/KSACars/commit/82d46ea896c72372f9c8982c6013955151a743f3))
+* **cars:** keep Build roads and Unflip above Race online ([bc77b48](https://github.com/LaurensDeV/KSACars/commit/bc77b48567f072f35c7d895f377a14f88cc6d71b))
+* **online:** leave the race quietly when the game is closing ([40ea2d9](https://github.com/LaurensDeV/KSACars/commit/40ea2d94824867c07fafaede9c277d985f0af338))
+
 ## [0.1.9](https://github.com/LaurensDeV/KSACars/compare/v0.1.8...v0.1.9) (2026-10-23)
 
 ### Features
