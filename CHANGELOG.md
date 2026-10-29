@@ -1,3 +1,9 @@
+## [0.1.11](https://github.com/LaurensDeV/KSACars/compare/v0.1.10...v0.1.11) (2026-10-29)
+
+### Build and packaging
+
+* **ksa:** retarget 2026.10.25.5707 ([22b132d](https://github.com/LaurensDeV/KSACars/commit/22b132dda1784c75773ee90fcabb353373d81634))
+
 ## [0.1.10](https://github.com/LaurensDeV/KSACars/compare/v0.1.9...v0.1.10) (2026-10-27)
 
 ### Fixes
