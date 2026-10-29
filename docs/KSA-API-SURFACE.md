@@ -1075,7 +1075,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 get_PositionVehicleAsmb()`
 - `Brutal.Numerics.double3 get_Scale()`
 - `Brutal.Numerics.doubleQuat get_Asmb2VehicleAsmb()`
-- `KSA.ModuleList SubtreeModules`
+- `KSA.ModuleList get_SubtreeModules()`
 - `KSA.Part get_FullPart()`
 - `KSA.PartTemplate Template`
 - `KSA.PartTree CreateOwnTree()`

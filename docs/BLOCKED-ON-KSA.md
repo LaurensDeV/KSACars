@@ -1,7 +1,8 @@
 # Blocked on KSA
 
 What the cars cannot do, or do only by working round the engine, with the engine reason and what
-would unblock it. Read against KSA build **2026.10.19.5638**, which changed none of it.
+would unblock it. Read against KSA build **2026.10.19.5638** and rechecked against **2026.10.25.5707**, which changed none
+of it; its `file:line` citations are 2026.10.19.5638's.
 
 A KSA update is the only thing that changes any of these, and none will show up in
 `tools/ksa-api-diff.sh`: they are things the engine does not do rather than members that moved. So

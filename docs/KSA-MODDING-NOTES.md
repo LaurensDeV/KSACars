@@ -2,7 +2,7 @@
 
 Everything here comes out of the shipped assemblies of **KSA build 2026.9.10.5438**, read with
 `tools/apidump`, or out of the StarMap sources, and was rechecked against **2026.9.22.5482**,
-**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602** and **2026.10.19.5638** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
+**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602**, **2026.10.19.5638** and **2026.10.25.5707** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
 none of this is documented by RocketWerkz, and **it will drift between game builds**. Re-run
 the dumper rather than trusting this file after an update.
 
@@ -573,6 +573,13 @@ loads and draws at its modelled pose, and no log says why.
 - **Boarding needs an `<EVADoor SeatId="…" />`**, which goes on a `<SubPartGameData>` of the same
   part. A kitten boards only from within 1 m of that subpart's origin (`KittenEva.CanBoardDoor`), so
   the door belongs on a subpart whose origin a kitten can actually walk up to.
+- **Since 2026.10.25.5707 a seated kitten takes a radiation dose**, shielded by
+  `RadiationShield.GetTransmission(seat.Parent)`, and can be retired, fall sick or die of it.
+  `CrewAssignmentWindow.FillSeats` skips a retired or sick kitten and one past its lifetime dose,
+  recruiting five more only when `KittenRoster.EnsureAvailableKitten` finds none free, which does not
+  ask about the lifetime dose: a roster whose only free kittens are past it leaves the seat empty.
+  A sick crew stops time warp and shortens the next physics step (`Universe.LimitNextStep`), and a
+  death goes through `Universe.DestroyVehicle`, not `DestroyVehicleFromEvent`.
 
 ### A kitten walks only on static ground, so a craft is boarded by its grab rail
 
