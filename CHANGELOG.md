@@ -1,3 +1,13 @@
+## [0.1.12](https://github.com/LaurensDeV/KSACars/compare/v0.1.11...v0.1.12) (2026-11-01)
+
+### Features
+
+* **roads:** show Build roads to every player but a guest ([33bf1bc](https://github.com/LaurensDeV/KSACars/commit/33bf1bc20c89609c8f23c8f73006f1c06e4a79ef))
+
+### Fixes
+
+* **roads:** split a raised road where it is drawn, at its height ([f0b390c](https://github.com/LaurensDeV/KSACars/commit/f0b390c9e2db99b2fc297b47251eb9a76a9151da))
+
 ## [0.1.11](https://github.com/LaurensDeV/KSACars/compare/v0.1.10...v0.1.11) (2026-10-29)
 
 ### Build and packaging
