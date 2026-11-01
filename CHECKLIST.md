@@ -505,6 +505,8 @@ Flown through the bridge on `2026.9.22.5482` at the Chaco site, the same way as 
 - [ ] The line to drive on a loop, seen: it was night, and the captures showed nothing
 - [ ] A loop with the buggy and the Eldorado, at 30 frames a second, and too slowly; a kitten at one
 - [ ] A barrier's open end where a deck begins, seen from the road; a barrier hit head on at speed
+- [ ] A click on a raised road in the editor puts its point on the deck, where the road is drawn, not on
+      the ground under it
 - [ ] The editor's width, lean and corner sliders and its warnings, by hand: the capture does not show them
 - [ ] The same looked at where a road widens, at a bank's foot and for a tree under a low deck
 - [ ] A junction with a road into it shorter than its mouth; the racing line and push on the older circuits

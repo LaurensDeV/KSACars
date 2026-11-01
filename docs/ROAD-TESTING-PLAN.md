@@ -89,7 +89,8 @@ One test is skipped, the ramp's foot on Luna.
 
 11. ~~**A car's memory of its road survives the road being laid again**~~ (fixed, unseen in game), which is how raising a road
     carries a car up with it.
-12. **Splitting a raised road puts the new point on the ground.**
+12. ~~**Splitting a raised road puts the new point on the ground.**~~ Fixed, unseen in game: the point is put
+    where the road is drawn, at its height.
 13. **Nothing limits curvature or gradient.** A corner strength of 0.5 on 30 m legs gives a 2.7 m
     radius under a 4 m half width, and the surface is not defined where the radius is under the half
     width.
@@ -209,7 +210,7 @@ Judged on, each with a number:
    everything that is not a car. The bump-stop impulse stays in reserve if the hull on a collider at
    speed proves too harsh.
 4. **A generation on each laid surface**, the car's memory dropped when it changes. Fault 11.
-5. **Split at the road's own height.** Fault 12.
+5. **Split at the road's own height.** Fault 12. Done, unseen in game.
 6. **The radius limit**, in the editor. Fault 13.
 
 Faults 14 and 15 are changes to what a road is, and wait for the owner.

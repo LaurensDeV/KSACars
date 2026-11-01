@@ -198,6 +198,21 @@ public class CircuitTests
     }
 
     [Fact]
+    public void ARaisedRoadSplitWhereItIsDrawnStaysRaised()
+    {
+        Circuit c = new Circuit().AddNode(0, 0, out int a).Extend(a, 0, Deg(300), out int b).SetHeight(a, 8.0).SetHeight(b, 8.0);
+        RoadLayout.Stretch road = RoadLayout.Of(c, DirOf, Radius, 2.0).Single();
+        int middle = road.Line.Length / 2;
+
+        Circuit split = c.SplitAt(road, middle, out int mid);
+
+        Assert.Equal(8.0, split.Find(mid)!.HeightM, 9);
+        Circuit.Node m = split.Find(mid)!;
+        Assert.True(Vec.Len(DirOf(m.LatDeg, m.LonDeg) - road.Line[middle]) * Radius < 1e-3, "the point is not where the road was drawn");
+        Assert.All(RoadLayout.Of(split, DirOf, Radius, 2.0), s => Assert.All(s.HeightM, h => Assert.Equal(8.0, h, 9)));
+    }
+
+    [Fact]
     public void ANameIsMadeSafeForAFile()
     {
         Assert.Equal("Luna Crater Ring.json", Circuit.FileName("  Luna Crater Ring "));
