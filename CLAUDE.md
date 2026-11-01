@@ -573,7 +573,7 @@ nothing extra.
 
 ## Roads
 
-**A player lays a course where the car is; drawing one is a developer's.** The panel's Course list is the
+**A player lays a course where the car is, or draws one.** The panel's Course list is the
 mod's own courses, `src/KSACars/Circuits/`, shipped beside the DLL, and whatever is in the player's
 library, the player's own of a name before the mod's. Lay here asks `Ksa/Courses.cs`, which from the frame
 hook moves the circuit so its first point is where the car is and its first road runs the way the car
@@ -583,7 +583,7 @@ its start; Take up roads puts the ground back, and Racing line is there while ro
 install for it. **The panel's own controls and an install with no `developer` file have not been run.**
 
 **Unfinished: no save remembers which circuits are laid, and a road grips as the ground does.** A circuit is drawn
-with `Ksa/RoadEditor.cs`, switched on from the car's panel on a developer's install, or laid from the bridge. Switched on over roads
+with `Ksa/RoadEditor.cs`, switched on from the car's panel by anyone but a guest in an online race, or laid from the bridge. Switched on over roads
 that are already laid, the editor edits that circuit: starting an empty one would take them up.
 `docs/ROAD-TESTING-PLAN.md` lists the faults known in it and the order they are to be fixed in. **The editor's clicks and drags have not
 been tried in game**; its camera and a raised road have, through the bridge.
@@ -752,8 +752,7 @@ yellow, orange and red by a fifth over. `Ksa/RacingLine.cs` writes a stretch of 
 once, the whole of a lap under 3 km, and every frame tells each of four flat materials which runs of the
 indices to draw (`RuntimeMesh.Draws`), since writing a mesh waits for the graphics card, up to 33 ms when
 it was done eight times a second. Each colour has six draws, a run past them is left out, and the roads
-keep to 24 fewer draws a view while the line is drawn. It is switched from the panel's Racing line, on a
-developer's install, or the bridge's `road` with `racing_line`. The plan is the route driver's with
+keep to 24 fewer draws a view while the line is drawn. It is switched from the panel's Racing line or the bridge's `road` with `racing_line`. The plan is the route driver's with
 `Push` 1, all the grip and nearly all the brakes its model has, on a line kept 0.3 m inside the edges where
 the driver keeps 0.9, and takes a crest for one to be jumped where the circuit's file has it in `jumps`. It is not lit of its own, so at night it is as dark as the road outside the headlamps.
 

@@ -548,19 +548,17 @@ internal sealed class RoadEditor
             {
                 (_grab, _grabNode) = (Grab.Node, node);
             }
+            else if (RoadUnder(mouse) is ({ } road, int sample))
+            {
+                // Where the road is drawn, not where the cursor meets the ground under a raised one.
+                _history.Do(Now.SplitAt(road, sample, out int mid));
+                _selected = mid;
+            }
             else if (TryCursor(out double lat, out double lon))
             {
-                if (RoadUnder(mouse) is { } road)
-                {
-                    _history.Do(Now.Split(road.From, road.To, lat, lon, out int mid));
-                    _selected = mid;
-                }
-                else
-                {
-                    int id;
-                    _history.Do(_selected != 0 ? Now.Extend(_selected, lat, lon, out id) : Now.AddNode(lat, lon, out id));
-                    _selected = id;
-                }
+                int id;
+                _history.Do(_selected != 0 ? Now.Extend(_selected, lat, lon, out id) : Now.AddNode(lat, lon, out id));
+                _selected = id;
             }
             return;
         }
@@ -652,9 +650,10 @@ internal sealed class RoadEditor
         return best;
     }
 
-    private RoadLayout.Stretch? RoadUnder(float2 mouse)
+    private (RoadLayout.Stretch? Road, int Sample) RoadUnder(float2 mouse)
     {
         RoadLayout.Stretch? best = null;
+        int bestAt = 0;
         float least = RoadReach;
         foreach (RoadLayout.Stretch stretch in _stretches)
         {
@@ -664,10 +663,10 @@ internal sealed class RoadEditor
             {
                 if (!KsaWorld.TryProjectAhead(EclOf(stretch.Line[i], stretch.HeightM[i]), out float2 at)) continue;
                 float d = Vec2(at - mouse);
-                if (d < least) (best, least) = (stretch, d);
+                if (d < least) (best, bestAt, least) = (stretch, i, d);
             }
         }
-        return best;
+        return (best, bestAt);
     }
 
     // ---- where things are -------------------------------------------------------------------

@@ -184,8 +184,8 @@ internal static class CarPanel
                 }
             }
 
-            // Drawing roads is unfinished, so only a developer's install offers it, and never to a guest in another's world.
-            if (Build.Developer && !guest)
+            // Never to a guest, whose world is the host's.
+            if (!guest)
             {
                 bool editing = roads.Enabled;
                 if (ImGui.Checkbox("Build roads", ref editing)) roads.Enabled = editing;

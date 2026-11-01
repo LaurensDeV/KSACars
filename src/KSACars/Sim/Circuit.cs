@@ -311,6 +311,13 @@ internal sealed record Circuit
         };
     }
 
+    /// <summary>A road split at one of its own samples, the new point at that sample's place and height above the ground.</summary>
+    public Circuit SplitAt(RoadLayout.Stretch stretch, int sample, out int id)
+    {
+        (double lat, double lon) = LatLonOf(stretch.Line[sample]);
+        return Split(stretch.From, stretch.To, lat, lon, out id).SetHeight(id, stretch.HeightM[sample]);
+    }
+
     // ---- where it is -------------------------------------------------------------------------
 
     /// <summary>
