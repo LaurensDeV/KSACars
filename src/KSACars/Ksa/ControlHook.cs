@@ -66,10 +66,10 @@ internal static class ControlHook
     // False leaves control where it is. Inside KSA's own input and frame: nothing here may throw.
     private static bool BeforeControl(Vehicle? value) => !Others(value);
 
-    private static bool BeforeBoard(Vehicle host, ref bool __result)
+    private static bool BeforeBoard(Vehicle host, ref CrewSeatResult __result)
     {
         if (!Others(host)) return true;
-        __result = false;
+        __result = CrewSeatResult.SeatTaken;
         return false;
     }
 

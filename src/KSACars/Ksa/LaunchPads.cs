@@ -81,9 +81,10 @@ internal sealed class LaunchPads
 
             List<PadSolid> solids = [];
             AddSolids(solids, pad.Template.Colliders, double3.Zero, doubleQuat.Identity);
-            foreach (StaticSubObjectInstance instance in pad.Template.SubObjectInstances)
+            foreach (TransformDataReference<StaticSubObjectTemplate> instance in pad.Template.SubObjectInstances)
             {
-                AddSolids(solids, instance.GetTemplate().Colliders,
+                if (instance.Value is not { } sub) continue;
+                AddSolids(solids, sub.Colliders,
                           instance.Transform?.PositionValue ?? double3.Zero,
                           instance.Transform?.RotationValue ?? doubleQuat.Identity);
             }

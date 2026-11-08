@@ -14,411 +14,536 @@
   <EditorTagDef Id="Vehicles" RootPartWhitelist="true" FaceSnapTargetWhitelist="true"
                 DiameterFilterlist="true" />
 
-  <PartGameData Id="KSACars_Prefab_Buggy" DisplayName="Beach Buggy">
-    <EditorTag Value="Vehicles" />
-    <!-- +X is up on this hull too, and face snapping would lay it on its side. -->
-    <EditorTag Value="NoFaceSnapping" />
-    <Diameter M="2" />
+  <Part Id="KSACars_Prefab_Buggy" Modify="Patch" DisplayName="Beach Buggy">
+    <EditorTags Modify="Extend">
+      <EditorTag Ref="Vehicles" />
+      <!-- +X is up on this hull too, and face snapping would lay it on its side. -->
+      <EditorTag Ref="NoFaceSnapping" />
+    </EditorTags>
+    <Diameters Modify="Extend">
+      <Diameter M="2" />
+    </Diameters>
+    <InertMasses Modify="Extend">
 
-    <!-- A node connector, so the buggy can start a craft. -->
-    <Connector Id="_bgConnectorAft" />
-
-    <!-- A command source, so a craft that is only this has something to control it. -->
-    <Control />
-
-    <Battery>
-      <MaximumCapacity J="2000" />
-    </Battery>
-
-    <!--
-      The lamps' switch: KSA lights the emissive lenses while it is on. Next to nothing is drawn,
-      because nothing on a car charges the battery and a flat one puts the lamps out.
-    -->
-    <PowerConsumer LightSwitch="true">
-      <Consumed W="0.001" />
-    </PowerConsumer>
-
-    <!--
-      Two seats, the driver on the right, behind the wheel. Position is the eye; the engine draws the
-      seated kitten's origin 0.63 m below it along UpAxis, and its hips sit 0.19 m above that origin,
-      which puts them on the cushion.
-    -->
-    <IVASeat Id="KSACars_Buggy_SeatDriver">
-      <Position X="0.99" Y="0.18" Z="-0.28" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
-    <IVASeat Id="KSACars_Buggy_SeatPassenger">
-      <Position X="0.99" Y="0.18" Z="0.28" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
-
-    <!--
-      A fibreglass Manx on a VW pan is about 650 kg, with its centre of mass 0.6 m up and toward the
-      engine. At the part origin, on the ground, nothing would lean in a corner or squat under power.
-      A box the car's size rather than a sphere, because yaw inertia is what lets the side grip settle:
-      a sphere gave a third of it, the grip overcorrected every step, and the car rocked on its wheels
-      at 12 deg/s at 60 fps and 25 at 30, with the drive spent holding the rocking.
-    -->
-    <SolidCuboidMass>
-      <Mass Kg="650" />
-      <LocationAsmb X="0.60" Y="-0.25" />
-      <LengthX M="1.1" />
-      <LengthY M="3.6" />
-      <LengthZ M="1.7" />
-    </SolidCuboidMass>
-
-    <!--
-      The springs hold it up, not these. KSA's terrain friction is a fixed 0.95 for every collider, so
-      a wheel box on the ground would drag like a skid: each tyre's pad ends 18 cm above the ground at
-      rest, clear of the springs' 14 cm of bump and the lean in a corner, so it only touches in a crash.
-      At 10 cm the outside pad reaches the ground in a hard turn and trips the car.
-    -->
-    <Collider Id="KSACars_BuggyCollider">
-      <Box Id="KSACars_BuggyTubCollider">
-        <LocationAsmb X="0.75" Y="0.30" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.70" />
-        <LengthY M="3.10" />
-        <LengthZ M="1.20" />
-      </Box>
-      <Box Id="KSACars_BuggyEngineCollider">
-        <LocationAsmb X="0.72" Y="-1.60" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.70" />
-        <LengthY M="0.70" />
-        <LengthZ M="0.94" />
-      </Box>
-      <Box Id="KSACars_BuggyPadFLCollider">
-        <LocationAsmb X="0.38" Y="1.15" Z="0.84" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.40" />
-        <LengthY M="0.60" />
-        <LengthZ M="0.22" />
-      </Box>
-      <Box Id="KSACars_BuggyPadFRCollider">
-        <LocationAsmb X="0.38" Y="1.15" Z="-0.84" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.40" />
-        <LengthY M="0.60" />
-        <LengthZ M="0.22" />
-      </Box>
-      <Box Id="KSACars_BuggyPadRLCollider">
-        <LocationAsmb X="0.44" Y="-0.95" Z="0.88" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.52" />
-        <LengthY M="0.70" />
-        <LengthZ M="0.32" />
-      </Box>
-      <Box Id="KSACars_BuggyPadRRCollider">
-        <LocationAsmb X="0.44" Y="-0.95" Z="-0.88" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.52" />
-        <LengthY M="0.70" />
-        <LengthZ M="0.32" />
-      </Box>
-    </Collider>
-  </PartGameData>
-
-  <SubPartGameData Id="KSACars_BuggyDoorL_SubPart">
-    <EVADoor SeatId="KSACars_Buggy_SeatPassenger" />
-  </SubPartGameData>
-  <SubPartGameData Id="KSACars_BuggyDoorR_SubPart">
-    <EVADoor SeatId="KSACars_Buggy_SeatDriver" />
-  </SubPartGameData>
-
-  <PartGameData Id="KSACars_Prefab_Eldorado" DisplayName="Cadillac Eldorado">
-    <EditorTag Value="Vehicles" />
-    <EditorTag Value="NoFaceSnapping" />
-    <Diameter M="2" />
-    <Connector Id="_elConnectorAft" />
-    <Control />
-    <Battery>
-      <MaximumCapacity J="2000" />
-    </Battery>
-
-    <!--
-      The lamps' switch: KSA lights the emissive lenses while it is on. Next to nothing is drawn,
-      because nothing on a car charges the battery and a flat one puts the lamps out.
-    -->
-    <PowerConsumer LightSwitch="true">
-      <Consumed W="0.001" />
-    </PowerConsumer>
-
-    <!--
-      Left-hand drive: the driver on the car's left, +Z, placed so a kitten's hands reach the rim, and
-      three more on the benches. Position is the eye, 0.63 m over the seated kitten's origin.
-    -->
-    <IVASeat Id="KSACars_Eldo_SeatDriver">
-      <Position X="1.070" Y="0.202" Z="0.400" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
-    <IVASeat Id="KSACars_Eldo_SeatPassenger">
-      <Position X="1.070" Y="0.202" Z="-0.400" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
-    <IVASeat Id="KSACars_Eldo_SeatRearLeft">
-      <Position X="1.030" Y="-0.720" Z="0.400" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
-    <IVASeat Id="KSACars_Eldo_SeatRearRight">
-      <Position X="1.030" Y="-0.720" Z="-0.400" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
-
-    <!--
-      5,150 lb as shipped; the big V8 and the front drive put the mass forward. A box the car's size
-      rather than a sphere, because yaw inertia is what lets the side grip settle: a sphere gave a
-      third of it, the grip overcorrected every step, and the car rocked on its wheels at 13 deg/s
-      with the drive spent holding the rocking.
-    -->
-    <SolidCuboidMass>
-      <Mass Kg="2336" />
-      <LocationAsmb X="0.55" Y="0.25" />
-      <LengthX M="1.0" />
-      <LengthY M="5.6" />
-      <LengthZ M="2.0" />
-    </SolidCuboidMass>
-
-    <!--
-      The springs hold it up; these touch only in a crash. The hull box starts 30 cm up, and each wheel's
-      pad 25 cm, over the springs' 12 cm of bump and its lean in a hard turn. At 16 cm the
-      outside pad reaches the ground there and trips the car.
-    -->
-    <Collider Id="KSACars_EldoCollider">
-      <Box Id="KSACars_EldoHullCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.70" />
-        <LengthY M="5.55" />
-        <LengthZ M="1.96" />
-      </Box>
       <!--
-        The scoop's blade: a flat middle and two wings swept forward. Declared stowed, inside the hull
-        box, where they touch nothing; the mod moves them out to the blade while the scoop is on. Stowed
-        they sit high, clear of the ground under the hull. The middle one is deep enough to reach back
-        to the hull's own box, so a rock cannot get in between the blade and the nose.
+        A fibreglass Manx on a VW pan is about 650 kg, with its centre of mass 0.6 m up and toward the
+        engine. At the part origin, on the ground, nothing would lean in a corner or squat under power.
+        A box the car's size rather than a sphere, because yaw inertia is what lets the side grip settle:
+        a sphere gave a third of it, the grip overcorrected every step, and the car rocked on its wheels
+        at 12 deg/s at 60 fps and 25 at 30, with the drive spent holding the rocking.
       -->
-      <Box Id="KSACars_EldoScoopMidCollider">
-        <LocationAsmb X="0.75" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.82" />
-        <LengthY M="0.52" />
-        <LengthZ M="1.14" />
-      </Box>
-      <Box Id="KSACars_EldoScoopLeftCollider">
-        <LocationAsmb X="0.75" Y="-0.18" Z="0" />
-        <Collider2Asmb X="-0.419" Y="0" Z="0" />
-        <LengthX M="0.82" />
-        <LengthY M="0.16" />
-        <LengthZ M="1.28" />
-      </Box>
-      <Box Id="KSACars_EldoScoopRightCollider">
-        <LocationAsmb X="0.75" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0.419" Y="0" Z="0" />
-        <LengthX M="0.82" />
-        <LengthY M="0.16" />
-        <LengthZ M="1.28" />
-      </Box>
+      <SolidCuboidMass>
+        <Mass Kg="601.5" />
+        <LocationAsmb X="0.60" Y="-0.25" />
+        <LengthX M="1.144" />
+        <LengthY M="3.743" />
+        <LengthZ M="1.767" />
+      </SolidCuboidMass>
+    </InertMasses>
+    <Components Modify="Extend">
+
+      <!-- A command source, so a craft that is only this has something to control it. -->
+      <Control />
+
+      <Battery>
+        <MaximumCapacity J="2000" />
+      </Battery>
+
       <!--
-        The XXL scoop's blade, 1.9 m tall: too tall to stow upright inside the hull, so each box is
-        declared lying down, thin along X, and the mod stands it up as it moves it out.
+        The lamps' switch: KSA lights the emissive lenses while it is on. Next to nothing is drawn,
+        because nothing on a car charges the battery and a flat one puts the lamps out.
       -->
-      <Box Id="KSACars_EldoScoopXXLMidCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.60" />
-        <LengthY M="1.60" />
-        <LengthZ M="1.90" />
-      </Box>
-      <Box Id="KSACars_EldoScoopXXLLeftCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.20" />
-        <LengthY M="2.55" />
-        <LengthZ M="1.90" />
-      </Box>
-      <Box Id="KSACars_EldoScoopXXLRightCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.20" />
-        <LengthY M="2.55" />
-        <LengthZ M="1.90" />
-      </Box>
+      <PowerConsumer LightSwitch="true">
+        <Consumed W="0.001" />
+      </PowerConsumer>
+
       <!--
-        The Mega scoop's blade, 3.3 m tall, in two tiers of 1.65 m: lying down, a tier is the most
-        that fits across the hull.
+        A cabin, so a kitten can get out where the air is too thin to breathe: KSA fills an EVA suit
+        from the cabin it is seated in, and a seat with none is refused under life support. Stocked as
+        Core's Gemini is, three days a kitten, which is about 48 kg that the mass box above leaves out
+        so a stocked car weighs and turns as it did. An open car's air is the sky's, hence the room.
       -->
-      <Box Id="KSACars_EldoScoopMegaMidLowCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.70" />
-        <LengthY M="2.50" />
-        <LengthZ M="1.65" />
-      </Box>
-      <Box Id="KSACars_EldoScoopMegaMidHighCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.70" />
-        <LengthY M="2.50" />
-        <LengthZ M="1.65" />
-      </Box>
-      <Box Id="KSACars_EldoScoopMegaLeftLowCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.25" />
-        <LengthY M="4.30" />
-        <LengthZ M="1.65" />
-      </Box>
-      <Box Id="KSACars_EldoScoopMegaLeftHighCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.25" />
-        <LengthY M="4.30" />
-        <LengthZ M="1.65" />
-      </Box>
-      <Box Id="KSACars_EldoScoopMegaRightLowCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.25" />
-        <LengthY M="4.30" />
-        <LengthZ M="1.65" />
-      </Box>
-      <Box Id="KSACars_EldoScoopMegaRightHighCollider">
-        <LocationAsmb X="0.65" Y="-0.18" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.25" />
-        <LengthY M="4.30" />
-        <LengthZ M="1.65" />
-      </Box>
-      <Box Id="KSACars_EldoPadFLCollider">
-        <LocationAsmb X="0.405" Y="1.604" Z="0.809" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.31" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.22" />
-      </Box>
-      <Box Id="KSACars_EldoPadFRCollider">
-        <LocationAsmb X="0.405" Y="1.604" Z="-0.809" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.31" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.22" />
-      </Box>
-      <Box Id="KSACars_EldoPadRLCollider">
-        <LocationAsmb X="0.405" Y="-1.604" Z="0.807" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.31" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.22" />
-      </Box>
-      <Box Id="KSACars_EldoPadRRCollider">
-        <LocationAsmb X="0.405" Y="-1.604" Z="-0.807" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.31" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.22" />
-      </Box>
-    </Collider>
-  </PartGameData>
+      <Habitat Key="Cabin">
+        <HabitableVolume M3="4" />
+        <StorageVolume M3="0.042" />
+        <LocationAsmb X="0.60" Y="-0.25" />
+      </Habitat>
+      <Tank Key="OxygenBottle">
+        <SphericalTank>
+          <LocationAsmb X="0.60" Y="-0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1750" />
+          <WallThickness Mm="8.3" />
+          <RoleAffinity>Air</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+      <Tank Key="WaterTank">
+        <SphericalTank>
+          <LocationAsmb X="0.60" Y="-0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1672" />
+          <WallThickness Mm="1" />
+          <RoleAffinity>Water</RoleAffinity>
+        </SphericalTank>
+      </Tank>
 
-  <SubPartGameData Id="KSACars_EldoDoorL_SubPart">
-    <EVADoor SeatId="KSACars_Eldo_SeatDriver" />
-  </SubPartGameData>
-  <SubPartGameData Id="KSACars_EldoDoorR_SubPart">
-    <EVADoor SeatId="KSACars_Eldo_SeatPassenger" />
-  </SubPartGameData>
+      <!--
+        Two seats, the driver on the right, behind the wheel. Position is the eye; the engine draws the
+        seated kitten's origin 0.63 m below it along UpAxis, and its hips sit 0.19 m above that origin,
+        which puts them on the cushion.
+      -->
+      <IVASeat Key="KSACars_Buggy_SeatDriver">
+        <Position X="0.99" Y="0.18" Z="-0.28" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
+      <IVASeat Key="KSACars_Buggy_SeatPassenger">
+        <Position X="0.99" Y="0.18" Z="0.28" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
 
-  <PartGameData Id="KSACars_Prefab_F1" DisplayName="Ferrari F2004">
-    <EditorTag Value="Vehicles" />
-    <EditorTag Value="NoFaceSnapping" />
-    <Diameter M="2" />
-    <Connector Id="_f1ConnectorAft" />
-    <Control />
-    <Battery>
-      <MaximumCapacity J="2000" />
-    </Battery>
+      <!--
+        The springs hold it up, not these. KSA's terrain friction is a fixed 0.95 for every collider, so
+        a wheel box on the ground would drag like a skid: each tyre's pad ends 18 cm above the ground at
+        rest, clear of the springs' 14 cm of bump and the lean in a corner, so it only touches in a crash.
+        At 10 cm the outside pad reaches the ground in a hard turn and trips the car.
+      -->
+      <Collider Key="KSACars_BuggyCollider">
+        <Colliders>
+          <Box Key="KSACars_BuggyTubCollider">
+            <LocationAsmb X="0.75" Y="0.30" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.70" />
+            <LengthY M="3.10" />
+            <LengthZ M="1.20" />
+          </Box>
+          <Box Key="KSACars_BuggyEngineCollider">
+            <LocationAsmb X="0.72" Y="-1.60" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.70" />
+            <LengthY M="0.70" />
+            <LengthZ M="0.94" />
+          </Box>
+          <Box Key="KSACars_BuggyPadFLCollider">
+            <LocationAsmb X="0.38" Y="1.15" Z="0.84" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.40" />
+            <LengthY M="0.60" />
+            <LengthZ M="0.22" />
+          </Box>
+          <Box Key="KSACars_BuggyPadFRCollider">
+            <LocationAsmb X="0.38" Y="1.15" Z="-0.84" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.40" />
+            <LengthY M="0.60" />
+            <LengthZ M="0.22" />
+          </Box>
+          <Box Key="KSACars_BuggyPadRLCollider">
+            <LocationAsmb X="0.44" Y="-0.95" Z="0.88" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.52" />
+            <LengthY M="0.70" />
+            <LengthZ M="0.32" />
+          </Box>
+          <Box Key="KSACars_BuggyPadRRCollider">
+            <LocationAsmb X="0.44" Y="-0.95" Z="-0.88" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.52" />
+            <LengthY M="0.70" />
+            <LengthZ M="0.32" />
+          </Box>
+        </Colliders>
+      </Collider>
+    </Components>
+  </Part>
 
-    <!-- The rain light's switch: KSA lights the emissive lens while it is on. -->
-    <PowerConsumer LightSwitch="true">
-      <Consumed W="0.001" />
-    </PowerConsumer>
+  <SubPart Id="KSACars_BuggyDoorL_SubPart" Modify="Patch">
+    <Components Modify="Extend">
+      <EVADoor SeatId="KSACars_Buggy_SeatPassenger" />
+    </Components>
+  </SubPart>
+  <SubPart Id="KSACars_BuggyDoorR_SubPart" Modify="Patch">
+    <Components Modify="Extend">
+      <EVADoor SeatId="KSACars_Buggy_SeatDriver" />
+    </Components>
+  </SubPart>
 
-    <!--
-      One seat. Position is the eye, 0.63 m over the seated kitten's origin: the kitten sits high and
-      forward of a driver, because its head is wider than the cockpit and has to clear the rim and the
-      roll hoop.
-    -->
-    <IVASeat Id="KSACars_F1_SeatDriver">
-      <Position X="0.750" Y="0.200" Z="0.000" />
-      <ForwardAxis Y="1" />
-      <UpAxis X="1" />
-    </IVASeat>
+  <Part Id="KSACars_Prefab_Eldorado" Modify="Patch" DisplayName="Cadillac Eldorado">
+    <EditorTags Modify="Extend">
+      <EditorTag Ref="Vehicles" />
+      <EditorTag Ref="NoFaceSnapping" />
+    </EditorTags>
+    <Diameters Modify="Extend">
+      <Diameter M="2" />
+    </Diameters>
+    <InertMasses Modify="Extend">
 
-    <!--
-      605 kg with its driver, low and a little rearward. The box is longer and wider than the car: each
-      tyre takes out most of its own side slip every step, and with hubs 1.5 m from the middle a box the
-      car's size has too little yaw inertia for four of them, so the car rocks. This is the Eldorado's
-      ratio of inertia to mass, which settles.
-    -->
-    <SolidCuboidMass>
-      <Mass Kg="605" />
-      <LocationAsmb X="0.30" Y="-0.15" />
-      <LengthX M="0.5" />
-      <LengthY M="5.6" />
-      <LengthZ M="2.0" />
-    </SolidCuboidMass>
+      <!--
+        5,150 lb as shipped; the big V8 and the front drive put the mass forward. A box the car's size
+        rather than a sphere, because yaw inertia is what lets the side grip settle: a sphere gave a
+        third of it, the grip overcorrected every step, and the car rocked on its wheels at 13 deg/s
+        with the drive spent holding the rocking.
+      -->
+      <SolidCuboidMass>
+        <Mass Kg="2243" />
+        <LocationAsmb X="0.55" Y="0.25" />
+        <LengthX M="1.021" />
+        <LengthY M="5.715" />
+        <LengthZ M="2.041" />
+      </SolidCuboidMass>
+    </InertMasses>
+    <Components Modify="Extend">
+      <Control />
+      <Battery>
+        <MaximumCapacity J="2000" />
+      </Battery>
 
-    <!--
-      The springs hold it up; these touch only in a crash. The hull box starts 14 cm up and each
-      wheel's pad the same, over springs that move 2 cm.
-    -->
-    <Collider Id="KSACars_F1Collider">
-      <Box Id="KSACars_F1HullCollider">
-        <LocationAsmb X="0.42" Y="0.20" Z="0" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.56" />
-        <LengthY M="4.50" />
-        <LengthZ M="1.36" />
-      </Box>
-      <Box Id="KSACars_F1PadFLCollider">
-        <LocationAsmb X="0.36" Y="1.525" Z="0.735" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.44" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.30" />
-      </Box>
-      <Box Id="KSACars_F1PadFRCollider">
-        <LocationAsmb X="0.36" Y="1.525" Z="-0.735" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.44" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.30" />
-      </Box>
-      <Box Id="KSACars_F1PadRLCollider">
-        <LocationAsmb X="0.36" Y="-1.525" Z="0.7025" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.44" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.30" />
-      </Box>
-      <Box Id="KSACars_F1PadRRCollider">
-        <LocationAsmb X="0.36" Y="-1.525" Z="-0.7025" />
-        <Collider2Asmb X="0" Y="0" Z="0" />
-        <LengthX M="0.44" />
-        <LengthY M="0.50" />
-        <LengthZ M="0.30" />
-      </Box>
-    </Collider>
-  </PartGameData>
+      <!--
+        The lamps' switch: KSA lights the emissive lenses while it is on. Next to nothing is drawn,
+        because nothing on a car charges the battery and a flat one puts the lamps out.
+      -->
+      <PowerConsumer LightSwitch="true">
+        <Consumed W="0.001" />
+      </PowerConsumer>
 
-  <SubPartGameData Id="KSACars_F1Door_SubPart">
-    <EVADoor SeatId="KSACars_F1_SeatDriver" />
-  </SubPartGameData>
+      <!--
+        A cabin, so a kitten can get out where the air is too thin to breathe: KSA fills an EVA suit
+        from the cabin it is seated in, and a seat with none is refused under life support. Stocked as
+        Core's Gemini is, three days a kitten, which is about 93 kg that the mass box above leaves out
+        so a stocked car weighs and turns as it did. An open car's air is the sky's, hence the room.
+      -->
+      <Habitat Key="Cabin">
+        <HabitableVolume M3="8" />
+        <StorageVolume M3="0.084" />
+        <LocationAsmb X="0.55" Y="0.25" />
+      </Habitat>
+      <Tank Key="OxygenBottle">
+        <SphericalTank>
+          <LocationAsmb X="0.55" Y="0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.2205" />
+          <WallThickness Mm="8.3" />
+          <RoleAffinity>Air</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+      <Tank Key="WaterTank">
+        <SphericalTank>
+          <LocationAsmb X="0.55" Y="0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.2107" />
+          <WallThickness Mm="1" />
+          <RoleAffinity>Water</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+
+      <!--
+        Left-hand drive: the driver on the car's left, +Z, placed so a kitten's hands reach the rim, and
+        three more on the benches. Position is the eye, 0.63 m over the seated kitten's origin.
+      -->
+      <IVASeat Key="KSACars_Eldo_SeatDriver">
+        <Position X="1.070" Y="0.202" Z="0.400" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
+      <IVASeat Key="KSACars_Eldo_SeatPassenger">
+        <Position X="1.070" Y="0.202" Z="-0.400" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
+      <IVASeat Key="KSACars_Eldo_SeatRearLeft">
+        <Position X="1.030" Y="-0.720" Z="0.400" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
+      <IVASeat Key="KSACars_Eldo_SeatRearRight">
+        <Position X="1.030" Y="-0.720" Z="-0.400" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
+
+      <!--
+        The springs hold it up; these touch only in a crash. The hull box starts 30 cm up, and each wheel's
+        pad 25 cm, over the springs' 12 cm of bump and its lean in a hard turn. At 16 cm the
+        outside pad reaches the ground there and trips the car.
+      -->
+      <Collider Key="KSACars_EldoCollider">
+        <Colliders>
+          <Box Key="KSACars_EldoHullCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.70" />
+            <LengthY M="5.55" />
+            <LengthZ M="1.96" />
+          </Box>
+          <!--
+            The scoop's blade: a flat middle and two wings swept forward. Declared stowed, inside the hull
+            box, where they touch nothing; the mod moves them out to the blade while the scoop is on. Stowed
+            they sit high, clear of the ground under the hull. The middle one is deep enough to reach back
+            to the hull's own box, so a rock cannot get in between the blade and the nose.
+          -->
+          <Box Key="KSACars_EldoScoopMidCollider">
+            <LocationAsmb X="0.75" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.82" />
+            <LengthY M="0.52" />
+            <LengthZ M="1.14" />
+          </Box>
+          <Box Key="KSACars_EldoScoopLeftCollider">
+            <LocationAsmb X="0.75" Y="-0.18" Z="0" />
+            <Collider2Asmb X="-0.419" Y="0" Z="0" />
+            <LengthX M="0.82" />
+            <LengthY M="0.16" />
+            <LengthZ M="1.28" />
+          </Box>
+          <Box Key="KSACars_EldoScoopRightCollider">
+            <LocationAsmb X="0.75" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0.419" Y="0" Z="0" />
+            <LengthX M="0.82" />
+            <LengthY M="0.16" />
+            <LengthZ M="1.28" />
+          </Box>
+          <!--
+            The XXL scoop's blade, 1.9 m tall: too tall to stow upright inside the hull, so each box is
+            declared lying down, thin along X, and the mod stands it up as it moves it out.
+          -->
+          <Box Key="KSACars_EldoScoopXXLMidCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.60" />
+            <LengthY M="1.60" />
+            <LengthZ M="1.90" />
+          </Box>
+          <Box Key="KSACars_EldoScoopXXLLeftCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.20" />
+            <LengthY M="2.55" />
+            <LengthZ M="1.90" />
+          </Box>
+          <Box Key="KSACars_EldoScoopXXLRightCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.20" />
+            <LengthY M="2.55" />
+            <LengthZ M="1.90" />
+          </Box>
+          <!--
+            The Mega scoop's blade, 3.3 m tall, in two tiers of 1.65 m: lying down, a tier is the most
+            that fits across the hull.
+          -->
+          <Box Key="KSACars_EldoScoopMegaMidLowCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.70" />
+            <LengthY M="2.50" />
+            <LengthZ M="1.65" />
+          </Box>
+          <Box Key="KSACars_EldoScoopMegaMidHighCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.70" />
+            <LengthY M="2.50" />
+            <LengthZ M="1.65" />
+          </Box>
+          <Box Key="KSACars_EldoScoopMegaLeftLowCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.25" />
+            <LengthY M="4.30" />
+            <LengthZ M="1.65" />
+          </Box>
+          <Box Key="KSACars_EldoScoopMegaLeftHighCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.25" />
+            <LengthY M="4.30" />
+            <LengthZ M="1.65" />
+          </Box>
+          <Box Key="KSACars_EldoScoopMegaRightLowCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.25" />
+            <LengthY M="4.30" />
+            <LengthZ M="1.65" />
+          </Box>
+          <Box Key="KSACars_EldoScoopMegaRightHighCollider">
+            <LocationAsmb X="0.65" Y="-0.18" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.25" />
+            <LengthY M="4.30" />
+            <LengthZ M="1.65" />
+          </Box>
+          <Box Key="KSACars_EldoPadFLCollider">
+            <LocationAsmb X="0.405" Y="1.604" Z="0.809" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.31" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.22" />
+          </Box>
+          <Box Key="KSACars_EldoPadFRCollider">
+            <LocationAsmb X="0.405" Y="1.604" Z="-0.809" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.31" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.22" />
+          </Box>
+          <Box Key="KSACars_EldoPadRLCollider">
+            <LocationAsmb X="0.405" Y="-1.604" Z="0.807" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.31" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.22" />
+          </Box>
+          <Box Key="KSACars_EldoPadRRCollider">
+            <LocationAsmb X="0.405" Y="-1.604" Z="-0.807" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.31" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.22" />
+          </Box>
+        </Colliders>
+      </Collider>
+    </Components>
+  </Part>
+
+  <SubPart Id="KSACars_EldoDoorL_SubPart" Modify="Patch">
+    <Components Modify="Extend">
+      <EVADoor SeatId="KSACars_Eldo_SeatDriver" />
+    </Components>
+  </SubPart>
+  <SubPart Id="KSACars_EldoDoorR_SubPart" Modify="Patch">
+    <Components Modify="Extend">
+      <EVADoor SeatId="KSACars_Eldo_SeatPassenger" />
+    </Components>
+  </SubPart>
+
+  <Part Id="KSACars_Prefab_F1" Modify="Patch" DisplayName="Ferrari F2004">
+    <EditorTags Modify="Extend">
+      <EditorTag Ref="Vehicles" />
+      <EditorTag Ref="NoFaceSnapping" />
+    </EditorTags>
+    <Diameters Modify="Extend">
+      <Diameter M="2" />
+    </Diameters>
+    <InertMasses Modify="Extend">
+
+      <!--
+        605 kg with its driver, low and a little rearward. The box is longer and wider than the car: each
+        tyre takes out most of its own side slip every step, and with hubs 1.5 m from the middle a box the
+        car's size has too little yaw inertia for four of them, so the car rocks. This is the Eldorado's
+        ratio of inertia to mass, which settles.
+      -->
+      <SolidCuboidMass>
+        <Mass Kg="579.4" />
+        <LocationAsmb X="0.30" Y="-0.15" />
+        <LengthX M="0.511" />
+        <LengthY M="5.722" />
+        <LengthZ M="2.044" />
+      </SolidCuboidMass>
+    </InertMasses>
+    <Components Modify="Extend">
+      <Control />
+      <Battery>
+        <MaximumCapacity J="2000" />
+      </Battery>
+
+      <!-- The rain light's switch: KSA lights the emissive lens while it is on. -->
+      <PowerConsumer LightSwitch="true">
+        <Consumed W="0.001" />
+      </PowerConsumer>
+
+      <!--
+        A cabin, so a kitten can get out where the air is too thin to breathe: KSA fills an EVA suit
+        from the cabin it is seated in, and a seat with none is refused under life support. Stocked as
+        Core's Gemini is, three days a kitten, which is about 26 kg that the mass box above leaves out
+        so a stocked car weighs and turns as it did. An open car's air is the sky's, hence the room.
+      -->
+      <Habitat Key="Cabin">
+        <HabitableVolume M3="2" />
+        <StorageVolume M3="0.021" />
+        <LocationAsmb X="0.30" Y="-0.15" />
+      </Habitat>
+      <Tank Key="OxygenBottle">
+        <SphericalTank>
+          <LocationAsmb X="0.30" Y="-0.15" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1389" />
+          <WallThickness Mm="8.3" />
+          <RoleAffinity>Air</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+      <Tank Key="WaterTank">
+        <SphericalTank>
+          <LocationAsmb X="0.30" Y="-0.15" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1327" />
+          <WallThickness Mm="1" />
+          <RoleAffinity>Water</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+
+      <!--
+        One seat. Position is the eye, 0.63 m over the seated kitten's origin: the kitten sits high and
+        forward of a driver, because its head is wider than the cockpit and has to clear the rim and the
+        roll hoop.
+      -->
+      <IVASeat Key="KSACars_F1_SeatDriver">
+        <Position X="0.750" Y="0.200" Z="0.000" />
+        <ForwardAxis Y="1" />
+        <UpAxis X="1" />
+      </IVASeat>
+
+      <!--
+        The springs hold it up; these touch only in a crash. The hull box starts 14 cm up and each
+        wheel's pad the same, over springs that move 2 cm.
+      -->
+      <Collider Key="KSACars_F1Collider">
+        <Colliders>
+          <Box Key="KSACars_F1HullCollider">
+            <LocationAsmb X="0.42" Y="0.20" Z="0" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.56" />
+            <LengthY M="4.50" />
+            <LengthZ M="1.36" />
+          </Box>
+          <Box Key="KSACars_F1PadFLCollider">
+            <LocationAsmb X="0.36" Y="1.525" Z="0.735" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.44" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.30" />
+          </Box>
+          <Box Key="KSACars_F1PadFRCollider">
+            <LocationAsmb X="0.36" Y="1.525" Z="-0.735" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.44" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.30" />
+          </Box>
+          <Box Key="KSACars_F1PadRLCollider">
+            <LocationAsmb X="0.36" Y="-1.525" Z="0.7025" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.44" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.30" />
+          </Box>
+          <Box Key="KSACars_F1PadRRCollider">
+            <LocationAsmb X="0.36" Y="-1.525" Z="-0.7025" />
+            <Collider2Asmb X="0" Y="0" Z="0" />
+            <LengthX M="0.44" />
+            <LengthY M="0.50" />
+            <LengthZ M="0.30" />
+          </Box>
+        </Colliders>
+      </Collider>
+    </Components>
+  </Part>
+
+  <SubPart Id="KSACars_F1Door_SubPart" Modify="Patch">
+    <Components Modify="Extend">
+      <EVADoor SeatId="KSACars_F1_SeatDriver" />
+    </Components>
+  </SubPart>
 
 </Assets>

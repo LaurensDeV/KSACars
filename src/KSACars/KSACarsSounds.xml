@@ -17,28 +17,44 @@
         <TwoDRange Min="2" Max="8" />
     </SpatialSoundData>
 
-    <Sound Id="KSACarsBuggyStart" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Buggy_Start.wav" Volume="1.0"/>
-        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    <SoundFile Id="KSACarsBuggyStartFile" Path="Sounds/KSACars_Buggy_Start.wav" Volume="1.0"/>
+    <Sound Id="KSACarsBuggyStart" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsBuggyStartFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsBuggySpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsBuggyIdle" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Buggy_Idle.wav" Volume="1.0">
-            <Loop />
-        </SoundFile>
-        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    <SoundFile Id="KSACarsBuggyIdleFile" Path="Sounds/KSACars_Buggy_Idle.wav" Volume="1.0">
+        <Loop />
+    </SoundFile>
+    <Sound Id="KSACarsBuggyIdle" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsBuggyIdleFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsBuggySpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsBuggyLoad" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Buggy_Load.wav" Volume="1.0">
-            <Loop />
-        </SoundFile>
-        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    <SoundFile Id="KSACarsBuggyLoadFile" Path="Sounds/KSACars_Buggy_Load.wav" Volume="1.0">
+        <Loop />
+    </SoundFile>
+    <Sound Id="KSACarsBuggyLoad" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsBuggyLoadFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsBuggySpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsBuggyStop" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Buggy_Stop.wav" Volume="1.0"/>
-        <SpatialSoundData Id="KSACarsBuggySpatialData" />
+    <SoundFile Id="KSACarsBuggyStopFile" Path="Sounds/KSACars_Buggy_Stop.wav" Volume="1.0"/>
+    <Sound Id="KSACarsBuggyStop" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsBuggyStopFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsBuggySpatialData" />
     </Sound>
 
     <!--
@@ -50,28 +66,44 @@
         <TwoDRange Min="2" Max="9" />
     </SpatialSoundData>
 
-    <Sound Id="KSACarsEldoStart" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Eldo_Start.wav" Volume="1.0"/>
-        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    <SoundFile Id="KSACarsEldoStartFile" Path="Sounds/KSACars_Eldo_Start.wav" Volume="1.0"/>
+    <Sound Id="KSACarsEldoStart" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsEldoStartFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsEldoSpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsEldoIdle" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Eldo_Idle.wav" Volume="1.0">
-            <Loop />
-        </SoundFile>
-        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    <SoundFile Id="KSACarsEldoIdleFile" Path="Sounds/KSACars_Eldo_Idle.wav" Volume="1.0">
+        <Loop />
+    </SoundFile>
+    <Sound Id="KSACarsEldoIdle" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsEldoIdleFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsEldoSpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsEldoLoad" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Eldo_Load.wav" Volume="1.0">
-            <Loop />
-        </SoundFile>
-        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    <SoundFile Id="KSACarsEldoLoadFile" Path="Sounds/KSACars_Eldo_Load.wav" Volume="1.0">
+        <Loop />
+    </SoundFile>
+    <Sound Id="KSACarsEldoLoad" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsEldoLoadFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsEldoSpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsEldoStop" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_Eldo_Stop.wav" Volume="1.0"/>
-        <SpatialSoundData Id="KSACarsEldoSpatialData" />
+    <SoundFile Id="KSACarsEldoStopFile" Path="Sounds/KSACars_Eldo_Stop.wav" Volume="1.0"/>
+    <Sound Id="KSACarsEldoStop" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsEldoStopFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsEldoSpatialData" />
     </Sound>
 
     <!--
@@ -84,28 +116,44 @@
         <TwoDRange Min="2" Max="9" />
     </SpatialSoundData>
 
-    <Sound Id="KSACarsF1Start" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_F1_Start.wav" Volume="1.0"/>
-        <SpatialSoundData Id="KSACarsF1SpatialData" />
+    <SoundFile Id="KSACarsF1StartFile" Path="Sounds/KSACars_F1_Start.wav" Volume="1.0"/>
+    <Sound Id="KSACarsF1Start" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsF1StartFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsF1SpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsF1Idle" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_F1_Idle.wav" Volume="1.0">
-            <Loop />
-        </SoundFile>
-        <SpatialSoundData Id="KSACarsF1SpatialData" />
+    <SoundFile Id="KSACarsF1IdleFile" Path="Sounds/KSACars_F1_Idle.wav" Volume="1.0">
+        <Loop />
+    </SoundFile>
+    <Sound Id="KSACarsF1Idle" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsF1IdleFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsF1SpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsF1Load" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_F1_Load.wav" Volume="1.0">
-            <Loop />
-        </SoundFile>
-        <SpatialSoundData Id="KSACarsF1SpatialData" />
+    <SoundFile Id="KSACarsF1LoadFile" Path="Sounds/KSACars_F1_Load.wav" Volume="1.0">
+        <Loop />
+    </SoundFile>
+    <Sound Id="KSACarsF1Load" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsF1LoadFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsF1SpatialData" />
     </Sound>
 
-    <Sound Id="KSACarsF1Stop" ChannelId="ExternalChannel" Priority="115">
-        <SoundFile Path="Sounds/KSACars_F1_Stop.wav" Volume="1.0"/>
-        <SpatialSoundData Id="KSACarsF1SpatialData" />
+    <SoundFile Id="KSACarsF1StopFile" Path="Sounds/KSACars_F1_Stop.wav" Volume="1.0"/>
+    <Sound Id="KSACarsF1Stop" Priority="115">
+        <Channel Ref="ExternalChannel" />
+        <SoundFiles>
+            <SoundFile Ref="KSACarsF1StopFile" />
+        </SoundFiles>
+        <SpatialSoundData Ref="KSACarsF1SpatialData" />
     </Sound>
 
 </Assets>

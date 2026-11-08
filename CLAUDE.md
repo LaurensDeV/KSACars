@@ -110,7 +110,10 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
 ## Environment
 
 - **KSA install**: `/mnt/c/Program Files/Kitten Space Agency` (Windows game, WSL dev)
-- **KSA build these notes were taken against**: `2026.10.25.5707`
+- **KSA build these notes were taken against**: `2026.11.10.5801`
+- **StarMap 0.5.3** is the loader it runs under. Its API and Harmony are compiled against from NuGet
+  (`StarMap.API` 0.5.3, `Lib.Harmony` 2.4.3, the same DLLs that release ships), pinned in the csproj
+  and never copied into the output; neither `Import/` nor the private mirror holds them.
 - The system `dotnet` is 8.0 and **cannot build this** — the mod targets **net10.0**. A .NET 10 SDK
   is installed at `~/.dotnet`. **Use `tools/build.sh` / `tools/test.sh`**, which source
   `tools/env.sh`. In an interactive shell, `source tools/env.sh` once.
@@ -320,7 +323,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 593 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 589 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -552,6 +555,14 @@ back dipped. It draws almost nothing, because nothing on a car charges the batte
 `<EVADoor>` on a mesh-less subpart beside each front seat; a kitten boards and leaves through those
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
+
+**Each car carries a cabin, so a kitten can get out where the air is thin.** Under KSA's life-support
+rule a suit is filled from the seat's Habitat zone, and a seat with none cannot be left except into
+breathable air. Each part has a `<Habitat>`, an oxygen bottle and a water tank, stocked as Core's
+Gemini is at three days a kitten and weighed out of its mass box, so a stocked car weighs and turns as
+it did. A seated crew lives off the cabin and never goes short: every frame `KsaWorld.StockCabin` queues
+KSA's own refill for a car whose cabin is a meal short, which also fills one KSA's editor never did. `docs/BLOCKED-ON-KSA.md` has it. **Not seen
+in game.**
 
 **The F2004's driver wears a helmet, which is two subparts of the car put on its head each frame.** A
 kitten is KSA's character and not the car's, so nothing can be parented to its head: the shell and its
@@ -1384,10 +1395,11 @@ A car is **data plus art**: nothing in the drive, the sound or the hands names a
    its pivot and exported in part space (+X up, +Y forward, +Z the car's left). Run
    `tools/model/checkmesh.py --near-max 0` on the export. **A human signs off on the geometry before
    it is unwrapped**, because everything after is welded to the shape.
-2. **Declare it** in `KSACarsAssets.xml` and `KSACarsGameData.xml`: the part, its subparts with Ids
-   ending `<Prefix>WheelFL`, `WheelFR`, `WheelRL`, `WheelRR` and `Steering` (and `Arm…` and `Coil…` if
+2. **Declare it** in `KSACarsAssets.xml` and `KSACarsGameData.xml`, in the form Core's own XML has
+   (a nested element named by `Key`, another asset named by `Ref`, the GameData a `Modify="Patch"` of
+   the part): the part, its subparts with Keys ending `<Prefix>WheelFL`, `WheelFR`, `WheelRL`, `WheelRR` and `Steering` (and `Arm…` and `Coil…` if
    it has visible suspension, `Upright…` for what sits inside a rim and must not spin), its seats, doors, colliders, light switch and mass — a box the car's size, not a
-   sphere. **A shipped part's subpart list is append-only and its Id is not renameable**: KSA pairs a
+   sphere. **A shipped part's subpart list is append-only and its Id and subpart Keys are not renameable**: KSA pairs a
    saved part with its definition positionally and by Id, and a save that no longer matches loses
    the car: KSA 2026.10.19.5638 leaves it out with an alert, where earlier builds closed the game. `docs/KSA-MODDING-NOTES.md` has the loop.
 3. **Give it a `BuggyProfile`** in `Sim/BuggyProfile.cs` and add it to `All`: the hubs, the steering

@@ -80,10 +80,10 @@ internal static partial class KsaWorld
 
                 if (v.GetCamera() is not { } camera) continue;
 
-                // Framebuffer pixels, not viewport pixels: ScreenToEgoRay divides by the camera's
-                // own framebuffer, and a render or display scale makes those different sizes.
+                // ScreenToEgoRay divides by the camera's ScreenSize, which for the main view is the
+                // window's size and need not be the viewport's.
                 if (!CursorAim.TryToFramebuffer(cursor, v.Position, v.Width, v.Height,
-                                                camera.FramebufferSize.X, camera.FramebufferSize.Y,
+                                                (int)camera.ScreenSize.X, (int)camera.ScreenSize.Y,
                                                 out float2 local))
                 {
                     continue;
@@ -300,15 +300,16 @@ internal static partial class KsaWorld
             if (Program.MainViewport is not { } viewport) return false;
             if (viewport.GetCamera() is not { } camera) return false;
             if (viewport.Width <= 0 || viewport.Height <= 0) return false;
+            float2 size = camera.ScreenSize;
+            if (!(size.X > 0f) || !(size.Y > 0f)) return false;
 
+            // EclToScreen answers in the camera's ScreenSize, which is put back into the viewport's pixels.
             float2 local = camera.EclToScreen(pointEcl, ignoreBehind: true);
             if (!float.IsFinite(local.X) || !float.IsFinite(local.Y)) return false;
-            if (local.X < 0f || local.Y < 0f || local.X > viewport.Width || local.Y > viewport.Height)
-            {
-                return false;
-            }
+            if (local.X < 0f || local.Y < 0f || local.X > size.X || local.Y > size.Y) return false;
 
-            screen = new float2(viewport.Position.X + local.X, viewport.Position.Y + local.Y);
+            screen = new float2(viewport.Position.X + (local.X * viewport.Width / size.X),
+                                viewport.Position.Y + (local.Y * viewport.Height / size.Y));
             return true;
         }
         catch

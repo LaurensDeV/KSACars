@@ -19,7 +19,8 @@ internal static class SoundChannels
     public static double PressureAt(Camera listener)
     {
         // The listener's, not the source's: in vacuum at the ear nothing is heard however loud it is.
-        try { return PhysicalAtmosphereReference.GetAtmosphericPressure(listener); }
+        // KSA answers pascals and a SpatialAudio takes atmospheres, the factor its own audio uses.
+        try { return listener.ComputeAtmosphericPressure() * 9.869232667160129E-06; }
         catch { return 1.0; }
     }
 

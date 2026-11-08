@@ -74,6 +74,9 @@ missing_report() {
     for type in "${!TYPE_ASM[@]}"; do
         local asm="${TYPE_ASM[$type]}"
         local dir="$SRC/$asm"
+        # The loader comes from NuGet at the version the csproj pins, not from the mirror, so a
+        # change to it is a version bump there and the compiler's to report.
+        [[ "$asm" == StarMap.* ]] && continue
         [[ -d "$dir" ]] || { echo "  ?? $asm not decompiled - cannot check ${type}"; found=1; continue; }
 
         while IFS= read -r member; do

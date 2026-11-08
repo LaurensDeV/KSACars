@@ -307,7 +307,17 @@ internal sealed class Bridge
                     if (s.AssignedKittenHash != KeyHash.Zero) { seat = s; break; }
                 }
             }
-            if (seat is null || !EVADoor.PerformEvaForSeat(craft, seat)) return Failed("nobody aboard to get out");
+            if (seat is null) return Failed("nobody aboard to get out");
+            // KSA queues the request either way and drops it at the spawn if life support says no.
+            if (Universe.KittenRoster.Find(seat.AssignedKittenHash) is { } kitten
+                && craft.CheckEva(kitten, seat) is var check && check != EvaCheck.Ready)
+            {
+                return Failed($"KSA will not let the kitten out: {check}");
+            }
+            if (EVADoor.PerformEvaForSeat(craft, seat) is var request && request != EvaRequest.Queued)
+            {
+                return Failed($"nobody got out: {request}");
+            }
         }
 
         if (Buggies.Report(craft) is { } report) return Done(report);

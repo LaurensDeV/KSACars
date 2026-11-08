@@ -1,8 +1,9 @@
 # Blocked on KSA
 
 What the cars cannot do, or do only by working round the engine, with the engine reason and what
-would unblock it. Read against KSA build **2026.10.19.5638** and rechecked against **2026.10.25.5707**, which changed none
-of it; its `file:line` citations are 2026.10.19.5638's.
+would unblock it. Read against KSA build **2026.10.19.5638** and rechecked against **2026.10.25.5707** and
+**2026.11.10.5801**, which changed none of it and added the life-support section below; its `file:line`
+citations are 2026.10.19.5638's, except that section's, which are 2026.11.10.5801's.
 
 A KSA update is the only thing that changes any of these, and none will show up in
 `tools/ksa-api-diff.sh`: they are things the engine does not do rather than members that moved. So
@@ -15,6 +16,8 @@ after every update, recheck this list:
 - [ ] Can Fill Seats still seat a kitten that is already out on EVA?
 - [ ] Has KSA a way of its own to keep ground clutter off a structure, a footprint or a mesh it is given?
       **If it has, hand it the roads' outline and take this mod's own masking out**: see the section below.
+- [ ] Under the life-support rule, can a kitten leave a seat with no Habitat zone into air it cannot breathe?
+      **If it can, the cars' cabins can go**: see the life-support section below.
 
 ## No wheels
 
@@ -26,6 +29,23 @@ because that is the only window in which a write to a vehicle's state is not ove
 worker's result before anything reads it.
 
 **Would unblock it:** a wheel module, or a public per-step force hook on `Vehicle`.
+
+## Life support wants a cabin a car does not have
+
+Since 2026.11.10.5801, with the save's life-support rule on, which is the default, KSA lets a kitten
+out only into breathable air or with a suit filled from the Habitat zone its seat is in
+(`Vehicle.CheckEva`, `Vehicle.cs:3392`); without one KSA queues the request and drops it at the spawn
+(`EVADoor.cs:200`). So each car carries a cabin: a `<Habitat>`, an oxygen bottle and a water tank,
+stocked as Core's Gemini is at three days a kitten, its weight taken off the car's mass box so a stocked
+car weighs and turns as before. A seated crew lives off the cabin, and a car is no place to go hungry,
+so every frame `KsaWorld.StockCabin` queues KSA's own refill for a car whose cabin is a meal short:
+a meal goes every eight hours a kitten, long before the water, the oxygen or a canister runs out.
+That also fills a car KSA's editor never did, one parked by the mod or from a save made before cars
+had cabins.
+The bridge's `drive` with `eva` says why a kitten was refused. **Not seen in game.**
+
+**Would unblock it:** an EVA that a seat with no cabin can take in thin air, or a life-support rule
+for open vehicles.
 
 ## Terrain friction is one number
 

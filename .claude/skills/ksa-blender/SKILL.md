@@ -109,7 +109,7 @@ What KSA reads out of a `.glb`, verified against all 44 Core atlases (1054 nodes
 declared. An export that breaks it needs a tool to bake, reframe and recentre it afterwards,
 and it is far cheaper to get right in Blender than to correct afterwards.
 
-A part that loads but renders nothing is nearly always a name mismatch — `<Mesh Id="…">` must be the
+A part that loads but renders nothing is nearly always a name mismatch — `<Mesh Ref="…">` must be the
 atlas name exactly. Silent in game; caught by `./tools/validate-parts.py`.
 
 ### Node name == mesh name is not something you can just set
@@ -183,7 +183,7 @@ rewrites its `<Transform>` each frame and overwrites it on the first update.
 - **`AoRoughMetal` is R = occlusion, G = roughness, B = metalness** — the glTF ORM convention. Not a
   guess: Core's `default_pbr.png` is `(255, 180, 0)`.
 - **Several atlases and several materials per mod are fine.** Core does it.
-- **Keep the asset XML at the mod root.** `<MeshAtlas Path="…">` is relative and it is undocumented
+- **Keep the asset XML at the mod root.** `<MeshAtlas Id="…" Path="…">` is relative and it is undocumented
   whether it resolves against the mod root or the XML's own directory; at the root both readings
   agree. Asset *folders* below it can be reorganised freely — only moving the XML reopens that.
 
@@ -374,8 +374,11 @@ and a convenient place to measure from; declaring the box from the mesh bounds i
 6. **`preview.sh`** — look at what actually left Blender. It renders the file *naively*, node
    transforms and all, so a multi-body atlas shows each body in its own frame: a rail along +Y and
    a body along +X will cross each other, and that is correct rather than a fault.
-7. **Declare it**: a `<SubPart>` per moving body, a `<Part>`, and a `<PartGameData>` with the collider
-   read off `_ColPrim_` or off the mesh bounds, mass and editor tags.
+7. **Declare it**: a `<SubPart>` per moving body, a `<Part>` placing them under `<SubParts>`, and in the
+   GameData a `<Part Id="…" Modify="Patch">` with the collider read off `_ColPrim_` or off the mesh
+   bounds, mass and editor tags. Copy the shape of the cars' own XML or Core's: since KSA
+   2026.11.10.5801 a nested element is named by `Key`, points at another asset by `Ref`, and every
+   list is wrapped.
 8. **List the asset XML in `mod.toml`** if it is a new file — one left out is never loaded, and
    nothing reports it. A part is inert; whatever it does, the mod does by finding it by part Id.
 9. **`validate-parts.py`**, then **`./tools/check-all.sh`**.

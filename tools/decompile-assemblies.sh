@@ -75,10 +75,8 @@ DLL_DIR="$TARGET/current/dll"
 # that publishes its own source is strictly worse than that source, and nothing reads it -
 # tools/apisurface filters the tracked surface to KSA, Brutal, Bepu and StarMap, so these types
 # never reach docs/KSA-API-SURFACE.md and so ksa-api-diff.sh never consults them. 0Harmony alone
-# is 138k lines, which is what a KSA diff would have to be read past.
-#
-# The DLLs stay in current/dll: the mod compiles against 0Harmony.dll, and $DLL_DIR is still the
-# resolver directory below, so what is decompiled here is unaffected by what is skipped.
+# is 138k lines, which is what a KSA diff would have to be read past. The mirror holds no
+# loader, Harmony being a NuGet package here, so this only matters to a folder that does.
 SKIP_DECOMPILE=(0Harmony)
 
 mapfile -t NAMES < <(find "$DLL_DIR" -maxdepth 1 -name '*.dll' -printf '%f\n' | sed 's/\.dll$//' | sort)
