@@ -20,7 +20,7 @@ moved with it. A citation is still a pointer rather than a proof: check before r
 Grounded **only** in the decompiled engine at
 `../ksa-game-assemblies/current/src`.
 All citations are relative to that root. Nothing here is taken from any mod's own code or docs.
-Build: **2026.10.25.5707**. Line numbers move on every KSA update, so a citation that does not land
+Build: **2026.11.10.5801**. Line numbers move on every KSA update, so a citation that does not land
 on what it claims means this file is behind the corpus, not that the corpus is wrong.
 
 > **Its citations and its viewport sections are against 2026.8.22.5348, and section 2 in particular
@@ -50,6 +50,10 @@ on what it claims means this file is behind the corpus, not that the corpus is w
 > 2026.10.25.5707 changed no camera or controller file. `Program.OnFrame`'s order is as it was, with
 > an HDR present pass after the scene and clouds as a viewport flag of their own. Rechecked, citations
 > not re-derived.
+> 2026.11.10.5801 left the controllers alone and gave `Camera` a `ScreenSize`, which `ScreenToEgoRay`,
+> `EclToScreen` and the NDC conversions divide by where they divided by `FramebufferSize`: the window's
+> size for the main view (`GameViewport.UpdateScreenSize`), the viewport's for any other. The cursor
+> ray and the mod's projections use it. Rechecked, citations not re-derived.
 > 2026.9.4.5400 replaced the `Viewport` class with `IViewport` / `ViewportBase` /
 > `GameViewport` and moved the list into `ViewportRegistry` — so every `Viewport.cs:N` citation
 > below points at a file that no longer exists, and the claims naming `Program.Viewports`,
@@ -1411,10 +1415,6 @@ Per-viewport picking must use `viewport.GetCamera().ScreenToEgoRay(...)` directl
   `Mod` (`ShaderReference.cs:87-98`). `ModLibrary.LoadAll` / `DoLoad` ordering is untraced, so whether
   shaders from a late-loading mod are compiled before pipelines that might reference them is unconfirmed.
   Testing it in game, or reading `KSA/KSA/ModLibrary.cs` load ordering, would settle it.
-- **Whether `0Harmony.dll` is redistributed with StarMap or expected beside it.** `StarMap.Core` uses
-  `HarmonyLib` (`ProgramPatcher.cs:3`), and `0Harmony.dll` is now in the mirrored loader DLL set
-  (`current/dll/`) and in `ksa-assemblies.lock`. Whether the loader ships it or only expects it beside
-  itself is still only settled by checking a real StarMap install directory.
 - **Exact pixel threshold at which the distant sphere replaces the sprite for the home body.**
   `num4 > 2.0` flags the sphere and `num4 > 6.0` suppresses the sprite
   (`StaticCelestialDistanceRendering.cs:434-438`); `SpriteSphereBlend` governs the crossfade

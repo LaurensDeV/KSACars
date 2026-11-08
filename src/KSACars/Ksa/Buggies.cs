@@ -2,6 +2,7 @@ using BepuUtilities;
 using Brutal.Numerics;
 using KSA;
 using KSA.Rendering.Lighting;
+using System.Reflection;
 
 namespace KSACars;
 
@@ -332,6 +333,26 @@ internal sealed class Buggies
 
     private const string FlameTemplate = "EngineAAuxiliary";
 
+    // ModLibrary.TryGet has no branch for exhaust templates; they are kept in an internal collection alone.
+    private static readonly FieldInfo? ExhaustTemplates =
+        typeof(ModLibrary).GetField("AllExhaustTemplates", BindingFlags.NonPublic | BindingFlags.Static);
+
+    private static VolumetricExhaustTemplate? _flameTemplate;
+    private static bool _flameMissing;
+
+    private static VolumetricExhaustTemplate? FlameTemplateFound()
+    {
+        if (_flameTemplate is not null) return _flameTemplate;
+        if (ExhaustTemplates?.GetValue(null) is not SerializedCollection<VolumetricExhaustTemplate> all)
+        {
+            if (!_flameMissing) Log.Warn("KSA's exhaust templates are unreadable: a car's rockets burn with no flame");
+            _flameMissing = true;
+            return null;
+        }
+        VolumetricExhaustTemplate? found = all.Find(KeyHash.Make(FlameTemplate.AsSpan()));
+        return _flameTemplate = found is { LoadFailed: false } ? found : null;
+    }
+
     // The downforce rockets burn steadily, and short: they sit in front of the driver.
     private const double DownFlame = 0.35;
 
@@ -388,9 +409,8 @@ internal sealed class Buggies
         {
             if (flames[i] is not { } flame)
             {
-                VolumetricExhaustReference reference = new() { Id = FlameTemplate };
-                reference.Load();
-                flame = flames[i] = new VolumetricExhaustInstance(reference);
+                if (FlameTemplateFound() is not { } found) return flames;
+                flame = flames[i] = new VolumetricExhaustInstance(found);
             }
             if (flame.Template is not { } template) continue;
 

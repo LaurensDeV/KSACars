@@ -699,7 +699,7 @@ internal static partial class KsaWorld
     /// Earth's sea-level air, whatever body this is, so a car's drag is the air actually there.
     ///
     /// <para><b>A body with no atmosphere reads 0.0, and that is an answer rather than a failure</b>:
-    /// every airless body hands back no reference. The fallback when the air genuinely cannot be read
+    /// every airless body hands back no atmosphere. The fallback when the air genuinely cannot be read
     /// -- a throw, or no body under the craft -- is 1.0, a car that keeps its drag being a far less
     /// confusing failure than one that silently loses it.</para>
     /// </summary>
@@ -711,20 +711,12 @@ internal static partial class KsaWorld
 
             double altitude = Vec.Len(positionEcl - body.GetPositionEcl()) - body.MeanRadius;
 
-            // Never gate on KSA's own IsValid(): DistanceReference.IsValid requires over 100 km, and the
-            // atmosphere's applies it to the scale height, 8 km on Earth, so it is false for every real
-            // atmosphere. Check the terms this divides by instead.
-            AtmosphereReference? atmosphere = body.GetAtmosphereReference();
-            if (atmosphere?.Physical is not { } air) return 0.0;
-
-            double seaLevel = air.SeaLevelDensity;
-            double scaleHeight = air.ScaleHeight.InMeters();
-            if (!(seaLevel > 0.0) || !(scaleHeight > 0.0)) return 0.0;
+            if (body.GetPhysicalAtmosphere() is not { } air) return 0.0;
 
             if (altitude < 0.0) altitude = 0.0;
             if (altitude >= air.Height) return 0.0;
 
-            double ratio = air.GetAtmosphericDensityAtAltitude(altitude) / ReferenceAirDensityKgPerM3;
+            double ratio = air.ComputeDensityAtAltitude(altitude) / ReferenceAirDensityKgPerM3;
             return double.IsFinite(ratio) && ratio >= 0.0 ? ratio : 1.0;
         }
         catch

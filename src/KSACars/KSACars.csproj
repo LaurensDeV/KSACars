@@ -69,7 +69,6 @@
   -->
   <ItemGroup>
     <Reference Include="$(KsaDllDir)KSA.dll" Private="false" />
-    <Reference Include="$(KsaDllDir)StarMap.API.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Numerics.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Core.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Strings.dll" Private="false" />
@@ -79,24 +78,31 @@
     <Reference Include="$(KsaDllDir)Brutal.Glfw.dll" Private="false" />
     <!-- KeyHash, which keeps the KSA namespace but is defined in this assembly. -->
     <Reference Include="$(KsaDllDir)Planet.Render.Core.dll" Private="false" />
-    <!--
-      Harmony, for the patches in Ksa/PhysicsHook.cs and Ksa/SeatedCrewHook.cs. It ships with
-      StarMap, so this adds no dependency a player has to install. Private=false for the same reason
-      as the rest: it is already loaded.
-    -->
     <!-- Needed to compile against Vehicle's mass-properties signatures (Symmetric3x3). -->
     <Reference Include="$(KsaDllDir)BepuUtilities.dll" Private="false" />
     <Reference Include="$(KsaDllDir)BepuPhysics.dll" Private="false" />
-    <Reference Include="$(KsaDllDir)0Harmony.dll" Private="false" />
     <!--
       What Ksa/RuntimeMesh.cs writes a mesh into KSA's shared buffers with: the asset name and what it
       is keyed by, the CPU mesh KSA's mesh system is handed, and the staging pool and buffer handles.
     -->
     <Reference Include="$(KsaDllDir)Planet.Core.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Collections.dll" Private="false" />
+    <!-- NativeAllocation, which a skeleton's inverse bind pose is held in. -->
+    <Reference Include="$(KsaDllDir)Brutal.Memory.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Render.Mesh.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Vulkan.dll" Private="false" />
     <Reference Include="$(KsaDllDir)Brutal.Vulkan.Abstractions.dll" Private="false" />
+  </ItemGroup>
+
+  <!--
+    The loader's API and Harmony come from NuGet, pinned to what the StarMap release ships: both are
+    byte for byte the copies in StarMap 0.5.3. They are compile-time only for the same reason as the
+    game's, so ExcludeAssets keeps them out of the output and PrivateAssets out of anything that
+    references this project. A player installs nothing extra: StarMap brings both.
+  -->
+  <ItemGroup>
+    <PackageReference Include="StarMap.API" Version="0.5.3" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Lib.Harmony" Version="2.4.3" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 
   <!--

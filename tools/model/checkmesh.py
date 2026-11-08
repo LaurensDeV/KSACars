@@ -611,7 +611,7 @@ def unpaired_names(gltf):
 
     Blender will not say when it refuses a name: `ob.data.name = "X"` silently becomes "X.001" if
     an orphaned mesh already holds "X", and deleting an object leaves exactly such an orphan. The
-    export then writes a node "X" drawing a mesh "X.001", the asset XML's <Mesh Id="X"> resolves
+    export then writes a node "X" drawing a mesh "X.001", the asset XML's <Mesh Ref="X"> resolves
     to nothing, and the part loads with that body missing and nothing in any log.
     """
     meshes = gltf.get("meshes", [])
@@ -641,7 +641,7 @@ def check_atlas(path, only, header=False):
 
     for node_name, mesh_name in unpaired_names(gltf):
         print(f"\nnode {node_name}: draws mesh {mesh_name} — the names must match, or "
-              f"<Mesh Id=\"{node_name}\"> resolves to nothing and the body is invisible")
+              f"<Mesh Ref=\"{node_name}\"> resolves to nothing and the body is invisible")
         total += 1
 
     for mesh in gltf["meshes"]:

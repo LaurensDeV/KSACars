@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-253 types and 593 members across 12 assemblies.
+259 types and 584 members across 13 assemblies.
 
 ## BepuPhysics
 
@@ -103,6 +103,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `float ZZ`
 
 ## Brutal.Collections
+
+### Brutal.Collections.List`2
+
+*referenced as a type only*
 
 ### Brutal.Collections.NativeList`1
 
@@ -318,6 +322,12 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `void AppendFormatted<1>(!!0, int, string)`
 - `void AppendLiteral(System.ReadOnlySpan`1<char>)`
 
+## Brutal.Memory
+
+### Brutal.Memory.NativeAllocation`1
+
+*referenced as a type only*
+
 ## Brutal.Numerics
 
 ### Brutal.Numerics.Pack
@@ -444,11 +454,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `void .ctor(float, float, float, float)`
 
-### Brutal.Numerics.int2
-
-- `int X`
-- `int Y`
-
 ## Brutal.Render.Mesh
 
 ### Brutal.Render.Mesh.IIndexBufferStorage
@@ -515,9 +520,9 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 GetPositionEcl()`
 - `Brutal.Numerics.double3 GetVelocityEcl()`
-- `KSA.AtmosphereReference GetAtmosphereReference()`
 - `KSA.KeyHash get_Hash()`
 - `KSA.OrbitView OrbitView`
+- `KSA.PhysicalAtmosphere GetPhysicalAtmosphere()`
 - `KSA.Rendering.Water.Data.OceanReference GetOceanReference()`
 - `double get_MaxTerrainRadius()`
 - `double get_MeanRadius()`
@@ -527,10 +532,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.AstronomicalData
 
 - `string get_Id()`
-
-### KSA.AtmosphereReference
-
-- `KSA.PhysicalAtmosphereReference Physical`
 
 ### KSA.BoundingBoxCdA
 
@@ -568,9 +569,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 GetVelocityEgo(KSA.IVelocity)`
 - `Brutal.Numerics.double4 EgoToClipDouble(Brutal.Numerics.double3)`
 - `Brutal.Numerics.float2 EclToScreen(Brutal.Numerics.double3, bool)`
-- `Brutal.Numerics.int2 FramebufferSize`
+- `Brutal.Numerics.float2 ScreenSize`
 - `KSA.IFollowable get_Following()`
 - `KSA.Ray ScreenToEgoRay(Brutal.Numerics.float2)`
+- `double ComputeAtmosphericPressure()`
 - `float GetFieldOfView()`
 - `void SetFieldOfView(float)`
 - `void SetFollow(KSA.IFollowable, bool, bool, bool)`
@@ -682,6 +684,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 *referenced as a type only*
 
+### KSA.CrewSeatResult
+
+*referenced as a type only*
+
 ### KSA.CubeCellGrid
 
 - `Brutal.Numerics.double3 GetCellAnchorDirection(Cell)`
@@ -699,6 +705,14 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.DistanceReference LengthY`
 - `KSA.DistanceReference Radius`
 
+### KSA.DataReference
+
+- `string Ref`
+
+### KSA.DataReference`1
+
+*referenced as a type only*
+
 ### KSA.DefaultVehicleSaves
 
 - `KSA.VehicleSave FindSave(string)`
@@ -709,7 +723,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.DistanceReference
 
-- `double InMeters()`
 - `double op_Implicit(KSA.DistanceReference)`
 
 ### KSA.Double3Ex
@@ -719,9 +732,17 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.EVADoor
 
-- `bool PerformEvaForSeat(KSA.Vehicle, KSA.IVASeat)`
+- `KSA.EvaRequest PerformEvaForSeat(KSA.Vehicle, KSA.IVASeat)`
 
 ### KSA.EngineFlags
+
+*referenced as a type only*
+
+### KSA.EvaCheck
+
+*referenced as a type only*
+
+### KSA.EvaRequest
 
 *referenced as a type only*
 
@@ -958,9 +979,13 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 VelocityPhys`
 - `Brutal.Numerics.doubleQuat Body2Phys`
 
+### KSA.KittenDeathCause
+
+*referenced as a type only*
+
 ### KSA.KittenEva
 
-- `bool BoardVehicle(KSA.Vehicle, KSA.EVADoor)`
+- `KSA.CrewSeatResult BoardVehicle(KSA.Vehicle, KSA.EVADoor)`
 
 ### KSA.KittenRenderable
 
@@ -1083,15 +1108,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `System.ReadOnlySpan`1<KSA.Part> get_SubParts()`
 - `bool IsLightSwitchedOff()`
 - `string get_Id()`
-- `void .ctor(string, KSA.PartTemplate, KSA.PartInstance, KSA.Part)`
+- `void .ctor(string, KSA.PartTemplate, KSA.TransformDataReference`1<KSA.SubPartTemplate>, KSA.Part)`
 - `void ResetCachedPosMatrixValues()`
 - `void set_Asmb2ParentAsmb(Brutal.Numerics.doubleQuat)`
 - `void set_PositionParentAsmb(Brutal.Numerics.double3)`
 - `void set_Scale(Brutal.Numerics.double3)`
-
-### KSA.PartInstance
-
-*referenced as a type only*
 
 ### KSA.PartTemplate
 
@@ -1110,13 +1131,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 *referenced as a type only*
 
-### KSA.PhysicalAtmosphereReference
+### KSA.PhysicalAtmosphere
 
-- `KSA.DensityReference SeaLevelDensity`
-- `KSA.DistanceReference ScaleHeight`
-- `KSA.DistanceReference get_Height()`
-- `double GetAtmosphericDensityAtAltitude(double)`
-- `double GetAtmosphericPressure(KSA.Camera)`
+- `double ComputeDensityAtAltitude(double)`
+- `double Height`
 
 ### KSA.PhysicsBubble
 
@@ -1205,8 +1223,13 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `void Request(int, string)`
 
+### KSA.SerializedCollection`1
+
+*referenced as a type only*
+
 ### KSA.SerializedId
 
+- `bool get_LoadFailed()`
 - `string get_Id()`
 
 ### KSA.ShapesUnlock
@@ -1238,7 +1261,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.SoundEvent
 
-- `string SoundId`
 - `void .ctor()`
 
 ### KSA.SpatialAudio
@@ -1266,13 +1288,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 ### KSA.StaticObjectTemplate
 
-- `System.Collections.Generic.List`1<KSA.StaticSubObjectInstance> SubObjectInstances`
+- `System.Collections.Generic.List`1<KSA.TransformDataReference`1<KSA.StaticSubObjectTemplate>> SubObjectInstances`
 - `System.Collections.Generic.List`1<Template> Colliders`
-
-### KSA.StaticSubObjectInstance
-
-- `KSA.StaticSubObjectTemplate GetTemplate()`
-- `KSA.TransformReference Transform`
 
 ### KSA.StaticSubObjectTemplate
 
@@ -1283,6 +1300,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `ref KSA.StaticsShouldntAwakenBodies get_Shared()`
 
 ### KSA.StellarBody
+
+*referenced as a type only*
+
+### KSA.SubPartTemplate
 
 *referenced as a type only*
 
@@ -1305,6 +1326,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `Brutal.Numerics.double3 get_PositionEcl()`
 
+### KSA.TransformDataReference`1
+
+*referenced as a type only*
+
 ### KSA.TransformReference
 
 - `Brutal.Numerics.double3 get_PositionValue()`
@@ -1323,7 +1348,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `double GetSimulationSpeed()`
 - `double get_SimulationSpeed()`
 - `void AutoWarpStop(bool)`
-- `void DestroyVehicle(KSA.Vehicle, KSA.CrewDisposition)`
+- `void DestroyVehicle(KSA.Vehicle, KSA.CrewDisposition, KSA.KittenDeathCause)`
 - `void DestroyVehicleFromEvent(KSA.Vehicle, KSA.VehicleDestructionEvent)`
 - `void SetSimulationSpeed(KSA.SimSpeed)`
 - `void SetSimulationSpeed(double, bool)`
@@ -1344,6 +1369,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.Numerics.double3 get_CenterOfMassAsmb()`
 - `Brutal.Numerics.double4x4 GetMatrixAsmb2Ego(KSA.Camera)`
 - `Brutal.Numerics.doubleQuat get_Body2Cce()`
+- `KSA.CrewSeatResult SetSeatCrew(KSA.IVASeat, KSA.KeyHash, string, bool)`
+- `KSA.EvaCheck CheckEva(KSA.KittenRosterEntryData, KSA.IVASeat)`
 - `KSA.IParentBody get_Parent()`
 - `KSA.Orbit get_Orbit()`
 - `KSA.PartTree get_Parts()`
@@ -1356,7 +1383,6 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `bool AreAllEnginesInactive()`
 - `bool GetSprintInput()`
 - `bool OnKey(RenderCore.Input.GlfwKeyEvent)`
-- `bool SetSeatCrew(KSA.IVASeat, KSA.KeyHash, string, bool)`
 - `bool get_HasPhysicsBubble()`
 - `bool get_IsDisposed()`
 - `float get_TotalMass()`
@@ -1421,14 +1447,8 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `KSA.PlumeData LastPlumeData`
 - `KSA.VolumetricExhaustTemplate get_Template()`
 - `bool get_IsLive()`
-- `void .ctor(KSA.VolumetricExhaustReference)`
+- `void .ctor(KSA.VolumetricExhaustTemplate)`
 - `void UpdateState(double, bool, double, ref KSA.GasProperties, ref KSA.GasConditions, float, Brutal.Numerics.float3, Brutal.Numerics.float3, Brutal.Numerics.float3, Brutal.Numerics.float3, float, Brutal.Numerics.float3, float)`
-
-### KSA.VolumetricExhaustReference
-
-- `void .ctor()`
-- `void Load()`
-- `void set_Id(string)`
 
 ### KSA.VolumetricExhaustRenderer
 

@@ -6,10 +6,10 @@ A bad asset Id or a mistyped texture path is a *silent* failure in-game: the par
 untextured, or invisible, or not at all, with nothing in any log to say why. This walks the
 XML and verifies, among other things:
 
-  1. every SubPart InstanceOf resolves, against our own file or against Core's library
-  2. every Material Id resolves, likewise
-  3. every Mesh Id exists in the mesh atlas the file declares
-  4. every file path (<MeshAtlas>, <Diffuse>, <Normal>, <AoRoughMetal>) is actually there
+  1. every placed SubPart's Ref resolves, against our own file or against Core's library
+  2. every Material Ref resolves, likewise, and every texture a material names
+  3. every Mesh Ref exists in a mesh atlas the file declares
+  4. every file path (<MeshAtlas>, <Texture>, <SoundFile>) is actually there
 
 Check 3 is the one that earns its keep -- the mesh names come out of Blender, and nothing
 else in the toolchain would notice a rename.
@@ -38,6 +38,7 @@ KSA_DIR = Path(os.environ.get("KSA_DIR", "/mnt/c/Program Files/Kitten Space Agen
 CORE = KSA_DIR / "Content" / "Core"
 
 TEXTURE_TAGS = ("Diffuse", "Normal", "AoRoughMetal", "Emissive")
+PATH_TAGS = ("Texture", "SoundFile")
 
 
 def exists_case_exact(path):
@@ -78,7 +79,7 @@ def atlas_mesh_names(glb_path):
     return {m.get("name") for m in gltf.get("meshes", [])}
 
 
-def check_file(path, core_subparts, core_materials, core_substances):
+def check_file(path, core_subparts, core_materials, core_substances, core_textures):
     """Returns (problems, references checked) for one asset XML."""
     problems = checked = 0
 
@@ -88,8 +89,9 @@ def check_file(path, core_subparts, core_materials, core_substances):
         print(f"  MALFORMED: {exc}", file=sys.stderr)
         return 1, 0
 
-    local_subparts = {el.get("Id") for el in root.iter("SubPart") if el.get("Id")}
-    local_materials = {el.get("Id") for el in root.iter("PbrMaterial") if el.get("Id")}
+    local_subparts = {el.get("Id") for el in root.findall("SubPart") if el.get("Id")}
+    local_materials = {el.get("Id") for el in root.findall("PbrMaterial") if el.get("Id")}
+    local_textures = {el.get("Id") for el in root.findall("Texture") if el.get("Id")}
 
     # Paths are resolved against the XML's own directory, which is also the mod root: the asset XML
     # sits there so the two readings of a relative path cannot disagree.
@@ -108,29 +110,42 @@ def check_file(path, core_subparts, core_materials, core_substances):
             meshes_in_atlas |= names
             print(f"  atlas: {el.get('Path')}  ({len(names)} meshes)")
 
-    for tag in TEXTURE_TAGS:
+    for tag in PATH_TAGS:
         for el in root.iter(tag):
             rel = el.get("Path")
             if not rel:
-                continue          # referenced by Id instead, which the Core check covers
+                continue          # a reference to one declared elsewhere
             checked += 1
             if not exists_case_exact(path.parent / rel):
                 print(f"  MISSING {tag} Path=\"{rel}\"", file=sys.stderr)
                 problems += 1
 
+    for tag in TEXTURE_TAGS:
+        for el in root.iter(tag):
+            ident = el.get("Ref")
+            if not ident:
+                continue
+            checked += 1
+            if ident in local_textures or (core_textures is not None and ident in core_textures):
+                continue
+            if core_textures is None and not ident.startswith("KSACars_"):
+                continue
+            print(f"  UNRESOLVED {tag} Ref=\"{ident}\" -- no <Texture> declares it", file=sys.stderr)
+            problems += 1
+
     for el in root.iter("Mesh"):
-        ident = el.get("Id")
+        ident = el.get("Ref")
         if not ident:
             continue
         checked += 1
         # Only meaningful once this file declares an atlas of its own; a mesh Id could
         # otherwise legitimately live in Core's library.
         if meshes_in_atlas and ident not in meshes_in_atlas:
-            print(f"  UNRESOLVED Mesh Id=\"{ident}\" (not in the declared atlas)", file=sys.stderr)
+            print(f"  UNRESOLVED Mesh Ref=\"{ident}\" (not in the declared atlas)", file=sys.stderr)
             problems += 1
 
     for el in root.iter("SubPart"):
-        source = el.get("InstanceOf")
+        source = el.get("Ref")
         if not source:
             continue
         checked += 1
@@ -144,7 +159,7 @@ def check_file(path, core_subparts, core_materials, core_substances):
         # "PartTemplate is null", and detecting that needs no Core: a name used here is declared
         # here.
         if source.startswith("KSACars_") and source not in local_subparts:
-            print(f"  UNDECLARED SubPart InstanceOf=\"{source}\" - no such template in this file",
+            print(f"  UNDECLARED SubPart Ref=\"{source}\" - no such template in this file",
                   file=sys.stderr)
             problems += 1
             continue
@@ -152,14 +167,14 @@ def check_file(path, core_subparts, core_materials, core_substances):
         if core_subparts is None:
             continue
         if source not in core_subparts and source not in local_subparts:
-            print(f"  UNRESOLVED SubPart InstanceOf=\"{source}\"", file=sys.stderr)
+            print(f"  UNRESOLVED SubPart Ref=\"{source}\"", file=sys.stderr)
             problems += 1
 
     # <Material> names two different things depending on where it sits: a PbrMaterial, which is
     # how something is drawn, and a Substance, which is what it is made of -- and a substance is
     # referenced by phase, "Aluminum.2014(s)" for the solid Core declares as "Aluminum.2014".
     for el in root.iter("Material"):
-        ident = el.get("Id")
+        ident = el.get("Ref")
         if not ident:
             continue
         checked += 1
@@ -169,13 +184,12 @@ def check_file(path, core_subparts, core_materials, core_substances):
         if (ident in core_materials or ident in local_materials
                 or substance in core_substances):
             continue
-        print(f"  UNRESOLVED Material Id=\"{ident}\"", file=sys.stderr)
+        print(f"  UNRESOLVED Material Ref=\"{ident}\"", file=sys.stderr)
         problems += 1
 
-    for el in root.iter("PartGameData"):
-        print(f"  part: {el.get('Id')}  \"{el.get('DisplayName', '')}\"")
-    for el in root.iter("Part"):
-        print(f"  part: {el.get('Id')}")
+    for el in root.findall("Part"):
+        named = f"  \"{el.get('DisplayName')}\"" if el.get("DisplayName") else ""
+        print(f"  part: {el.get('Id')}{named}")
 
     return problems, checked
 
@@ -207,9 +221,9 @@ def check_cross_body_planes():
         # another name, so it would report every body as fighting itself.
         mesh_of = {}
         for sub in root.findall("SubPart"):
-            model = sub.find("PartModel/Mesh")
-            if sub.get("Id") and model is not None and model.get("Id"):
-                mesh_of[sub.get("Id")] = model.get("Id")
+            model = sub.find("Components/PartModel/Mesh")
+            if sub.get("Id") and model is not None and model.get("Ref"):
+                mesh_of[sub.get("Id")] = model.get("Ref")
 
         gltf, binary = checkmesh.read_glb(str(glb))
 
@@ -219,8 +233,8 @@ def check_cross_body_planes():
         # X = 0, which is all of them by construction.
         for part in root.findall("Part"):
             placements = {}
-            for sub in part.findall("SubPart"):
-                mesh = mesh_of.get(sub.get("InstanceOf"))
+            for sub in part.findall("SubParts/SubPart"):
+                mesh = mesh_of.get(sub.get("Ref"))
                 if mesh is None:
                     continue
                 position = sub.find("Transform/Position")
@@ -295,18 +309,16 @@ def check_asset_id_collisions():
             if atlas.is_file():
                 from_atlas |= set(atlas_mesh_names(atlas))
 
-        # Top-level only. An Id deeper in the tree is a *reference* -- <Mesh Id>, <StartSound Id>,
-        # a nested <SubPart Id> naming an instance -- and only the direct children of <Assets>
-        # register a name. Walking the whole tree flags every reference as a redeclaration.
+        # Top-level only: KSA reserves Id for the direct children of <Assets>, and anything deeper
+        # names itself with Key or points elsewhere with Ref.
         for el in root:
             ident = el.get("Id")
             if ident is None:
                 continue
 
-            # A *GameData entry is a companion keyed on another asset's Id -- that is how KSA
-            # pairs a part's art with its physics, and Core does the same. It is a different
-            # registry, so it is not a redeclaration.
-            if el.tag.endswith("GameData"):
+            # A row with Modify="Patch" adds to the asset of that Id rather than declaring one -- how
+            # KSA pairs a part's art with its physics, as Core does.
+            if el.get("Modify") == "Patch":
                 continue
 
             checked += 1
@@ -351,7 +363,7 @@ def check_editor_tags(core_dir):
     for path in sorted(MOD.glob("KSACars*.xml")):
         text = path.read_text()
         declared.update(re.findall(r'<EditorTagDef\s+Id="([^"]+)"', text))
-        for tag in re.findall(r'<EditorTag\s+Value="([^"]+)"', text):
+        for tag in re.findall(r'<EditorTag\s+Ref="([^"]+)"', text):
             used.setdefault(tag, path.name)
 
     if core_dir is not None:
@@ -391,28 +403,28 @@ def check_stacking_connectors_sized():
     roots = [ET.parse(path).getroot() for path in sorted(MOD.glob("KSACars*.xml"))]
 
     diameters, surface = {}, set()
-    for data in (d for root in roots for d in root.iter("PartGameData")):
+    for data in (p for root in roots for p in root.findall("Part")):
         part = data.get("Id")
-        diameter = data.find("Diameter")
+        diameter = data.find("Diameters/Diameter")
         if diameter is not None:
             diameters[part] = float(diameter.get("M"))
-        for connector in data.findall("Connector"):
+        for connector in data.findall("Connectors/Connector"):
             flags = connector.findtext("Flags") or ""
             if any(flag in flags for flag in ("ToSurface", "FromSurface", "Internal")):
-                surface.add((part, connector.get("Id")))
+                surface.add((part, connector.get("Key")))
 
     problems = checked = 0
-    for part in (p for root in roots for p in root.iter("Part")):
+    for part in (p for root in roots for p in root.findall("Part") if p.get("Modify") != "Patch"):
         part_id = part.get("Id")
-        for connector in part.findall("Connector"):
-            if (part_id, connector.get("Id")) in surface:
+        for connector in part.findall("Connectors/Connector"):
+            if (part_id, connector.get("Key")) in surface:
                 continue
             checked += 1
             scale = connector.find("Transform/Scale")
             want = diameters.get(part_id)
             sizes = None if scale is None else {float(scale.get(axis, "1")) for axis in "XYZ"}
             if want is None or sizes != {want}:
-                print(f"  UNSIZED {part_id} {connector.get('Id')} -- a stacking node needs "
+                print(f"  UNSIZED {part_id} {connector.get('Key')} -- a stacking node needs "
                       f"<Scale> of its diameter ({want} m) on every axis, or it nests into a "
                       f"tank's Internal node; found {sorted(sizes) if sizes else 'none'}",
                       file=sys.stderr)
@@ -432,7 +444,7 @@ def main():
 
     if offline:
         print("offline: skipping the checks that need KSA's Core assets\n")
-        core_subparts = core_materials = core_substances = None
+        core_subparts = core_materials = core_substances = core_textures = None
     elif not CORE.is_dir():
         print(f"error: Core content not found at {CORE}", file=sys.stderr)
         print("       set KSA_DIR to your install, or pass --offline", file=sys.stderr)
@@ -443,13 +455,14 @@ def main():
         core_subparts = declared.get("SubPart", set())
         core_materials = declared.get("PbrMaterial", set())
         core_substances = declared.get("Substance", set())
+        core_textures = declared.get("Texture", set())
         print(f"  {len(core_subparts)} subparts, {len(core_materials)} materials, "
               f"{len(core_substances)} substances declared\n")
 
     problems = checked = 0
     for path in sorted(MOD.glob("KSACars*.xml")):
         print(f"checking {path.relative_to(REPO)}")
-        p, c = check_file(path, core_subparts, core_materials, core_substances)
+        p, c = check_file(path, core_subparts, core_materials, core_substances, core_textures)
         problems += p
         checked += c
 

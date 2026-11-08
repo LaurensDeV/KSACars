@@ -1,8 +1,9 @@
 # Blocked on KSA
 
 What the cars cannot do, or do only by working round the engine, with the engine reason and what
-would unblock it. Read against KSA build **2026.10.19.5638** and rechecked against **2026.10.25.5707**, which changed none
-of it; its `file:line` citations are 2026.10.19.5638's.
+would unblock it. Read against KSA build **2026.10.19.5638** and rechecked against **2026.10.25.5707** and
+**2026.11.10.5801**, which changed none of it and added the life-support section below; its `file:line`
+citations are 2026.10.19.5638's, except that section's, which are 2026.11.10.5801's.
 
 A KSA update is the only thing that changes any of these, and none will show up in
 `tools/ksa-api-diff.sh`: they are things the engine does not do rather than members that moved. So
@@ -15,6 +16,7 @@ after every update, recheck this list:
 - [ ] Can Fill Seats still seat a kitten that is already out on EVA?
 - [ ] Has KSA a way of its own to keep ground clutter off a structure, a footprint or a mesh it is given?
       **If it has, hand it the roads' outline and take this mod's own masking out**: see the section below.
+- [ ] Under the life-support rule, can a kitten leave a seat with no Habitat zone into air it cannot breathe?
 
 ## No wheels
 
@@ -26,6 +28,17 @@ because that is the only window in which a write to a vehicle's state is not ove
 worker's result before anything reads it.
 
 **Would unblock it:** a wheel module, or a public per-step force hook on `Vehicle`.
+
+## Life support keeps a kitten in a car where the air is thin
+
+Since 2026.11.10.5801, with the save's life-support rule on, which is the default, KSA lets a kitten
+out only into breathable air or through a seat with a Habitat zone (`Vehicle.CheckEva`, `Vehicle.cs:3392`).
+A car has no Habitat, so on Luna or in thin air nobody gets out: KSA queues the request and drops it
+at the spawn (`EVADoor.cs:200`). The bridge's `drive` with `eva` says why. With every kitten aboard
+incapacitated and no probe core, `Vehicle.IsControllable` is false too (`Vehicle.cs:679`). **Not seen
+in game.**
+
+**Would unblock it:** a Habitat zone on each car, which would also give its crew air to use up.
 
 ## Terrain friction is one number
 

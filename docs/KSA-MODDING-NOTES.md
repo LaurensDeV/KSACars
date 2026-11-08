@@ -2,7 +2,7 @@
 
 Everything here comes out of the shipped assemblies of **KSA build 2026.9.10.5438**, read with
 `tools/apidump`, or out of the StarMap sources, and was rechecked against **2026.9.22.5482**,
-**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602**, **2026.10.19.5638** and **2026.10.25.5707** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
+**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602**, **2026.10.19.5638**, **2026.10.25.5707** and **2026.11.10.5801** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
 none of this is documented by RocketWerkz, and **it will drift between game builds**. Re-run
 the dumper rather than trusting this file after an update.
 
@@ -17,7 +17,8 @@ the dumper rather than trusting this file after an update.
 | UI | Dear ImGui via `Brutal.ImGui.dll`, namespace `Brutal.ImGuiApi` |
 | Maths | `Brutal.Numerics` — `double3`, `float3`, `float4`, `doubleQuat`, System.Numerics-style statics |
 | Code mod loader | **StarMap** (community) — <https://github.com/StarMapLoader/StarMap> |
-| Patching | Harmony (`Lib.Harmony` 2.4.2) |
+| Patching | Harmony (`Lib.Harmony` 2.4.3), shipped in StarMap's folder |
+| Compiled against | `StarMap.API` 0.5.3 and `Lib.Harmony` 2.4.3 from NuGet, byte for byte StarMap 0.5.3's copies |
 
 There is **no official code-modding API**. Part/asset mods are the supported path (XML + GLB +
 DDS); everything else goes through StarMap.
@@ -519,20 +520,29 @@ The simulation model is unusually physical — engines are real combustion chamb
 nozzles rather than thrust curves:
 
 ```xml
-<PartGameData Id="CorePropulsionA_Prefab_EngineA2" DisplayName="LR91 Sea">
-  <EditorTag Value="Engines" />
-  <Diameter M="1"/>
-  <RocketEngineController Id="LR91-AJ-3">
-    <RocketReference Id="Engine" SubPartId="..." />
-  </RocketEngineController>
-  <Combustor Id="GasGeneratorChamber">
-    <Reaction Id="Hydrolox"><MixtureRatio>5.5</MixtureRatio></Reaction>
-    <MaxPressure Bar="49" />
-  </Combustor>
-  <SolidSphereMass><Mass Kg="1500" /><Radius M="0.25" /></SolidSphereMass>
-  <Collider Id="Collider1"><Cylinder .../><Sphere .../></Collider>
-</PartGameData>
+<Part Id="CorePropulsionA_Prefab_EngineA2" Modify="Patch" DisplayName="LR91 Sea">
+  <EditorTags Modify="Extend"><EditorTag Ref="Engines" /></EditorTags>
+  <Diameters Modify="Extend"><Diameter M="1"/></Diameters>
+  <InertMasses Modify="Extend">
+    <SolidSphereMass><Mass Kg="1500" /><Radius M="0.25" /></SolidSphereMass>
+  </InertMasses>
+  <Components Modify="Extend">
+    <Collider Key="Collider1"><Colliders><Cylinder Key="..." .../></Colliders></Collider>
+  </Components>
+</Part>
 ```
+
+**Since 2026.11.10.5801 the content XML is a schema of rows.** Only a direct child of `<Assets>` has
+an `Id`; anything inside one names itself with `Key`, and a pointer to another asset is `Ref` (a
+`DataReference<T>`, resolved after every mod has loaded and reported in KSA's log when it does not
+resolve). Every list is wrapped: `<SubParts>`, `<Connectors>`, `<EditorTags>`, `<Diameters>`,
+`<InertMasses>`, `<Components>`. `PartGameData` and `SubPartGameData` are gone: a GameData file
+patches the part its Assets file declared, `<Part Id="X" Modify="Patch">` with each list
+`Modify="Extend"`. A texture is a `<Texture Id Path Category>` row that a material's `<Diffuse Ref>`
+names, a `<MeshAtlas>` needs an `Id`, and a sound's files are `<SoundFile Id Path>` rows it lists by
+`Ref`, its channel a `<Channel Ref>`. An old-form element is an error in the log and the field left at
+its default: the cars loaded with no subparts, textures or seats. Core's own XML is the reference,
+and `tools/validate-parts.py` checks the mod's against it.
 
 Each XML node maps to a C# pair:
 
@@ -551,16 +561,16 @@ repo does: the cars' forces are written from a `Vehicle.PrepareWorker` prefix, a
 posed from `[StarMapAfterGui]` rather than the frame hook, because a postfix on `OnFrame` lands
 *after* the render it was meant to feed. See `docs/FRAMES-AND-EPOCHS.md`.
 
-### A subpart is found at runtime by the Id its part gives it
+### A subpart is found at runtime by the Key its part gives it
 
-`Part.SubParts[i].Id` is the Id on the `<SubPart>` *inside the `<Part>`* (`KSACars_Buggy_WheelFL`),
-not the template it instances (`KSACars_BuggyWheelFront_SubPart`). A marker matched against the
+`Part.SubParts[i].Id` is the `Key` on the `<SubPart>` *inside the `<Part>`'s `<SubParts>`*
+(`KSACars_Buggy_WheelFL`), not the template it instances by `Ref` (`KSACars_BuggyWheelFront_SubPart`). A marker matched against the
 template's spelling finds nothing, and a body that is never found is simply never moved — the part
 loads and draws at its modelled pose, and no log says why.
 
 ### A crew seat on a mod's own part
 
-- **An `<IVASeat>` can sit directly in a part's `<PartGameData>`**, as Core's internal parts do
+- **An `<IVASeat Key="…">` can sit directly in a part's `<Components>`**, as Core's internal parts do
   (`CoreIVASpaceAGameData.xml`); `IVASeat.CreateComponents` runs for every part and subpart. A crew
   window, the launch menu and a save (`<IVASeatData AssignedKittenName="…" />`) all fill it.
 - **Its `PositionAsmb`, `ForwardAxisAsmb` and `UpAxisAsmb` are public fields** in the owning part's
@@ -570,8 +580,8 @@ loads and draws at its modelled pose, and no log says why.
 - **The model is drawn 0.63 m under the seat point** (`KittenLocomotionTuning.SeatedOffset`), and the
   seated pose rests well above that: a seat point on the surface sinks the kitten to its neck, one
   0.48 m up leaves it hovering, and 0.12 m up looked seated from 50 m away, not checked closer.
-- **Boarding needs an `<EVADoor SeatId="…" />`**, which goes on a `<SubPartGameData>` of the same
-  part. A kitten boards only from within 1 m of that subpart's origin (`KittenEva.CanBoardDoor`), so
+- **Boarding needs an `<EVADoor SeatId="…" />`**, the seat's `Key`, in the `<Components>` of a
+  `<SubPart Id="…" Modify="Patch">` of the same part. A kitten boards only from within 1 m of that subpart's origin (`KittenEva.CanBoardDoor`), so
   the door belongs on a subpart whose origin a kitten can actually walk up to.
 - **Since 2026.10.25.5707 a seated kitten takes a radiation dose**, shielded by
   `RadiationShield.GetTransmission(seat.Parent)`, and can be retired, fall sick or die of it.
@@ -718,7 +728,7 @@ exhaust template are resolved later, once every mod has loaded, and survive the 
 
 **Asset Ids resolve in one global library across mods** (`SerializedId` / `ILibraryData`, with
 an `_isReference` flag for entries that are pure references). Core loads before user mods, so a
-mod's XML can instance Core's subparts and materials by Id — **no mesh atlas, no textures, no
+mod's XML can instance Core's subparts and materials by `Ref` — **no mesh atlas, no textures, no
 Blender**.
 
 **Confirmed in-game.** A mod's `<SubPart InstanceOf="CoreStructuralA_Subpart_TubeA">` renders
@@ -731,24 +741,31 @@ When the part cannot be assembled out of Core's kit, mirror Core's own file exac
 
 ```xml
 <Assets>
-  <MeshAtlas Path="Meshes/MyMod_MeshAtlas.glb" />
+  <MeshAtlas Id="MyMod_MeshAtlas" Path="Meshes/MyMod_MeshAtlas.glb" />
 
+  <Texture Id="MyMod_Diffuse" Path="Textures/MyMod_Diffuse.png" Category="Vessel" />
+  <Texture Id="MyMod_Normal"  Path="Textures/MyMod_Normal.png"  Category="Vessel" />
+  <Texture Id="MyMod_PBR"     Path="Textures/MyMod_PBR.png"     Category="Vessel" />
   <PbrMaterial Id="MyMod_Material">
-    <Diffuse      Path="Textures/MyMod_Diffuse.png" Category="Vessel" />
-    <Normal       Path="Textures/MyMod_Normal.png"  Category="Vessel" />
-    <AoRoughMetal Path="Textures/MyMod_PBR.png"     Category="Vessel" />
+    <Diffuse Ref="MyMod_Diffuse" />
+    <Normal Ref="MyMod_Normal" />
+    <AoRoughMetal Ref="MyMod_PBR" />
   </PbrMaterial>
 
   <SubPart Id="MyMod_Subpart_Thing">
-    <PartModel Id="MyMod_Subpart_Thing_Model">
-      <Mesh Id="MyMod_Subpart_Thing" />          <!-- a mesh name inside the atlas -->
-      <Material Id="MyMod_Material" />
-    </PartModel>
-    <MeshView><Mesh Id="MyMod_Subpart_Thing_VM" /></MeshView>
+    <Components>
+      <PartModel Key="MyMod_Subpart_Thing_Model">
+        <Mesh Ref="MyMod_Subpart_Thing" />        <!-- a mesh name inside the atlas -->
+        <Material Ref="MyMod_Material" />
+      </PartModel>
+      <MeshView><Mesh Ref="MyMod_Subpart_Thing_VM" /></MeshView>
+    </Components>
   </SubPart>
 
   <Part Id="MyMod_Prefab_Thing">
-    <SubPart Id="MyMod_Thing_1" InstanceOf="MyMod_Subpart_Thing" />
+    <SubParts>
+      <SubPart Key="MyMod_Thing_1" Ref="MyMod_Subpart_Thing" />
+    </SubParts>
   </Part>
 </Assets>
 ```
@@ -782,8 +799,8 @@ the atlas and the XML alone.
 - **`AoRoughMetal` is R=occlusion, G=roughness, B=metalness** (glTF ORM). Core's own
   `Textures/default_pbr.png` is `(255, 180, 0)` and `EmptyAoRoughMetallic.png` is
   `(255, 255, 0)`: unoccluded, rough, non-metal.
-- A slot can reference a `<Texture Id>` from `DefaultAssets.xml` instead of a path —
-  `<Normal Id="EmptyNormal"/>`.
+- A slot can name a `<Texture Id>` from `DefaultAssets.xml` as readily as one of the mod's own —
+  `<Normal Ref="EmptyNormal"/>`.
 - **Put the Assets XML at the mod root**, next to `Meshes/` and `Textures/`. Whether relative
   paths resolve against the mod root or the XML's directory is undocumented; at the root the
   two are the same and the question is moot.
@@ -808,38 +825,53 @@ EntryAssembly = "KSACars"
 
 ```xml
 <Part Id="MyMod_Prefab_Thing">
-  <SubPart Id="MyMod_Base" InstanceOf="CoreStructuralA_Subpart_MountingNodeHalfWA" />
-  <SubPart Id="MyMod_Tube1" InstanceOf="CoreStructuralA_Subpart_TubeA">
-    <Transform>
-      <Position X="0.522" Y="0.26" Z="0" />
-      <Rotation Z="3.14159" />          <!-- RADIANS, not degrees -->
-      <Scale X="0.5" Y="0.5" Z="0.5" />
-    </Transform>
-  </SubPart>
-  <Connector Id="_myConnector">
-    <Transform><Position X="-0.095" /><Rotation Z="3.14159" /></Transform>
-  </Connector>
+  <SubParts>
+    <SubPart Key="MyMod_Base" Ref="CoreStructuralA_Subpart_MountingNodeHalfWA" />
+    <SubPart Key="MyMod_Tube1" Ref="CoreStructuralA_Subpart_TubeA">
+      <Transform>
+        <Position X="0.522" Y="0.26" Z="0" />
+        <Rotation Z="3.14159" />          <!-- RADIANS, not degrees -->
+        <Scale X="0.5" Y="0.5" Z="0.5" />
+      </Transform>
+    </SubPart>
+  </SubParts>
+  <Connectors>
+    <Connector Key="_myConnector">
+      <Transform><Position X="-0.095" /><Rotation Z="3.14159" /></Transform>
+    </Connector>
+  </Connectors>
 </Part>
 ```
 
-**GameData XML** — simulation. Minimal is genuinely minimal; `CoreStructuralA_Prefab_StrutA` is
-nothing but an `EditorTag`. Mass and colliders are optional and derived from geometry if absent.
+**GameData XML** — simulation, as a patch of the part the Assets XML declared. Minimal is genuinely
+minimal; `CoreStructuralA_Prefab_StrutA` is nothing but an editor tag. Mass and colliders are
+optional and derived from geometry if absent.
 
 ```xml
-<PartGameData Id="MyMod_Prefab_Thing" DisplayName="Shown in the editor">
-  <EditorTag Value="Structural" />
-  <EditorTag Value="Radial" />        <!-- allows surface attachment -->
-  <Diameter M="0.5" />                <!-- 0.5 / 1 / 2 / 3 / 4 -->
-  <Connector Id="_myConnector"><Flags>ToSurface</Flags></Connector>
-  <SolidSphereMass><Mass Kg="185" /><Radius M="0.30" /></SolidSphereMass>
-  <Collider Id="MyCollider">
-    <Cylinder Id="C1">
-      <LocationAsmb X="0.522" Y="0" Z="0" />
-      <Collider2Asmb X="0" Y="0" Z="1.5708" />   <!-- cylinders are Y-axis; rotate onto X -->
-      <LengthY M="0.854" /><Radius M="0.32" />
-    </Cylinder>
-  </Collider>
-</PartGameData>
+<Part Id="MyMod_Prefab_Thing" Modify="Patch" DisplayName="Shown in the editor">
+  <EditorTags Modify="Extend">
+    <EditorTag Ref="Structural" />
+    <EditorTag Ref="Radial" />        <!-- allows surface attachment -->
+  </EditorTags>
+  <Diameters Modify="Extend"><Diameter M="0.5" /></Diameters>   <!-- 0.5 / 1 / 2 / 3 / 4 -->
+  <Connectors Modify="Extend">
+    <Connector Key="_myConnector" Modify="Patch"><Flags>ToSurface</Flags></Connector>
+  </Connectors>
+  <InertMasses Modify="Extend">
+    <SolidSphereMass><Mass Kg="185" /><Radius M="0.30" /></SolidSphereMass>
+  </InertMasses>
+  <Components Modify="Extend">
+    <Collider Key="MyCollider">
+      <Colliders>
+        <Cylinder Key="C1">
+          <LocationAsmb X="0.522" Y="0" Z="0" />
+          <Collider2Asmb X="0" Y="0" Z="1.5708" />   <!-- cylinders are Y-axis; rotate onto X -->
+          <LengthY M="0.854" /><Radius M="0.32" />
+        </Cylinder>
+      </Colliders>
+    </Collider>
+  </Components>
+</Part>
 ```
 
 Conventions worth knowing:
@@ -850,7 +882,7 @@ Conventions worth knowing:
   (`LengthX/Y/Z`) and `Sphere` (`Radius`).
 - **Connector flags**: `ToSurface` / `FromSurface` for surface attachment, `Internal` to hide,
   `Capabilities` for `BulkFluid`, `DecouplerJoint`, etc.
-- **EditorTag values in use**: `Structural`, `Radial`, `Coupling`, `Engines`, `Fuel Tanks`,
+- **EditorTag refs in use**: `Structural`, `Radial`, `Coupling`, `Engines`, `Fuel Tanks`,
   `Booster`, `Capsules`, `Cargo`, `Electrical`, `Interstage`, `Landing`, `Lights`, `Passage`,
   `RCS`, `Hidden`, `NoFaceSnapping`.
 - Sub-meshes named `*_VM` are the editor preview ("mesh view") variants.
@@ -1043,13 +1075,13 @@ Doppler the engine's job rather than the mod's. Pressure is a parameter, so thin
 modelled.
 
 **A mod can ship its own audio, by relative path, exactly like a mesh atlas.** `Core/Sounds.xml`
-declares `<SoundFile Path="Sounds/EngineDefault.wav">` alongside `<SpatialSoundData>`,
+declares `<SoundFile Id="DefaultEngineSoundFile" Path="Sounds/EngineDefault.wav">` alongside `<SpatialSoundData>`,
 `<SoundGroup>` and `<SoundBehavior>`, and the files are plain `.wav` and `.ogg` under
 `Core/Sounds/`. That is the same shape as `<MeshAtlas Path="Meshes/…">`, which works from a user
 mod — so the loader contract is known-good.
 
 **The declarative route is for parts only.** Core hangs engine noise off
-`<SoundEvent Action="On" SoundId="DefaultEngineSoundBehavior" />` inside `<PartGameData>`, driven
+`<SoundEvent Ref="DefaultEngineSoundBehavior" Action="On" />` in a part's GameData, driven
 by the part's engine module. Anything else — a mod-simulated object, or a car whose engine is the
 mod's own — gets nothing from that path, and `GameAudio.PlaySound` is the one to use.
 
@@ -1205,9 +1237,9 @@ references is worse than useless: it still gets a plume instance, and
 
 **The renderer takes a plume with no nozzle behind it.** `Program.VolumetricExhaustRenderer` has a
 public `AddInstance(VolumetricExhaustInstance, in ExhaustBendTarget, in ExhaustAxialFade, in
-ExhaustDiamondFade)`, and an instance is built from a template Id alone:
-`new VolumetricExhaustInstance(new VolumetricExhaustReference { Id = "EngineAAuxiliary" })` after
-`Load()`. Each frame its `LastPlumeData` is set from the public static
+ExhaustDiamondFade)`, and an instance is built from a template alone:
+`new VolumetricExhaustInstance(template)`, the template found with
+`ModLibrary.TryGet<VolumetricExhaustTemplate>("EngineAAuxiliary", ...)`. Each frame its `LastPlumeData` is set from the public static
 `RocketNozzle.ComputePlumeData(...)` with gas numbers of the mod's choosing, `UpdateState(...)` runs
 its start-up and shut-down transients, and it is submitted while `IsLive`. The engine's own
 `VolumetricExhaustRenderer.UpdateTestInstances` does exactly this, with invented gas numbers.
@@ -1218,9 +1250,10 @@ VolumetricExhaustRenderer, double)` sits there, once per vehicle in frame. Posit
 `float3`; `Vehicle.cs` around that method has the maths. Plumes submitted this way do not merge with
 each other, and `MaxVolumetricExhausts == 0` in the graphics settings switches every plume off.
 
-**The engine's sound is reachable the same way**: `GameAudio.PlaySound(new SoundEvent { SoundId =
+**The engine's sound is reachable the same way**: `GameAudio.PlaySound(new SoundEvent { Ref =
 "DefaultEngineSoundBehavior" }, ...)` returns a channel whose `Throttle`, `Distance`, `Pressure` and
-`Iva` parameters `Vehicle.UpdateAudio` sets each frame. It plays nothing above 10x.
+`Iva` parameters `Vehicle.UpdateAudio` sets each frame. It plays nothing above 10x. A `SoundEvent` is a
+`DataReference<SoundBehavior>`, which finds its sound by `Ref` when nothing resolved it at load.
 
 **A craft with no engine may have its throttle pinned at 1.** `PartTree.RecomputeRocketControls` starts
 the minimum throttle at 1 and lowers it per `EngineController`, and `PrepareWorker` clamps the manual

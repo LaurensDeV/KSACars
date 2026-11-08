@@ -68,7 +68,7 @@ internal sealed class RocketSound
             _burning.Remove(e.Craft);
 
             // Started paused, as KSA starts an engine's: the parameters are set before a sample is heard.
-            GameAudio.PlaySound(new SoundEvent { SoundId = SoundId }, spatial, out channel, e.Craft, 1f, startPaused: true);
+            GameAudio.PlaySound(new SoundEvent { Ref = SoundId }, spatial, out channel, e.Craft, 1f, startPaused: true);
             if (channel is null) return;
             _burning[e.Craft] = channel;
         }

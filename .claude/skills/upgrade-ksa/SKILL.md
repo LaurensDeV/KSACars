@@ -23,6 +23,11 @@ Read `docs/KSA-MODDING-NOTES.md` and CLAUDE.md's *After a KSA update* before sta
 Everything below needs `source tools/env.sh` or the `tools/*.sh` wrappers; bare `dotnet` is 8.0
 and cannot build this.
 
+**The loader is not mirrored.** `StarMap.API` and `Lib.Harmony` are NuGet packages pinned in
+`src/KSACars/KSACars.csproj`, at the versions the StarMap release players install ships (compare the
+DLLs in its folder with the packages'). A new KSA build often needs a new StarMap: when it does, move
+both pins and the version `README.md` asks players for in the same change.
+
 ## Order matters
 
 The private repository must be pushed **before** this one, or CI here fails against a lock it
@@ -112,7 +117,7 @@ Add a row whenever a fix depends on the engine *doing* something rather than *de
 ## 4. Diff Core's XML, because the compiler never sees it
 
 `ksa-api-diff.sh` reads compiled metadata. The mod also binds to KSA's **XML serialisation
-contract** — `PartGameData`, `EditorTagDef`, `Connector`/`Flags`, `MeshAtlas`, `PbrMaterial`, the
+contract** — `Part`/`SubPart` and their `Modify="Patch"` rows, `EditorTagDef`, `Connector`/`Flags`, `MeshAtlas`, `Texture`, `PbrMaterial`, the
 particle and sound definitions, the character attachment. None of that compiles against anything,
 so a renamed element or attribute produces no error at all: the part loads with the field at its
 default, or does not load, and the only trace is a line in KSA's own log.
@@ -125,9 +130,15 @@ diff -ru "<old install>/Content/Core" "/mnt/c/Program Files/Kitten Space Agency/
 ```
 
 No old install to hand? The mirror's previous commit has the assemblies but not Core's content, so
-the fallback is to read the deserialised types directly — `PartGameDataReference.cs`,
-`PartTemplate.cs`, `EditorTagDefinition.cs` — and compare their `[XmlElement]` and `[XmlAttribute]`
+the fallback is to read the deserialised types directly — `PartTemplate.cs`, `AssetBundle.cs`,
+`SoundReference.cs`, `EditorTagDefinition.cs` — and compare their `[XmlElement]` and `[XmlAttribute]`
 names against what the asset XML at `src/KSACars/` actually writes.
+
+**The fastest check is KSA's own log.** If the new build has been launched once with the mod
+installed, the newest `KittenSpaceAgency.*.log` in the user folder's `Logs/` (`./tools/ksa-user-dir.sh`)
+lists every row of the mod's XML that did not load, under `[FastAndPurrious]`. 2026.11.10.5801 rewrote
+the whole schema (`Key`/`Ref`, wrapped lists, `Modify="Patch"` in place of `PartGameData`) and that log
+had 430 such lines; it reports only the first fault a row has, so read Core's XML for the rest.
 
 What to look for, in order of how quietly it fails:
 
