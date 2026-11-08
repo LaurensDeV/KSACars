@@ -695,6 +695,34 @@ internal static partial class KsaWorld
     }
 
     /// <summary>
+    /// Asks KSA to fill a car's air, water, food and CO2 canisters once a meal has gone from its cabin,
+    /// so a car's crew never goes short. A meal goes every eight hours a kitten, well before the water,
+    /// the oxygen or a canister runs out; and a car KSA's editor never filled has no meals at all.
+    /// </summary>
+    public static void StockCabin(Vehicle craft)
+    {
+        try
+        {
+            ReadOnlySpan<MoleState> stores = craft.Parts.Moles.States;
+            foreach (Habitat cabin in craft.Parts.Modules.Get<Habitat>())
+            {
+                if (cabin.CountFreeMeals(stores) == 0) continue;
+                // KSA's own queued refill, applied on the main thread with the physics workers parked.
+                InputEvents.VehicleResourcesChangeBuffer.Add(new InputEvents.VehicleResourcesChangeData
+                {
+                    Vehicle = craft,
+                    Refill = true,
+                });
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"{DisplayName(craft)}: cabin left as it is: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// The density of the air at a point, as a multiple of <see cref="ReferenceAirDensityKgPerM3"/> --
     /// Earth's sea-level air, whatever body this is, so a car's drag is the air actually there.
     ///

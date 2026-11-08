@@ -135,6 +135,7 @@ internal sealed class Buggies
         foreach ((Vehicle v, Entry e) in Active)
         {
             if (!KsaWorld.IsAlive(v) || Find(v)?.Part != e.Part) (gone ??= []).Add(v);
+            else KsaWorld.StockCabin(v);
         }
         if (gone is not null)
         {

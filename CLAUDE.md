@@ -323,7 +323,7 @@ test build, and a new file under `Sim/` is tested the moment it exists.
 | `docs/FRAMES-AND-EPOCHS.md` | the epoch rules that follow from it, for anything drawn or timed |
 | `docs/KSA-CAMERAS.md` | what the engine does with cameras and viewports |
 | `docs/KSA-TERRAIN.md` | **where the engine thinks the ground is** — the height field's resolution and what `accurate` buys |
-| `docs/KSA-API-SURFACE.md` | **generated** — the 584 members an upgrade has to preserve |
+| `docs/KSA-API-SURFACE.md` | **generated** — the 589 members an upgrade has to preserve |
 | `docs/BLOCKED-ON-KSA.md` | **what the cars cannot do, or do only round the engine**, with what would unblock each |
 | `docs/CAR-BACKLOG.md` | the cars to build next, what each asks of the mod beyond data and art, and the GT3's helmet as photographed |
 | `.claude/skills/upgrade-ksa/` | the whole KSA-update procedure, as a skill |
@@ -555,6 +555,14 @@ back dipped. It draws almost nothing, because nothing on a car charges the batte
 `<EVADoor>` on a mesh-less subpart beside each front seat; a kitten boards and leaves through those
 like any craft's. The driver's seat is the one nearest the profile's `DriverEye`, which is where
 `Sim/SteeringGrip.cs` reaches from.
+
+**Each car carries a cabin, so a kitten can get out where the air is thin.** Under KSA's life-support
+rule a suit is filled from the seat's Habitat zone, and a seat with none cannot be left except into
+breathable air. Each part has a `<Habitat>`, an oxygen bottle and a water tank, stocked as Core's
+Gemini is at three days a kitten and weighed out of its mass box, so a stocked car weighs and turns as
+it did. A seated crew lives off the cabin and never goes short: every frame `KsaWorld.StockCabin` queues
+KSA's own refill for a car whose cabin is a meal short, which also fills one KSA's editor never did. `docs/BLOCKED-ON-KSA.md` has it. **Not seen
+in game.**
 
 **The F2004's driver wears a helmet, which is two subparts of the car put on its head each frame.** A
 kitten is KSA's character and not the car's, so nothing can be parented to its head: the shell and its

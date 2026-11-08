@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-259 types and 584 members across 13 assemblies.
+267 types and 589 members across 13 assemblies.
 
 ## BepuPhysics
 
@@ -734,6 +734,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `KSA.EvaRequest PerformEvaForSeat(KSA.Vehicle, KSA.IVASeat)`
 
+### KSA.EmptyStruct
+
+*referenced as a type only*
+
 ### KSA.EngineFlags
 
 *referenced as a type only*
@@ -857,6 +861,10 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 *referenced as a type only*
 
+### KSA.Habitat
+
+- `int CountFreeMeals(System.ReadOnlySpan`1<KSA.MoleState>)`
+
 ### KSA.IAnimProcessor
 
 *referenced as a type only*
@@ -951,6 +959,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 ### KSA.InputEvents
 
 - `TypedBuffer`1<VehicleInputData> VehicleInputBuffer`
+- `TypedBuffer`1<VehicleResourcesChangeData> VehicleResourcesChangeBuffer`
 
 ### KSA.InputEvents+TypedBuffer`1
 
@@ -962,6 +971,11 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 - `Brutal.GlfwApi.GlfwModifier Modifiers`
 - `KSA.InputAction Action`
 - `KSA.Vehicle Vehicle`
+
+### KSA.InputEvents+VehicleResourcesChangeData
+
+- `KSA.Vehicle Vehicle`
+- `bool Refill`
 
 ### KSA.InstanceData
 
@@ -1074,6 +1088,26 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `System.Span`1<!!0> Get<1>()`
 
+### KSA.ModuleStateful`4
+
+*referenced as a type only*
+
+### KSA.ModuleStateful`4+StateList
+
+*referenced as a type only*
+
+### KSA.Mole
+
+*referenced as a type only*
+
+### KSA.MoleGlobalState
+
+*referenced as a type only*
+
+### KSA.MoleState
+
+*referenced as a type only*
+
 ### KSA.MultiCubeCellGrid
 
 - `System.Collections.Generic.HashSet`1<Cell> loadedCells`
@@ -1122,6 +1156,7 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 
 - `KSA.ModuleList Modules`
 - `KSA.Part get_Root()`
+- `StateList<KSA.Mole, KSA.MoleState, KSA.MoleGlobalState, KSA.EmptyStruct> Moles`
 - `System.ReadOnlySpan`1<KSA.Part> get_Parts()`
 - `void RecomputeAllDerivedData()`
 - `void ReinitializeDerivedValues()`

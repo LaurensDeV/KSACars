@@ -33,11 +33,11 @@
         at 12 deg/s at 60 fps and 25 at 30, with the drive spent holding the rocking.
       -->
       <SolidCuboidMass>
-        <Mass Kg="650" />
+        <Mass Kg="601.5" />
         <LocationAsmb X="0.60" Y="-0.25" />
-        <LengthX M="1.1" />
-        <LengthY M="3.6" />
-        <LengthZ M="1.7" />
+        <LengthX M="1.144" />
+        <LengthY M="3.743" />
+        <LengthZ M="1.767" />
       </SolidCuboidMass>
     </InertMasses>
     <Components Modify="Extend">
@@ -56,6 +56,36 @@
       <PowerConsumer LightSwitch="true">
         <Consumed W="0.001" />
       </PowerConsumer>
+
+      <!--
+        A cabin, so a kitten can get out where the air is too thin to breathe: KSA fills an EVA suit
+        from the cabin it is seated in, and a seat with none is refused under life support. Stocked as
+        Core's Gemini is, three days a kitten, which is about 48 kg that the mass box above leaves out
+        so a stocked car weighs and turns as it did. An open car's air is the sky's, hence the room.
+      -->
+      <Habitat Key="Cabin">
+        <HabitableVolume M3="4" />
+        <StorageVolume M3="0.042" />
+        <LocationAsmb X="0.60" Y="-0.25" />
+      </Habitat>
+      <Tank Key="OxygenBottle">
+        <SphericalTank>
+          <LocationAsmb X="0.60" Y="-0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1750" />
+          <WallThickness Mm="8.3" />
+          <RoleAffinity>Air</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+      <Tank Key="WaterTank">
+        <SphericalTank>
+          <LocationAsmb X="0.60" Y="-0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1672" />
+          <WallThickness Mm="1" />
+          <RoleAffinity>Water</RoleAffinity>
+        </SphericalTank>
+      </Tank>
 
       <!--
         Two seats, the driver on the right, behind the wheel. Position is the eye; the engine draws the
@@ -156,11 +186,11 @@
         with the drive spent holding the rocking.
       -->
       <SolidCuboidMass>
-        <Mass Kg="2336" />
+        <Mass Kg="2243" />
         <LocationAsmb X="0.55" Y="0.25" />
-        <LengthX M="1.0" />
-        <LengthY M="5.6" />
-        <LengthZ M="2.0" />
+        <LengthX M="1.021" />
+        <LengthY M="5.715" />
+        <LengthZ M="2.041" />
       </SolidCuboidMass>
     </InertMasses>
     <Components Modify="Extend">
@@ -176,6 +206,36 @@
       <PowerConsumer LightSwitch="true">
         <Consumed W="0.001" />
       </PowerConsumer>
+
+      <!--
+        A cabin, so a kitten can get out where the air is too thin to breathe: KSA fills an EVA suit
+        from the cabin it is seated in, and a seat with none is refused under life support. Stocked as
+        Core's Gemini is, three days a kitten, which is about 93 kg that the mass box above leaves out
+        so a stocked car weighs and turns as it did. An open car's air is the sky's, hence the room.
+      -->
+      <Habitat Key="Cabin">
+        <HabitableVolume M3="8" />
+        <StorageVolume M3="0.084" />
+        <LocationAsmb X="0.55" Y="0.25" />
+      </Habitat>
+      <Tank Key="OxygenBottle">
+        <SphericalTank>
+          <LocationAsmb X="0.55" Y="0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.2205" />
+          <WallThickness Mm="8.3" />
+          <RoleAffinity>Air</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+      <Tank Key="WaterTank">
+        <SphericalTank>
+          <LocationAsmb X="0.55" Y="0.25" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.2107" />
+          <WallThickness Mm="1" />
+          <RoleAffinity>Water</RoleAffinity>
+        </SphericalTank>
+      </Tank>
 
       <!--
         Left-hand drive: the driver on the car's left, +Z, placed so a kitten's hands reach the rim, and
@@ -375,11 +435,11 @@
         ratio of inertia to mass, which settles.
       -->
       <SolidCuboidMass>
-        <Mass Kg="605" />
+        <Mass Kg="579.4" />
         <LocationAsmb X="0.30" Y="-0.15" />
-        <LengthX M="0.5" />
-        <LengthY M="5.6" />
-        <LengthZ M="2.0" />
+        <LengthX M="0.511" />
+        <LengthY M="5.722" />
+        <LengthZ M="2.044" />
       </SolidCuboidMass>
     </InertMasses>
     <Components Modify="Extend">
@@ -392,6 +452,36 @@
       <PowerConsumer LightSwitch="true">
         <Consumed W="0.001" />
       </PowerConsumer>
+
+      <!--
+        A cabin, so a kitten can get out where the air is too thin to breathe: KSA fills an EVA suit
+        from the cabin it is seated in, and a seat with none is refused under life support. Stocked as
+        Core's Gemini is, three days a kitten, which is about 26 kg that the mass box above leaves out
+        so a stocked car weighs and turns as it did. An open car's air is the sky's, hence the room.
+      -->
+      <Habitat Key="Cabin">
+        <HabitableVolume M3="2" />
+        <StorageVolume M3="0.021" />
+        <LocationAsmb X="0.30" Y="-0.15" />
+      </Habitat>
+      <Tank Key="OxygenBottle">
+        <SphericalTank>
+          <LocationAsmb X="0.30" Y="-0.15" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1389" />
+          <WallThickness Mm="8.3" />
+          <RoleAffinity>Air</RoleAffinity>
+        </SphericalTank>
+      </Tank>
+      <Tank Key="WaterTank">
+        <SphericalTank>
+          <LocationAsmb X="0.30" Y="-0.15" />
+          <Material Ref="Aluminum.2014" Phase="Solid" />
+          <OuterRadius M="0.1327" />
+          <WallThickness Mm="1" />
+          <RoleAffinity>Water</RoleAffinity>
+        </SphericalTank>
+      </Tank>
 
       <!--
         One seat. Position is the eye, 0.63 m over the seated kitten's origin: the kitten sits high and

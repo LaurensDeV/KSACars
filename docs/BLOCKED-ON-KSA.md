@@ -17,6 +17,7 @@ after every update, recheck this list:
 - [ ] Has KSA a way of its own to keep ground clutter off a structure, a footprint or a mesh it is given?
       **If it has, hand it the roads' outline and take this mod's own masking out**: see the section below.
 - [ ] Under the life-support rule, can a kitten leave a seat with no Habitat zone into air it cannot breathe?
+      **If it can, the cars' cabins can go**: see the life-support section below.
 
 ## No wheels
 
@@ -29,16 +30,22 @@ worker's result before anything reads it.
 
 **Would unblock it:** a wheel module, or a public per-step force hook on `Vehicle`.
 
-## Life support keeps a kitten in a car where the air is thin
+## Life support wants a cabin a car does not have
 
 Since 2026.11.10.5801, with the save's life-support rule on, which is the default, KSA lets a kitten
-out only into breathable air or through a seat with a Habitat zone (`Vehicle.CheckEva`, `Vehicle.cs:3392`).
-A car has no Habitat, so on Luna or in thin air nobody gets out: KSA queues the request and drops it
-at the spawn (`EVADoor.cs:200`). The bridge's `drive` with `eva` says why. With every kitten aboard
-incapacitated and no probe core, `Vehicle.IsControllable` is false too (`Vehicle.cs:679`). **Not seen
-in game.**
+out only into breathable air or with a suit filled from the Habitat zone its seat is in
+(`Vehicle.CheckEva`, `Vehicle.cs:3392`); without one KSA queues the request and drops it at the spawn
+(`EVADoor.cs:200`). So each car carries a cabin: a `<Habitat>`, an oxygen bottle and a water tank,
+stocked as Core's Gemini is at three days a kitten, its weight taken off the car's mass box so a stocked
+car weighs and turns as before. A seated crew lives off the cabin, and a car is no place to go hungry,
+so every frame `KsaWorld.StockCabin` queues KSA's own refill for a car whose cabin is a meal short:
+a meal goes every eight hours a kitten, long before the water, the oxygen or a canister runs out.
+That also fills a car KSA's editor never did, one parked by the mod or from a save made before cars
+had cabins.
+The bridge's `drive` with `eva` says why a kitten was refused. **Not seen in game.**
 
-**Would unblock it:** a Habitat zone on each car, which would also give its crew air to use up.
+**Would unblock it:** an EVA that a seat with no cabin can take in thin air, or a life-support rule
+for open vehicles.
 
 ## Terrain friction is one number
 
