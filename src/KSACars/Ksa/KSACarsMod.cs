@@ -28,6 +28,12 @@ public sealed class KSACarsMod
     private int _faults;
     private bool _disabled;
 
+    /// <summary>
+    /// StarMap builds this and hands it the services it asks for. The event bus is how a car is
+    /// shared with another game by whatever mod shares craft, if one does: see <see cref="CraftSync"/>.
+    /// </summary>
+    public KSACarsMod(StarMap.API.Services.IEventBus bus) => CraftSync.Start(bus);
+
     [StarMapImmediateLoad]
     public void OnImmediateLoad(Mod mod)
     {
@@ -55,6 +61,9 @@ public sealed class KSACarsMod
         WarpHook.Install();
         ControlHook.Install();
         RoadColliders.Install();
+
+        // Now, with every mod built and listening.
+        CraftSync.Ask();
 
         if (Build.Developer) _bridge = new Bridge();
         Log.Info(Build.Developer
@@ -85,6 +94,7 @@ public sealed class KSACarsMod
             StartLine.Update();
             Opponents.Update();
             Multiplayer.Update();
+            CraftSync.Frame();
             RaceHud.Update();
         }
         catch (Exception e)

@@ -15,7 +15,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-KSA_DIR="${KSA_DIR:-/mnt/c/Program Files/Kitten Space Agency}"
+# shellcheck source=ksa-game-dir.sh
+source "$(dirname "${BASH_SOURCE[0]}")/ksa-game-dir.sh"
+KSA_DIR="${KSA_DIR:-$(ksa_game_dir || true)}"
 TARGET="${1:-}"
 if [[ -z "$TARGET" ]]; then
     echo "usage: $(basename "$0") <path to ksa-game-assemblies checkout>" >&2
@@ -95,6 +97,16 @@ for name in "${ASSEMBLIES[@]}"; do
     cp "$src" "$DEST/$name.dll"
     chmod u+rw "$DEST/$name.dll"
     copied=$((copied + 1))
+done
+
+# A DLL the build no longer ships would otherwise stay in the mirror and keep resolving, so the
+# next upgrade would compile against an assembly the game has stopped carrying. (This loop is
+# KSArmory's; writing to one shared mirror from several repos means the repo without it leaves
+# behind what the others prune.)
+for path in "$DEST"/*.dll; do
+    name="$(basename "$path" .dll)"
+    printf '%s\n' "${ASSEMBLIES[@]}" | grep -qx "$name" \
+        || { echo "removing $name.dll: no longer shipped"; rm -f "$path"; }
 done
 
 # Record which game build these came from; the mod is only known to work against one at a time.

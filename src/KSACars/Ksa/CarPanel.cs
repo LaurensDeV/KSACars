@@ -209,6 +209,9 @@ internal static class CarPanel
     // Hosting a race, or joining one with a code, step by step: see Multiplayer. Folded until it is opened.
     private static void RaceOnline()
     {
+        // Put away where another mod shares craft between games: two ways of being in one world
+        // with somebody are one too many, and this one hands over a world of its own.
+        if (CraftSync.Provided) return;
         if (!_named)
         {
             NetName.SetValue(Multiplayer.PlayerName);
