@@ -1,3 +1,9 @@
+## [0.1.14](https://github.com/LaurensDeV/KSACars/compare/v0.1.13...v0.1.14) (2026-11-12)
+
+### Features
+
+* **cars:** share a driven car through whatever mod shares craft ([8b152a3](https://github.com/LaurensDeV/KSACars/commit/8b152a355dde98d121b206e865d6b1523e2773e2))
+
 ## [0.1.13](https://github.com/LaurensDeV/KSACars/compare/v0.1.12...v0.1.13) (2026-11-08)
 
 ### Features
