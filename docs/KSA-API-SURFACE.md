@@ -7,7 +7,7 @@ This is the checklist for a KSA update: anything here that changed shape in the 
 build is a breaking change for this mod, and anything not here cannot be. See the
 `upgrade-ksa` skill, which diffs the decompiled sources against exactly this list.
 
-267 types and 589 members across 13 assemblies.
+270 types and 591 members across 13 assemblies.
 
 ## BepuPhysics
 
@@ -1495,6 +1495,19 @@ build is a breaking change for this mod, and anything not here cannot be. See th
 *referenced as a type only*
 
 ## StarMap.API
+
+### StarMap.API.Events.IEventPublisher`1
+
+*referenced as a type only*
+
+### StarMap.API.Events.ISubscription`1
+
+*referenced as a type only*
+
+### StarMap.API.Services.IEventBus
+
+- `StarMap.API.Events.IEventPublisher`1<!!0> GetPublisher<1>(string)`
+- `StarMap.API.Events.ISubscription`1<!!0> Subscribe<1>(System.Action`1<!!0>, string)`
 
 ### StarMap.API.StarMapAfterGuiAttribute
 
