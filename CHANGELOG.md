@@ -1,3 +1,13 @@
+## [0.1.13](https://github.com/LaurensDeV/KSACars/compare/v0.1.12...v0.1.13) (2026-11-08)
+
+### Features
+
+* **cars:** give each car a cabin so its crew can get out in thin air ([62d0c79](https://github.com/LaurensDeV/KSACars/commit/62d0c79c4dd9bff41e41aa96874f62e63173bfe0))
+
+### Build and packaging
+
+* **ksa:** retarget 2026.11.10.5801 and StarMap 0.5.3 ([e945eb7](https://github.com/LaurensDeV/KSACars/commit/e945eb730470438bd527d1f06f4ba18bf2e677ad))
+
 ## [0.1.12](https://github.com/LaurensDeV/KSACars/compare/v0.1.11...v0.1.12) (2026-11-01)
 
 ### Features
