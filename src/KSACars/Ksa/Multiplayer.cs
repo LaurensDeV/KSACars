@@ -251,6 +251,8 @@ internal static partial class Multiplayer
     /// </summary>
     public static bool IsOthers(Vehicle? craft)
     {
+        // Or one that whatever shares craft between games says is being driven in another.
+        if (CraftSync.IsRemote(craft)) return true;
         if (craft is null || _session is not { Joined: true } s) return false;
         // Loading the host's world hands control to the craft its save was flying, the host's; this game's own is taken a moment later.
         if (s.Is == NetSession.Role.Client && _taking == Taking.Loading) return false;

@@ -683,6 +683,21 @@ internal sealed class Buggies
 
         try
         {
+            // A car being driven in another game is put where that game has it by whatever shares
+            // craft between games, in this same physics window and in no order this mod can count
+            // on. So it is stepped for its wheels and its springs, and what the step did to where
+            // the car is and how it moves is taken back.
+            if (CraftSync.IsRemote(craft))
+            {
+                PhysicsStates states = craft.GetPhysicsStatesMutable();
+                (double3 at, double3 moving, doubleQuat turned, double3 spin) =
+                    (states.Kinematic.PositionPhys, states.Kinematic.VelocityPhys, states.Kinematic.Body2Phys, states.Kinematic.AngularVelocityPhys);
+                Step(e, dt);
+                states = craft.GetPhysicsStatesMutable();
+                (states.Kinematic.PositionPhys, states.Kinematic.VelocityPhys, states.Kinematic.Body2Phys, states.Kinematic.AngularVelocityPhys) =
+                    (at, moving, turned, spin);
+                return;
+            }
             Step(e, dt);
             if (dt > 0.0 && Puppets.TryGetValue(craft, out (double3 At, doubleQuat Body2Ccf, double3 Velocity, double3 SpinBody) pose)) Pull(e, pose, dt);
         }

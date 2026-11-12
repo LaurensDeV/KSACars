@@ -163,7 +163,14 @@ does keep the ground under it cleared; take the roads up before you save if you 
 
 ### Racing other people
 
-Open **Race online** at the bottom of the panel; one player presses **Host a race** and the others
+With a mod installed that shares craft between games, cars are shared through it: a car somebody
+else is driving steers, revs and shifts in your game as it does in theirs, and **Race online** is
+put away, since two ways of being in one world with somebody are one too many. This mod does not
+know which mod that is. It asks on StarMap's event bus whether craft are shared here, and
+`src/KSACars/Ksa/CraftSync.cs` is everything it says and listens for. Races, courses and
+opponents are not shared that way yet.
+
+Without one, open **Race online** at the bottom of the panel; one player presses **Host a race** and the others
 **Join a race**, and the panel walks each through what to do.
 Nobody needs an account or anything else installed. Everyone races in the host's world: joining loads
 a copy of it, with your car already on the grid, in place of the world you had, so save first. The
