@@ -25,7 +25,9 @@ namespace KSACars;
 /// where another game has it at every physics step, by whoever shares it; this mod goes on
 /// turning its wheels and working its springs, and moves nothing.</item>
 /// <item><c>craftsync.state</c>, said every frame of the car this player drives: <c>craft</c>,
-/// <c>channel</c> and <c>data</c>.</item>
+/// <c>channel</c> and <c>data</c>: the pedals and the wheel, the boost and the downward
+/// thrusters, the rockets' throttle, and whether they are lit, the headlights' beam and the
+/// scoop fitted.</item>
 /// <item><c>craftsync.state.remote</c>, heard: the same, as another game said it of a car that
 /// is remote here.</item>
 /// </list>
@@ -39,6 +41,17 @@ internal static class CraftSync
     private const string Channel = "ksacars:drive/v1";
     private const byte Layout = 1;
     private const int Bytes = 7;
+
+    // The sixth byte: the boost rockets wanted, and the downward thrusters on.
+    private const byte Boost = 1, Down = 2;
+
+    // An eighth byte, added after the seven went out: whether the lift rockets are lit, which
+    // beam the headlights are on, and which scoop is fitted. After the rest and not among them,
+    // so a game from before it reads the seven it knows and says nothing of these, and this one
+    // leaves alone what such a game did not say.
+    private const int BytesWithFittings = 8;
+    private const byte Lit = 1;
+    private const int BeamShift = 1, BeamMask = 3, ScoopShift = 3, ScoopMask = 7;
 
     // How long a remote car goes on being driven as it was last said to be, with nothing new heard.
     private const double HeldSeconds = 0.5;
@@ -96,14 +109,24 @@ internal static class CraftSync
     private static void OnSession(Dictionary<string, object?> said)
     {
         InSession = said.GetValueOrDefault("active") is true;
-        if (!InSession) Remote.Clear();
+        if (InSession) return;
+        foreach (Vehicle craft in Remote.ToArray()) Mine(craft);
+        Remote.Clear();
     }
 
     private static void OnAuthority(Dictionary<string, object?> said)
     {
         if (said.GetValueOrDefault("craft") is not Vehicle craft) return;
         if (said.GetValueOrDefault("remote") is true) Remote.Add(craft);
-        else if (Remote.Remove(craft)) Buggies.Hold(craft, default, 0.0);
+        else if (Remote.Remove(craft)) Mine(craft);
+    }
+
+    // A car that is this game's to drive again: its pedals let go of, and its rockets back on
+    // this game's own engine keys.
+    private static void Mine(Vehicle craft)
+    {
+        Buggies.Hold(craft, default, 0.0);
+        if (Buggies.Of(craft) is { } car) car.SaidLit = null;
     }
 
     private static void OnRemoteState(Dictionary<string, object?> said)
@@ -112,9 +135,21 @@ internal static class CraftSync
         if (said.GetValueOrDefault("craft") is not Vehicle craft || said.GetValueOrDefault("data") is not byte[] data) return;
         if (data.Length < Bytes || data[0] != Layout || Buggies.Of(craft) is not { } car) return;
         DriveInput input = new((sbyte)data[1] / 127.0, (sbyte)data[2] / 127.0, data[3] / 255.0);
-        Buggies.Hold(craft, input, HeldSeconds, turn: (sbyte)data[4] / 127.0, boost: (data[5] & 1) != 0);
-        car.Downforce = (data[5] & 2) != 0;
+        Buggies.Hold(craft, input, HeldSeconds, turn: (sbyte)data[4] / 127.0, boost: (data[5] & Boost) != 0);
+        car.Downforce = (data[5] & Down) != 0;
         car.Throttle = data[6] / 255.0;
+        if (data.Length < BytesWithFittings) return;
+        // Kept as last said, unlike the pedals: a car its driver has climbed out of goes on
+        // hovering where they left it with its lamps on, and nobody says anything more of it.
+        // None of the three is in anything KSA knows of a craft: the rockets go by this game's
+        // engine keys, which were never pressed here, and a car hovering under another player
+        // hung in the air with its hatches shut.
+        byte fittings = data[7];
+        car.SaidLit = (fittings & Lit) != 0;
+        int beam = (fittings >> BeamShift) & BeamMask;
+        if (beam <= (int)BeamSetting.High) car.Beam = (BeamSetting)beam;
+        int scoop = ((fittings >> ScoopShift) & ScoopMask) - 1;
+        if (scoop < car.Drive.Profile.Scoops.Length) car.Scoop = scoop;
     }
 
     /// <summary>Says what the car this player drives is doing, once a frame while a world is shared.</summary>
@@ -122,7 +157,11 @@ internal static class CraftSync
     {
         if (!InSession || _state is null) return;
         if (KsaWorld.ControlledVehicle is not { } craft || IsRemote(craft) || Buggies.Of(craft) is not { } car) return;
-        byte flags = (byte)((car.HatchWanted[(int)ThrusterGroup.Boost] ? 1 : 0) | (car.Downforce ? 2 : 0));
+        byte flags = (byte)((car.HatchWanted[(int)ThrusterGroup.Boost] ? Boost : 0) | (car.Downforce ? Down : 0));
+        // The scoop as one more than its place among the car's own, so that none is nought.
+        byte fittings = (byte)((car.Lit ? Lit : 0)
+                               | (((int)car.Beam & BeamMask) << BeamShift)
+                               | ((Math.Clamp(car.Scoop + 1, 0, ScoopMask) & ScoopMask) << ScoopShift));
         byte[] data =
         [
             Layout,
@@ -132,6 +171,7 @@ internal static class CraftSync
             (byte)(sbyte)Math.Round(Math.Clamp(car.Turn, -1.0, 1.0) * 127.0),
             flags,
             (byte)Math.Round(Math.Clamp(car.Throttle, 0.0, 1.0) * 255.0),
+            fittings,
         ];
         try
         {

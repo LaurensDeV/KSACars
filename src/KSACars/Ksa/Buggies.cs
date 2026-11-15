@@ -66,6 +66,11 @@ internal sealed class Buggies
         public double Throttle { get; set; } = Lift.DefaultThrottle;
         public double Rockets { get; set; }
         public bool Lit { get; set; }
+        /// <summary>
+        /// Whether the rockets are lit, as another game last said of a car it is driving. Null
+        /// for a car nobody else has said anything of, which goes by this game's engine keys.
+        /// </summary>
+        public bool? SaidLit { get; set; }
         public double Turn { get; set; }
         public VolumetricExhaustInstance?[]? Flames { get; set; }
         public VolumetricExhaustInstance?[]? BoostFlames { get; set; }
@@ -751,7 +756,10 @@ internal sealed class Buggies
         more |= pad is { ThrottleUp: true };
         less |= pad is { ThrottleDown: true };
         if (dt > 0.0) e.Throttle = Lift.Ramp(e.Throttle, more, less, dt);
-        e.Lit = e.Drive.Profile.HasRockets && (KsaWorld.EngineOn(craft) ?? e.Lit);
+        // The engine keys of the game the car is driven in. In any other they were never pressed,
+        // and read here a car hovering under another player hung in the air with its hatches
+        // shut and nothing coming out of them.
+        e.Lit = e.Drive.Profile.HasRockets && (e.SaidLit ?? KsaWorld.EngineOn(craft) ?? e.Lit);
         e.HatchWanted[(int)ThrusterGroup.Lift] = e.Lit;
         e.HatchWanted[(int)ThrusterGroup.Down] = e.Downforce && e.Drive.Profile.HasDownforce;
         e.Rockets = e.Lit && e.Ready(ThrusterGroup.Lift) ? e.Throttle : 0.0;
