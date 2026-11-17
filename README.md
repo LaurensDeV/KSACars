@@ -13,13 +13,13 @@ tyres, an engine and a gearbox, simulated by the mod and driven with the keys yo
 The driver kitten holds the steering wheel and turns it, and anyone aboard can get out on EVA and
 climb back in through the doors.
 
-> Built against KSA build `2026.11.10.5801`. KSA is pre-release and has no official code-modding
+> Built against KSA build `2026.11.16.5901`. KSA is pre-release and has no official code-modding
 > API; this uses the community [StarMap](https://github.com/StarMapLoader/StarMap) loader and may need
 > updating when the game does.
 
 ## Install
 
-You need **Kitten Space Agency**, built against build `2026.11.10.5801`, and
+You need **Kitten Space Agency**, built against build `2026.11.16.5901`, and
 **[StarMap](https://github.com/StarMapLoader/StarMap/releases) 0.5.3 or newer**, the community mod
 loader; 0.5.2 and older do not run this build of KSA. Edit
 StarMap's `StarMapConfig.json` to point at your KSA install; StarMap reads that file **relative to its

@@ -2,7 +2,7 @@
 
 Everything here comes out of the shipped assemblies of **KSA build 2026.9.10.5438**, read with
 `tools/apidump`, or out of the StarMap sources, and was rechecked against **2026.9.22.5482**,
-**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602**, **2026.10.19.5638**, **2026.10.25.5707** and **2026.11.10.5801** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
+**2026.10.7.5541**, **2026.10.10.5554**, **2026.10.13.5602**, **2026.10.19.5638**, **2026.10.25.5707**, **2026.11.10.5801** and **2026.11.16.5901** wherever each changed a type this mod uses. KSA is pre-release and unofficially moddable:
 none of this is documented by RocketWerkz, and **it will drift between game builds**. Re-run
 the dumper rather than trusting this file after an update.
 
@@ -1199,7 +1199,9 @@ in 2026.9.22.5482.
 - **Water drag is the air's box drag with the ocean's density**, `(CdA + 0.1 × wetted area) · ½ρv²`
   at the centre of mass (`ComputeDrag`). The box's CdA is per axis, so sideways drag dwarfs drag
   along the long axis, and there is no lift. A slow floating craft goes on rails
-  (`CanInstantlyFloatOnRails`, about 0.07 m/s) at the same sphere's flotation height.
+  (`CanInstantlyFloatOnRails`, about 0.07 m/s over the surface) at the same sphere's flotation height,
+  and is stopped relative to the surface as it goes (`StopRelativeToSurface`), as `TryToPutOnRails`
+  stops a craft at rest anywhere: the ground's turning is left in its velocity, not zeroed out of it.
 - **Nothing pushes in water but a rocket engine**, whose nozzle reads only atmospheric pressure and
   so thrusts underwater as at sea level. No propeller, electric drive or propellant-free engine
   exists; a mod pushes a craft through water by writing velocity.

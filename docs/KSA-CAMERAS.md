@@ -20,7 +20,7 @@ moved with it. A citation is still a pointer rather than a proof: check before r
 Grounded **only** in the decompiled engine at
 `../ksa-game-assemblies/current/src`.
 All citations are relative to that root. Nothing here is taken from any mod's own code or docs.
-Build: **2026.11.10.5801**. Line numbers move on every KSA update, so a citation that does not land
+Build: **2026.11.16.5901**. Line numbers move on every KSA update, so a citation that does not land
 on what it claims means this file is behind the corpus, not that the corpus is wrong.
 
 > **Its citations and its viewport sections are against 2026.8.22.5348, and section 2 in particular
@@ -54,6 +54,8 @@ on what it claims means this file is behind the corpus, not that the corpus is w
 > `EclToScreen` and the NDC conversions divide by where they divided by `FramebufferSize`: the window's
 > size for the main view (`GameViewport.UpdateScreenSize`), the viewport's for any other. The cursor
 > ray and the mod's projections use it. Rechecked, citations not re-derived.
+> 2026.11.16.5901 changed the camera and controller files by local renames alone, and left
+> `Program.OnFrame`'s order as it was. Rechecked, citations not re-derived.
 > 2026.9.4.5400 replaced the `Viewport` class with `IViewport` / `ViewportBase` /
 > `GameViewport` and moved the list into `ViewportRegistry` — so every `Viewport.cs:N` citation
 > below points at a file that no longer exists, and the claims naming `Program.Viewports`,

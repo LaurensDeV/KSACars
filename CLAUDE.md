@@ -110,7 +110,7 @@ PR. It skips merges, reverts, `fixup!`/`squash!` and semantic-release's own `cho
 ## Environment
 
 - **KSA install**: `/mnt/c/Program Files/Kitten Space Agency` (Windows game, WSL dev)
-- **KSA build these notes were taken against**: `2026.11.10.5801`
+- **KSA build these notes were taken against**: `2026.11.16.5901`
 - **StarMap 0.5.3** is the loader it runs under. Its API and Harmony are compiled against from NuGet
   (`StarMap.API` 0.5.3, `Lib.Harmony` 2.4.3, the same DLLs that release ships), pinned in the csproj
   and never copied into the output; neither `Import/` nor the private mirror holds them.
