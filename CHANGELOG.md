@@ -1,3 +1,9 @@
+## [0.1.17](https://github.com/LaurensDeV/KSACars/compare/v0.1.16...v0.1.17) (2026-11-25)
+
+### Build and packaging
+
+* **ksa:** retarget 2026.11.25.5949 ([a4ca11a](https://github.com/LaurensDeV/KSACars/commit/a4ca11a98319e3824ed7460f66ce046e936b982a))
+
 ## [0.1.16](https://github.com/LaurensDeV/KSACars/compare/v0.1.15...v0.1.16) (2026-11-17)
 
 ### Build and packaging
