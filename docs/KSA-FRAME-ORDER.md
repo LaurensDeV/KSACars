@@ -92,6 +92,9 @@ frame.
 
 On 2026.9.10.5438 `Glfw.PollEvents()` runs before `InputEvents.ApplyInputEvents()` rather than after
 the solvers are queued; the rest of this order, and everything below that depends on it, is the same.
+On 2026.11.25.5949 `SaveSystemRestart.OnFrame` and `SaveSystemSwap.OnFrame` run between steps 8 and 9,
+where a save of another star system is swapped in, every vehicle and physics bubble destroyed first;
+the order is otherwise unchanged.
 
 `Vehicle.PrepareWorker` — which this mod prefixes from `Ksa/PhysicsHook.cs` to write the cars'
 springs, tyres and engines — is reached from `ExecuteNextVehicleSolvers` at `Program.cs:2047`, i.e.

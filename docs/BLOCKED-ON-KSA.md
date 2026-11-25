@@ -3,7 +3,7 @@
 What the cars cannot do, or do only by working round the engine, with the engine reason and what
 would unblock it. Read against KSA build **2026.10.19.5638** and rechecked against **2026.10.25.5707**,
 **2026.11.10.5801**, which changed none of it and added the life-support section below, and
-**2026.11.16.5901**, which changed none of it; its `file:line` citations are 2026.10.19.5638's, except
+**2026.11.16.5901** and **2026.11.25.5949**, which changed none of it; its `file:line` citations are 2026.10.19.5638's, except
 the life-support section's, which are 2026.11.10.5801's.
 
 A KSA update is the only thing that changes any of these, and none will show up in

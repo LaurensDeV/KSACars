@@ -14,7 +14,7 @@ Read `docs/KSA-MODDING-NOTES.md` and CLAUDE.md's *After a KSA update* before sta
 
 ## What you need
 
-- The new KSA build **installed** (`/mnt/c/Program Files/Kitten Space Agency`).
+- The new KSA build **installed** (`/mnt/c/Program Files/Ahwoo/Games/Kitten Space Agency`; `tools/ksa-game-dir.sh` finds it).
 - A checkout of the private **`LaurensDeV/ksa-game-assemblies`** repository. Clone it next to
   this one so `Directory.Build.props` finds it: `git clone git@github.com:LaurensDeV/ksa-game-assemblies.git ../ksa-game-assemblies`
 - `ilspycmd` (`dotnet tool install -g ilspycmd`). **Do not upgrade it as part of an upgrade** —
@@ -125,7 +125,7 @@ default, or does not load, and the only trace is a line in KSA's own log.
 Core's own content is the reference schema, and it ships in the install:
 
 ```bash
-diff -ru "<old install>/Content/Core" "/mnt/c/Program Files/Kitten Space Agency/Content/Core" \
+diff -ru "<old install>/Content/Core" "$(./tools/ksa-game-dir.sh)/Content/Core" \
     --include='*.xml' | head -200
 ```
 
